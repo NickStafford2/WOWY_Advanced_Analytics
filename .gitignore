@@ -1,5 +1,21 @@
+# My Custom Tools
 context-export.toml
 out.txt
-.pytest_cache/
+
+# Python
 __pycache__/
-*.pyc
+*.py[cod]
+*.pyo
+*.pyd
+
+# Virtual environments
+.venv/
+venv/
+
+# Pytest
+.pytest_cache/
+
+# OS/editor junk
+.DS_Store
+.vscode/
+.idea/
