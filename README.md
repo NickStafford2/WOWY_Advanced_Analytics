@@ -55,3 +55,14 @@ If `pytest` is not installed:
 
 ```bash
 pip install pytest
+```
+
+## Example output
+
+```text
+WOWY results (Version 1)
+------------------------------------------------------------------------
+player         with  without     avg_with    avg_without      score
+------------------------------------------------------------------------
+player_A          4         2         9.00          1.00       8.00
+```

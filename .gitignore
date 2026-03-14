@@ -1,2 +1,5 @@
 context-export.toml
 out.txt
+.pytest_cache/
+__pycache__/
+*.pyc
