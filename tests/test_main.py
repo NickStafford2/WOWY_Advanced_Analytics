@@ -1,25 +1,18 @@
-from pathlib import Path
+from __future__ import annotations
+
 import csv
 import tempfile
+from pathlib import Path
 
 import pytest
 
 from src.main import (
-    build_parser,
     compute_wowy,
     filter_results,
     format_results_table,
     load_games_from_csv,
     main,
-    parse_players,
 )
-
-
-def test_parse_players_trims_and_deduplicates():
-    assert parse_players(" player_A ; player_B;player_A ; ; ") == {
-        "player_A",
-        "player_B",
-    }
 
 
 def test_compute_wowy_basic():
@@ -117,7 +110,20 @@ def test_load_games_from_csv_missing_column():
             load_games_from_csv(csv_path)
 
 
-def test_load_games_from_csv_rejects_empty_players():
+def test_load_games_from_csv_invalid_margin():
+    with tempfile.TemporaryDirectory() as tmpdir:
+        csv_path = Path(tmpdir) / "bad_games.csv"
+
+        with open(csv_path, "w", encoding="utf-8", newline="") as f:
+            writer = csv.writer(f)
+            writer.writerow(["game_id", "team", "margin", "players"])
+            writer.writerow(["1", "team_1", "not_a_number", "player_A;player_B"])
+
+        with pytest.raises(ValueError, match="Invalid margin"):
+            load_games_from_csv(csv_path)
+
+
+def test_load_games_from_csv_empty_players():
     with tempfile.TemporaryDirectory() as tmpdir:
         csv_path = Path(tmpdir) / "bad_games.csv"
 
@@ -126,52 +132,66 @@ def test_load_games_from_csv_rejects_empty_players():
             writer.writerow(["game_id", "team", "margin", "players"])
             writer.writerow(["1", "team_1", "10", "   "])
 
-        with pytest.raises(
-            ValueError, match="players column must contain at least one player"
-        ):
+        with pytest.raises(ValueError, match="has no players listed"):
             load_games_from_csv(csv_path)
 
 
-def test_load_games_from_csv_rejects_non_numeric_margin():
+def test_format_results_table_contains_expected_text():
+    results = {
+        "player_A": {
+            "games_with": 3,
+            "games_without": 2,
+            "avg_margin_with": 5.0,
+            "avg_margin_without": 1.0,
+            "wowy_score": 4.0,
+        }
+    }
+
+    output = format_results_table(results)
+
+    assert "WOWY results (Version 1)" in output
+    assert "player_A" in output
+    assert "4.00" in output
+
+
+def test_main_runs_with_temp_csv(capsys):
     with tempfile.TemporaryDirectory() as tmpdir:
-        csv_path = Path(tmpdir) / "bad_games.csv"
+        csv_path = Path(tmpdir) / "games.csv"
 
         with open(csv_path, "w", encoding="utf-8", newline="") as f:
             writer = csv.writer(f)
             writer.writerow(["game_id", "team", "margin", "players"])
-            writer.writerow(["1", "team_1", "abc", "player_A;player_B"])
+            writer.writerow(["1", "team_1", "10", "player_A;player_B;player_C"])
+            writer.writerow(["2", "team_1", "0", "player_B;player_C;player_D"])
+            writer.writerow(["3", "team_1", "-10", "player_C;player_D;player_E"])
 
-        with pytest.raises(ValueError, match="margin must be numeric"):
-            load_games_from_csv(csv_path)
+        exit_code = main(
+            [
+                "--csv",
+                str(csv_path),
+                "--min-games-with",
+                "1",
+                "--min-games-without",
+                "1",
+            ]
+        )
+
+        captured = capsys.readouterr()
+
+        assert exit_code == 0
+        assert "WOWY results (Version 1)" in captured.out
+        assert "player_A" in captured.out
 
 
-def test_format_results_table_handles_empty_results():
-    output = format_results_table({})
-    assert "No players matched the current filtering rules." in output
+def test_main_rejects_negative_filters():
+    with pytest.raises(ValueError, match="non-negative"):
+        main(["--min-games-with", "-1"])
 
 
-def test_main_returns_zero_and_prints_results(capsys, tmp_path):
-    csv_path = tmp_path / "games.csv"
-    csv_path.write_text(
-        "game_id,team,margin,players\n"
-        '1,team_1,10,"player_A;player_B;player_C"\n'
-        '2,team_1,0,"player_B;player_C;player_D"\n'
-        '3,team_1,-10,"player_C;player_D;player_E"\n',
-        encoding="utf-8",
-    )
+def test_help_works(capsys):
+    with pytest.raises(SystemExit) as exc_info:
+        main(["--help"])
 
-    rc = main([str(csv_path), "--min-games-with", "1", "--min-games-without", "1"])
-
-    assert rc == 0
+    assert exc_info.value.code == 0
     captured = capsys.readouterr()
-    assert "WOWY results (Version 1)" in captured.out
-    assert "player_A" in captured.out
-
-
-def test_build_parser_supports_help_flag(capsys):
-    parser = build_parser()
-    with pytest.raises(SystemExit) as exc:
-        parser.parse_args(["--help"])
-    assert exc.value.code == 0
-    captured = capsys.readouterr()
-    assert "Compute a simple game-level WOWY score" in captured.out
+    assert "Compute a simple game-level WOWY score from a CSV file." in captured.out

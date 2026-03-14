@@ -6,47 +6,32 @@ from pathlib import Path
 from typing import Any
 
 
-Game = dict[str, Any]
-Stats = dict[str, float | int | None]
-Results = dict[str, Stats]
-
-REQUIRED_COLUMNS = {"game_id", "team", "margin", "players"}
-DEFAULT_MIN_GAMES_WITH = 2
-DEFAULT_MIN_GAMES_WITHOUT = 2
-
-
-def parse_players(raw_players: str) -> set[str]:
-    return {player.strip() for player in raw_players.split(";") if player.strip()}
-
-
-def validate_csv_columns(fieldnames: list[str] | None) -> None:
-    missing = REQUIRED_COLUMNS - set(fieldnames or [])
-    if missing:
-        raise ValueError(f"Missing required CSV columns: {sorted(missing)}")
-
-
-def load_games_from_csv(csv_path: str | Path) -> list[Game]:
-    games: list[Game] = []
+def load_games_from_csv(csv_path: Path | str) -> list[dict[str, Any]]:
+    games: list[dict[str, Any]] = []
 
     with open(csv_path, "r", encoding="utf-8", newline="") as f:
         reader = csv.DictReader(f)
-        validate_csv_columns(reader.fieldnames)
+
+        required_columns = {"game_id", "team", "margin", "players"}
+        missing = required_columns - set(reader.fieldnames or [])
+        if missing:
+            raise ValueError(f"Missing required CSV columns: {sorted(missing)}")
 
         for row_number, row in enumerate(reader, start=2):
-            players = parse_players(row["players"])
-            if not players:
-                raise ValueError(
-                    f"Row {row_number}: players column must contain at least one player"
-                )
-
             try:
                 margin = float(row["margin"])
-            except ValueError as exc:
+            except (TypeError, ValueError) as exc:
                 raise ValueError(
-                    f"Row {row_number}: margin must be numeric, got {row['margin']!r}"
+                    f"Invalid margin at row {row_number}: {row['margin']!r}"
                 ) from exc
 
-            game: Game = {
+            players = {
+                player.strip() for player in row["players"].split(";") if player.strip()
+            }
+            if not players:
+                raise ValueError(f"Row {row_number} has no players listed")
+
+            game = {
                 "game_id": row["game_id"],
                 "team": row["team"],
                 "margin": margin,
@@ -57,12 +42,14 @@ def load_games_from_csv(csv_path: str | Path) -> list[Game]:
     return games
 
 
-def compute_wowy(games: list[Game]) -> Results:
+def compute_wowy(
+    games: list[dict[str, Any]],
+) -> dict[str, dict[str, float | int | None]]:
     all_players: set[str] = set()
     for game in games:
         all_players.update(game["players"])
 
-    results: Results = {}
+    results: dict[str, dict[str, float | int | None]] = {}
 
     for player in sorted(all_players):
         margins_with: list[float] = []
@@ -78,11 +65,10 @@ def compute_wowy(games: list[Game]) -> Results:
         avg_without = (
             sum(margins_without) / len(margins_without) if margins_without else None
         )
-        wowy_score = (
-            avg_with - avg_without
-            if avg_with is not None and avg_without is not None
-            else None
-        )
+
+        wowy_score = None
+        if avg_with is not None and avg_without is not None:
+            wowy_score = avg_with - avg_without
 
         results[player] = {
             "games_with": len(margins_with),
@@ -96,11 +82,11 @@ def compute_wowy(games: list[Game]) -> Results:
 
 
 def filter_results(
-    results: Results,
+    results: dict[str, dict[str, float | int | None]],
     min_games_with: int = 1,
     min_games_without: int = 1,
-) -> Results:
-    filtered: Results = {}
+) -> dict[str, dict[str, float | int | None]]:
+    filtered: dict[str, dict[str, float | int | None]] = {}
 
     for player, stats in results.items():
         if stats["games_with"] < min_games_with:
@@ -114,26 +100,22 @@ def filter_results(
     return filtered
 
 
-def rank_results(results: Results) -> list[tuple[str, Stats]]:
-    return sorted(
-        results.items(),
-        key=lambda item: (item[1]["wowy_score"], item[0]),
-        reverse=True,
-    )
-
-
-def format_results_table(results: Results) -> str:
+def format_results_table(results: dict[str, dict[str, float | int | None]]) -> str:
     lines = [
         "WOWY results (Version 1)",
         "-" * 72,
-        f"{'player':<12} {'with':>6} {'without':>8} {'avg_with':>12} {'avg_without':>14} {'score':>10}",
+        (
+            f"{'player':<12} {'with':>6} {'without':>8} "
+            f"{'avg_with':>12} {'avg_without':>14} {'score':>10}"
+        ),
         "-" * 72,
     ]
 
-    ranked = rank_results(results)
-    if not ranked:
-        lines.append("No players matched the current filtering rules.")
-        return "\n".join(lines)
+    ranked = sorted(
+        results.items(),
+        key=lambda item: item[1]["wowy_score"],
+        reverse=True,
+    )
 
     for player, stats in ranked:
         lines.append(
@@ -148,32 +130,31 @@ def format_results_table(results: Results) -> str:
     return "\n".join(lines)
 
 
-def print_results(results: Results) -> None:
+def print_results(results: dict[str, dict[str, float | int | None]]) -> None:
     print(format_results_table(results))
 
 
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
-        description="Compute a simple game-level WOWY score from a games CSV file."
+        description="Compute a simple game-level WOWY score from a CSV file."
     )
     parser.add_argument(
-        "csv_path",
-        nargs="?",
-        default=Path(__file__).resolve().parent / "games.csv",
+        "--csv",
         type=Path,
-        help="Path to a CSV file with game rows. Defaults to src/games.csv.",
+        default=Path(__file__).resolve().parent / "games.csv",
+        help="Path to the games CSV file",
     )
     parser.add_argument(
         "--min-games-with",
         type=int,
-        default=DEFAULT_MIN_GAMES_WITH,
-        help="Minimum number of games a player must appear in.",
+        default=2,
+        help="Minimum games with player required to include player in output",
     )
     parser.add_argument(
         "--min-games-without",
         type=int,
-        default=DEFAULT_MIN_GAMES_WITHOUT,
-        help="Minimum number of games a player must be absent for.",
+        default=2,
+        help="Minimum games without player required to include player in output",
     )
     return parser
 
@@ -183,9 +164,9 @@ def main(argv: list[str] | None = None) -> int:
     args = parser.parse_args(argv)
 
     if args.min_games_with < 0 or args.min_games_without < 0:
-        parser.error("minimum game filters must be non-negative")
+        raise ValueError("Minimum game filters must be non-negative")
 
-    games = load_games_from_csv(args.csv_path)
+    games = load_games_from_csv(args.csv)
     results = compute_wowy(games)
     filtered_results = filter_results(
         results,
