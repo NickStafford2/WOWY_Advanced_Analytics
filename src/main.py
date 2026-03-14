@@ -66,6 +66,21 @@ def compute_wowy(games):
     return results
 
 
+def filter_results(results, min_games_with=1, min_games_without=1):
+    filtered = {}
+
+    for player, stats in results.items():
+        if stats["games_with"] < min_games_with:
+            continue
+        if stats["games_without"] < min_games_without:
+            continue
+        if stats["wowy_score"] is None:
+            continue
+        filtered[player] = stats
+
+    return filtered
+
+
 def print_results(results):
     print("WOWY results (Version 1)")
     print("-" * 72)
@@ -77,30 +92,18 @@ def print_results(results):
 
     ranked = sorted(
         results.items(),
-        key=lambda item: (
-            float("-inf") if item[1]["wowy_score"] is None else item[1]["wowy_score"]
-        ),
+        key=lambda item: item[1]["wowy_score"],
         reverse=True,
     )
 
     for player, stats in ranked:
-        avg_with = (
-            f"{stats['avg_margin_with']:.2f}"
-            if stats["avg_margin_with"] is not None
-            else "N/A"
-        )
-        avg_without = (
-            f"{stats['avg_margin_without']:.2f}"
-            if stats["avg_margin_without"] is not None
-            else "N/A"
-        )
-        score = (
-            f"{stats['wowy_score']:.2f}" if stats["wowy_score"] is not None else "N/A"
-        )
-
         print(
-            f"{player:<12} {stats['games_with']:>6} {stats['games_without']:>8} "
-            f"{avg_with:>12} {avg_without:>14} {score:>10}"
+            f"{player:<12} "
+            f"{stats['games_with']:>6} "
+            f"{stats['games_without']:>8} "
+            f"{stats['avg_margin_with']:>12.2f} "
+            f"{stats['avg_margin_without']:>14.2f} "
+            f"{stats['wowy_score']:>10.2f}"
         )
 
 
@@ -110,4 +113,11 @@ if __name__ == "__main__":
 
     games = load_games_from_csv(csv_path)
     results = compute_wowy(games)
-    print_results(results)
+
+    filtered_results = filter_results(
+        results,
+        min_games_with=2,
+        min_games_without=2,
+    )
+
+    print_results(filtered_results)
