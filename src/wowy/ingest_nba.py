@@ -169,7 +169,7 @@ def _load_or_fetch_league_games(
 
     print(f"api league_games {team_abbreviation} {season} {season_type}")
     finder = leaguegamefinder.LeagueGameFinder(
-        team_id_nullable=team_id,
+        team_id_nullable=str(team_id),
         season_nullable=season,
         season_type_nullable=season_type,
     )
