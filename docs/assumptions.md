@@ -13,6 +13,13 @@ This project is currently a simple game-level WOWY prototype.
 - The current model does not use in-game substitutions or lineup stints.
 - The current model is not RAPM and not a possession-level plus-minus model.
 
+## Phase 1 normalized-data assumptions
+
+- The canonical normalized layer is still game-level.
+- Opponent context should be recorded in normalized game data even though the current WOWY path does not use it.
+- `minutes` may exist in normalized player rows but is not used yet.
+- The current WOWY CSV remains a derived compatibility format, not the long-term canonical source.
+
 ## Current interpretation
 
 The current WOWY score is:

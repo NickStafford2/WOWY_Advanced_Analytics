@@ -16,10 +16,18 @@ I do not plan to implement play by play tracking for quite some time. Most impor
 
 ## Planned next steps
 
-- Build a regression-based player matrix on the same/similar normalized game-level data
+- Build a regression-based player matrix on normalized game-level data
 - Add ridge regression for more stable player estimates
 - Decide whether player identity should move from player name to stable player id
 - Compare results to RAPM-style models
+
+## Phase 1 status
+
+- Keep the existing WOWY CLI and derived `games.csv` path intact
+- Add canonical normalized game and game-player schemas
+- Record opponent context in the normalized layer
+- Reserve `minutes` in the normalized player schema without using it yet
+- Add a derivation step from normalized tables to WOWY `games.csv`
 
 ## Not in scope yet
 

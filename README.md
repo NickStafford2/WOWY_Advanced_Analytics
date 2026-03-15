@@ -27,11 +27,11 @@ Where:
 
 This is a game-level presence model, not a possession-level or substitution-level plus-minus model.
 
-The normalized game CSV format is the stable data contract for this project. New ingestion or modeling work should continue to read and write this same game-level shape unless there is a deliberate format change.
+The current WOWY CLI still reads a simple derived `games.csv` file, but the project now also defines a richer normalized game-level schema for future modeling work.
 
 ## Input data
 
-The program reads a CSV file named `games.csv`.
+The current WOWY program reads a derived CSV file named `games.csv`.
 
 Expected columns:
 
@@ -50,6 +50,40 @@ game_id,team,margin,players
 2,team_1,6,"1628369;1627759;1628401;201143;203935"
 ```
 
+## Normalized phase-1 data design
+
+Phase 1 adds a canonical normalized layer alongside the existing WOWY CSV.
+
+`games.csv` remains the derived compatibility format for the current WOWY CLI.
+
+Canonical normalized tables:
+
+- `normalized_games.csv`
+- `normalized_game_players.csv`
+
+Normalized game columns:
+
+- `game_id`
+- `season`
+- `game_date`
+- `team`
+- `opponent`
+- `is_home`
+- `margin`
+- `season_type`
+- `source`
+
+Normalized game-player columns:
+
+- `game_id`
+- `team`
+- `player_id`
+- `player_name`
+- `appeared`
+- `minutes`
+
+`minutes` is included for future use but is not part of the current WOWY analysis and should not be interpreted as implemented weighting yet.
+
 ## Real NBA data
 
 The planned real-data path uses `nba_api` to fetch NBA game-level box score data and convert it into the same `games.csv` format above.
@@ -59,6 +93,12 @@ The WOWY model stays unchanged:
 - one row per game from one team's perspective
 - `margin` remains final game point differential
 - `players` remains the semicolon-separated list of NBA `PLAYER_ID` values for that team
+
+If you already have normalized game and game-player tables, derive the current WOWY input CSV with:
+
+```bash
+poetry run wowy-derive-wowy
+```
 
 Generate a normalized team-season CSV with:
 
@@ -119,4 +159,4 @@ player_id     with  without     avg_with    avg_without      score
 
 ## Next model direction
 
-The next phase of the project is a regression-based player matrix built on the same normalized game-level data. The current WOWY score remains useful as a simple baseline and debugging reference, but future model development is expected to move away from direct with-or-without averages.
+The next phase of the project is a regression-based player matrix built on the normalized game-level data. The current WOWY score remains useful as a simple baseline and debugging reference, but future model development is expected to move away from direct with-or-without averages.
