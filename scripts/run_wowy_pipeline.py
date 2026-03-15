@@ -8,7 +8,7 @@ from wowy.cli import run_wowy
 from wowy.ingest_nba import DEFAULT_WOWY_GAMES_DIR, write_team_season_games_csv
 
 
-WOWY_HEADER = ["game_id", "team", "margin", "players"]
+WOWY_HEADER = ["game_id", "season", "team", "margin", "players"]
 
 
 def build_parser() -> argparse.ArgumentParser:

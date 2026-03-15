@@ -13,8 +13,15 @@ def compute_wowy(games: list[WowyGameRecord]) -> dict[int, WowyPlayerStats]:
     for player in sorted(all_players):
         margins_with: list[float] = []
         margins_without: list[float] = []
+        team_seasons_with_player: set[tuple[str, str]] = set()
 
         for game in games:
+            if player in game.players:
+                team_seasons_with_player.add((game.team, game.season))
+
+        for game in games:
+            if (game.team, game.season) not in team_seasons_with_player:
+                continue
             if player in game.players:
                 margins_with.append(game.margin)
             else:

@@ -36,6 +36,7 @@ The current WOWY program reads a derived CSV file named `games.csv`.
 Expected columns:
 
 - `game_id`
+- `season`
 - `team`
 - `margin`
 - `players`
@@ -45,9 +46,9 @@ Expected columns:
 Example:
 
 ```csv
-game_id,team,margin,players
-1,team_1,10,"1628369;1627759;1628401;201143;1629057"
-2,team_1,6,"1628369;1627759;1628401;201143;203935"
+game_id,season,team,margin,players
+1,2023-24,team_1,10,"1628369;1627759;1628401;201143;1629057"
+2,2023-24,team_1,6,"1628369;1627759;1628401;201143;203935"
 ```
 
 ## Normalized phase-1 data design

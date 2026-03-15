@@ -19,9 +19,9 @@ def test_main_runs_with_temp_csv(
     write_games_csv(
         csv_path,
         [
-            ["1", "team_1", "10", "101;102;103"],
-            ["2", "team_1", "0", "102;103;104"],
-            ["3", "team_1", "-10", "103;104;105"],
+            ["1", "2023-24", "team_1", "10", "101;102;103"],
+            ["2", "2023-24", "team_1", "0", "102;103;104"],
+            ["3", "2023-24", "team_1", "-10", "103;104;105"],
         ],
     )
 
@@ -50,9 +50,9 @@ def test_run_wowy_returns_report_text(tmp_path: Path, write_games_csv):
     write_games_csv(
         csv_path,
         [
-            ["1", "team_1", "10", "101;102;103"],
-            ["2", "team_1", "0", "102;103;104"],
-            ["3", "team_1", "-10", "103;104;105"],
+            ["1", "2023-24", "team_1", "10", "101;102;103"],
+            ["2", "2023-24", "team_1", "0", "102;103;104"],
+            ["3", "2023-24", "team_1", "-10", "103;104;105"],
         ],
     )
 
@@ -72,9 +72,9 @@ def test_run_wowy_applies_top_n(tmp_path: Path, write_games_csv):
     write_games_csv(
         csv_path,
         [
-            ["1", "team_1", "10", "101;102"],
-            ["2", "team_1", "0", "101"],
-            ["3", "team_1", "-10", "102"],
+            ["1", "2023-24", "team_1", "10", "101;102"],
+            ["2", "2023-24", "team_1", "0", "101"],
+            ["3", "2023-24", "team_1", "-10", "102"],
         ],
     )
 
@@ -102,8 +102,8 @@ def test_main_rejects_negative_top_n():
 
 def test_build_wowy_report_formats_preloaded_games():
     games: list[WowyGameRecord] = [
-        WowyGameRecord("1", "team_1", 10.0, {101, 102, 103}),
-        WowyGameRecord("2", "team_1", -5.0, {102, 103, 104}),
+        WowyGameRecord("1", "2023-24", "team_1", 10.0, {101, 102, 103}),
+        WowyGameRecord("2", "2023-24", "team_1", -5.0, {102, 103, 104}),
     ]
 
     report = build_wowy_report(

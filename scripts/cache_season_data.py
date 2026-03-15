@@ -16,7 +16,7 @@ from wowy.ingest_nba import (
 )
 
 
-WOWY_HEADER = ["game_id", "team", "margin", "players"]
+WOWY_HEADER = ["game_id", "season", "team", "margin", "players"]
 
 
 def build_parser() -> argparse.ArgumentParser:

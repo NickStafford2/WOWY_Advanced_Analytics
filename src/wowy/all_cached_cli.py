@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import argparse
+import csv
 from pathlib import Path
 
 from wowy.cli import run_wowy
@@ -15,7 +16,7 @@ from wowy.ingest_nba import (
 from wowy.regression_cli import run_regression
 
 
-WOWY_HEADER = ["game_id", "team", "margin", "players"]
+WOWY_HEADER = ["game_id", "season", "team", "margin", "players"]
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -120,6 +121,7 @@ def run_all_cached(
 ) -> str:
     wowy_paths = sorted(wowy_input_dir.glob("*.csv"))
     print(f"[1/5] combining WOWY inputs from {len(wowy_paths)} cached files")
+    validate_wowy_cache_headers(wowy_paths)
     combine_csv_paths(wowy_paths, combined_wowy_csv, WOWY_HEADER)
 
     normalized_game_paths = sorted(normalized_games_input_dir.glob("*.csv"))
@@ -156,6 +158,24 @@ def run_all_cached(
         top_n=regression_top_n,
     )
     return f"{wowy_report}\n\n{regression_report}"
+
+
+def validate_wowy_cache_headers(wowy_paths: list[Path]) -> None:
+    if not wowy_paths:
+        raise ValueError("No cached WOWY team-game CSV files found")
+
+    for csv_path in wowy_paths:
+        with open(csv_path, "r", encoding="utf-8", newline="") as input_file:
+            reader = csv.reader(input_file)
+            header = next(reader, None)
+        if header == WOWY_HEADER:
+            continue
+        raise ValueError(
+            "Stale derived WOWY cache detected. "
+            f"Expected header {WOWY_HEADER!r} in {csv_path}, got {header!r}. "
+            "Rebuild derived WOWY files with "
+            "`poetry run python -m wowy.rebuild_wowy_cache_cli`."
+        )
 
 
 def main(argv: list[str] | None = None) -> int:

@@ -6,6 +6,7 @@ from dataclasses import dataclass
 @dataclass(frozen=True)
 class WowyGameRecord:
     game_id: str
+    season: str
     team: str
     margin: float
     players: set[int]

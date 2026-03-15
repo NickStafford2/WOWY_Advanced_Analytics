@@ -11,7 +11,7 @@ from wowy.types import (
 )
 
 
-WOWY_HEADER = ["game_id", "team", "margin", "players"]
+WOWY_HEADER = ["game_id", "season", "team", "margin", "players"]
 
 
 def derive_wowy_games(
@@ -36,6 +36,7 @@ def derive_wowy_games(
         derived_games.append(
             WowyGameRecord(
                 game_id=game.game_id,
+                season=game.season,
                 team=game.team,
                 margin=game.margin,
                 players=players,
@@ -59,6 +60,7 @@ def write_wowy_games_csv(
             writer.writerow(
                 {
                     "game_id": game.game_id,
+                    "season": game.season,
                     "team": game.team,
                     "margin": game.margin,
                     "players": ";".join(str(player) for player in sorted(game.players)),

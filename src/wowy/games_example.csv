@@ -1,7 +1,7 @@
-game_id,team,margin,players
-1,team_1,10,"player_A;player_B;player_C;player_D;player_E"
-2,team_1,6,"player_A;player_B;player_C;player_D;player_F"
-3,team_1,-4,"player_B;player_C;player_D;player_E;player_F"
-4,team_1,8,"player_A;player_C;player_D;player_E;player_F"
-5,team_1,-7,"player_B;player_C;player_E;player_F;player_G"
-6,team_1,12,"player_A;player_B;player_D;player_E;player_G"
+game_id,season,team,margin,players
+1,2023-24,team_1,10,"player_A;player_B;player_C;player_D;player_E"
+2,2023-24,team_1,6,"player_A;player_B;player_C;player_D;player_F"
+3,2023-24,team_1,-4,"player_B;player_C;player_D;player_E;player_F"
+4,2023-24,team_1,8,"player_A;player_C;player_D;player_E;player_F"
+5,2023-24,team_1,-7,"player_B;player_C;player_E;player_F;player_G"
+6,2023-24,team_1,12,"player_A;player_B;player_D;player_E;player_G"

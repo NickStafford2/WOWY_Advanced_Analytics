@@ -125,8 +125,8 @@ def test_write_team_season_games_csv_writes_normalized_and_derived_outputs(
     )
 
     assert games == [
-        WowyGameRecord("0001", "BOS", 12.0, {1628369, 1627759}),
-        WowyGameRecord("0002", "BOS", -5.0, {1628369, 1628401}),
+        WowyGameRecord("0001", "2023-24", "BOS", 12.0, {1628369, 1627759}),
+        WowyGameRecord("0002", "2023-24", "BOS", -5.0, {1628369, 1628401}),
     ]
     assert [game.game_date for game in normalized_games] == ["2024-04-01", "2024-04-03"]
     assert [game.opponent for game in normalized_games] == ["LAL", "LAL"]
@@ -251,7 +251,7 @@ def test_write_team_season_games_csv_skips_empty_box_scores(
     games = load_games_from_csv(csv_path)
 
     assert games == [
-        WowyGameRecord("0002", "ATL", -5.0, {101, 102}),
+        WowyGameRecord("0002", "2023-24", "ATL", -5.0, {101, 102}),
     ]
 
 

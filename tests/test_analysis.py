@@ -6,15 +6,32 @@ from wowy.types import WowyGameRecord, WowyPlayerStats
 
 def test_compute_wowy_basic():
     games: list[WowyGameRecord] = [
-        WowyGameRecord("1", "team_1", 10.0, {101, 102, 103}),
-        WowyGameRecord("2", "team_1", 0.0, {102, 103, 104}),
-        WowyGameRecord("3", "team_1", -10.0, {103, 104, 105}),
+        WowyGameRecord("1", "2023-24", "team_1", 10.0, {101, 102, 103}),
+        WowyGameRecord("2", "2023-24", "team_1", 0.0, {102, 103, 104}),
+        WowyGameRecord("3", "2023-24", "team_1", -10.0, {103, 104, 105}),
     ]
 
     results = compute_wowy(games)
 
     assert results[101].games_with == 1
     assert results[101].games_without == 2
+    assert results[101].avg_margin_with == 10.0
+    assert results[101].avg_margin_without == -5.0
+    assert results[101].wowy_score == 15.0
+
+
+def test_compute_wowy_limits_without_sample_to_matching_team_season():
+    games: list[WowyGameRecord] = [
+        WowyGameRecord("1", "2023-24", "team_1", 10.0, {101, 102}),
+        WowyGameRecord("2", "2023-24", "team_1", -5.0, {102}),
+        WowyGameRecord("3", "2023-24", "team_2", -20.0, {201}),
+        WowyGameRecord("4", "2024-25", "team_1", -30.0, {301}),
+    ]
+
+    results = compute_wowy(games)
+
+    assert results[101].games_with == 1
+    assert results[101].games_without == 1
     assert results[101].avg_margin_with == 10.0
     assert results[101].avg_margin_without == -5.0
     assert results[101].wowy_score == 15.0

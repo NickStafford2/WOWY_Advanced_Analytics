@@ -48,6 +48,7 @@ def load_player_names_from_cache(source_data_dir: Path) -> dict[int, str]:
 
 def fetch_game_record(
     game_id: str,
+    season: str,
     team_abbreviation: str,
     source_data_dir: Path,
 ) -> WowyGameRecord:
@@ -80,6 +81,7 @@ def fetch_game_record(
     plus_minus = float(team_rows.iloc[0]["PLUS_MINUS"])
     return WowyGameRecord(
         game_id=game_id,
+        season=season,
         team=team_abbreviation,
         margin=plus_minus,
         players=players,

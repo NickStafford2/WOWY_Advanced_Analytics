@@ -56,7 +56,13 @@ def test_derive_wowy_games_builds_legacy_records():
     ]
 
     assert derive_wowy_games(games, game_players) == [
-        WowyGameRecord(game_id="1", team="BOS", margin=8.0, players={101, 103})
+        WowyGameRecord(
+            game_id="1",
+            season="2023-24",
+            team="BOS",
+            margin=8.0,
+            players={101, 103},
+        )
     ]
 
 
@@ -83,15 +89,23 @@ def test_write_wowy_games_csv(tmp_path: Path):
     csv_path = tmp_path / "games.csv"
     write_wowy_games_csv(
         csv_path,
-        [WowyGameRecord(game_id="1", team="BOS", margin=8.0, players={103, 101})],
+        [
+            WowyGameRecord(
+                game_id="1",
+                season="2023-24",
+                team="BOS",
+                margin=8.0,
+                players={103, 101},
+            )
+        ],
     )
 
     with open(csv_path, "r", encoding="utf-8", newline="") as f:
         rows = list(csv.reader(f))
 
     assert rows == [
-        ["game_id", "team", "margin", "players"],
-        ["1", "BOS", "8.0", "101;103"],
+        ["game_id", "season", "team", "margin", "players"],
+        ["1", "2023-24", "BOS", "8.0", "101;103"],
     ]
 
 

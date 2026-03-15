@@ -12,7 +12,7 @@ def load_games_from_csv(csv_path: Path | str) -> list[WowyGameRecord]:
     with open(csv_path, "r", encoding="utf-8", newline="") as f:
         reader = csv.DictReader(f)
 
-        required_columns = {"game_id", "team", "margin", "players"}
+        required_columns = {"game_id", "season", "team", "margin", "players"}
         missing = required_columns - set(reader.fieldnames or [])
         if missing:
             raise ValueError(f"Missing required CSV columns: {sorted(missing)}")
@@ -41,6 +41,7 @@ def load_games_from_csv(csv_path: Path | str) -> list[WowyGameRecord]:
 
             game = WowyGameRecord(
                 game_id=row["game_id"],
+                season=row["season"],
                 team=row["team"],
                 margin=margin,
                 players=players,
