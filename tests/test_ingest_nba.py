@@ -14,7 +14,7 @@ from wowy.nba.ingest import (
     write_team_season_games_csv,
 )
 from wowy.io import load_games_from_csv
-from wowy.nba_normalize import parse_minutes_to_float, played_in_game
+from wowy.nba.normalize import parse_minutes_to_float, played_in_game
 from wowy.normalized_io import (
     load_normalized_game_players_from_csv,
     load_normalized_games_from_csv,
@@ -105,11 +105,11 @@ def test_write_team_season_games_csv_writes_normalized_and_derived_outputs(
             }
 
     monkeypatch.setattr(
-        "wowy.nba_cache.leaguegamefinder.LeagueGameFinder",
+        "wowy.nba.cache.leaguegamefinder.LeagueGameFinder",
         FakeLeagueGameFinder,
     )
     monkeypatch.setattr(
-        "wowy.nba_cache.boxscoretraditionalv2.BoxScoreTraditionalV2",
+        "wowy.nba.cache.boxscoretraditionalv2.BoxScoreTraditionalV2",
         FakeBoxScoreTraditionalV2,
     )
 
@@ -237,11 +237,11 @@ def test_write_team_season_games_csv_skips_empty_box_scores(
             }
 
     monkeypatch.setattr(
-        "wowy.nba_cache.leaguegamefinder.LeagueGameFinder",
+        "wowy.nba.cache.leaguegamefinder.LeagueGameFinder",
         FakeLeagueGameFinder,
     )
     monkeypatch.setattr(
-        "wowy.nba_cache.boxscoretraditionalv2.BoxScoreTraditionalV2",
+        "wowy.nba.cache.boxscoretraditionalv2.BoxScoreTraditionalV2",
         FakeBoxScoreTraditionalV2,
     )
 
@@ -315,11 +315,11 @@ def test_build_team_season_artifacts_returns_normalized_and_derived_outputs(
             }
 
     monkeypatch.setattr(
-        "wowy.nba_cache.leaguegamefinder.LeagueGameFinder",
+        "wowy.nba.cache.leaguegamefinder.LeagueGameFinder",
         FakeLeagueGameFinder,
     )
     monkeypatch.setattr(
-        "wowy.nba_cache.boxscoretraditionalv2.BoxScoreTraditionalV2",
+        "wowy.nba.cache.boxscoretraditionalv2.BoxScoreTraditionalV2",
         FakeBoxScoreTraditionalV2,
     )
 
@@ -403,14 +403,14 @@ def test_write_team_season_games_csv_resumes_from_cached_partial_source_data(
             raise RequestException("temporary failure")
 
     monkeypatch.setattr(
-        "wowy.nba_cache.leaguegamefinder.LeagueGameFinder",
+        "wowy.nba.cache.leaguegamefinder.LeagueGameFinder",
         FakeLeagueGameFinder,
     )
     monkeypatch.setattr(
-        "wowy.nba_cache.boxscoretraditionalv2.BoxScoreTraditionalV2",
+        "wowy.nba.cache.boxscoretraditionalv2.BoxScoreTraditionalV2",
         FakeBoxScoreTraditionalV2,
     )
-    monkeypatch.setattr("wowy.nba_cache.time.sleep", lambda _: None)
+    monkeypatch.setattr("wowy.nba.cache.time.sleep", lambda _: None)
 
     csv_path = tmp_path / "games.csv"
     normalized_games_csv = tmp_path / "normalized" / "games.csv"
@@ -459,7 +459,7 @@ def test_write_team_season_games_csv_resumes_from_cached_partial_source_data(
             }
 
     monkeypatch.setattr(
-        "wowy.nba_cache.boxscoretraditionalv2.BoxScoreTraditionalV2",
+        "wowy.nba.cache.boxscoretraditionalv2.BoxScoreTraditionalV2",
         RecoveryBoxScoreTraditionalV2,
     )
 
@@ -538,11 +538,11 @@ def test_write_team_season_games_csv_raises_on_inconsistent_outputs(
             }
 
     monkeypatch.setattr(
-        "wowy.nba_cache.leaguegamefinder.LeagueGameFinder",
+        "wowy.nba.cache.leaguegamefinder.LeagueGameFinder",
         FakeLeagueGameFinder,
     )
     monkeypatch.setattr(
-        "wowy.nba_cache.boxscoretraditionalv2.BoxScoreTraditionalV2",
+        "wowy.nba.cache.boxscoretraditionalv2.BoxScoreTraditionalV2",
         FakeBoxScoreTraditionalV2,
     )
     monkeypatch.setattr(

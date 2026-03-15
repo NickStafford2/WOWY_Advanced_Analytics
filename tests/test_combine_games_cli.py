@@ -5,13 +5,13 @@ from pathlib import Path
 
 import pytest
 
-from wowy.combine_games_cli import (
+from wowy.data.combine import (
     combine_csv_paths,
     combine_csvs,
     combine_normalized_data,
     combine_normalized_files,
-    main,
 )
+from wowy.data.combine_cli import main
 from wowy.normalized_io import (
     NORMALIZED_GAME_PLAYERS_HEADER,
     NORMALIZED_GAMES_HEADER,

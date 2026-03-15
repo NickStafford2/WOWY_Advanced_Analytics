@@ -3,7 +3,7 @@ from __future__ import annotations
 from pathlib import Path
 
 from wowy.apps.wowy.derive import WOWY_HEADER
-from wowy.combine_games_cli import combine_csv_paths, combine_normalized_files
+from wowy.data.combine import combine_csv_paths, combine_normalized_files
 from wowy.nba.cache_sync import ensure_team_season_data
 from wowy.nba.ingest import (
     DEFAULT_NORMALIZED_GAME_PLAYERS_DIR,

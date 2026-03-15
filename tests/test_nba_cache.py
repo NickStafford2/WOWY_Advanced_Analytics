@@ -6,7 +6,7 @@ from pathlib import Path
 import pytest
 from requests import RequestException
 
-from wowy.nba_cache import (
+from wowy.nba.cache import (
     load_cached_payload,
     load_or_fetch_box_score_with_source,
     load_or_fetch_league_games_with_source,
@@ -46,10 +46,10 @@ def test_load_or_fetch_league_games_retries_and_caches(tmp_path: Path, monkeypat
             return {"resultSets": [{"headers": ["GAME_ID"], "rowSet": [["0001"]]}]}
 
     monkeypatch.setattr(
-        "wowy.nba_cache.leaguegamefinder.LeagueGameFinder",
+        "wowy.nba.cache.leaguegamefinder.LeagueGameFinder",
         FakeLeagueGameFinder,
     )
-    monkeypatch.setattr("wowy.nba_cache.time.sleep", sleeps.append)
+    monkeypatch.setattr("wowy.nba.cache.time.sleep", sleeps.append)
 
     payload, source = load_or_fetch_league_games_with_source(
         team_id=1610612738,
@@ -88,10 +88,10 @@ def test_load_or_fetch_box_score_reports_cache_source(tmp_path: Path, monkeypatc
             return {"resultSets": [{"headers": ["A"], "rowSet": [[1]]}]}
 
     monkeypatch.setattr(
-        "wowy.nba_cache.boxscoretraditionalv2.BoxScoreTraditionalV2",
+        "wowy.nba.cache.boxscoretraditionalv2.BoxScoreTraditionalV2",
         FakeBoxScoreTraditionalV2,
     )
-    monkeypatch.setattr("wowy.nba_cache.time.sleep", lambda _: None)
+    monkeypatch.setattr("wowy.nba.cache.time.sleep", lambda _: None)
 
     payload, source = load_or_fetch_box_score_with_source(
         game_id="0001",

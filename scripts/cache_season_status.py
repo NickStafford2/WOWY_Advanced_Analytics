@@ -18,7 +18,7 @@ from wowy.nba.ingest import (
     DEFAULT_SOURCE_DATA_DIR,
     DEFAULT_WOWY_GAMES_DIR,
 )
-from wowy.nba_cache import league_games_cache_path
+from wowy.nba.cache import league_games_cache_path
 from wowy.normalized_io import (
     NORMALIZED_GAME_PLAYERS_HEADER,
     NORMALIZED_GAMES_HEADER,
