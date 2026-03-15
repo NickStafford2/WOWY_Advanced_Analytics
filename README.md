@@ -139,11 +139,13 @@ Run the regression analysis on those combined normalized files with:
 poetry run wowy-regression
 ```
 
+This now uses ridge regularization by default so the player-only game-level model remains solvable on real data. You can tune it with `--ridge-alpha`.
+
 If you want one-step pipeline scripts, run:
 
 ```bash
 poetry run python scripts/run_wowy_pipeline.py BOS:2023-24
-poetry run python scripts/run_regression_pipeline.py BOS:2023-24 NYK:2023-24
+poetry run python scripts/run_regression_pipeline.py BOS:2023-24 NYK:2023-24 --ridge-alpha 1.0
 ```
 
 

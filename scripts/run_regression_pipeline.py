@@ -45,6 +45,12 @@ def build_parser() -> argparse.ArgumentParser:
         default=1,
         help="Minimum games required to include a player in the regression output",
     )
+    parser.add_argument(
+        "--ridge-alpha",
+        type=float,
+        default=1.0,
+        help="Ridge regularization strength for player coefficients",
+    )
     return parser
 
 
@@ -84,6 +90,7 @@ def main(argv: list[str] | None = None) -> int:
             args.games_output,
             args.game_players_output,
             min_games=args.min_games,
+            ridge_alpha=args.ridge_alpha,
         )
     )
     return 0

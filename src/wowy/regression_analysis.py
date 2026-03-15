@@ -12,9 +12,12 @@ def fit_player_regression(
     observations: list[RegressionObservation],
     player_names: dict[int, str],
     min_games: int = 1,
+    ridge_alpha: float = 1.0,
 ) -> RegressionResult:
     if min_games < 0:
         raise ValueError("Minimum games filter must be non-negative")
+    if ridge_alpha < 0:
+        raise ValueError("Ridge alpha must be non-negative")
     if not observations:
         raise ValueError("At least one regression observation is required")
 
@@ -27,7 +30,11 @@ def fit_player_regression(
     if not included_players:
         raise ValueError("No players met the minimum games requirement")
 
-    coefficients = solve_normal_equation(observations, included_players)
+    coefficients = solve_normal_equation(
+        observations,
+        included_players,
+        ridge_alpha=ridge_alpha,
+    )
     intercept = coefficients[0]
 
     estimates = [
@@ -51,6 +58,7 @@ def fit_player_regression(
 def solve_normal_equation(
     observations: list[RegressionObservation],
     player_ids: list[int],
+    ridge_alpha: float = 1.0,
 ) -> list[float]:
     feature_count = len(player_ids) + 1
     player_index = {player_id: index + 1 for index, player_id in enumerate(player_ids)}
@@ -70,6 +78,9 @@ def solve_normal_equation(
             target[i] += row[i] * observation.margin
             for j in range(feature_count):
                 gram[i][j] += row[i] * row[j]
+
+    for diagonal_index in range(1, feature_count):
+        gram[diagonal_index][diagonal_index] += ridge_alpha
 
     return solve_linear_system(gram, target)
 

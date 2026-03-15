@@ -30,7 +30,7 @@ def test_run_regression_returns_report_text(tmp_path: Path):
         encoding="utf-8",
     )
 
-    report = run_regression(games_csv, game_players_csv, min_games=1)
+    report = run_regression(games_csv, game_players_csv, min_games=1, ridge_alpha=0.0)
 
     assert "Regression results (Game-level player model)" in report
     assert "Player 101" in report
@@ -70,6 +70,8 @@ def test_main_runs_with_temp_csvs(
             str(game_players_csv),
             "--min-games",
             "1",
+            "--ridge-alpha",
+            "0.0",
         ]
     )
 
@@ -81,3 +83,8 @@ def test_main_runs_with_temp_csvs(
 def test_main_rejects_negative_filters():
     with pytest.raises(ValueError, match="non-negative"):
         main(["--min-games", "-1"])
+
+
+def test_main_rejects_negative_ridge_alpha():
+    with pytest.raises(ValueError, match="non-negative"):
+        main(["--ridge-alpha", "-1"])

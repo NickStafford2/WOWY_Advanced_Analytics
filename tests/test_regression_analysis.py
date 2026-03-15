@@ -16,6 +16,7 @@ def test_fit_player_regression_returns_expected_coefficients():
     result = fit_player_regression(
         observations,
         player_names={101: "Player 101", 102: "Player 102"},
+        ridge_alpha=0.0,
     )
 
     estimates = {estimate.player_id: estimate for estimate in result.estimates}
@@ -37,16 +38,39 @@ def test_fit_player_regression_applies_min_games_filter():
         observations,
         player_names={101: "Player 101", 102: "Player 102"},
         min_games=2,
+        ridge_alpha=0.0,
     )
 
     assert [estimate.player_id for estimate in result.estimates] == [101, 102]
 
 
-def test_fit_player_regression_rejects_singular_system():
+def test_fit_player_regression_rejects_singular_system_without_ridge():
     observations = [
         RegressionObservation("1", "2023-24", "2024-04-01", "BOS", "MIL", True, 2.0, {101}),
         RegressionObservation("2", "2023-24", "2024-04-03", "BOS", "NYK", False, 3.0, {101}),
     ]
 
     with pytest.raises(ValueError, match="singular"):
-        fit_player_regression(observations, player_names={101: "Player 101"})
+        fit_player_regression(
+            observations,
+            player_names={101: "Player 101"},
+            ridge_alpha=0.0,
+        )
+
+
+def test_fit_player_regression_handles_singular_system_with_ridge():
+    observations = [
+        RegressionObservation("1", "2023-24", "2024-04-01", "BOS", "MIL", True, 2.0, {101}),
+        RegressionObservation("2", "2023-24", "2024-04-03", "BOS", "NYK", False, 3.0, {101}),
+    ]
+
+    result = fit_player_regression(
+        observations,
+        player_names={101: "Player 101"},
+        ridge_alpha=1.0,
+    )
+
+    assert result.players == 1
+    assert result.intercept == pytest.approx(2.5)
+    assert result.estimates[0].player_id == 101
+    assert result.estimates[0].coefficient == pytest.approx(0.0)
