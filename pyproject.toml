@@ -9,6 +9,7 @@ dependencies = ["nba_api>=1.7,<2.0"]
 
 [project.scripts]
 wowy = "wowy.main:main"
+wowy-regression = "wowy.regression_cli:main"
 wowy-ingest-nba = "wowy.ingest_nba_cli:main"
 wowy-combine-games = "wowy.combine_games_cli:main"
 wowy-derive-wowy = "wowy.derive_wowy_cli:main"

@@ -133,6 +133,12 @@ data/combined/regression/games.csv
 data/combined/regression/game_players.csv
 ```
 
+Run the regression analysis on those combined normalized files with:
+
+```bash
+poetry run wowy-regression
+```
+
 
 ## Install
 
@@ -162,4 +168,4 @@ player_id     with  without     avg_with    avg_without      score
 
 ## Next model direction
 
-The next phase of the project is a regression-based player matrix built on the normalized game-level data. The current WOWY score remains useful as a simple baseline and debugging reference, but future model development is expected to move away from direct with-or-without averages.
+The repository now includes a separate regression-based player analysis path built on normalized game-level data. The current WOWY score remains useful as a simple baseline and debugging reference, but future model development is expected to move further away from direct with-or-without averages and toward better adjusted models.

@@ -36,6 +36,13 @@ I do not plan to implement play by play tracking for quite some time. Most impor
 - Keep the current WOWY CLI unchanged while shifting ingestion toward the normalized layer
 - Combine normalized team-season files into regression-ready multi-team inputs
 
+## Phase 3 status
+
+- Add a separate regression CLI over combined normalized game-level inputs
+- Use one observation per team-game
+- Use player appearance indicators only for the first model
+- Keep opponent context in the observation data even though the first coefficients are player-only
+
 ## Not in scope yet
 
 - possession-level data
