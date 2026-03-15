@@ -4,7 +4,7 @@ from pathlib import Path
 
 import pytest
 
-from wowy.regression_cli import main, parse_ridge_grid, run_regression
+from wowy.apps.regression.cli import main, parse_ridge_grid, run_regression
 
 
 def test_run_regression_returns_report_text(tmp_path: Path):

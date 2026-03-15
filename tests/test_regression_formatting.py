@@ -1,7 +1,7 @@
 from __future__ import annotations
 
-from wowy.regression_formatting import format_regression_results
-from wowy.regression_types import (
+from wowy.apps.regression.formatting import format_regression_results
+from wowy.apps.regression.models import (
     RegressionPlayerEstimate,
     RegressionResult,
 )

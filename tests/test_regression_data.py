@@ -2,8 +2,8 @@ from __future__ import annotations
 
 import pytest
 
-from wowy.regression_data import build_regression_observations, count_player_games
-from wowy.types import NormalizedGamePlayerRecord, NormalizedGameRecord
+from wowy.apps.regression.data import build_regression_observations, count_player_games
+from wowy.nba.models import NormalizedGamePlayerRecord, NormalizedGameRecord
 
 
 def test_build_regression_observations_preserves_game_context():

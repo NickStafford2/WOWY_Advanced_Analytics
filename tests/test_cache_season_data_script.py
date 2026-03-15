@@ -3,7 +3,7 @@ from __future__ import annotations
 import importlib.util
 from pathlib import Path
 
-from wowy.types import TeamSeasonRunSummary
+from wowy.nba.build_models import TeamSeasonRunSummary
 
 
 SCRIPT_PATH = Path(__file__).resolve().parents[1] / "scripts" / "cache_season_data.py"

@@ -2,8 +2,8 @@ from __future__ import annotations
 
 import pytest
 
-from wowy.regression_analysis import fit_player_regression, tune_ridge_alpha
-from wowy.regression_types import RegressionObservation
+from wowy.apps.regression.analysis import fit_player_regression, tune_ridge_alpha
+from wowy.apps.regression.models import RegressionObservation
 
 
 def test_fit_player_regression_returns_expected_coefficients():

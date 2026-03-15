@@ -1,7 +1,7 @@
 from __future__ import annotations
 
-from wowy.analysis import compute_wowy, filter_results
-from wowy.types import WowyGameRecord, WowyPlayerStats
+from wowy.apps.wowy.analysis import compute_wowy, filter_results
+from wowy.apps.wowy.models import WowyGameRecord, WowyPlayerStats
 
 
 def test_compute_wowy_basic():

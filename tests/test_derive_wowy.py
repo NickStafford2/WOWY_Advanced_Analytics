@@ -5,12 +5,9 @@ from pathlib import Path
 
 import pytest
 
-from wowy.derive_wowy import derive_wowy_games, write_wowy_games_csv
-from wowy.types import (
-    NormalizedGamePlayerRecord,
-    NormalizedGameRecord,
-    WowyGameRecord,
-)
+from wowy.apps.wowy.derive import derive_wowy_games, write_wowy_games_csv
+from wowy.apps.wowy.models import WowyGameRecord
+from wowy.nba.models import NormalizedGamePlayerRecord, NormalizedGameRecord
 
 
 def test_derive_wowy_games_builds_legacy_records():

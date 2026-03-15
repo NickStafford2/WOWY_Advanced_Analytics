@@ -10,7 +10,7 @@ from wowy.normalized_io import (
     write_normalized_game_players_csv,
     write_normalized_games_csv,
 )
-from wowy.types import NormalizedGamePlayerRecord, NormalizedGameRecord
+from wowy.nba.models import NormalizedGamePlayerRecord, NormalizedGameRecord
 
 
 def test_write_and_load_normalized_games_csv(tmp_path: Path):

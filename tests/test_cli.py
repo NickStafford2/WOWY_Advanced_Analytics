@@ -4,9 +4,9 @@ from pathlib import Path
 
 import pytest
 
-from wowy.cli import build_wowy_report, run_wowy
+from wowy.apps.wowy.service import build_wowy_report, run_wowy
 from wowy.main import main
-from wowy.types import WowyGameRecord
+from wowy.apps.wowy.models import WowyGameRecord
 
 
 def test_main_rejects_temp_csv_when_default_minutes_filters_are_active(
@@ -24,7 +24,7 @@ def test_main_rejects_temp_csv_when_default_minutes_filters_are_active(
         ],
     )
 
-    monkeypatch.setattr("wowy.cli.load_player_names_from_cache", lambda _: {})
+    monkeypatch.setattr("wowy.apps.wowy.cli.load_player_names_from_cache", lambda _: {})
 
     with pytest.raises(ValueError, match="cache-managed inputs"):
         main(
@@ -67,7 +67,7 @@ def test_main_runs_with_cached_scope_without_explicit_csv(
         encoding="utf-8",
     )
 
-    monkeypatch.setattr("wowy.cli.load_player_names_from_cache", lambda _: {})
+    monkeypatch.setattr("wowy.apps.wowy.cli.load_player_names_from_cache", lambda _: {})
 
     exit_code = main(
         [
@@ -142,7 +142,7 @@ def test_main_filters_cached_scope_by_team_and_season(
         encoding="utf-8",
     )
 
-    monkeypatch.setattr("wowy.cli.load_player_names_from_cache", lambda _: {})
+    monkeypatch.setattr("wowy.apps.wowy.cli.load_player_names_from_cache", lambda _: {})
 
     exit_code = main(
         [
@@ -333,7 +333,7 @@ def test_main_filters_cached_scope_by_minutes(
         encoding="utf-8",
     )
 
-    monkeypatch.setattr("wowy.cli.load_player_names_from_cache", lambda _: {})
+    monkeypatch.setattr("wowy.apps.wowy.cli.load_player_names_from_cache", lambda _: {})
 
     exit_code = main(
         [

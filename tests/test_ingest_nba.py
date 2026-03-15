@@ -6,7 +6,7 @@ from pathlib import Path
 import pytest
 from requests import RequestException
 
-from wowy.ingest_nba import (
+from wowy.nba.ingest import (
     build_team_season_artifacts,
     extract_is_home,
     extract_opponent,
@@ -19,7 +19,7 @@ from wowy.normalized_io import (
     load_normalized_game_players_from_csv,
     load_normalized_games_from_csv,
 )
-from wowy.types import WowyGameRecord
+from wowy.apps.wowy.models import WowyGameRecord
 
 
 def test_write_team_season_games_csv_writes_normalized_and_derived_outputs(
@@ -29,7 +29,7 @@ def test_write_team_season_games_csv_writes_normalized_and_derived_outputs(
     source_data_dir = tmp_path / "source-data"
 
     monkeypatch.setattr(
-        "wowy.ingest_nba.teams.find_team_by_abbreviation",
+        "wowy.nba.ingest.teams.find_team_by_abbreviation",
         lambda abbreviation: {"id": 1610612738, "abbreviation": "BOS"},
     )
 
@@ -170,7 +170,7 @@ def test_write_team_season_games_csv_skips_empty_box_scores(
     source_data_dir = tmp_path / "source-data"
 
     monkeypatch.setattr(
-        "wowy.ingest_nba.teams.find_team_by_abbreviation",
+        "wowy.nba.ingest.teams.find_team_by_abbreviation",
         lambda abbreviation: {"id": 1610612737, "abbreviation": "ATL"},
     )
 
@@ -269,7 +269,7 @@ def test_build_team_season_artifacts_returns_normalized_and_derived_outputs(
     source_data_dir = tmp_path / "source-data"
 
     monkeypatch.setattr(
-        "wowy.ingest_nba.teams.find_team_by_abbreviation",
+        "wowy.nba.ingest.teams.find_team_by_abbreviation",
         lambda abbreviation: {"id": 1610612738, "abbreviation": "BOS"},
     )
 
@@ -352,7 +352,7 @@ def test_write_team_season_games_csv_resumes_from_cached_partial_source_data(
     boxscore_calls: list[str] = []
 
     monkeypatch.setattr(
-        "wowy.ingest_nba.teams.find_team_by_abbreviation",
+        "wowy.nba.ingest.teams.find_team_by_abbreviation",
         lambda abbreviation: {"id": 1610612737, "abbreviation": "ATL"},
     )
 
@@ -493,7 +493,7 @@ def test_write_team_season_games_csv_raises_on_inconsistent_outputs(
     source_data_dir = tmp_path / "source-data"
 
     monkeypatch.setattr(
-        "wowy.ingest_nba.teams.find_team_by_abbreviation",
+        "wowy.nba.ingest.teams.find_team_by_abbreviation",
         lambda abbreviation: {"id": 1610612738, "abbreviation": "BOS"},
     )
 
@@ -546,7 +546,7 @@ def test_write_team_season_games_csv_raises_on_inconsistent_outputs(
         FakeBoxScoreTraditionalV2,
     )
     monkeypatch.setattr(
-        "wowy.ingest_nba.validate_team_season_files",
+        "wowy.nba.ingest.validate_team_season_files",
         lambda **kwargs: "wowy_data",
     )
 
