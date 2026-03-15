@@ -23,7 +23,10 @@ def format_regression_results(
 
     lines = [
         "Regression results (Game-level player model)",
-        f"observations={result.observations} players={result.players} intercept={result.intercept:.4f}",
+        (
+            f"observations={result.observations} players={result.players} "
+            f"intercept={result.intercept:.4f} home_court={result.home_court_advantage:.4f}"
+        ),
         "-" * (name_width + player_id_width + 24),
         f"{'player':<{name_width}} {'player_id':<{player_id_width}} {'games':>6} {'coef':>10}",
         "-" * (name_width + player_id_width + 24),

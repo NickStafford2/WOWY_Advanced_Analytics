@@ -51,7 +51,8 @@ def test_fit_player_regression_returns_expected_coefficients():
     estimates = {estimate.player_id: estimate for estimate in result.estimates}
     assert result.observations == 3
     assert result.players == 4
-    assert result.intercept != 0.0
+    assert result.intercept == pytest.approx(0.0)
+    assert result.home_court_advantage != 0.0
     assert estimates[101].coefficient == pytest.approx(-estimates[201].coefficient)
     assert estimates[102].coefficient == pytest.approx(-estimates[202].coefficient)
 
@@ -137,7 +138,8 @@ def test_fit_player_regression_handles_singular_system_with_ridge():
     )
 
     assert result.players == 2
-    assert result.intercept == pytest.approx(2.5)
+    assert result.intercept == pytest.approx(0.0)
+    assert result.home_court_advantage == pytest.approx(2.5)
     assert result.estimates[0].player_id == 101
     assert result.estimates[0].coefficient == pytest.approx(0.0)
     assert result.estimates[1].player_id == 201

@@ -27,4 +27,5 @@ class RegressionResult:
     observations: int
     players: int
     intercept: float
+    home_court_advantage: float
     estimates: list[RegressionPlayerEstimate]
