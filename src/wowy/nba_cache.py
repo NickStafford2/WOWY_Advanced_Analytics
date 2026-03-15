@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import os
 import time
 from pathlib import Path
 
@@ -92,11 +93,19 @@ def load_cached_payload(cache_path: Path) -> dict | None:
     if not cache_path.exists():
         return None
 
-    with open(cache_path, "r", encoding="utf-8") as f:
-        return json.load(f)
+    try:
+        with open(cache_path, "r", encoding="utf-8") as f:
+            return json.load(f)
+    except json.JSONDecodeError:
+        print(f"ignore corrupt cache {cache_path}")
+        return None
 
 
 def write_cached_payload(cache_path: Path, payload: dict) -> None:
     cache_path.parent.mkdir(parents=True, exist_ok=True)
-    with open(cache_path, "w", encoding="utf-8") as f:
+    temp_path = cache_path.with_suffix(f"{cache_path.suffix}.tmp-{os.getpid()}")
+    with open(temp_path, "w", encoding="utf-8") as f:
         json.dump(payload, f, indent=2)
+        f.flush()
+        os.fsync(f.fileno())
+    temp_path.replace(cache_path)
