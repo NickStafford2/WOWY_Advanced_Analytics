@@ -29,3 +29,22 @@ class RegressionResult:
     intercept: float
     home_court_advantage: float
     estimates: list[RegressionPlayerEstimate]
+
+
+@dataclass(frozen=True)
+class RegressionModel:
+    player_ids: list[int]
+    team_seasons: list[str]
+    coefficients: list[float]
+
+
+@dataclass(frozen=True)
+class RidgeTuningResult:
+    alpha: float
+    validation_mse: float
+
+
+@dataclass(frozen=True)
+class RidgeTuningSummary:
+    best_alpha: float
+    results: list[RidgeTuningResult]

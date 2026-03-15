@@ -4,7 +4,7 @@ from pathlib import Path
 
 import pytest
 
-from wowy.regression_cli import main, run_regression
+from wowy.regression_cli import main, parse_ridge_grid, run_regression
 
 
 def test_run_regression_returns_report_text(tmp_path: Path):
@@ -379,3 +379,68 @@ def test_main_rejects_negative_ridge_alpha():
 def test_main_rejects_negative_top_n():
     with pytest.raises(ValueError, match="non-negative"):
         main(["--top-n", "-1"])
+
+
+def test_parse_ridge_grid_rejects_invalid_values():
+    with pytest.raises(ValueError, match="non-negative"):
+        parse_ridge_grid("1,-3")
+
+
+def test_main_can_tune_ridge_with_temp_csvs(
+    tmp_path: Path,
+    capsys: pytest.CaptureFixture[str],
+):
+    games_csv = tmp_path / "games.csv"
+    games_csv.write_text(
+        (
+            "game_id,season,game_date,team,opponent,is_home,margin,season_type,source\n"
+            "1,2023-24,2024-04-01,BOS,MIL,true,4,Regular Season,nba_api\n"
+            "1,2023-24,2024-04-01,MIL,BOS,false,-4,Regular Season,nba_api\n"
+            "2,2023-24,2024-04-03,BOS,MIL,true,3,Regular Season,nba_api\n"
+            "2,2023-24,2024-04-03,MIL,BOS,false,-3,Regular Season,nba_api\n"
+            "3,2023-24,2024-04-05,BOS,MIL,true,5,Regular Season,nba_api\n"
+            "3,2023-24,2024-04-05,MIL,BOS,false,-5,Regular Season,nba_api\n"
+            "4,2023-24,2024-04-07,BOS,MIL,true,4,Regular Season,nba_api\n"
+            "4,2023-24,2024-04-07,MIL,BOS,false,-4,Regular Season,nba_api\n"
+            "5,2023-24,2024-04-09,BOS,MIL,true,5,Regular Season,nba_api\n"
+            "5,2023-24,2024-04-09,MIL,BOS,false,-5,Regular Season,nba_api\n"
+        ),
+        encoding="utf-8",
+    )
+    game_players_csv = tmp_path / "game_players.csv"
+    game_players_csv.write_text(
+        (
+            "game_id,team,player_id,player_name,appeared,minutes\n"
+            "1,BOS,101,Player 101,true,48\n"
+            "1,MIL,201,Player 201,true,48\n"
+            "2,BOS,101,Player 101,true,48\n"
+            "2,MIL,201,Player 201,true,48\n"
+            "3,BOS,101,Player 101,true,48\n"
+            "3,MIL,201,Player 201,true,48\n"
+            "4,BOS,101,Player 101,true,48\n"
+            "4,MIL,201,Player 201,true,48\n"
+            "5,BOS,101,Player 101,true,48\n"
+            "5,MIL,201,Player 201,true,48\n"
+        ),
+        encoding="utf-8",
+    )
+
+    exit_code = main(
+        [
+            "--games-csv",
+            str(games_csv),
+            "--game-players-csv",
+            str(game_players_csv),
+            "--min-games",
+            "1",
+            "--tune-ridge",
+            "--ridge-grid",
+            "0.1,1,10",
+        ]
+    )
+
+    captured = capsys.readouterr()
+    assert exit_code == 0
+    assert "Ridge tuning results" in captured.out
+    assert "selected ridge alpha:" in captured.out
+    assert "Regression results (Game-level player model)" in captured.out

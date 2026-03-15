@@ -1,10 +1,15 @@
 from __future__ import annotations
 
+from statistics import mean
+
 from wowy.regression_data import count_player_games
 from wowy.regression_types import (
+    RegressionModel,
     RegressionObservation,
     RegressionPlayerEstimate,
     RegressionResult,
+    RidgeTuningResult,
+    RidgeTuningSummary,
 )
 
 
@@ -30,20 +35,20 @@ def fit_player_regression(
     if not included_players:
         raise ValueError("No players met the minimum games requirement")
 
-    coefficients = solve_normal_equation(
+    model = fit_regression_model(
         observations,
         included_players,
         ridge_alpha=ridge_alpha,
     )
-    intercept = coefficients[0]
-    home_court_advantage = coefficients[1]
+    intercept = model.coefficients[0]
+    home_court_advantage = model.coefficients[1]
 
     estimates = [
         RegressionPlayerEstimate(
             player_id=player_id,
             player_name=player_names.get(player_id, str(player_id)),
             games=games_by_player[player_id],
-            coefficient=coefficients[index + 2],
+            coefficient=model.coefficients[index + 2],
         )
         for index, player_id in enumerate(included_players)
     ]
@@ -57,11 +62,11 @@ def fit_player_regression(
     )
 
 
-def solve_normal_equation(
+def fit_regression_model(
     observations: list[RegressionObservation],
     player_ids: list[int],
     ridge_alpha: float = 1.0,
-) -> list[float]:
+) -> RegressionModel:
     team_seasons = sorted(
         {
             team_season_key(observation.home_team, observation.season)
@@ -126,7 +131,82 @@ def solve_normal_equation(
     for diagonal_index in range(2, feature_count):
         gram[diagonal_index][diagonal_index] += ridge_alpha
 
-    return solve_linear_system(gram, target)
+    return RegressionModel(
+        player_ids=player_ids,
+        team_seasons=team_seasons,
+        coefficients=solve_linear_system(gram, target),
+    )
+
+
+def predict_margin(
+    observation: RegressionObservation,
+    model: RegressionModel,
+) -> float:
+    row = build_feature_row(
+        feature_count=len(model.coefficients),
+        player_index={
+            player_id: index + 2 for index, player_id in enumerate(model.player_ids)
+        },
+        team_effect_index={
+            team_season: len(model.player_ids) + 2 + index
+            for index, team_season in enumerate(model.team_seasons)
+        },
+        opponent_effect_index={
+            team_season: len(model.player_ids) + 2 + len(model.team_seasons) + index
+            for index, team_season in enumerate(model.team_seasons)
+        },
+        player_weights=observation.player_weights,
+        home_court_sign=1.0,
+        team_effect_key=team_season_key(observation.home_team, observation.season),
+        opponent_effect_key=team_season_key(observation.away_team, observation.season),
+    )
+    return sum(weight * coefficient for weight, coefficient in zip(row, model.coefficients, strict=True))
+
+
+def tune_ridge_alpha(
+    observations: list[RegressionObservation],
+    player_names: dict[int, str],
+    alphas: list[float],
+    min_games: int = 1,
+    validation_fraction: float = 0.2,
+) -> RidgeTuningSummary:
+    if not observations:
+        raise ValueError("At least one regression observation is required")
+    if not alphas:
+        raise ValueError("At least one ridge alpha is required")
+    if not 0.0 < validation_fraction < 0.5:
+        raise ValueError("Validation fraction must be between 0 and 0.5")
+
+    ordered_observations = sorted(
+        observations,
+        key=lambda observation: (observation.game_date, observation.game_id),
+    )
+    validation_count = max(1, int(len(ordered_observations) * validation_fraction))
+    if validation_count >= len(ordered_observations):
+        raise ValueError("Validation split leaves no training observations")
+
+    training = ordered_observations[:-validation_count]
+    validation = ordered_observations[-validation_count:]
+    training_player_counts = count_player_games(training)
+    included_players = sorted(
+        player_id
+        for player_id, games in training_player_counts.items()
+        if games >= min_games and player_id in player_names
+    )
+    if not included_players:
+        raise ValueError("No players met the minimum games requirement in training data")
+
+    results: list[RidgeTuningResult] = []
+    for alpha in alphas:
+        model = fit_regression_model(training, included_players, ridge_alpha=alpha)
+        validation_mse = mean(
+            (predict_margin(observation, model) - observation.margin) ** 2
+            for observation in validation
+        )
+        results.append(RidgeTuningResult(alpha=alpha, validation_mse=validation_mse))
+
+    best = min(results, key=lambda result: result.validation_mse)
+    return RidgeTuningSummary(best_alpha=best.alpha, results=results)
 
 
 def build_feature_row(

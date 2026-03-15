@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import pytest
 
-from wowy.regression_analysis import fit_player_regression
+from wowy.regression_analysis import fit_player_regression, tune_ridge_alpha
 from wowy.regression_types import RegressionObservation
 
 
@@ -144,3 +144,35 @@ def test_fit_player_regression_handles_singular_system_with_ridge():
     assert result.estimates[0].coefficient == pytest.approx(0.0)
     assert result.estimates[1].player_id == 201
     assert result.estimates[1].coefficient == pytest.approx(0.0)
+
+
+def test_tune_ridge_alpha_returns_best_value_from_grid():
+    observations = [
+        RegressionObservation(
+            "1", "2023-24", "2024-04-01", "BOS", "MIL", 4.0, {101: 1.0, 201: -1.0}
+        ),
+        RegressionObservation(
+            "2", "2023-24", "2024-04-03", "BOS", "MIL", 3.0, {101: 1.0, 201: -1.0}
+        ),
+        RegressionObservation(
+            "3", "2023-24", "2024-04-05", "BOS", "MIL", 5.0, {101: 1.0, 201: -1.0}
+        ),
+        RegressionObservation(
+            "4", "2023-24", "2024-04-07", "BOS", "MIL", 4.0, {101: 1.0, 201: -1.0}
+        ),
+        RegressionObservation(
+            "5", "2023-24", "2024-04-09", "BOS", "MIL", 4.5, {101: 1.0, 201: -1.0}
+        ),
+    ]
+
+    summary = tune_ridge_alpha(
+        observations,
+        player_names={101: "Player 101", 201: "Player 201"},
+        alphas=[0.1, 1.0, 10.0],
+        min_games=1,
+        validation_fraction=0.2,
+    )
+
+    assert summary.best_alpha in {0.1, 1.0, 10.0}
+    assert [result.alpha for result in summary.results] == [0.1, 1.0, 10.0]
+    assert all(result.validation_mse >= 0.0 for result in summary.results)

@@ -14,7 +14,7 @@ from wowy.normalized_io import (
     load_normalized_game_players_from_csv,
     load_normalized_games_from_csv,
 )
-from wowy.regression_analysis import fit_player_regression
+from wowy.regression_analysis import fit_player_regression, tune_ridge_alpha
 from wowy.regression_data import build_regression_observations
 from wowy.regression_formatting import format_regression_results
 
@@ -112,6 +112,22 @@ def build_parser() -> argparse.ArgumentParser:
         default=None,
         help="Maximum number of players to include in output",
     )
+    parser.add_argument(
+        "--tune-ridge",
+        action="store_true",
+        help="Choose ridge alpha from a validation split before fitting the final model",
+    )
+    parser.add_argument(
+        "--ridge-grid",
+        default="0.3,1,3,10,30,100",
+        help="Comma-separated ridge alphas to evaluate when --tune-ridge is used",
+    )
+    parser.add_argument(
+        "--validation-fraction",
+        type=float,
+        default=0.2,
+        help="Fraction of games held out for ridge tuning when --tune-ridge is used",
+    )
     return parser
 
 
@@ -149,11 +165,36 @@ def run_regression(
     return format_regression_results(result, top_n=top_n)
 
 
+def parse_ridge_grid(raw_value: str) -> list[float]:
+    values = [part.strip() for part in raw_value.split(",")]
+    if not values or any(not value for value in values):
+        raise ValueError("Ridge grid must contain one or more comma-separated numbers")
+
+    alphas = [float(value) for value in values]
+    if any(alpha < 0.0 for alpha in alphas):
+        raise ValueError("Ridge grid values must be non-negative")
+    return alphas
+
+
+def build_tuning_report(best_alpha: float, results) -> str:
+    lines = [
+        "Ridge tuning results",
+        "-" * 34,
+        f"{'alpha':>10} {'validation_mse':>16}",
+        "-" * 34,
+    ]
+    for result in sorted(results, key=lambda item: item.alpha):
+        marker = " *" if result.alpha == best_alpha else ""
+        lines.append(f"{result.alpha:>10.4f} {result.validation_mse:>16.4f}{marker}")
+    return "\n".join(lines)
+
+
 def main(argv: list[str] | None = None) -> int:
     parser = build_parser()
     args = parser.parse_args(argv)
     games_csv = args.games_csv
     game_players_csv = args.game_players_csv
+    ridge_alpha = args.ridge_alpha
     print(f"[1/3] preparing regression inputs for {format_scope(args.team, args.season)}")
     if games_csv is None or game_players_csv is None:
         games_csv, game_players_csv = prepare_regression_inputs(
@@ -168,13 +209,36 @@ def main(argv: list[str] | None = None) -> int:
             wowy_output_dir=args.wowy_output_dir,
         )
     print(f"[2/3] loading regression data from {games_csv} and {game_players_csv}")
-    print("[3/3] fitting regression model")
+    if args.tune_ridge:
+        print("[3/4] tuning ridge alpha on a validation split")
+        games = load_normalized_games_from_csv(games_csv)
+        game_players = load_normalized_game_players_from_csv(game_players_csv)
+        games, game_players = filter_regression_scope(
+            games,
+            game_players,
+            teams=args.team,
+            seasons=args.season,
+        )
+        observations, player_names = build_regression_observations(games, game_players)
+        tuning_summary = tune_ridge_alpha(
+            observations,
+            player_names=player_names,
+            alphas=parse_ridge_grid(args.ridge_grid),
+            min_games=args.min_games,
+            validation_fraction=args.validation_fraction,
+        )
+        ridge_alpha = tuning_summary.best_alpha
+        print(build_tuning_report(tuning_summary.best_alpha, tuning_summary.results))
+        print(f"selected ridge alpha: {ridge_alpha:.4f}")
+        print("[4/4] fitting regression model")
+    else:
+        print("[3/3] fitting regression model")
     print(
         run_regression(
             games_csv,
             game_players_csv,
             min_games=args.min_games,
-            ridge_alpha=args.ridge_alpha,
+            ridge_alpha=ridge_alpha,
             top_n=args.top_n,
             teams=args.team,
             seasons=args.season,
