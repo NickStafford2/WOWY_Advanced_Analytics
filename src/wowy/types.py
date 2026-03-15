@@ -43,6 +43,25 @@ class TeamSeasonArtifacts:
 
 
 @dataclass(frozen=True)
+class TeamSeasonRunSummary:
+    team: str
+    season: str
+    season_type: str
+    league_games_source: str
+    total_games: int
+    processed_games: int
+    skipped_games: int
+    fetched_box_scores: int
+    cached_box_scores: int
+
+
+@dataclass(frozen=True)
+class TeamSeasonBuildResult:
+    artifacts: TeamSeasonArtifacts
+    summary: TeamSeasonRunSummary
+
+
+@dataclass(frozen=True)
 class WowyPlayerStats:
     games_with: int
     games_without: int

@@ -11,12 +11,14 @@ from wowy.combine_games_cli import combine_normalized_files
 from wowy.ingest_nba import (
     DEFAULT_NORMALIZED_GAME_PLAYERS_DIR,
     DEFAULT_NORMALIZED_GAMES_DIR,
+    DEFAULT_SOURCE_DATA_DIR,
     DEFAULT_WOWY_GAMES_DIR,
     write_team_season_games_csv,
 )
 
 
 WOWY_HEADER = ["game_id", "season", "team", "margin", "players"]
+_LAST_STATUS_LINE_LENGTH = 0
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -103,15 +105,37 @@ def render_progress_line(
     filled = 20 if total == 0 else int((current / total) * 20)
     bar = "#" * filled + "-" * (20 - filled)
     line = (
-        f"\r[{team_index}/{team_total}] {team} {season} "
-        f"[{bar}] {current}/{total} {status:<7} {game_id}"
+        f"  [{team_index:>2}/{team_total}] {team} {season} "
+        f"{current}/{total} [{bar}] {status:<7} {game_id}"
     )
-    sys.stdout.write(line)
-    sys.stdout.flush()
+    write_status_line(line)
 
 
 def quiet_log(_: str) -> None:
     return None
+
+
+def write_status_line(line: str) -> None:
+    global _LAST_STATUS_LINE_LENGTH
+    padding = max(0, _LAST_STATUS_LINE_LENGTH - len(line))
+    sys.stdout.write(f"\r{line}{' ' * padding}")
+    sys.stdout.flush()
+    _LAST_STATUS_LINE_LENGTH = len(line)
+
+
+def render_team_complete_line(
+    team_index: int,
+    team_total: int,
+    summary,
+) -> None:
+    line = (
+        f"  [{team_index:>2}/{team_total}] {summary.team} {summary.season} "
+        f"{summary.processed_games}/{summary.total_games} "
+        f"league={'cached' if summary.league_games_source == 'cached' else 'fetched'} "
+        f"boxscores={summary.fetched_box_scores} fetched, {summary.cached_box_scores} cached "
+        f"skipped={summary.skipped_games}"
+    )
+    write_status_line(line)
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -132,13 +156,14 @@ def main(argv: list[str] | None = None) -> int:
         normalized_game_players_path = (
             DEFAULT_NORMALIZED_GAME_PLAYERS_DIR / f"{team_code}_{args.season}.csv"
         )
-        write_team_season_games_csv(
+        summary = write_team_season_games_csv(
             team_abbreviation=team_code,
             season=args.season,
             csv_path=wowy_csv_path,
             normalized_games_csv_path=normalized_games_path,
             normalized_game_players_csv_path=normalized_game_players_path,
             season_type=args.season_type,
+            source_data_dir=DEFAULT_SOURCE_DATA_DIR,
             log=quiet_log,
             progress=lambda payload, team_index=team_index: render_progress_line(
                 team_index,
@@ -146,6 +171,7 @@ def main(argv: list[str] | None = None) -> int:
                 payload,
             ),
         )
+        render_team_complete_line(team_index, team_total, summary)
         sys.stdout.write("\n")
         normalized_games_paths.append(normalized_games_path)
         normalized_game_players_paths.append(normalized_game_players_path)

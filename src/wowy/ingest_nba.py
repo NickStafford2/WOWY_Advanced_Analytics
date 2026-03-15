@@ -6,13 +6,16 @@ from typing import Callable
 from nba_api.stats.static import teams
 
 from wowy.derive_wowy import derive_wowy_games, write_wowy_games_csv
-from wowy.nba_cache import DEFAULT_SOURCE_DATA_DIR, load_or_fetch_league_games
+from wowy.nba_cache import (
+    DEFAULT_SOURCE_DATA_DIR,
+    load_or_fetch_league_games_with_source,
+)
 from wowy.normalized_io import (
     write_normalized_game_players_csv,
     write_normalized_games_csv,
 )
 from wowy.nba_normalize import (
-    fetch_normalized_game_data,
+    fetch_normalized_game_data_with_source,
     load_player_names_from_cache as load_cached_player_names,
     result_set_to_data_frame,
 )
@@ -20,6 +23,8 @@ from wowy.types import (
     NormalizedGamePlayerRecord,
     NormalizedGameRecord,
     TeamSeasonArtifacts,
+    TeamSeasonBuildResult,
+    TeamSeasonRunSummary,
 )
 
 
@@ -39,11 +44,32 @@ def fetch_team_season_data(
 ) -> tuple[list[NormalizedGameRecord], list[NormalizedGamePlayerRecord]]:
     """Fetch one NBA team-season and return canonical normalized game-level records."""
 
+    result = build_team_season_artifacts(
+        team_abbreviation=team_abbreviation,
+        season=season,
+        season_type=season_type,
+        source_data_dir=source_data_dir,
+        log=log,
+        progress=progress,
+    )
+    return result.artifacts.normalized_games, result.artifacts.normalized_game_players
+
+
+def build_team_season_artifacts(
+    team_abbreviation: str,
+    season: str,
+    season_type: str = "Regular Season",
+    source_data_dir: Path = DEFAULT_SOURCE_DATA_DIR,
+    log: Callable[[str], None] | None = print,
+    progress: ProgressFn | None = None,
+) -> TeamSeasonBuildResult:
+    """Fetch one NBA team-season and return normalized plus derived WOWY records."""
+
     team = teams.find_team_by_abbreviation(team_abbreviation.upper())
     if team is None:
         raise ValueError(f"Unknown NBA team abbreviation: {team_abbreviation!r}")
 
-    finder_payload = load_or_fetch_league_games(
+    finder_payload, league_games_source = load_or_fetch_league_games_with_source(
         team_id=team["id"],
         team_abbreviation=team["abbreviation"],
         season=season,
@@ -54,28 +80,47 @@ def fetch_team_season_data(
     games_df = result_set_to_data_frame(finder_payload["resultSets"][0])
 
     if games_df.empty:
-        return [], []
+        return TeamSeasonBuildResult(
+            artifacts=TeamSeasonArtifacts([], [], []),
+            summary=TeamSeasonRunSummary(
+                team=team["abbreviation"],
+                season=season,
+                season_type=season_type,
+                league_games_source=league_games_source,
+                total_games=0,
+                processed_games=0,
+                skipped_games=0,
+                fetched_box_scores=0,
+                cached_box_scores=0,
+            ),
+        )
 
     normalized_games: list[NormalizedGameRecord] = []
     normalized_game_players: list[NormalizedGamePlayerRecord] = []
+    fetched_box_scores = 0
+    cached_box_scores = 0
+    skipped_games = 0
 
     unique_games_df = games_df.drop_duplicates(subset=["GAME_ID"])
     total_games = len(unique_games_df)
     for game_index, (_, game_row) in enumerate(unique_games_df.iterrows(), start=1):
         game_id = str(game_row["GAME_ID"])
         try:
-            normalized_game, game_players = fetch_normalized_game_data(
-                game_id=game_id,
-                team_abbreviation=team["abbreviation"],
-                season=season,
-                game_date=extract_game_date(game_row),
-                opponent=extract_opponent(game_row, team["abbreviation"]),
-                is_home=extract_is_home(game_row, team["abbreviation"]),
-                season_type=season_type,
-                source_data_dir=source_data_dir,
-                log=log,
+            normalized_game, game_players, box_score_source = (
+                fetch_normalized_game_data_with_source(
+                    game_id=game_id,
+                    team_abbreviation=team["abbreviation"],
+                    season=season,
+                    game_date=extract_game_date(game_row),
+                    opponent=extract_opponent(game_row, team["abbreviation"]),
+                    is_home=extract_is_home(game_row, team["abbreviation"]),
+                    season_type=season_type,
+                    source_data_dir=source_data_dir,
+                    log=log,
+                )
             )
         except ValueError as exc:
+            skipped_games += 1
             if log is not None:
                 log(
                     f"skip game {game_id} {team['abbreviation']} {season} reason={exc}"
@@ -93,6 +138,10 @@ def fetch_team_season_data(
                 )
             continue
 
+        if box_score_source == "fetched":
+            fetched_box_scores += 1
+        else:
+            cached_box_scores += 1
         normalized_games.append(normalized_game)
         normalized_game_players.extend(game_players)
         if progress is not None:
@@ -107,32 +156,23 @@ def fetch_team_season_data(
                 }
             )
 
-    return normalized_games, normalized_game_players
-
-
-def build_team_season_artifacts(
-    team_abbreviation: str,
-    season: str,
-    season_type: str = "Regular Season",
-    source_data_dir: Path = DEFAULT_SOURCE_DATA_DIR,
-    log: Callable[[str], None] | None = print,
-    progress: ProgressFn | None = None,
-) -> TeamSeasonArtifacts:
-    """Fetch one NBA team-season and return normalized plus derived WOWY records."""
-
-    normalized_games, normalized_game_players = fetch_team_season_data(
-        team_abbreviation=team_abbreviation,
-        season=season,
-        season_type=season_type,
-        source_data_dir=source_data_dir,
-        log=log,
-        progress=progress,
-    )
-    return TeamSeasonArtifacts(
+    artifacts = TeamSeasonArtifacts(
         normalized_games=normalized_games,
         normalized_game_players=normalized_game_players,
         wowy_games=derive_wowy_games(normalized_games, normalized_game_players),
     )
+    summary = TeamSeasonRunSummary(
+        team=team["abbreviation"],
+        season=season,
+        season_type=season_type,
+        league_games_source=league_games_source,
+        total_games=total_games,
+        processed_games=len(normalized_games),
+        skipped_games=skipped_games,
+        fetched_box_scores=fetched_box_scores,
+        cached_box_scores=cached_box_scores,
+    )
+    return TeamSeasonBuildResult(artifacts=artifacts, summary=summary)
 
 
 def write_team_season_normalized_csvs(
@@ -147,7 +187,7 @@ def write_team_season_normalized_csvs(
 ) -> tuple[list[NormalizedGameRecord], list[NormalizedGamePlayerRecord]]:
     """Fetch one NBA team-season and write canonical normalized CSVs."""
 
-    artifacts = build_team_season_artifacts(
+    result = build_team_season_artifacts(
         team_abbreviation=team_abbreviation,
         season=season,
         season_type=season_type,
@@ -155,12 +195,12 @@ def write_team_season_normalized_csvs(
         log=log,
         progress=progress,
     )
-    write_normalized_games_csv(games_csv_path, artifacts.normalized_games)
+    write_normalized_games_csv(games_csv_path, result.artifacts.normalized_games)
     write_normalized_game_players_csv(
         game_players_csv_path,
-        artifacts.normalized_game_players,
+        result.artifacts.normalized_game_players,
     )
-    return artifacts.normalized_games, artifacts.normalized_game_players
+    return result.artifacts.normalized_games, result.artifacts.normalized_game_players
 
 
 def write_team_season_games_csv(
@@ -173,7 +213,7 @@ def write_team_season_games_csv(
     source_data_dir: Path = DEFAULT_SOURCE_DATA_DIR,
     log: Callable[[str], None] | None = print,
     progress: ProgressFn | None = None,
-) -> None:
+ ) -> TeamSeasonRunSummary:
     """Fetch one NBA team-season and write normalized CSVs plus derived WOWY output."""
 
     normalized_games_path = Path(
@@ -185,7 +225,7 @@ def write_team_season_games_csv(
         or DEFAULT_NORMALIZED_GAME_PLAYERS_DIR / f"{team_abbreviation.upper()}_{season}.csv"
     )
 
-    artifacts = build_team_season_artifacts(
+    result = build_team_season_artifacts(
         team_abbreviation=team_abbreviation,
         season=season,
         season_type=season_type,
@@ -193,12 +233,13 @@ def write_team_season_games_csv(
         log=log,
         progress=progress,
     )
-    write_normalized_games_csv(normalized_games_path, artifacts.normalized_games)
+    write_normalized_games_csv(normalized_games_path, result.artifacts.normalized_games)
     write_normalized_game_players_csv(
         normalized_game_players_path,
-        artifacts.normalized_game_players,
+        result.artifacts.normalized_game_players,
     )
-    write_wowy_games_csv(csv_path, artifacts.wowy_games)
+    write_wowy_games_csv(csv_path, result.artifacts.wowy_games)
+    return result.summary
 
 
 def load_player_names_from_cache(

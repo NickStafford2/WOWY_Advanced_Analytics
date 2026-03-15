@@ -5,7 +5,11 @@ from typing import Callable
 
 import pandas as pd
 
-from wowy.nba_cache import load_cached_payload, load_or_fetch_box_score
+from wowy.nba_cache import (
+    load_cached_payload,
+    load_or_fetch_box_score,
+    load_or_fetch_box_score_with_source,
+)
 from wowy.types import (
     NormalizedGamePlayerRecord,
     NormalizedGameRecord,
@@ -64,6 +68,65 @@ def fetch_normalized_game_data(
         source_data_dir=source_data_dir,
         log=log,
     )
+    return normalize_box_score_payload(
+        box_score_payload=box_score_payload,
+        game_id=game_id,
+        team_abbreviation=team_abbreviation,
+        season=season,
+        game_date=game_date,
+        opponent=opponent,
+        is_home=is_home,
+        season_type=season_type,
+        source=source,
+    )
+
+
+def fetch_normalized_game_data_with_source(
+    game_id: str,
+    team_abbreviation: str,
+    season: str,
+    game_date: str,
+    opponent: str,
+    is_home: bool,
+    season_type: str,
+    source_data_dir: Path,
+    source: str = "nba_api",
+    log: Callable[[str], None] | None = print,
+) -> tuple[NormalizedGameRecord, list[NormalizedGamePlayerRecord], str]:
+    """Fetch one NBA game, normalize it, and report whether the cache was used."""
+
+    box_score_payload, box_score_source = load_or_fetch_box_score_with_source(
+        game_id=game_id,
+        source_data_dir=source_data_dir,
+        log=log,
+    )
+    normalized_game, normalized_players = normalize_box_score_payload(
+        box_score_payload=box_score_payload,
+        game_id=game_id,
+        team_abbreviation=team_abbreviation,
+        season=season,
+        game_date=game_date,
+        opponent=opponent,
+        is_home=is_home,
+        season_type=season_type,
+        source=source,
+    )
+    return normalized_game, normalized_players, box_score_source
+
+
+def normalize_box_score_payload(
+    box_score_payload: dict,
+    game_id: str,
+    team_abbreviation: str,
+    season: str,
+    game_date: str,
+    opponent: str,
+    is_home: bool,
+    season_type: str,
+    source: str = "nba_api",
+) -> tuple[NormalizedGameRecord, list[NormalizedGamePlayerRecord]]:
+    """Normalize one already-loaded NBA box score payload."""
+
     player_stats_df = result_set_to_data_frame(box_score_payload["resultSets"][0])
     team_stats_df = result_set_to_data_frame(box_score_payload["resultSets"][1])
 

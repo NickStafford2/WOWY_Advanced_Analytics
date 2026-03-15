@@ -323,20 +323,25 @@ def test_build_team_season_artifacts_returns_normalized_and_derived_outputs(
         FakeBoxScoreTraditionalV2,
     )
 
-    artifacts = build_team_season_artifacts(
+    result = build_team_season_artifacts(
         "BOS",
         "2023-24",
         source_data_dir=source_data_dir,
     )
 
-    assert [game.game_id for game in artifacts.normalized_games] == ["0001"]
-    assert [player.player_id for player in artifacts.normalized_game_players] == [
+    assert [game.game_id for game in result.artifacts.normalized_games] == ["0001"]
+    assert [player.player_id for player in result.artifacts.normalized_game_players] == [
         1628369,
         1627759,
     ]
-    assert artifacts.wowy_games == [
+    assert result.artifacts.wowy_games == [
         WowyGameRecord("0001", "2023-24", "BOS", 12.0, {1628369, 1627759}),
     ]
+    assert result.summary.league_games_source == "fetched"
+    assert result.summary.fetched_box_scores == 1
+    assert result.summary.cached_box_scores == 0
+    assert result.summary.processed_games == 1
+    assert result.summary.skipped_games == 0
 
 
 def test_write_team_season_games_csv_resumes_from_cached_partial_source_data(
@@ -458,7 +463,7 @@ def test_write_team_season_games_csv_resumes_from_cached_partial_source_data(
         RecoveryBoxScoreTraditionalV2,
     )
 
-    write_team_season_games_csv(
+    summary = write_team_season_games_csv(
         "ATL",
         "2023-24",
         csv_path,
@@ -470,6 +475,11 @@ def test_write_team_season_games_csv_resumes_from_cached_partial_source_data(
     games = load_games_from_csv(csv_path)
 
     assert boxscore_calls == ["0001", "0002", "0002", "0002", "recovery:0002"]
+    assert summary.league_games_source == "cached"
+    assert summary.fetched_box_scores == 1
+    assert summary.cached_box_scores == 1
+    assert summary.processed_games == 2
+    assert summary.skipped_games == 0
     assert games == [
         WowyGameRecord("0001", "2023-24", "ATL", 7.0, {101, 102}),
         WowyGameRecord("0002", "2023-24", "ATL", -5.0, {201, 202}),

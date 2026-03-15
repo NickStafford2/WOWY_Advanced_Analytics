@@ -18,15 +18,15 @@ BOX_SCORE_REQUEST_DELAY_SECONDS = 0.6
 LogFn = Callable[[str], None]
 
 
-def load_or_fetch_league_games(
+def load_or_fetch_league_games_with_source(
     team_id: int,
     team_abbreviation: str,
     season: str,
     season_type: str,
     source_data_dir: Path,
     log: LogFn | None = print,
-) -> dict:
-    """Load a cached team-season response or fetch and cache it from the NBA API."""
+) -> tuple[dict, str]:
+    """Load or fetch league games and report whether the cache was used."""
 
     cache_path = league_games_cache_path(
         team_abbreviation=team_abbreviation,
@@ -36,7 +36,7 @@ def load_or_fetch_league_games(
     )
     cached_payload = load_cached_payload(cache_path)
     if cached_payload is not None:
-        return cached_payload
+        return cached_payload, "cached"
 
     last_error: Exception | None = None
 
@@ -54,7 +54,7 @@ def load_or_fetch_league_games(
             )
             payload = finder.get_dict()
             write_cached_payload(cache_path, payload)
-            return payload
+            return payload, "fetched"
         except RequestException as exc:
             last_error = exc
             if attempt == LEAGUE_GAMES_REQUEST_RETRIES:
@@ -69,17 +69,36 @@ def load_or_fetch_league_games(
     )
 
 
-def load_or_fetch_box_score(
-    game_id: str,
+def load_or_fetch_league_games(
+    team_id: int,
+    team_abbreviation: str,
+    season: str,
+    season_type: str,
     source_data_dir: Path,
     log: LogFn | None = print,
 ) -> dict:
-    """Load a cached box score response or fetch and cache it from the NBA API."""
+    payload, _ = load_or_fetch_league_games_with_source(
+        team_id=team_id,
+        team_abbreviation=team_abbreviation,
+        season=season,
+        season_type=season_type,
+        source_data_dir=source_data_dir,
+        log=log,
+    )
+    return payload
+
+
+def load_or_fetch_box_score_with_source(
+    game_id: str,
+    source_data_dir: Path,
+    log: LogFn | None = print,
+) -> tuple[dict, str]:
+    """Load or fetch a box score and report whether the cache was used."""
 
     cache_path = box_score_cache_path(game_id, source_data_dir=source_data_dir)
     cached_payload = load_cached_payload(cache_path)
     if cached_payload is not None:
-        return cached_payload
+        return cached_payload, "cached"
 
     last_error: Exception | None = None
 
@@ -91,7 +110,7 @@ def load_or_fetch_box_score(
             box_score = boxscoretraditionalv2.BoxScoreTraditionalV2(game_id=game_id)
             payload = box_score.get_dict()
             write_cached_payload(cache_path, payload)
-            return payload
+            return payload, "fetched"
         except RequestException as exc:
             last_error = exc
             if attempt == BOX_SCORE_REQUEST_RETRIES:
@@ -102,6 +121,19 @@ def load_or_fetch_box_score(
         raise last_error
 
     raise RuntimeError(f"Failed to fetch box score for game {game_id!r}")
+
+
+def load_or_fetch_box_score(
+    game_id: str,
+    source_data_dir: Path,
+    log: LogFn | None = print,
+) -> dict:
+    payload, _ = load_or_fetch_box_score_with_source(
+        game_id=game_id,
+        source_data_dir=source_data_dir,
+        log=log,
+    )
+    return payload
 
 
 def league_games_cache_path(

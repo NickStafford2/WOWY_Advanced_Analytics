@@ -6,7 +6,12 @@ from pathlib import Path
 import pytest
 from requests import RequestException
 
-from wowy.nba_cache import load_cached_payload, write_cached_payload
+from wowy.nba_cache import (
+    load_cached_payload,
+    load_or_fetch_box_score_with_source,
+    load_or_fetch_league_games_with_source,
+    write_cached_payload,
+)
 
 
 def test_write_cached_payload_writes_json_atomically(tmp_path: Path):
@@ -46,9 +51,7 @@ def test_load_or_fetch_league_games_retries_and_caches(tmp_path: Path, monkeypat
     )
     monkeypatch.setattr("wowy.nba_cache.time.sleep", sleeps.append)
 
-    from wowy.nba_cache import load_or_fetch_league_games
-
-    payload = load_or_fetch_league_games(
+    payload, source = load_or_fetch_league_games_with_source(
         team_id=1610612738,
         team_abbreviation="BOS",
         season="2023-24",
@@ -57,10 +60,11 @@ def test_load_or_fetch_league_games_retries_and_caches(tmp_path: Path, monkeypat
     )
 
     assert payload["resultSets"][0]["rowSet"] == [["0001"]]
+    assert source == "fetched"
     assert len(calls) == 3
     assert sleeps == [2.0, 4.0]
 
-    cached_payload = load_or_fetch_league_games(
+    cached_payload, cached_source = load_or_fetch_league_games_with_source(
         team_id=1610612738,
         team_abbreviation="BOS",
         season="2023-24",
@@ -69,4 +73,36 @@ def test_load_or_fetch_league_games_retries_and_caches(tmp_path: Path, monkeypat
     )
 
     assert cached_payload == payload
+    assert cached_source == "cached"
     assert len(calls) == 3
+
+
+def test_load_or_fetch_box_score_reports_cache_source(tmp_path: Path, monkeypatch):
+    calls: list[str] = []
+
+    class FakeBoxScoreTraditionalV2:
+        def __init__(self, game_id: str):
+            calls.append(game_id)
+
+        def get_dict(self):
+            return {"resultSets": [{"headers": ["A"], "rowSet": [[1]]}]}
+
+    monkeypatch.setattr(
+        "wowy.nba_cache.boxscoretraditionalv2.BoxScoreTraditionalV2",
+        FakeBoxScoreTraditionalV2,
+    )
+    monkeypatch.setattr("wowy.nba_cache.time.sleep", lambda _: None)
+
+    payload, source = load_or_fetch_box_score_with_source(
+        game_id="0001",
+        source_data_dir=tmp_path,
+    )
+    cached_payload, cached_source = load_or_fetch_box_score_with_source(
+        game_id="0001",
+        source_data_dir=tmp_path,
+    )
+
+    assert payload == cached_payload
+    assert source == "fetched"
+    assert cached_source == "cached"
+    assert calls == ["0001"]
