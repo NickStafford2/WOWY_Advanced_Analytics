@@ -1,0 +1,3 @@
+stint_id,game_id,season,team,opponent,possessions,points_for,points_against,margin,home_away,team_players,opponent_players
+1,1001,2024,CLE,BOS,12,8,4,4,home,"Mitchell;Garland;Strus;Mobley;Allen","Holiday;White;Brown;Tatum;Porzingis"
+2,1001,2024,CLE,BOS,7,3,6,-3,home,"Mitchell;LeVert;Strus;Mobley;Allen","Holiday;White;Brown;Tatum;Horford"
