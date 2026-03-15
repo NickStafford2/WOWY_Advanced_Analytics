@@ -54,6 +54,20 @@ The WOWY model stays unchanged:
 - `margin` remains final game point differential
 - `players` remains the semicolon-separated list of players who appeared for that team
 
+Generate a `games.csv` file from one NBA team-season with:
+
+```bash
+poetry run wowy-ingest-nba
+```
+
+This currently defaults to `BOS`, `2023-24`, and writes `games.csv`.
+
+You can override the defaults:
+
+```bash
+poetry run wowy-ingest-nba NYK 2022-23 --csv games.csv --season-type "Regular Season"
+```
+
 
 ## Install
 
