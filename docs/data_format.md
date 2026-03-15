@@ -44,11 +44,11 @@ Rows with `appeared = false` are allowed in the normalized layer. The derived WO
 
 `games.csv` should contain one row per game from one team's perspective.
 
-## Columns
+### Columns
 
 - `game_id`: unique game identifier
 - `season`: season string
-- `team`: team name or id
+- `team`: team abbreviation in the generated NBA cache path
 - `margin`: final point differential for that team
 - `players`: semicolon-separated NBA `PLAYER_ID` values
 
@@ -56,6 +56,6 @@ Rows with `appeared = false` are allowed in the normalized layer. The derived WO
 
 ```csv
 game_id,season,team,margin,players
-1,2023-24,team_1,10,"1628369;1627759;1628401;201143;1629057"
-2,2023-24,team_1,-5,"1627759;1628401;201143;1629057;203935"
+1,2023-24,BOS,10,"1628369;1627759;1628401;201143;1629057"
+2,2023-24,BOS,-5,"1627759;1628401;201143;1629057;203935"
 ```

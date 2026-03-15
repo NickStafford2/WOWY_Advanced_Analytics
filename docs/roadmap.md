@@ -5,9 +5,11 @@ I do not plan to implement play by play tracking for quite some time. Most impor
 
 - Load normalized game-level data from CSV
 - Compute a simple game-level WOWY baseline
-- Filter players by minimum games with and without
+- Support WOWY output filtering by games and minutes
 - Fit a separate game-level ridge regression model on normalized data
-- Support local NBA team-season ingestion and CSV combination
+- Use minute-weighted player features plus home-court, team-season, and opponent team-season terms
+- Support ridge tuning from the regression CLI
+- Support local NBA team-season ingestion, cache status reporting, and CSV combination
 
 ## Current interpretation
 
@@ -18,15 +20,9 @@ I do not plan to implement play by play tracking for quite some time. Most impor
 ## Planned next steps
 
 - Add clearer separation between pre-fit and post-fit qualification rules
-- Add tuning workflows for ridge alpha and future pre-fit filters
+- Improve cache fetch behavior so missing data is fetched eagerly even for broader cached-scope flows
 - Improve evaluation of stability and sanity across parameter choices
 - Compare results to RAPM-style models
-
-
-- Add a separate regression CLI over combined normalized game-level inputs
-- Use one observation per full game with both team perspectives represented
-- Use minute-weighted player features
-- Include team-season and opponent team-season context in the model
 
 ## Not in scope yet
 

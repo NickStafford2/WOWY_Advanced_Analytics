@@ -4,3 +4,4 @@
 - Prefer small pure functions.
 - Prefer simple pytest unit tests.
 - Do not add possession-level or substitution-level logic yet.
+- Keep docs brief and focused on current behavior, commands, and file formats.
