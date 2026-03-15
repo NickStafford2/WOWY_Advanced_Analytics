@@ -40,6 +40,12 @@ def build_parser() -> argparse.ArgumentParser:
         default=1.0,
         help="Ridge regularization strength for player coefficients",
     )
+    parser.add_argument(
+        "--top-n",
+        type=int,
+        default=None,
+        help="Maximum number of players to include in output",
+    )
     return parser
 
 
@@ -48,11 +54,14 @@ def run_regression(
     game_players_csv_path: Path | str,
     min_games: int,
     ridge_alpha: float = 1.0,
+    top_n: int | None = None,
 ) -> str:
     if min_games < 0:
         raise ValueError("Minimum games filter must be non-negative")
     if ridge_alpha < 0:
         raise ValueError("Ridge alpha must be non-negative")
+    if top_n is not None and top_n < 0:
+        raise ValueError("Top-n filter must be non-negative")
 
     games = load_normalized_games_from_csv(games_csv_path)
     game_players = load_normalized_game_players_from_csv(game_players_csv_path)
@@ -63,7 +72,7 @@ def run_regression(
         min_games=min_games,
         ridge_alpha=ridge_alpha,
     )
-    return format_regression_results(result)
+    return format_regression_results(result, top_n=top_n)
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -75,6 +84,7 @@ def main(argv: list[str] | None = None) -> int:
             args.game_players_csv,
             min_games=args.min_games,
             ridge_alpha=args.ridge_alpha,
+            top_n=args.top_n,
         )
     )
     return 0

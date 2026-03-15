@@ -3,12 +3,17 @@ from __future__ import annotations
 from wowy.regression_types import RegressionResult
 
 
-def format_regression_results(result: RegressionResult) -> str:
+def format_regression_results(
+    result: RegressionResult,
+    top_n: int | None = None,
+) -> str:
     ranked = sorted(
         result.estimates,
         key=lambda estimate: estimate.coefficient,
         reverse=True,
     )
+    if top_n is not None:
+        ranked = ranked[:top_n]
 
     name_width = max(len("player"), *(len(estimate.player_name) for estimate in ranked))
     player_id_width = max(

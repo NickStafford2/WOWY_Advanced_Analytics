@@ -13,8 +13,11 @@ def sort_score(item: tuple[int, WowyPlayerStats]) -> float:
 def format_results_table(
     results: dict[int, WowyPlayerStats],
     player_names: dict[int, str] | None = None,
+    top_n: int | None = None,
 ) -> str:
     ranked = sorted(results.items(), key=sort_score, reverse=True)
+    if top_n is not None:
+        ranked = ranked[:top_n]
     player_names = player_names or {}
     name_width = max(
         len("player"),
@@ -59,5 +62,6 @@ def format_results_table(
 def print_results(
     results: dict[int, WowyPlayerStats],
     player_names: dict[int, str] | None = None,
+    top_n: int | None = None,
 ) -> None:
-    print(format_results_table(results, player_names=player_names))
+    print(format_results_table(results, player_names=player_names, top_n=top_n))

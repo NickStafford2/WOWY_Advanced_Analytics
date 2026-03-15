@@ -67,9 +67,37 @@ def test_run_wowy_returns_report_text(tmp_path: Path, write_games_csv):
     assert "Player 101" in report
 
 
+def test_run_wowy_applies_top_n(tmp_path: Path, write_games_csv):
+    csv_path = tmp_path / "games.csv"
+    write_games_csv(
+        csv_path,
+        [
+            ["1", "team_1", "10", "101;102"],
+            ["2", "team_1", "0", "101"],
+            ["3", "team_1", "-10", "102"],
+        ],
+    )
+
+    report = run_wowy(
+        csv_path,
+        min_games_with=1,
+        min_games_without=1,
+        player_names={101: "Player 101", 102: "Player 102"},
+        top_n=1,
+    )
+
+    assert "Player 101" in report
+    assert "Player 102" not in report
+
+
 def test_main_rejects_negative_filters():
     with pytest.raises(ValueError, match="non-negative"):
         main(["--min-games-with", "-1"])
+
+
+def test_main_rejects_negative_top_n():
+    with pytest.raises(ValueError, match="non-negative"):
+        main(["--top-n", "-1"])
 
 
 def test_build_wowy_report_formats_preloaded_games():
