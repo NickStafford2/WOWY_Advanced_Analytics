@@ -1,14 +1,14 @@
 from __future__ import annotations
 
-from wowy.types import GameRecord, PlayerStats
+from wowy.types import WowyGameRecord, WowyPlayerStats
 
 
-def compute_wowy(games: list[GameRecord]) -> dict[int, PlayerStats]:
+def compute_wowy(games: list[WowyGameRecord]) -> dict[int, WowyPlayerStats]:
     all_players: set[int] = set()
     for game in games:
         all_players.update(game.players)
 
-    results: dict[int, PlayerStats] = {}
+    results: dict[int, WowyPlayerStats] = {}
 
     for player in sorted(all_players):
         margins_with: list[float] = []
@@ -29,7 +29,7 @@ def compute_wowy(games: list[GameRecord]) -> dict[int, PlayerStats]:
         if avg_with is not None and avg_without is not None:
             wowy_score = avg_with - avg_without
 
-        results[player] = PlayerStats(
+        results[player] = WowyPlayerStats(
             games_with=len(margins_with),
             games_without=len(margins_without),
             avg_margin_with=avg_with,
@@ -41,11 +41,11 @@ def compute_wowy(games: list[GameRecord]) -> dict[int, PlayerStats]:
 
 
 def filter_results(
-    results: dict[int, PlayerStats],
+    results: dict[int, WowyPlayerStats],
     min_games_with: int = 1,
     min_games_without: int = 1,
-) -> dict[int, PlayerStats]:
-    filtered: dict[int, PlayerStats] = {}
+) -> dict[int, WowyPlayerStats]:
+    filtered: dict[int, WowyPlayerStats] = {}
 
     for player, stats in results.items():
         if stats.games_with < min_games_with:

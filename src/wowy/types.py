@@ -4,7 +4,7 @@ from dataclasses import dataclass
 
 
 @dataclass(frozen=True)
-class GameRecord:
+class WowyGameRecord:
     game_id: str
     team: str
     margin: float
@@ -35,7 +35,7 @@ class NormalizedGamePlayerRecord:
 
 
 @dataclass(frozen=True)
-class PlayerStats:
+class WowyPlayerStats:
     games_with: int
     games_without: int
     avg_margin_with: float | None

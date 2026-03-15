@@ -3,11 +3,11 @@ from __future__ import annotations
 import csv
 from pathlib import Path
 
-from wowy.types import GameRecord
+from wowy.types import WowyGameRecord
 
 
-def load_games_from_csv(csv_path: Path | str) -> list[GameRecord]:
-    games: list[GameRecord] = []
+def load_games_from_csv(csv_path: Path | str) -> list[WowyGameRecord]:
+    games: list[WowyGameRecord] = []
 
     with open(csv_path, "r", encoding="utf-8", newline="") as f:
         reader = csv.DictReader(f)
@@ -39,7 +39,7 @@ def load_games_from_csv(csv_path: Path | str) -> list[GameRecord]:
             if not players:
                 raise ValueError(f"Row {row_number} has no players listed")
 
-            game = GameRecord(
+            game = WowyGameRecord(
                 game_id=row["game_id"],
                 team=row["team"],
                 margin=margin,

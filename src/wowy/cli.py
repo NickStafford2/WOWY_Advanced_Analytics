@@ -7,7 +7,7 @@ from wowy.analysis import compute_wowy, filter_results
 from wowy.formatting import format_results_table
 from wowy.ingest_nba import DEFAULT_SOURCE_DATA_DIR, load_player_names_from_cache
 from wowy.io import load_games_from_csv
-from wowy.types import GameRecord
+from wowy.types import WowyGameRecord
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -47,7 +47,7 @@ def validate_filters(min_games_with: int, min_games_without: int) -> None:
 
 
 def build_wowy_report(
-    games: list[GameRecord],
+    games: list[WowyGameRecord],
     min_games_with: int,
     min_games_without: int,
     player_names: dict[int, str] | None = None,

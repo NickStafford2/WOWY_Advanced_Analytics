@@ -6,9 +6,9 @@ import pandas as pd
 
 from wowy.nba_cache import load_cached_payload, load_or_fetch_box_score
 from wowy.types import (
-    GameRecord,
     NormalizedGamePlayerRecord,
     NormalizedGameRecord,
+    WowyGameRecord,
 )
 
 
@@ -49,8 +49,8 @@ def fetch_game_record(
     game_id: str,
     team_abbreviation: str,
     source_data_dir: Path,
-) -> GameRecord:
-    """Fetch one NBA game and normalize the selected team into a GameRecord."""
+) -> WowyGameRecord:
+    """Fetch one NBA game and normalize the selected team into a WowyGameRecord."""
 
     box_score_payload = load_or_fetch_box_score(
         game_id=game_id,
@@ -77,7 +77,7 @@ def fetch_game_record(
         )
 
     plus_minus = float(team_rows.iloc[0]["PLUS_MINUS"])
-    return GameRecord(
+    return WowyGameRecord(
         game_id=game_id,
         team=team_abbreviation,
         margin=plus_minus,

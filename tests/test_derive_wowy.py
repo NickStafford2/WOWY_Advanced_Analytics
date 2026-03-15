@@ -7,7 +7,11 @@ import pytest
 
 from wowy.derive_wowy import derive_wowy_games, write_wowy_games_csv
 from wowy.derive_wowy_cli import main
-from wowy.types import GameRecord, NormalizedGamePlayerRecord, NormalizedGameRecord
+from wowy.types import (
+    NormalizedGamePlayerRecord,
+    NormalizedGameRecord,
+    WowyGameRecord,
+)
 
 
 def test_derive_wowy_games_builds_legacy_records():
@@ -52,7 +56,7 @@ def test_derive_wowy_games_builds_legacy_records():
     ]
 
     assert derive_wowy_games(games, game_players) == [
-        GameRecord(game_id="1", team="BOS", margin=8.0, players={101, 103})
+        WowyGameRecord(game_id="1", team="BOS", margin=8.0, players={101, 103})
     ]
 
 
@@ -79,7 +83,7 @@ def test_write_wowy_games_csv(tmp_path: Path):
     csv_path = tmp_path / "games.csv"
     write_wowy_games_csv(
         csv_path,
-        [GameRecord(game_id="1", team="BOS", margin=8.0, players={103, 101})],
+        [WowyGameRecord(game_id="1", team="BOS", margin=8.0, players={103, 101})],
     )
 
     with open(csv_path, "r", encoding="utf-8", newline="") as f:

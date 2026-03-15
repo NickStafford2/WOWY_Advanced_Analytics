@@ -4,7 +4,11 @@ import csv
 from collections import defaultdict
 from pathlib import Path
 
-from wowy.types import GameRecord, NormalizedGamePlayerRecord, NormalizedGameRecord
+from wowy.types import (
+    NormalizedGamePlayerRecord,
+    NormalizedGameRecord,
+    WowyGameRecord,
+)
 
 
 WOWY_HEADER = ["game_id", "team", "margin", "players"]
@@ -13,7 +17,7 @@ WOWY_HEADER = ["game_id", "team", "margin", "players"]
 def derive_wowy_games(
     games: list[NormalizedGameRecord],
     game_players: list[NormalizedGamePlayerRecord],
-) -> list[GameRecord]:
+) -> list[WowyGameRecord]:
     players_by_game_team: dict[tuple[str, str], set[int]] = defaultdict(set)
 
     for player in game_players:
@@ -21,7 +25,7 @@ def derive_wowy_games(
             continue
         players_by_game_team[(player.game_id, player.team)].add(player.player_id)
 
-    derived_games: list[GameRecord] = []
+    derived_games: list[WowyGameRecord] = []
 
     for game in games:
         players = players_by_game_team.get((game.game_id, game.team), set())
@@ -30,7 +34,7 @@ def derive_wowy_games(
                 f"No appeared players found for game {game.game_id!r} and team {game.team!r}"
             )
         derived_games.append(
-            GameRecord(
+            WowyGameRecord(
                 game_id=game.game_id,
                 team=game.team,
                 margin=game.margin,
@@ -43,7 +47,7 @@ def derive_wowy_games(
 
 def write_wowy_games_csv(
     csv_path: Path | str,
-    games: list[GameRecord],
+    games: list[WowyGameRecord],
 ) -> None:
     csv_path = Path(csv_path)
     csv_path.parent.mkdir(parents=True, exist_ok=True)

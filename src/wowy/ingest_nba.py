@@ -15,7 +15,11 @@ from wowy.nba_normalize import (
     load_player_names_from_cache as load_cached_player_names,
     result_set_to_data_frame,
 )
-from wowy.types import GameRecord, NormalizedGamePlayerRecord, NormalizedGameRecord
+from wowy.types import (
+    NormalizedGamePlayerRecord,
+    NormalizedGameRecord,
+    WowyGameRecord,
+)
 
 
 DEFAULT_NORMALIZED_GAMES_DIR = Path("data/normalized/nba/games")
@@ -73,7 +77,7 @@ def fetch_team_season_games(
     season: str,
     season_type: str = "Regular Season",
     source_data_dir: Path = DEFAULT_SOURCE_DATA_DIR,
-) -> list[GameRecord]:
+) -> list[WowyGameRecord]:
     """Fetch one NBA team-season and return rows in the existing game CSV shape.
 
     Each returned record matches the current WOWY input model:

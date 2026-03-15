@@ -1,9 +1,9 @@
 from __future__ import annotations
 
-from wowy.types import PlayerStats
+from wowy.types import WowyPlayerStats
 
 
-def sort_score(item: tuple[int, PlayerStats]) -> float:
+def sort_score(item: tuple[int, WowyPlayerStats]) -> float:
     score = item[1].wowy_score
     if score is None:
         raise ValueError("format_results_table received an unscored player")
@@ -11,7 +11,7 @@ def sort_score(item: tuple[int, PlayerStats]) -> float:
 
 
 def format_results_table(
-    results: dict[int, PlayerStats],
+    results: dict[int, WowyPlayerStats],
     player_names: dict[int, str] | None = None,
 ) -> str:
     ranked = sorted(results.items(), key=sort_score, reverse=True)
@@ -57,7 +57,7 @@ def format_results_table(
 
 
 def print_results(
-    results: dict[int, PlayerStats],
+    results: dict[int, WowyPlayerStats],
     player_names: dict[int, str] | None = None,
 ) -> None:
     print(format_results_table(results, player_names=player_names))

@@ -9,7 +9,7 @@ from wowy.normalized_io import (
     load_normalized_game_players_from_csv,
     load_normalized_games_from_csv,
 )
-from wowy.types import GameRecord
+from wowy.types import WowyGameRecord
 
 
 def test_write_team_season_games_csv_writes_normalized_and_derived_outputs(
@@ -122,8 +122,8 @@ def test_write_team_season_games_csv_writes_normalized_and_derived_outputs(
     )
 
     assert games == [
-        GameRecord("0001", "BOS", 12.0, {1628369, 1627759}),
-        GameRecord("0002", "BOS", -5.0, {1628369, 1628401}),
+        WowyGameRecord("0001", "BOS", 12.0, {1628369, 1627759}),
+        WowyGameRecord("0002", "BOS", -5.0, {1628369, 1628401}),
     ]
     assert [game.game_date for game in normalized_games] == ["2024-04-01", "2024-04-03"]
     assert [game.opponent for game in normalized_games] == ["LAL", "LAL"]

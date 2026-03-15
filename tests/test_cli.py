@@ -6,7 +6,7 @@ import pytest
 
 from wowy.cli import build_wowy_report, run_wowy
 from wowy.main import main
-from wowy.types import GameRecord
+from wowy.types import WowyGameRecord
 
 
 def test_main_runs_with_temp_csv(
@@ -73,9 +73,9 @@ def test_main_rejects_negative_filters():
 
 
 def test_build_wowy_report_formats_preloaded_games():
-    games: list[GameRecord] = [
-        GameRecord("1", "team_1", 10.0, {101, 102, 103}),
-        GameRecord("2", "team_1", -5.0, {102, 103, 104}),
+    games: list[WowyGameRecord] = [
+        WowyGameRecord("1", "team_1", 10.0, {101, 102, 103}),
+        WowyGameRecord("2", "team_1", -5.0, {102, 103, 104}),
     ]
 
     report = build_wowy_report(

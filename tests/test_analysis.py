@@ -1,14 +1,14 @@
 from __future__ import annotations
 
 from wowy.analysis import compute_wowy, filter_results
-from wowy.types import GameRecord, PlayerStats
+from wowy.types import WowyGameRecord, WowyPlayerStats
 
 
 def test_compute_wowy_basic():
-    games: list[GameRecord] = [
-        GameRecord("1", "team_1", 10.0, {101, 102, 103}),
-        GameRecord("2", "team_1", 0.0, {102, 103, 104}),
-        GameRecord("3", "team_1", -10.0, {103, 104, 105}),
+    games: list[WowyGameRecord] = [
+        WowyGameRecord("1", "team_1", 10.0, {101, 102, 103}),
+        WowyGameRecord("2", "team_1", 0.0, {102, 103, 104}),
+        WowyGameRecord("3", "team_1", -10.0, {103, 104, 105}),
     ]
 
     results = compute_wowy(games)
@@ -21,10 +21,10 @@ def test_compute_wowy_basic():
 
 
 def test_filter_results():
-    results: dict[int, PlayerStats] = {
-        101: PlayerStats(3, 3, 5.0, 1.0, 4.0),
-        102: PlayerStats(1, 5, 2.0, 0.0, 2.0),
-        103: PlayerStats(4, 1, 1.0, -1.0, 2.0),
+    results: dict[int, WowyPlayerStats] = {
+        101: WowyPlayerStats(3, 3, 5.0, 1.0, 4.0),
+        102: WowyPlayerStats(1, 5, 2.0, 0.0, 2.0),
+        103: WowyPlayerStats(4, 1, 1.0, -1.0, 2.0),
     }
 
     filtered = filter_results(results, min_games_with=2, min_games_without=2)
