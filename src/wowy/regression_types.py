@@ -19,6 +19,8 @@ class RegressionPlayerEstimate:
     player_id: int
     player_name: str
     games: int
+    average_minutes: float | None
+    total_minutes: float | None
     coefficient: float
 
 

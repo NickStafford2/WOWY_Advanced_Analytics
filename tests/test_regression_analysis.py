@@ -55,6 +55,8 @@ def test_fit_player_regression_returns_expected_coefficients():
     assert result.home_court_advantage != 0.0
     assert estimates[101].coefficient == pytest.approx(-estimates[201].coefficient)
     assert estimates[102].coefficient == pytest.approx(-estimates[202].coefficient)
+    assert estimates[101].average_minutes is None
+    assert estimates[101].total_minutes is None
 
 
 def test_fit_player_regression_applies_min_games_filter():

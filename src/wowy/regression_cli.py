@@ -166,10 +166,18 @@ def validate_filters(
 def load_player_minute_stats_from_players(
     game_players_csv_path: Path | str,
 ) -> dict[int, tuple[float, float]]:
+    return build_player_minute_stats(
+        load_normalized_game_players_from_csv(game_players_csv_path)
+    )
+
+
+def build_player_minute_stats(
+    game_players,
+) -> dict[int, tuple[float, float]]:
     totals: dict[int, float] = {}
     counts: dict[int, int] = {}
 
-    for player in load_normalized_game_players_from_csv(game_players_csv_path):
+    for player in game_players:
         if not player.appeared or player.minutes is None or player.minutes <= 0.0:
             continue
         totals[player.player_id] = totals.get(player.player_id, 0.0) + player.minutes
@@ -209,6 +217,8 @@ def run_regression(
         teams=teams,
         seasons=seasons,
     )
+    if player_minute_stats is None:
+        player_minute_stats = build_player_minute_stats(game_players)
     observations, player_names = build_regression_observations(games, game_players)
     result = fit_player_regression(
         observations,
@@ -301,6 +311,9 @@ def main(argv: list[str] | None = None) -> int:
             alphas=parse_ridge_grid(args.ridge_grid),
             min_games=args.min_games,
             validation_fraction=args.validation_fraction,
+            player_minute_stats=player_minute_stats,
+            min_average_minutes=args.min_average_minutes,
+            min_total_minutes=args.min_total_minutes,
         )
         ridge_alpha = tuning_summary.best_alpha
         print(build_tuning_report(tuning_summary.best_alpha, tuning_summary.results))

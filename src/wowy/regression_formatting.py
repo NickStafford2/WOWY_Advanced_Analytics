@@ -20,6 +20,14 @@ def format_regression_results(
         len("player_id"),
         *(len(str(estimate.player_id)) for estimate in ranked),
     )
+    avg_minutes_width = max(
+        len("avg_min"),
+        *(len(format_minutes_value(estimate.average_minutes)) for estimate in ranked),
+    )
+    total_minutes_width = max(
+        len("tot_min"),
+        *(len(format_minutes_value(estimate.total_minutes)) for estimate in ranked),
+    )
 
     lines = [
         "Regression results (Game-level player model)",
@@ -27,9 +35,13 @@ def format_regression_results(
             f"observations={result.observations} players={result.players} "
             f"intercept={result.intercept:.4f} home_court={result.home_court_advantage:.4f}"
         ),
-        "-" * (name_width + player_id_width + 24),
-        f"{'player':<{name_width}} {'player_id':<{player_id_width}} {'games':>6} {'coef':>10}",
-        "-" * (name_width + player_id_width + 24),
+        "-" * (name_width + player_id_width + avg_minutes_width + total_minutes_width + 28),
+        (
+            f"{'player':<{name_width}} {'player_id':<{player_id_width}} "
+            f"{'games':>6} {'avg_min':>{avg_minutes_width}} "
+            f"{'tot_min':>{total_minutes_width}} {'coef':>10}"
+        ),
+        "-" * (name_width + player_id_width + avg_minutes_width + total_minutes_width + 28),
     ]
 
     for estimate in ranked:
@@ -37,7 +49,15 @@ def format_regression_results(
             f"{estimate.player_name:<{name_width}} "
             f"{estimate.player_id:<{player_id_width}} "
             f"{estimate.games:>6} "
+            f"{format_minutes_value(estimate.average_minutes):>{avg_minutes_width}} "
+            f"{format_minutes_value(estimate.total_minutes):>{total_minutes_width}} "
             f"{estimate.coefficient:>10.4f}"
         )
 
     return "\n".join(lines)
+
+
+def format_minutes_value(value: float | None) -> str:
+    if value is None:
+        return "-"
+    return f"{value:.1f}"
