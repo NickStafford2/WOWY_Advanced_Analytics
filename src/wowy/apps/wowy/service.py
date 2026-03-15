@@ -4,9 +4,13 @@ from pathlib import Path
 
 from wowy.apps.wowy.analysis import compute_wowy, filter_results
 from wowy.apps.wowy.formatting import format_results_table
-from wowy.apps.wowy.models import WowyGameRecord, WowyPlayerStats
+from wowy.apps.wowy.models import (
+    WowyGameRecord,
+    WowyPlayerSeasonRecord,
+    WowyPlayerStats,
+)
 from wowy.data.normalized_io import load_normalized_game_players_from_csv
-from wowy.data.wowy_io import load_games_from_csv
+from wowy.data.wowy_io import load_games_from_csv, write_player_season_records_csv
 from wowy.nba.ingest import load_player_names_from_cache
 from wowy.nba.paths import normalized_game_players_path
 from wowy.nba.prepare import prepare_wowy_inputs
@@ -126,6 +130,34 @@ def load_player_minute_stats(
     return build_player_minute_stats(game_players)
 
 
+def load_player_season_minute_stats(
+    teams: list[str] | None,
+    seasons: list[str] | None,
+    normalized_games_input_dir: Path,
+    normalized_game_players_input_dir: Path,
+) -> dict[tuple[str, int], tuple[float, float]]:
+    totals: dict[tuple[str, int], float] = {}
+    counts: dict[tuple[str, int], int] = {}
+
+    for team_season in resolve_team_seasons(teams, seasons, normalized_games_input_dir):
+        for player in load_normalized_game_players_from_csv(
+            normalized_game_players_path(
+                team_season,
+                normalized_game_players_input_dir,
+            )
+        ):
+            if not player.appeared or player.minutes is None or player.minutes <= 0.0:
+                continue
+            key = (team_season.season, player.player_id)
+            totals[key] = totals.get(key, 0.0) + player.minutes
+            counts[key] = counts.get(key, 0) + 1
+
+    return {
+        key: (totals[key] / counts[key], totals[key])
+        for key in totals
+    }
+
+
 def filter_results_by_minutes(
     results: dict[int, WowyPlayerStats],
     player_minute_stats: dict[int, tuple[float, float]] | None,
@@ -173,6 +205,81 @@ def attach_minute_stats(
     return updated
 
 
+def build_wowy_player_season_records(
+    games: list[WowyGameRecord],
+    min_games_with: int,
+    min_games_without: int,
+    player_names: dict[int, str] | None = None,
+    player_season_minute_stats: dict[tuple[str, int], tuple[float, float]] | None = None,
+    min_average_minutes: float | None = None,
+    min_total_minutes: float | None = None,
+) -> list[WowyPlayerSeasonRecord]:
+    validate_filters(
+        min_games_with,
+        min_games_without,
+        min_average_minutes=min_average_minutes,
+        min_total_minutes=min_total_minutes,
+    )
+    player_names = player_names or {}
+    games_by_season: dict[str, list[WowyGameRecord]] = {}
+    for game in games:
+        games_by_season.setdefault(game.season, []).append(game)
+
+    records: list[WowyPlayerSeasonRecord] = []
+    for season in sorted(games_by_season):
+        results = compute_wowy(games_by_season[season])
+        results = filter_results(
+            results,
+            min_games_with=min_games_with,
+            min_games_without=min_games_without,
+        )
+
+        season_minute_stats = None
+        if player_season_minute_stats is not None:
+            season_minute_stats = {
+                player_id: stats
+                for (row_season, player_id), stats in player_season_minute_stats.items()
+                if row_season == season
+            }
+
+        results = filter_results_by_minutes(
+            results,
+            player_minute_stats=season_minute_stats,
+            min_average_minutes=min_average_minutes,
+            min_total_minutes=min_total_minutes,
+        )
+        results = attach_minute_stats(results, season_minute_stats)
+
+        ranked = sorted(
+            results.items(),
+            key=lambda item: item[1].wowy_score if item[1].wowy_score is not None else float("-inf"),
+            reverse=True,
+        )
+        for player_id, stats in ranked:
+            if (
+                stats.avg_margin_with is None
+                or stats.avg_margin_without is None
+                or stats.wowy_score is None
+            ):
+                continue
+            records.append(
+                WowyPlayerSeasonRecord(
+                    season=season,
+                    player_id=player_id,
+                    player_name=player_names.get(player_id, str(player_id)),
+                    games_with=stats.games_with,
+                    games_without=stats.games_without,
+                    avg_margin_with=stats.avg_margin_with,
+                    avg_margin_without=stats.avg_margin_without,
+                    wowy_score=stats.wowy_score,
+                    average_minutes=stats.average_minutes,
+                    total_minutes=stats.total_minutes,
+                )
+            )
+
+    return records
+
+
 def prepare_and_run_wowy(
     args,
     load_player_names_fn=load_player_names_from_cache,
@@ -202,8 +309,31 @@ def prepare_and_run_wowy(
         normalized_games_input_dir=args.normalized_games_input_dir,
         normalized_game_players_input_dir=args.normalized_game_players_input_dir,
     )
+    player_season_minute_stats = None
+    if args.export_player_seasons is not None:
+        player_season_minute_stats = load_player_season_minute_stats(
+            teams=args.team,
+            seasons=args.season,
+            normalized_games_input_dir=args.normalized_games_input_dir,
+            normalized_game_players_input_dir=args.normalized_game_players_input_dir,
+        )
     print(f"[2/3] running WOWY from {csv_path}")
     print("[3/3] computing WOWY results")
+    if args.export_player_seasons is not None:
+        records = build_wowy_player_season_records(
+            load_games_from_csv(csv_path),
+            min_games_with=args.min_games_with,
+            min_games_without=args.min_games_without,
+            player_names=player_names,
+            player_season_minute_stats=player_season_minute_stats,
+            min_average_minutes=args.min_average_minutes,
+            min_total_minutes=args.min_total_minutes,
+        )
+        write_player_season_records_csv(args.export_player_seasons, records)
+        print(
+            f"exported {len(records)} player-season WOWY rows to "
+            f"{args.export_player_seasons}"
+        )
     return run_wowy(
         csv_path,
         min_games_with=args.min_games_with,

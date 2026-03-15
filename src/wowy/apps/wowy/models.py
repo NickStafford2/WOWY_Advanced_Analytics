@@ -21,3 +21,17 @@ class WowyPlayerStats:
     wowy_score: float | None
     average_minutes: float | None = None
     total_minutes: float | None = None
+
+
+@dataclass(frozen=True)
+class WowyPlayerSeasonRecord:
+    season: str
+    player_id: int
+    player_name: str
+    games_with: int
+    games_without: int
+    avg_margin_with: float
+    avg_margin_without: float
+    wowy_score: float
+    average_minutes: float | None
+    total_minutes: float | None

@@ -63,6 +63,7 @@ poetry run wowy --season 2024-25 --team BOS --top-n 25
 poetry run regression --season 2024-25 --ridge-alpha 1.0 --top-n 25
 poetry run regression --season 2024-25 --team BOS --ridge-alpha 1.0 --min-games 20 --min-average-minutes 15 --min-total-minutes 500
 poetry run regression --season 2024-25 --team BOS --tune-ridge
+poetry run wowy --season 2020-21 --season 2021-22 --season 2022-23 --season 2023-24 --season 2024-25 --export-player-seasons data/combined/wowy/player_seasons.csv
 ```
 
 Both CLIs rebuild stale derived WOWY files automatically. If you request a specific scope with `--season` and optionally `--team`, missing team-season data is intended to be fetched automatically.
@@ -100,6 +101,11 @@ poetry run python -m wowy.data.combine_cli
 WOWY output includes player name or id, minute summaries, with/without samples, average margins, and score.
 
 Regression output includes observation count, fitted player count, intercept, home-court estimate, and ranked player coefficients.
+
+Player-season WOWY export:
+
+- `poetry run wowy --season ... --export-player-seasons data/combined/wowy/player_seasons.csv`
+- `poetry run python scripts/plot_wowy_player_history.py --input data/combined/wowy/player_seasons.csv --season 2020-21 --season 2021-22 --season 2022-23 --season 2023-24 --season 2024-25 --top-n 10 --min-seasons 3 --output data/combined/wowy/player_history.png`
 
 ## Interpretation
 

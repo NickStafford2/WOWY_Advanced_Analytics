@@ -37,7 +37,10 @@ def test_main_runs_with_cached_scope_without_explicit_csv(
         encoding="utf-8",
     )
 
-    monkeypatch.setattr("wowy.apps.wowy.cli.load_player_names_from_cache", lambda _: {})
+    monkeypatch.setattr(
+        "wowy.nba.prepare.load_player_names_from_cache",
+        lambda _: {101: "Player 101", 102: "Player 102", 103: "Player 103"},
+    )
 
     exit_code = main(
         [
@@ -112,7 +115,10 @@ def test_main_filters_cached_scope_by_team_and_season(
         encoding="utf-8",
     )
 
-    monkeypatch.setattr("wowy.apps.wowy.cli.load_player_names_from_cache", lambda _: {})
+    monkeypatch.setattr(
+        "wowy.nba.prepare.load_player_names_from_cache",
+        lambda _: {101: "Player 101", 102: "Player 102", 103: "Player 103"},
+    )
 
     exit_code = main(
         [
@@ -282,7 +288,10 @@ def test_main_filters_cached_scope_by_minutes(
         encoding="utf-8",
     )
 
-    monkeypatch.setattr("wowy.apps.wowy.cli.load_player_names_from_cache", lambda _: {})
+    monkeypatch.setattr(
+        "wowy.nba.prepare.load_player_names_from_cache",
+        lambda _: {101: "Player 101", 102: "Player 102", 103: "Player 103"},
+    )
 
     exit_code = main(
         [
@@ -324,3 +333,97 @@ def test_help_works(capsys: pytest.CaptureFixture[str]):
     assert exc_info.value.code == 0
     captured = capsys.readouterr()
     assert "Run WOWY on cached data" in captured.out
+    assert "--export-player-seasons" in captured.out
+
+
+def test_main_exports_player_season_csv(
+    tmp_path: Path,
+    capsys: pytest.CaptureFixture[str],
+    monkeypatch,
+):
+    normalized_games_dir = tmp_path / "normalized_games"
+    normalized_games_dir.mkdir()
+    (normalized_games_dir / "BOS_2022-23.csv").write_text(
+        (
+            "game_id,season,game_date,team,opponent,is_home,margin,season_type,source\n"
+            "1,2022-23,2023-04-01,BOS,MIL,true,10,Regular Season,nba_api\n"
+            "2,2022-23,2023-04-03,BOS,NYK,false,-5,Regular Season,nba_api\n"
+            "3,2022-23,2023-04-05,BOS,LAL,true,4,Regular Season,nba_api\n"
+        ),
+        encoding="utf-8",
+    )
+    (normalized_games_dir / "BOS_2023-24.csv").write_text(
+        (
+            "game_id,season,game_date,team,opponent,is_home,margin,season_type,source\n"
+            "4,2023-24,2024-04-01,BOS,MIL,true,8,Regular Season,nba_api\n"
+            "5,2023-24,2024-04-03,BOS,NYK,false,-2,Regular Season,nba_api\n"
+            "6,2023-24,2024-04-05,BOS,LAL,true,1,Regular Season,nba_api\n"
+        ),
+        encoding="utf-8",
+    )
+    normalized_players_dir = tmp_path / "normalized_game_players"
+    normalized_players_dir.mkdir()
+    (normalized_players_dir / "BOS_2022-23.csv").write_text(
+        (
+            "game_id,team,player_id,player_name,appeared,minutes\n"
+            "1,BOS,101,Player 101,true,34.0\n"
+            "1,BOS,102,Player 102,true,31.0\n"
+            "2,BOS,102,Player 102,true,31.0\n"
+            "3,BOS,101,Player 101,true,34.0\n"
+        ),
+        encoding="utf-8",
+    )
+    (normalized_players_dir / "BOS_2023-24.csv").write_text(
+        (
+            "game_id,team,player_id,player_name,appeared,minutes\n"
+            "4,BOS,101,Player 101,true,35.0\n"
+            "4,BOS,103,Player 103,true,30.0\n"
+            "5,BOS,101,Player 101,true,33.0\n"
+            "6,BOS,103,Player 103,true,30.0\n"
+        ),
+        encoding="utf-8",
+    )
+
+    monkeypatch.setattr(
+        "wowy.nba.prepare.load_player_names_from_cache",
+        lambda _: {101: "Player 101", 102: "Player 102", 103: "Player 103"},
+    )
+
+    export_path = tmp_path / "exports" / "player_seasons.csv"
+    exit_code = main(
+        [
+            "--team",
+            "BOS",
+            "--normalized-games-input-dir",
+            str(normalized_games_dir),
+            "--normalized-game-players-input-dir",
+            str(normalized_players_dir),
+            "--wowy-output-dir",
+            str(tmp_path / "team_games"),
+            "--combined-wowy-csv",
+            str(tmp_path / "combined" / "games.csv"),
+            "--source-data-dir",
+            str(tmp_path / "source"),
+            "--min-games-with",
+            "1",
+            "--min-games-without",
+            "1",
+            "--min-average-minutes",
+            "0",
+            "--min-total-minutes",
+            "0",
+            "--export-player-seasons",
+            str(export_path),
+        ]
+    )
+
+    captured = capsys.readouterr()
+    assert exit_code == 0
+    assert "exported 4 player-season WOWY rows" in captured.out
+    assert export_path.exists()
+    content = export_path.read_text(encoding="utf-8")
+    assert "season,player_id,player_name,games_with,games_without" in content
+    assert "2022-23,101,Player 101,2,1,7.0,-5.0,12.0,34.0,68.0" in content
+    assert "2022-23,102,Player 102,2,1,2.5,4.0,-1.5,31.0,62.0" in content
+    assert "2023-24,103,Player 103,2,1,4.5,-2.0,6.5,30.0,60.0" in content
+    assert "2023-24,101,Player 101,2,1,3.0,1.0,2.0,34.0,68.0" in content

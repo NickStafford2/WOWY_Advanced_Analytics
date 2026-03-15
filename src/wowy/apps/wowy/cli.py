@@ -94,6 +94,12 @@ def build_parser() -> argparse.ArgumentParser:
         default=600,
         help="Minimum total minutes required to include a player in output",
     )
+    parser.add_argument(
+        "--export-player-seasons",
+        type=Path,
+        default=None,
+        help="Optional CSV path for one-row-per-player-per-season WOWY export",
+    )
     return parser
 
 
