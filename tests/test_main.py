@@ -6,15 +6,11 @@ from pathlib import Path
 
 import pytest
 
-from wowy.main import (
-    GameRecord,
-    PlayerStats,
-    compute_wowy,
-    filter_results,
-    format_results_table,
-    load_games_from_csv,
-    main,
-)
+from wowy.types import GameRecord, PlayerStats
+from wowy.analysis import compute_wowy, filter_results
+from wowy.formatting import format_results_table
+from wowy.io import load_games_from_csv
+from wowy.main import main
 
 
 def test_compute_wowy_basic():
