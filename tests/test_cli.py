@@ -43,6 +43,8 @@ def test_main_runs_with_temp_csv(
     assert exit_code == 0
     assert "WOWY results (Version 1)" in captured.out
     assert "101" in captured.out
+    assert "avg_min" in captured.out
+    assert "tot_min" in captured.out
 
 
 def test_main_runs_with_cached_scope_without_explicit_csv(
@@ -99,6 +101,7 @@ def test_main_runs_with_cached_scope_without_explicit_csv(
     captured = capsys.readouterr()
     assert exit_code == 0
     assert "WOWY results (Version 1)" in captured.out
+    assert "avg_min" in captured.out
 
 
 def test_main_filters_cached_scope_by_team_and_season(
@@ -172,6 +175,7 @@ def test_main_filters_cached_scope_by_team_and_season(
     assert exit_code == 0
     assert "101" in captured.out or "102" in captured.out
     assert "201" not in captured.out
+    assert "avg_min" in captured.out
 
 
 def test_run_wowy_returns_report_text(tmp_path: Path, write_games_csv):
@@ -194,6 +198,8 @@ def test_run_wowy_returns_report_text(tmp_path: Path, write_games_csv):
 
     assert "WOWY results (Version 1)" in report
     assert "Player 101" in report
+    assert "avg_min" in report
+    assert "tot_min" in report
 
 
 def test_run_wowy_applies_top_n(tmp_path: Path, write_games_csv):
@@ -217,6 +223,8 @@ def test_run_wowy_applies_top_n(tmp_path: Path, write_games_csv):
 
     assert "Player 101" in report
     assert "Player 102" not in report
+    assert "avg_min" in report
+    assert "tot_min" in report
 
 
 def test_run_wowy_applies_minutes_filters(tmp_path: Path, write_games_csv):
@@ -356,6 +364,8 @@ def test_main_filters_cached_scope_by_minutes(
     assert exit_code == 0
     assert "101" in captured.out
     assert "102" not in captured.out
+    assert "34.0" in captured.out
+    assert "68.0" in captured.out
 
 
 def test_help_works(capsys: pytest.CaptureFixture[str]):

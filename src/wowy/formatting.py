@@ -26,16 +26,25 @@ def format_results_table(
         *(len(player_names.get(player, str(player))) for player, _ in ranked),
     )
     player_id_width = max(len("player_id"), *(len(str(player)) for player, _ in ranked))
+    avg_minutes_width = max(
+        len("avg_min"),
+        *(len(format_minutes_value(stats.average_minutes)) for _, stats in ranked),
+    )
+    total_minutes_width = max(
+        len("tot_min"),
+        *(len(format_minutes_value(stats.total_minutes)) for _, stats in ranked),
+    )
 
     lines = [
         "WOWY results (Version 1)",
-        "-" * (name_width + player_id_width + 55),
+        "-" * (name_width + player_id_width + avg_minutes_width + total_minutes_width + 59),
         (
             f"{'player':<{name_width}} {'player_id':<{player_id_width}} "
+            f"{'avg_min':>{avg_minutes_width}} {'tot_min':>{total_minutes_width}} "
             f"{'with':>6} {'without':>8} "
             f"{'avg_with':>12} {'avg_without':>14} {'score':>10}"
         ),
-        "-" * (name_width + player_id_width + 55),
+        "-" * (name_width + player_id_width + avg_minutes_width + total_minutes_width + 59),
     ]
 
     for player, stats in ranked:
@@ -51,6 +60,8 @@ def format_results_table(
         lines.append(
             f"{player_name:<{name_width}} "
             f"{player_text:<{player_id_width}} "
+            f"{format_minutes_value(stats.average_minutes):>{avg_minutes_width}} "
+            f"{format_minutes_value(stats.total_minutes):>{total_minutes_width}} "
             f"{stats.games_with:>6} "
             f"{stats.games_without:>8} "
             f"{avg_margin_with:>12.2f} "
@@ -67,3 +78,9 @@ def print_results(
     top_n: int | None = None,
 ) -> None:
     print(format_results_table(results, player_names=player_names, top_n=top_n))
+
+
+def format_minutes_value(value: float | None) -> str:
+    if value is None:
+        return "-"
+    return f"{value:.1f}"

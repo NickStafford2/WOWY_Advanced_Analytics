@@ -19,7 +19,7 @@ from wowy.ingest_nba import (
 )
 from wowy.io import load_games_from_csv
 from wowy.normalized_io import load_normalized_game_players_from_csv
-from wowy.types import WowyGameRecord
+from wowy.types import WowyGameRecord, WowyPlayerStats
 
 
 def format_scope(teams: list[str] | None, seasons: list[str] | None) -> str:
@@ -157,6 +157,7 @@ def build_wowy_report(
         min_average_minutes=min_average_minutes,
         min_total_minutes=min_total_minutes,
     )
+    filtered_results = attach_minute_stats(filtered_results, player_minute_stats)
     return format_results_table(
         filtered_results,
         player_names=player_names,
@@ -245,6 +246,31 @@ def filter_results_by_minutes(
             continue
         filtered[player_id] = stats
     return filtered
+
+
+def attach_minute_stats(
+    results,
+    player_minute_stats: dict[int, tuple[float, float]] | None,
+):
+    if player_minute_stats is None:
+        return results
+
+    updated = {}
+    for player_id, stats in results.items():
+        average_minutes, total_minutes = player_minute_stats.get(
+            player_id,
+            (None, None),
+        )
+        updated[player_id] = WowyPlayerStats(
+            games_with=stats.games_with,
+            games_without=stats.games_without,
+            avg_margin_with=stats.avg_margin_with,
+            avg_margin_without=stats.avg_margin_without,
+            wowy_score=stats.wowy_score,
+            average_minutes=average_minutes,
+            total_minutes=total_minutes,
+        )
+    return updated
 
 
 def main(argv: list[str] | None = None) -> int:

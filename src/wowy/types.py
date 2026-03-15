@@ -68,3 +68,5 @@ class WowyPlayerStats:
     avg_margin_with: float | None
     avg_margin_without: float | None
     wowy_score: float | None
+    average_minutes: float | None = None
+    total_minutes: float | None = None

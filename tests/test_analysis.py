@@ -18,6 +18,8 @@ def test_compute_wowy_basic():
     assert results[101].avg_margin_with == 10.0
     assert results[101].avg_margin_without == -5.0
     assert results[101].wowy_score == 15.0
+    assert results[101].average_minutes is None
+    assert results[101].total_minutes is None
 
 
 def test_compute_wowy_limits_without_sample_to_matching_team_season():
