@@ -3,8 +3,11 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
+import pytest
+
 from wowy.ingest_nba import load_player_names_from_cache, write_team_season_games_csv
 from wowy.io import load_games_from_csv
+from wowy.nba_normalize import parse_minutes_to_float, played_in_game
 from wowy.normalized_io import (
     load_normalized_game_players_from_csv,
     load_normalized_games_from_csv,
@@ -250,3 +253,30 @@ def test_write_team_season_games_csv_skips_empty_box_scores(
     assert games == [
         WowyGameRecord("0002", "ATL", -5.0, {101, 102}),
     ]
+
+
+@pytest.mark.parametrize(
+    ("minutes", "expected"),
+    [
+        ("35:12", True),
+        ("12", True),
+        ("0", False),
+        ("0:00", False),
+        ("00:00", False),
+        ("0.0", False),
+        ("", False),
+        (None, False),
+        ("DNP", False),
+        ("DND", False),
+        ("NWT", False),
+    ],
+)
+def test_played_in_game_handles_numeric_and_status_values(
+    minutes: object,
+    expected: bool,
+):
+    assert played_in_game(minutes) is expected
+
+
+def test_parse_minutes_to_float_returns_none_for_status_text():
+    assert parse_minutes_to_float("DNP") is None

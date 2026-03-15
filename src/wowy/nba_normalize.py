@@ -170,7 +170,7 @@ def extract_normalized_game_players(
     records: list[NormalizedGamePlayerRecord] = []
 
     for _, row in player_rows.iterrows():
-        player_id = row["PLAYER_ID"]
+        player_id = parse_player_id(row["PLAYER_ID"])
         if player_id is None:
             continue
 
@@ -180,8 +180,8 @@ def extract_normalized_game_players(
             NormalizedGamePlayerRecord(
                 game_id=game_id,
                 team=team_abbreviation,
-                player_id=int(player_id),
-                player_name=str(row.get("PLAYER_NAME", "") or int(player_id)),
+                player_id=player_id,
+                player_name=str(row.get("PLAYER_NAME", "") or player_id),
                 appeared=played_in_game(minutes_raw),
                 minutes=minutes,
             )
@@ -190,19 +190,27 @@ def extract_normalized_game_players(
     return records
 
 
+def parse_player_id(value: object) -> int | None:
+    if value is None:
+        return None
+    if isinstance(value, bool):
+        raise ValueError(f"Invalid PLAYER_ID value: {value!r}")
+    if isinstance(value, int):
+        return value
+    if isinstance(value, float):
+        return int(value)
+    if isinstance(value, str):
+        return int(value)
+    raise ValueError(f"Invalid PLAYER_ID value type: {type(value).__name__}")
+
+
 def played_in_game(minutes: object) -> bool:
     """Return whether the NBA box score minute value indicates game participation."""
 
-    if minutes is None:
+    parsed_minutes = parse_minutes_to_float(minutes)
+    if parsed_minutes is None:
         return False
-
-    minute_text = str(minutes).strip()
-    if not minute_text:
-        return False
-    if minute_text in {"0", "0:00", "0.0"}:
-        return False
-
-    return True
+    return parsed_minutes > 0.0
 
 
 def parse_minutes_to_float(minutes: object) -> float | None:
