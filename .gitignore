@@ -15,7 +15,8 @@ venv/
 # Pytest
 .pytest_cache/
 
-# OS/editor junk
-.DS_Store
-.vscode/
-.idea/
+# Data
+data/combined/*
+data/combined/regression/*
+!data/combined/regression/
+!data/combined/regression/maybe.example.csv
