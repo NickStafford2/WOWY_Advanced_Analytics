@@ -34,6 +34,7 @@ I do not plan to implement play by play tracking for quite some time. Most impor
 - Make NBA ingestion write canonical normalized team-season CSVs directly
 - Continue deriving the existing WOWY team-season CSV from those normalized outputs
 - Keep the current WOWY CLI unchanged while shifting ingestion toward the normalized layer
+- Combine normalized team-season files into regression-ready multi-team inputs
 
 ## Not in scope yet
 

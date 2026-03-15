@@ -120,7 +120,7 @@ You can override the defaults:
 poetry run wowy-ingest-nba NYK 2022-23 --csv games.csv --normalized-games-csv normalized_games.csv --normalized-game-players-csv normalized_game_players.csv --season-type "Regular Season"
 ```
 
-Combine local normalized CSVs into one analysis file with:
+Combine local normalized CSVs into one regression input set with:
 
 ```bash
 poetry run wowy-combine-games
@@ -129,7 +129,8 @@ poetry run wowy-combine-games
 This writes:
 
 ```text
-data/combined/games.csv
+data/combined/regression/games.csv
+data/combined/regression/game_players.csv
 ```
 
 
