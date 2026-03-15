@@ -1,23 +1,26 @@
-# WOWY
+# WOWY Advanced Analytics
 
 Python project for experimenting with historical basketball impact metrics.
 
 ## Goal
 
-This project is a first step toward recreating a simple version of a "With or Without You" (WOWY) style plus-minus model.
+This project experiments with two basketball impact-analysis paths built from historical NBA game data:
 
-The current version estimates a player's impact by comparing:
+- a simple WOWY baseline
+- a game-level ridge regression model on normalized team and player rows
+
+The WOWY path estimates a player's impact by comparing:
 
 - the average point differential in games when the player played
 - versus the average point differential in games when the player did not play
 
-This is intentionally a simple starting point before moving to more advanced adjusted models like ridge regression or RAPM-style methods.
+This is intentionally a simple starting point before moving to more advanced adjusted models.
 
 The current WOWY implementation should be treated as a baseline, not a final player evaluation model. On pooled real NBA data it is expected to be noisy and heavily confounded by team, season, and rotation context.
 
-## Current model
+## Current models
 
-Version 1 computes:
+### WOWY 
 
 wowy_score = average margin when player played - average margin when player did not play
 
@@ -27,67 +30,34 @@ Where:
 
 This is a game-level presence model, not a possession-level or substitution-level plus-minus model.
 
+### Regression 
+
+The regression path fits a game-level linear model on normalized team-game and player-minute data.
+
+Current features include:
+
+- intercept
+- home-court term
+- one coefficient per included player
+- team-season effect terms
+- opponent team-season effect terms
+
+The player component is weighted by each player's share of team minutes in that game, scaled so each side sums to 5.0 lineup slots.
+
+Ridge regularization is used to stabilize the fit.
+
+The regression CLI currently uses:
+
+- `min-games` as a pre-fit inclusion rule
+- `min-average-minutes` and `min-total-minutes` as post-fit output filters only
+
+That means minute thresholds do not change which player coefficients are estimated. They only determine which fitted players are shown in the final report.
+
 The current WOWY CLI still reads a simple derived `games.csv` file, but the project now also defines a richer normalized game-level schema for future modeling work.
-
-## Input data
-
-The current WOWY program reads a derived CSV file named `games.csv`.
-
-Expected columns:
-
-- `game_id`
-- `season`
-- `team`
-- `margin`
-- `players`
-
-`players` should contain semicolon-separated NBA `PLAYER_ID` values.
-
-Example:
-
-```csv
-game_id,season,team,margin,players
-1,2023-24,team_1,10,"1628369;1627759;1628401;201143;1629057"
-2,2023-24,team_1,6,"1628369;1627759;1628401;201143;203935"
-```
-
-## Normalized phase-1 data design
-
-Phase 1 adds a canonical normalized layer alongside the existing WOWY CSV.
-
-`games.csv` remains the derived compatibility format for the current WOWY CLI.
-
-Canonical normalized tables:
-
-- `normalized_games.csv`
-- `normalized_game_players.csv`
-
-Normalized game columns:
-
-- `game_id`
-- `season`
-- `game_date`
-- `team`
-- `opponent`
-- `is_home`
-- `margin`
-- `season_type`
-- `source`
-
-Normalized game-player columns:
-
-- `game_id`
-- `team`
-- `player_id`
-- `player_name`
-- `appeared`
-- `minutes`
-
-`minutes` is included for future use but is not part of the current WOWY analysis and should not be interpreted as implemented weighting yet.
 
 ## Real NBA data
 
-The planned real-data path uses `nba_api` to fetch NBA game-level box score data, write canonical normalized tables, and derive the same `games.csv` format above.
+The real-data path uses `nba_api` to fetch NBA game-level box score data, write canonical normalized tables, and derive the same `games.csv` format above.
 
 The WOWY model stays unchanged:
 
@@ -116,6 +86,7 @@ Examples:
 ```bash
 poetry run wowy --season 2024-25 --team BOS --top-n 25
 poetry run regression --season 2024-25 --ridge-alpha 1.0 --top-n 25
+poetry run regression --season 2024-25 --team BOS --ridge-alpha 1.0 --min-games 20 --min-average-minutes 15 --min-total-minutes 500
 ```
 
 If you want to bulk-cache a season manually, keep using:
@@ -159,6 +130,12 @@ player_id     with  without     avg_with    avg_without      score
 1628369          4         2         9.00          1.00       8.00
 ```
 
+## Notes on interpretation
+
+WOWY output is a baseline comparison, not an adjusted impact estimate.
+
+Regression output is more adjusted than WOWY, but it is still a coarse game-level model rather than a possession-level RAPM implementation. The current version is most useful for experimentation, debugging, and comparing modeling choices rather than as a finished public rating.
+
 ## Next model direction
 
-The repository now includes a separate regression-based player analysis path built on normalized game-level data. The current WOWY score remains useful as a simple baseline and debugging reference, but future model development is expected to move further away from direct with-or-without averages and toward better adjusted models.
+The repository now includes a separate regression-based player analysis path built on normalized game-level data. The current WOWY score remains useful as a simple baseline and debugging reference, while future model development can extend the regression path with better regularization, tuning workflows, and richer stability analysis.

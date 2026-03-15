@@ -1,8 +1,8 @@
 # Data format
 
-The repository now has two game-level CSV contracts:
+The repository has two game-level CSV contracts in active use:
 
-- a canonical normalized layer for ingestion and future modeling
+- a canonical normalized layer for ingestion and regression modeling
 - a derived WOWY compatibility layer for the existing WOWY CLI
 
 ## Canonical normalized games
@@ -21,7 +21,7 @@ The repository now has two game-level CSV contracts:
 - `season_type`
 - `source`
 
-This file should carry enough game-level context for future regression work, including opponent identity and home/away status.
+This file carries the game-level context needed by the current regression path, including opponent identity and home/away status.
 
 ## Canonical normalized game players
 
@@ -36,7 +36,7 @@ This file should carry enough game-level context for future regression work, inc
 - `appeared`
 - `minutes`
 
-`minutes` is included for future use but is not part of the current WOWY computation.
+`minutes` is not part of the current WOWY computation. It is used by the regression path to build minute-weighted player features and to support post-fit output qualification filters.
 
 Rows with `appeared = false` are allowed in the normalized layer. The derived WOWY format should include only players with `appeared = true`.
 
@@ -47,6 +47,7 @@ Rows with `appeared = false` are allowed in the normalized layer. The derived WO
 ## Columns
 
 - `game_id`: unique game identifier
+- `season`: season string
 - `team`: team name or id
 - `margin`: final point differential for that team
 - `players`: semicolon-separated NBA `PLAYER_ID` values
@@ -54,7 +55,7 @@ Rows with `appeared = false` are allowed in the normalized layer. The derived WO
 ## Example
 
 ```csv
-game_id,team,margin,players
-1,team_1,10,"1628369;1627759;1628401;201143;1629057"
-2,team_1,-5,"1627759;1628401;201143;1629057;203935"
+game_id,season,team,margin,players
+1,2023-24,team_1,10,"1628369;1627759;1628401;201143;1629057"
+2,2023-24,team_1,-5,"1627759;1628401;201143;1629057;203935"
 ```

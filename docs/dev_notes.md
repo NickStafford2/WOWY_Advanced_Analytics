@@ -4,4 +4,3 @@
 - Prefer small pure functions.
 - Prefer simple pytest unit tests.
 - Do not add possession-level or substitution-level logic yet.
-- Current focus: game-level WOWY, then minutes-weighting, then ridge regression.
