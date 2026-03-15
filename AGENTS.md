@@ -1,4 +1,5 @@
 # AGENTS.md
+Use best practices for a project in python 12.
 
 ## Python environment
 - This project uses Poetry.
