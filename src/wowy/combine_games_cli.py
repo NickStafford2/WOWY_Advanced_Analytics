@@ -5,6 +5,7 @@ import csv
 from pathlib import Path
 from typing import Any
 
+from wowy.atomic_io import atomic_text_writer
 from wowy.normalized_io import (
     NORMALIZED_GAME_PLAYERS_HEADER,
     NORMALIZED_GAMES_HEADER,
@@ -60,9 +61,7 @@ def combine_csvs(
     if not csv_paths:
         raise ValueError(f"No CSV files found in {input_dir}")
 
-    output_path.parent.mkdir(parents=True, exist_ok=True)
-
-    with open(output_path, "w", encoding="utf-8", newline="") as output_file:
+    with atomic_text_writer(output_path, newline="") as output_file:
         writer = csv.writer(output_file)
         writer.writerow(expected_header)
 
@@ -80,9 +79,7 @@ def combine_csv_paths(
     if not input_paths:
         raise ValueError("No input CSV files provided")
 
-    output_path.parent.mkdir(parents=True, exist_ok=True)
-
-    with open(output_path, "w", encoding="utf-8", newline="") as output_file:
+    with atomic_text_writer(output_path, newline="") as output_file:
         writer = csv.writer(output_file)
         writer.writerow(expected_header)
 

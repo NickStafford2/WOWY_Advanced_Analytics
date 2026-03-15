@@ -106,3 +106,4 @@ def test_write_wowy_games_csv(tmp_path: Path):
         ["game_id", "season", "team", "margin", "players"],
         ["1", "2023-24", "BOS", "8.0", "101;103"],
     ]
+    assert not list(tmp_path.glob("*.tmp-*"))

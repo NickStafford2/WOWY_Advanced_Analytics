@@ -49,6 +49,7 @@ def test_combine_csvs_writes_combined_output(tmp_path: Path):
         ["2", "2023-24", "2024-04-03", "BOS", "NYK", "false", "-5", "Regular Season", "nba_api"],
         ["3", "2023-24", "2024-04-04", "LAL", "DEN", "true", "7", "Regular Season", "nba_api"],
     ]
+    assert not list((tmp_path / "combined").glob("*.tmp-*"))
 
 
 def test_combine_csvs_rejects_empty_input_dir(tmp_path: Path):
@@ -149,6 +150,7 @@ def test_combine_normalized_data_writes_both_outputs(tmp_path: Path):
         NORMALIZED_GAME_PLAYERS_HEADER,
         ["1", "BOS", "101", "Player 101", "true", ""],
     ]
+    assert not list((tmp_path / "combined").glob("*.tmp-*"))
 
 
 def test_combine_normalized_files_writes_only_requested_outputs(tmp_path: Path):

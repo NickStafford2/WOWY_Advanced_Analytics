@@ -3,6 +3,7 @@ from __future__ import annotations
 import csv
 from pathlib import Path
 
+from wowy.atomic_io import atomic_text_writer
 from wowy.types import NormalizedGamePlayerRecord, NormalizedGameRecord
 
 
@@ -95,9 +96,7 @@ def write_normalized_games_csv(
     games: list[NormalizedGameRecord],
 ) -> None:
     csv_path = Path(csv_path)
-    csv_path.parent.mkdir(parents=True, exist_ok=True)
-
-    with open(csv_path, "w", encoding="utf-8", newline="") as f:
+    with atomic_text_writer(csv_path, newline="") as f:
         writer = csv.DictWriter(f, fieldnames=NORMALIZED_GAMES_HEADER)
         writer.writeheader()
         for game in games:
@@ -121,9 +120,7 @@ def write_normalized_game_players_csv(
     players: list[NormalizedGamePlayerRecord],
 ) -> None:
     csv_path = Path(csv_path)
-    csv_path.parent.mkdir(parents=True, exist_ok=True)
-
-    with open(csv_path, "w", encoding="utf-8", newline="") as f:
+    with atomic_text_writer(csv_path, newline="") as f:
         writer = csv.DictWriter(f, fieldnames=NORMALIZED_GAME_PLAYERS_HEADER)
         writer.writeheader()
         for player in players:

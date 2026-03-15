@@ -4,6 +4,7 @@ import csv
 from collections import defaultdict
 from pathlib import Path
 
+from wowy.atomic_io import atomic_text_writer
 from wowy.types import (
     NormalizedGamePlayerRecord,
     NormalizedGameRecord,
@@ -51,9 +52,7 @@ def write_wowy_games_csv(
     games: list[WowyGameRecord],
 ) -> None:
     csv_path = Path(csv_path)
-    csv_path.parent.mkdir(parents=True, exist_ok=True)
-
-    with open(csv_path, "w", encoding="utf-8", newline="") as f:
+    with atomic_text_writer(csv_path, newline="") as f:
         writer = csv.DictWriter(f, fieldnames=WOWY_HEADER)
         writer.writeheader()
         for game in games:

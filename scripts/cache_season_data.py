@@ -7,6 +7,7 @@ from pathlib import Path
 
 from nba_api.stats.static import teams as nba_teams
 
+from wowy.atomic_io import atomic_text_writer
 from wowy.combine_games_cli import combine_normalized_files
 from wowy.ingest_nba import (
     DEFAULT_NORMALIZED_GAME_PLAYERS_DIR,
@@ -73,9 +74,7 @@ def resolve_teams(team_codes: list[str] | None) -> list[str]:
 
 
 def combine_wowy_csvs(input_paths: list[Path], output_path: Path) -> None:
-    output_path.parent.mkdir(parents=True, exist_ok=True)
-
-    with open(output_path, "w", encoding="utf-8", newline="") as output_file:
+    with atomic_text_writer(output_path, newline="") as output_file:
         writer = csv.writer(output_file)
         writer.writerow(WOWY_HEADER)
 

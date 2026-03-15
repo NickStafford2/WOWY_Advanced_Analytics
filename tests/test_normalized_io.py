@@ -32,6 +32,7 @@ def test_write_and_load_normalized_games_csv(tmp_path: Path):
     write_normalized_games_csv(csv_path, games)
 
     assert load_normalized_games_from_csv(csv_path) == games
+    assert not list(tmp_path.glob("*.tmp-*"))
 
 
 def test_write_and_load_normalized_game_players_csv(tmp_path: Path):
@@ -50,6 +51,7 @@ def test_write_and_load_normalized_game_players_csv(tmp_path: Path):
     write_normalized_game_players_csv(csv_path, players)
 
     assert load_normalized_game_players_from_csv(csv_path) == players
+    assert not list(tmp_path.glob("*.tmp-*"))
 
 
 def test_load_normalized_games_rejects_invalid_is_home(tmp_path: Path):
