@@ -1,6 +1,6 @@
 # WOWY Advanced Analytics
 
-Python project for experimenting with historical basketball impact metrics.
+Python project for experimenting with historical basketball impact metrics. Designed for coarse game level analytics for cross generation player comparisons.
 
 ## Overview
 
@@ -41,6 +41,13 @@ Run regression:
 
 ```bash
 poetry run regression
+```
+
+Show CLI usage:
+
+```bash
+poetry run wowy --help
+poetry run regression --help
 ```
 
 Run tests:
@@ -93,10 +100,6 @@ poetry run python -m wowy.data.combine_cli
 WOWY output includes player name or id, minute summaries, with/without samples, average margins, and score.
 
 Regression output includes observation count, fitted player count, intercept, home-court estimate, and ranked player coefficients.
-
-`min-games` is a pre-fit regression filter. `min-average-minutes` and `min-total-minutes` are post-fit output filters.
-
-WOWY uses minutes only for output filtering, not for score calculation.
 
 ## Interpretation
 
