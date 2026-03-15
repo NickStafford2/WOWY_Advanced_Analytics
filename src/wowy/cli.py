@@ -17,6 +17,12 @@ from wowy.io import load_games_from_csv
 from wowy.types import WowyGameRecord
 
 
+def format_scope(teams: list[str] | None, seasons: list[str] | None) -> str:
+    team_label = ",".join(team.upper() for team in teams) if teams else "all cached teams"
+    season_label = ",".join(seasons) if seasons else "all cached seasons"
+    return f"teams={team_label} seasons={season_label}"
+
+
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
         description="Run WOWY on cached data, fetching missing requested scope when needed."
@@ -153,8 +159,10 @@ def main(argv: list[str] | None = None) -> int:
         args.min_games_without,
         top_n=args.top_n,
     )
+    print(f"[1/3] preparing WOWY inputs for {format_scope(args.team, args.season)}")
     if args.csv is not None:
         csv_path = args.csv
+        print(f"[2/3] loading WOWY games from {csv_path}")
         player_names = load_player_names_from_cache(args.source_data_dir)
     else:
         csv_path, player_names = prepare_wowy_inputs(
@@ -167,6 +175,8 @@ def main(argv: list[str] | None = None) -> int:
             normalized_game_players_input_dir=args.normalized_game_players_input_dir,
             wowy_output_dir=args.wowy_output_dir,
         )
+        print(f"[2/3] running WOWY from {csv_path}")
+    print("[3/3] computing WOWY results")
     print(
         run_wowy(
             csv_path,

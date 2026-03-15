@@ -19,6 +19,12 @@ from wowy.regression_data import build_regression_observations
 from wowy.regression_formatting import format_regression_results
 
 
+def format_scope(teams: list[str] | None, seasons: list[str] | None) -> str:
+    team_label = ",".join(team.upper() for team in teams) if teams else "all cached teams"
+    season_label = ",".join(seasons) if seasons else "all cached seasons"
+    return f"teams={team_label} seasons={season_label}"
+
+
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
         description="Run regression on cached data, fetching missing requested scope when needed."
@@ -148,6 +154,7 @@ def main(argv: list[str] | None = None) -> int:
     args = parser.parse_args(argv)
     games_csv = args.games_csv
     game_players_csv = args.game_players_csv
+    print(f"[1/3] preparing regression inputs for {format_scope(args.team, args.season)}")
     if games_csv is None or game_players_csv is None:
         games_csv, game_players_csv = prepare_regression_inputs(
             teams=args.team,
@@ -160,6 +167,8 @@ def main(argv: list[str] | None = None) -> int:
             normalized_game_players_input_dir=args.normalized_game_players_input_dir,
             wowy_output_dir=args.wowy_output_dir,
         )
+    print(f"[2/3] loading regression data from {games_csv} and {game_players_csv}")
+    print("[3/3] fitting regression model")
     print(
         run_regression(
             games_csv,
