@@ -73,12 +73,12 @@ def fetch_game_record(
         )
 
     plus_minus = float(team_rows.iloc[0]["PLUS_MINUS"])
-    return {
-        "game_id": game_id,
-        "team": team_abbreviation,
-        "margin": plus_minus,
-        "players": players,
-    }
+    return GameRecord(
+        game_id=game_id,
+        team=team_abbreviation,
+        margin=plus_minus,
+        players=players,
+    )
 
 
 def extract_players_who_appeared(player_ids, minutes_played) -> set[int]:

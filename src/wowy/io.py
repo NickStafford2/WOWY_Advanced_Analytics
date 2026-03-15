@@ -39,12 +39,12 @@ def load_games_from_csv(csv_path: Path | str) -> list[GameRecord]:
             if not players:
                 raise ValueError(f"Row {row_number} has no players listed")
 
-            game: GameRecord = {
-                "game_id": row["game_id"],
-                "team": row["team"],
-                "margin": margin,
-                "players": players,
-            }
+            game = GameRecord(
+                game_id=row["game_id"],
+                team=row["team"],
+                margin=margin,
+                players=players,
+            )
             games.append(game)
 
     return games

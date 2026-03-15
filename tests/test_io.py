@@ -20,10 +20,10 @@ def test_load_games_from_csv(tmp_path: Path, write_games_csv):
     games = load_games_from_csv(csv_path)
 
     assert len(games) == 2
-    assert games[0]["game_id"] == "1"
-    assert games[0]["team"] == "team_1"
-    assert games[0]["margin"] == 10.0
-    assert games[0]["players"] == {101, 102, 103}
+    assert games[0].game_id == "1"
+    assert games[0].team == "team_1"
+    assert games[0].margin == 10.0
+    assert games[0].players == {101, 102, 103}
 
 
 def test_load_games_from_csv_missing_column(tmp_path: Path):

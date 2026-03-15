@@ -74,18 +74,8 @@ def test_main_rejects_negative_filters():
 
 def test_build_wowy_report_formats_preloaded_games():
     games: list[GameRecord] = [
-        {
-            "game_id": "1",
-            "team": "team_1",
-            "margin": 10.0,
-            "players": {101, 102, 103},
-        },
-        {
-            "game_id": "2",
-            "team": "team_1",
-            "margin": -5.0,
-            "players": {102, 103, 104},
-        }
+        GameRecord("1", "team_1", 10.0, {101, 102, 103}),
+        GameRecord("2", "team_1", -5.0, {102, 103, 104}),
     ]
 
     report = build_wowy_report(

@@ -6,13 +6,7 @@ from wowy.types import PlayerStats
 
 def test_format_results_table_contains_expected_text():
     results: dict[int, PlayerStats] = {
-        203999: {
-            "games_with": 3,
-            "games_without": 2,
-            "avg_margin_with": 5.0,
-            "avg_margin_without": 1.0,
-            "wowy_score": 4.0,
-        }
+        203999: PlayerStats(3, 2, 5.0, 1.0, 4.0)
     }
 
     output = format_results_table(results, player_names={203999: "Jae Crowder"})

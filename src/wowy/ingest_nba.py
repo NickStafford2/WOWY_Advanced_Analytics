@@ -76,11 +76,11 @@ def write_team_season_games_csv(
         for game in games:
             writer.writerow(
                 {
-                    "game_id": game["game_id"],
-                    "team": game["team"],
-                    "margin": game["margin"],
+                    "game_id": game.game_id,
+                    "team": game.team,
+                    "margin": game.margin,
                     "players": ";".join(
-                        str(player_id) for player_id in sorted(game["players"])
+                        str(player_id) for player_id in sorted(game.players)
                     ),
                 }
             )

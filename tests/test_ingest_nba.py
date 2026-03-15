@@ -5,6 +5,7 @@ from pathlib import Path
 
 from wowy.ingest_nba import load_player_names_from_cache, write_team_season_games_csv
 from wowy.io import load_games_from_csv
+from wowy.types import GameRecord
 
 
 def test_write_team_season_games_csv_uses_existing_games_shape(
@@ -105,18 +106,8 @@ def test_write_team_season_games_csv_uses_existing_games_shape(
     games = load_games_from_csv(csv_path)
 
     assert games == [
-        {
-            "game_id": "0001",
-            "team": "BOS",
-            "margin": 12.0,
-            "players": {1628369, 1627759},
-        },
-        {
-            "game_id": "0002",
-            "team": "BOS",
-            "margin": -5.0,
-            "players": {1628369, 1628401},
-        },
+        GameRecord("0001", "BOS", 12.0, {1628369, 1627759}),
+        GameRecord("0002", "BOS", -5.0, {1628369, 1628401}),
     ]
 
     team_season_cache = (
