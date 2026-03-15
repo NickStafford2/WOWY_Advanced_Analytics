@@ -266,6 +266,7 @@ def format_summary(rows: list[dict], season: str) -> str:
     if not rows:
         return "No teams matched the requested scope."
 
+    sep = "  "
     team_width = max(len("team"), *(len(row["team"]) for row in rows))
     source_width = max(len("source"), *(len(row["source"]) for row in rows))
     games_width = max(len("games"), *(len(str(row["games"])) for row in rows))
@@ -292,33 +293,39 @@ def format_summary(rows: list[dict], season: str) -> str:
     )
     wowy_width = max(len("wowy"), *(len(row["wowy"]) for row in rows))
 
-    header = (
-        f"{'team':<{team_width}} "
-        f"{'source':<{source_width}} "
-        f"{'games':>{games_width}} "
-        f"{'ok':>{box_ok_width}} "
-        f"{'miss':>{box_missing_width}} "
-        f"{'empty':>{box_empty_width}} "
-        f"{'bad':>{box_corrupt_width}} "
-        f"{'norm_games':<{normalized_games_width}} "
-        f"{'norm_players':<{normalized_players_width}} "
-        f"{'wowy':<{wowy_width}}"
+    header = sep.join(
+        [
+            f"{'team':<{team_width}}",
+            f"{'source':<{source_width}}",
+            f"{'games':>{games_width}}",
+            f"{'ok':>{box_ok_width}}",
+            f"{'miss':>{box_missing_width}}",
+            f"{'empty':>{box_empty_width}}",
+            f"{'bad':>{box_corrupt_width}}",
+            f"{'norm_games':<{normalized_games_width}}",
+            f"{'norm_players':<{normalized_players_width}}",
+            f"{'wowy':<{wowy_width}}",
+        ]
     )
     divider = "-" * len(header)
     lines = [f"Cache status for {season}", divider, header, divider]
 
     for row in rows:
         lines.append(
-            f"{row['team']:<{team_width}} "
-            f"{row['source']:<{source_width}} "
-            f"{row['games']:>{games_width}} "
-            f"{row['box_ok']:>{box_ok_width}} "
-            f"{row['box_missing']:>{box_missing_width}} "
-            f"{row['box_empty']:>{box_empty_width}} "
-            f"{row['box_corrupt']:>{box_corrupt_width}} "
-            f"{row['normalized_games']:<{normalized_games_width}} "
-            f"{row['normalized_players']:<{normalized_players_width}} "
-            f"{row['wowy']:<{wowy_width}}"
+            sep.join(
+                [
+                    f"{row['team']:<{team_width}}",
+                    f"{row['source']:<{source_width}}",
+                    f"{row['games']:>{games_width}}",
+                    f"{row['box_ok']:>{box_ok_width}}",
+                    f"{row['box_missing']:>{box_missing_width}}",
+                    f"{row['box_empty']:>{box_empty_width}}",
+                    f"{row['box_corrupt']:>{box_corrupt_width}}",
+                    f"{row['normalized_games']:>{normalized_games_width}}",
+                    f"{row['normalized_players']:>{normalized_players_width}}",
+                    f"{row['wowy']:>{wowy_width}}",
+                ]
+            )
         )
 
     return "\n".join(lines)
