@@ -177,11 +177,7 @@ def prepare_and_run_wowy(
     args,
     load_player_names_fn=load_player_names_from_cache,
 ) -> str:
-    """CLI entrypoint for WOWY.
-
-    Explicit `--csv` runs only the derived WOWY scorer.
-    Cache-managed runs can also apply minute-based output filters using normalized data.
-    """
+    """CLI entrypoint for WOWY using the cache-managed pipeline."""
     validate_filters(
         args.min_games_with,
         args.min_games_without,
@@ -190,33 +186,23 @@ def prepare_and_run_wowy(
         min_total_minutes=args.min_total_minutes,
     )
     print(f"[1/3] preparing WOWY inputs for {format_scope(args.team, args.season)}")
-    player_minute_stats = None
-    if args.csv is not None:
-        csv_path = args.csv
-        print(f"[2/3] loading WOWY games from {csv_path}")
-        player_names = load_player_names_fn(args.source_data_dir)
-        if args.min_average_minutes is not None or args.min_total_minutes is not None:
-            raise ValueError(
-                "Minutes-based WOWY filters require cache-managed inputs, not --csv"
-            )
-    else:
-        csv_path, player_names = prepare_wowy_inputs(
-            teams=args.team,
-            seasons=args.season,
-            combined_wowy_csv=args.combined_wowy_csv,
-            season_type=args.season_type,
-            source_data_dir=args.source_data_dir,
-            normalized_games_input_dir=args.normalized_games_input_dir,
-            normalized_game_players_input_dir=args.normalized_game_players_input_dir,
-            wowy_output_dir=args.wowy_output_dir,
-        )
-        player_minute_stats = load_player_minute_stats(
-            teams=args.team,
-            seasons=args.season,
-            normalized_games_input_dir=args.normalized_games_input_dir,
-            normalized_game_players_input_dir=args.normalized_game_players_input_dir,
-        )
-        print(f"[2/3] running WOWY from {csv_path}")
+    csv_path, player_names = prepare_wowy_inputs(
+        teams=args.team,
+        seasons=args.season,
+        combined_wowy_csv=args.combined_wowy_csv,
+        season_type=args.season_type,
+        source_data_dir=args.source_data_dir,
+        normalized_games_input_dir=args.normalized_games_input_dir,
+        normalized_game_players_input_dir=args.normalized_game_players_input_dir,
+        wowy_output_dir=args.wowy_output_dir,
+    )
+    player_minute_stats = load_player_minute_stats(
+        teams=args.team,
+        seasons=args.season,
+        normalized_games_input_dir=args.normalized_games_input_dir,
+        normalized_game_players_input_dir=args.normalized_game_players_input_dir,
+    )
+    print(f"[2/3] running WOWY from {csv_path}")
     print("[3/3] computing WOWY results")
     return run_wowy(
         csv_path,

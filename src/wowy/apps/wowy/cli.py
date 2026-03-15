@@ -10,24 +10,12 @@ from wowy.nba.ingest import (
     DEFAULT_WOWY_GAMES_DIR,
     load_player_names_from_cache,
 )
-from wowy.apps.wowy.service import (
-    build_wowy_report,
-    load_player_minute_stats,
-    prepare_and_run_wowy,
-    run_wowy,
-    validate_filters,
-)
+from wowy.apps.wowy.service import prepare_and_run_wowy
 
 
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
         description="Run WOWY on cached data, fetching missing requested scope when needed."
-    )
-    parser.add_argument(
-        "--csv",
-        type=Path,
-        default=None,
-        help="Optional explicit WOWY games CSV path",
     )
     parser.add_argument(
         "--team",

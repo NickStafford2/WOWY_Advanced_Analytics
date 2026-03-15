@@ -9,36 +9,6 @@ from wowy.main import main
 from wowy.apps.wowy.models import WowyGameRecord
 
 
-def test_main_rejects_temp_csv_when_default_minutes_filters_are_active(
-    tmp_path: Path,
-    monkeypatch,
-    write_games_csv,
-):
-    csv_path = tmp_path / "games.csv"
-    write_games_csv(
-        csv_path,
-        [
-            ["1", "2023-24", "team_1", "10", "101;102;103"],
-            ["2", "2023-24", "team_1", "0", "102;103;104"],
-            ["3", "2023-24", "team_1", "-10", "103;104;105"],
-        ],
-    )
-
-    monkeypatch.setattr("wowy.apps.wowy.cli.load_player_names_from_cache", lambda _: {})
-
-    with pytest.raises(ValueError, match="cache-managed inputs"):
-        main(
-            [
-                "--csv",
-                str(csv_path),
-                "--min-games-with",
-                "1",
-                "--min-games-without",
-                "1",
-            ]
-        )
-
-
 def test_main_runs_with_cached_scope_without_explicit_csv(
     tmp_path: Path,
     capsys: pytest.CaptureFixture[str],
@@ -263,27 +233,6 @@ def test_main_rejects_negative_filters():
 def test_main_rejects_negative_top_n():
     with pytest.raises(ValueError, match="non-negative"):
         main(["--top-n", "-1"])
-
-
-def test_main_rejects_minutes_filters_with_explicit_csv(
-    tmp_path: Path,
-    write_games_csv,
-):
-    csv_path = tmp_path / "games.csv"
-    write_games_csv(
-        csv_path,
-        [["1", "2023-24", "team_1", "10", "101;102"]],
-    )
-
-    with pytest.raises(ValueError, match="cache-managed inputs"):
-        main(
-            [
-                "--csv",
-                str(csv_path),
-                "--min-average-minutes",
-                "20",
-            ]
-        )
 
 
 def test_build_wowy_report_formats_preloaded_games():
