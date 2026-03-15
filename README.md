@@ -106,3 +106,8 @@ Regression output includes observation count, fitted player count, intercept, ho
 WOWY is a baseline, not an adjusted impact metric.
 
 Regression is more adjusted than WOWY, but it is still a coarse game-level model rather than a possession-level RAPM implementation.
+
+More detail:
+
+- [docs/models.md](docs/models.md)
+- [docs/roadmap.md](docs/roadmap.md)

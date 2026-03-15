@@ -7,6 +7,7 @@ from wowy.apps.wowy.models import WowyGameRecord
 
 
 def load_games_from_csv(csv_path: Path | str) -> list[WowyGameRecord]:
+    """Load derived WOWY rows: one team-perspective game with semicolon-separated player ids."""
     games: list[WowyGameRecord] = []
 
     with open(csv_path, "r", encoding="utf-8", newline="") as f:

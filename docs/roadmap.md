@@ -3,19 +3,16 @@ I do not plan to implement play by play tracking for quite some time. Most impor
 
 ## Current version
 
-- Load normalized game-level data from CSV
-- Compute a simple game-level WOWY baseline
-- Support WOWY output filtering by games and minutes
-- Fit a separate game-level ridge regression model on normalized data
-- Use minute-weighted player features plus home-court, team-season, and opponent team-season terms
-- Support ridge tuning from the regression CLI
-- Support local NBA team-season ingestion, cache status reporting, and CSV combination
+- Two analysis paths: WOWY and regression
+- Game-level data only
+- Local NBA team-season ingestion and cache tooling
+- Regression uses minute-weighted player features and ridge tuning
 
 ## Current interpretation
 
-- The current WOWY score is a baseline only
-- It is useful for debugging the data pipeline and comparing simple outputs
-- It is not expected to be a strong standalone player metric on pooled real NBA data
+- WOWY is a baseline only
+- Regression is the main path for more adjusted analysis
+- Neither path is meant to be a finished possession-level metric
 
 ## Planned next steps
 

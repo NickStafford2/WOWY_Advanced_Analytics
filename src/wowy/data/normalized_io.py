@@ -7,6 +7,9 @@ from wowy.atomic_io import atomic_text_writer
 from wowy.nba.models import NormalizedGamePlayerRecord, NormalizedGameRecord
 
 
+# Canonical normalized layer used by ingestion, cache validation, and regression.
+# WOWY reads derived `games.csv`, but can still use normalized player rows to apply
+# minute-based output filters on cache-managed runs.
 NORMALIZED_GAMES_HEADER = [
     "game_id",
     "season",
@@ -32,6 +35,7 @@ NORMALIZED_GAME_PLAYERS_HEADER = [
 def load_normalized_games_from_csv(
     csv_path: Path | str,
 ) -> list[NormalizedGameRecord]:
+    """Load canonical game rows, one row per game from one team's perspective."""
     games: list[NormalizedGameRecord] = []
 
     with open(csv_path, "r", encoding="utf-8", newline="") as f:
@@ -63,6 +67,7 @@ def load_normalized_games_from_csv(
 def load_normalized_game_players_from_csv(
     csv_path: Path | str,
 ) -> list[NormalizedGamePlayerRecord]:
+    """Load canonical player rows for team-games; `appeared=false` rows are allowed."""
     players: list[NormalizedGamePlayerRecord] = []
 
     with open(csv_path, "r", encoding="utf-8", newline="") as f:

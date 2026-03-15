@@ -134,6 +134,7 @@ def run_regression(
     min_total_minutes: float | None = None,
     show_progress: bool = False,
 ) -> str:
+    """Fit the game-level regression model from normalized CSV inputs."""
     validate_filters(
         min_games=min_games,
         ridge_alpha=ridge_alpha,
@@ -212,6 +213,7 @@ def build_tuning_report(best_alpha: float, results) -> str:
 
 
 def prepare_and_run_regression(args) -> str:
+    """CLI entrypoint for regression, including optional ridge tuning."""
     validate_filters(
         min_games=args.min_games,
         ridge_alpha=args.ridge_alpha,

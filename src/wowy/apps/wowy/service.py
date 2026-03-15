@@ -44,6 +44,7 @@ def build_wowy_report(
     min_total_minutes: float | None = None,
     show_progress: bool = False,
 ) -> str:
+    """Score WOWY from derived game rows, then apply output filters and formatting."""
     progress_bar = None
     progress = None
     if show_progress:
@@ -83,6 +84,7 @@ def run_wowy(
     min_total_minutes: float | None = None,
     show_progress: bool = False,
 ) -> str:
+    """Run WOWY from a derived `games.csv` input."""
     validate_filters(
         min_games_with,
         min_games_without,
@@ -110,6 +112,7 @@ def load_player_minute_stats(
     normalized_games_input_dir: Path,
     normalized_game_players_input_dir: Path,
 ) -> dict[int, tuple[float, float]]:
+    """Build minute summaries from normalized cache files for WOWY output filtering."""
     game_players = []
     for team_season in resolve_team_seasons(teams, seasons, normalized_games_input_dir):
         game_players.extend(
@@ -174,6 +177,11 @@ def prepare_and_run_wowy(
     args,
     load_player_names_fn=load_player_names_from_cache,
 ) -> str:
+    """CLI entrypoint for WOWY.
+
+    Explicit `--csv` runs only the derived WOWY scorer.
+    Cache-managed runs can also apply minute-based output filters using normalized data.
+    """
     validate_filters(
         args.min_games_with,
         args.min_games_without,
