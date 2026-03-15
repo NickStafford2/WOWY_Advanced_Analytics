@@ -8,7 +8,8 @@ from pathlib import Path
 
 from nba_api.stats.static import teams as nba_teams
 
-from wowy.cache_pipeline import TeamSeasonScope, wowy_cache_is_current
+from wowy.nba.cache_sync import wowy_cache_is_current
+from wowy.nba.team_seasons import TeamSeasonScope
 from wowy.cache_validation import validate_team_season_consistency
 from wowy.derive_wowy import WOWY_HEADER
 from wowy.ingest_nba import (

@@ -6,11 +6,9 @@ from wowy.apps.wowy.analysis import compute_wowy, filter_results
 from wowy.apps.wowy.formatting import format_results_table
 from wowy.io import load_games_from_csv
 from wowy.nba.ingest import load_player_names_from_cache
-from wowy.nba.pipeline import (
-    normalized_game_players_path,
-    prepare_wowy_inputs,
-    resolve_team_seasons,
-)
+from wowy.nba.paths import normalized_game_players_path
+from wowy.nba.prepare import prepare_wowy_inputs
+from wowy.nba.team_seasons import resolve_team_seasons
 from wowy.normalized_io import load_normalized_game_players_from_csv
 from wowy.progress import TerminalProgressBar
 from wowy.shared.filters import validate_top_n_and_minutes
