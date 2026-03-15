@@ -140,6 +140,54 @@ def test_run_regression_applies_minute_filters(tmp_path: Path):
     assert "Player 102" not in report
 
 
+def test_run_regression_team_scope_applies_minute_filters_after_fit(tmp_path: Path):
+    games_csv = tmp_path / "games.csv"
+    games_csv.write_text(
+        (
+            "game_id,season,game_date,team,opponent,is_home,margin,season_type,source\n"
+            "1,2023-24,2024-04-01,BOS,MIL,true,2,Regular Season,nba_api\n"
+            "1,2023-24,2024-04-01,MIL,BOS,false,-2,Regular Season,nba_api\n"
+            "2,2023-24,2024-04-03,BOS,NYK,false,-2,Regular Season,nba_api\n"
+            "2,2023-24,2024-04-03,NYK,BOS,true,2,Regular Season,nba_api\n"
+            "3,2023-24,2024-04-05,BOS,LAL,true,0,Regular Season,nba_api\n"
+            "3,2023-24,2024-04-05,LAL,BOS,false,0,Regular Season,nba_api\n"
+        ),
+        encoding="utf-8",
+    )
+    game_players_csv = tmp_path / "game_players.csv"
+    game_players_csv.write_text(
+        (
+            "game_id,team,player_id,player_name,appeared,minutes\n"
+            "1,BOS,101,Player 101,true,30\n"
+            "1,BOS,102,Player 102,true,10\n"
+            "1,MIL,201,Player 201,true,48\n"
+            "2,BOS,101,Player 101,true,30\n"
+            "2,BOS,102,Player 102,true,10\n"
+            "2,NYK,202,Player 202,true,48\n"
+            "3,BOS,101,Player 101,true,30\n"
+            "3,BOS,102,Player 102,true,10\n"
+            "3,LAL,203,Player 203,true,48\n"
+        ),
+        encoding="utf-8",
+    )
+
+    report = run_regression(
+        games_csv,
+        game_players_csv,
+        min_games=1,
+        ridge_alpha=1.0,
+        teams=["BOS"],
+        min_average_minutes=20.0,
+        min_total_minutes=40.0,
+    )
+
+    assert "Player 101" in report
+    assert "Player 102" not in report
+    assert "Player 201" in report
+    assert "Player 202" in report
+    assert "Player 203" in report
+
+
 def test_main_runs_with_temp_csvs(
     tmp_path: Path,
     capsys: pytest.CaptureFixture[str],

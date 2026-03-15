@@ -27,3 +27,18 @@ def test_format_regression_results_contains_expected_text():
     assert "31.5" in output
     assert "63.0" in output
     assert "2.0000" in output
+
+
+def test_format_regression_results_handles_empty_estimate_list():
+    result = RegressionResult(
+        observations=3,
+        players=2,
+        intercept=0.0,
+        home_court_advantage=2.5,
+        estimates=[],
+    )
+
+    output = format_regression_results(result)
+
+    assert "Regression results (Game-level player model)" in output
+    assert "No players matched the current filters." in output

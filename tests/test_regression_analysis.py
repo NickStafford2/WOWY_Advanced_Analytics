@@ -59,6 +59,42 @@ def test_fit_player_regression_returns_expected_coefficients():
     assert estimates[101].total_minutes is None
 
 
+def test_fit_player_regression_does_not_use_minute_thresholds_for_prefit():
+    observations = [
+        RegressionObservation(
+            "1",
+            "2023-24",
+            "2024-04-01",
+            "BOS",
+            "MIL",
+            2.0,
+            {101: 1.0, 201: -1.0},
+        ),
+        RegressionObservation(
+            "2",
+            "2023-24",
+            "2024-04-03",
+            "BOS",
+            "NYK",
+            -2.0,
+            {101: 1.0, 202: -1.0},
+        ),
+    ]
+
+    result = fit_player_regression(
+        observations,
+        player_names={
+            101: "Player 101",
+            201: "Player 201",
+            202: "Player 202",
+        },
+        min_games=1,
+        ridge_alpha=1.0,
+    )
+
+    assert {estimate.player_id for estimate in result.estimates} == {101, 201, 202}
+
+
 def test_fit_player_regression_applies_min_games_filter():
     observations = [
         RegressionObservation(

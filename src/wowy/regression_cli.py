@@ -4,7 +4,6 @@ import argparse
 from pathlib import Path
 
 from wowy.cache_pipeline import prepare_regression_inputs
-from wowy.cli import load_player_minute_stats
 from wowy.ingest_nba import (
     DEFAULT_NORMALIZED_GAME_PLAYERS_DIR,
     DEFAULT_NORMALIZED_GAMES_DIR,
@@ -18,6 +17,7 @@ from wowy.normalized_io import (
 from wowy.regression_analysis import fit_player_regression, tune_ridge_alpha
 from wowy.regression_data import build_regression_observations
 from wowy.regression_formatting import format_regression_results
+from wowy.regression_types import RegressionPlayerEstimate, RegressionResult
 
 
 def format_scope(teams: list[str] | None, seasons: list[str] | None) -> str:
@@ -163,14 +163,6 @@ def validate_filters(
         raise ValueError("Minimum total minutes filter must be non-negative")
 
 
-def load_player_minute_stats_from_players(
-    game_players_csv_path: Path | str,
-) -> dict[int, tuple[float, float]]:
-    return build_player_minute_stats(
-        load_normalized_game_players_from_csv(game_players_csv_path)
-    )
-
-
 def build_player_minute_stats(
     game_players,
 ) -> dict[int, tuple[float, float]]:
@@ -187,6 +179,65 @@ def build_player_minute_stats(
         player_id: (totals[player_id] / counts[player_id], totals[player_id])
         for player_id in totals
     }
+
+
+def attach_minute_stats_to_result(
+    result: RegressionResult,
+    player_minute_stats: dict[int, tuple[float, float]] | None,
+) -> RegressionResult:
+    if player_minute_stats is None:
+        return result
+
+    estimates = [
+        RegressionPlayerEstimate(
+            player_id=estimate.player_id,
+            player_name=estimate.player_name,
+            games=estimate.games,
+            average_minutes=player_minute_stats.get(estimate.player_id, (None, None))[0],
+            total_minutes=player_minute_stats.get(estimate.player_id, (None, None))[1],
+            coefficient=estimate.coefficient,
+        )
+        for estimate in result.estimates
+    ]
+    return RegressionResult(
+        observations=result.observations,
+        players=result.players,
+        intercept=result.intercept,
+        home_court_advantage=result.home_court_advantage,
+        estimates=estimates,
+    )
+
+
+def filter_regression_estimates_by_minutes(
+    result: RegressionResult,
+    player_minute_stats: dict[int, tuple[float, float]] | None,
+    min_average_minutes: float | None,
+    min_total_minutes: float | None,
+) -> RegressionResult:
+    if player_minute_stats is None:
+        return result
+    if min_average_minutes is None and min_total_minutes is None:
+        return result
+
+    filtered_estimates = []
+    for estimate in result.estimates:
+        minute_stats = player_minute_stats.get(estimate.player_id)
+        if minute_stats is None:
+            continue
+        average_minutes, total_minutes = minute_stats
+        if min_average_minutes is not None and average_minutes < min_average_minutes:
+            continue
+        if min_total_minutes is not None and total_minutes < min_total_minutes:
+            continue
+        filtered_estimates.append(estimate)
+
+    return RegressionResult(
+        observations=result.observations,
+        players=result.players,
+        intercept=result.intercept,
+        home_court_advantage=result.home_court_advantage,
+        estimates=filtered_estimates,
+    )
 
 
 def run_regression(
@@ -225,6 +276,10 @@ def run_regression(
         player_names=player_names,
         min_games=min_games,
         ridge_alpha=ridge_alpha,
+    )
+    result = attach_minute_stats_to_result(result, player_minute_stats)
+    result = filter_regression_estimates_by_minutes(
+        result,
         player_minute_stats=player_minute_stats,
         min_average_minutes=min_average_minutes,
         min_total_minutes=min_total_minutes,
@@ -269,7 +324,6 @@ def main(argv: list[str] | None = None) -> int:
     games_csv = args.games_csv
     game_players_csv = args.game_players_csv
     ridge_alpha = args.ridge_alpha
-    player_minute_stats = None
     print(f"[1/3] preparing regression inputs for {format_scope(args.team, args.season)}")
     if games_csv is None or game_players_csv is None:
         games_csv, game_players_csv = prepare_regression_inputs(
@@ -283,16 +337,6 @@ def main(argv: list[str] | None = None) -> int:
             normalized_game_players_input_dir=args.normalized_game_players_input_dir,
             wowy_output_dir=args.wowy_output_dir,
         )
-    if args.min_average_minutes is not None or args.min_total_minutes is not None:
-        if args.games_csv is not None and args.game_players_csv is not None:
-            player_minute_stats = load_player_minute_stats_from_players(game_players_csv)
-        else:
-            player_minute_stats = load_player_minute_stats(
-                teams=args.team,
-                seasons=args.season,
-                normalized_games_input_dir=args.normalized_games_input_dir,
-                normalized_game_players_input_dir=args.normalized_game_players_input_dir,
-            )
     print(f"[2/3] loading regression data from {games_csv} and {game_players_csv}")
     if args.tune_ridge:
         print("[3/4] tuning ridge alpha on a validation split")
@@ -311,9 +355,6 @@ def main(argv: list[str] | None = None) -> int:
             alphas=parse_ridge_grid(args.ridge_grid),
             min_games=args.min_games,
             validation_fraction=args.validation_fraction,
-            player_minute_stats=player_minute_stats,
-            min_average_minutes=args.min_average_minutes,
-            min_total_minutes=args.min_total_minutes,
         )
         ridge_alpha = tuning_summary.best_alpha
         print(build_tuning_report(tuning_summary.best_alpha, tuning_summary.results))
@@ -330,7 +371,7 @@ def main(argv: list[str] | None = None) -> int:
             top_n=args.top_n,
             teams=args.team,
             seasons=args.season,
-            player_minute_stats=player_minute_stats,
+            player_minute_stats=None,
             min_average_minutes=args.min_average_minutes,
             min_total_minutes=args.min_total_minutes,
         )

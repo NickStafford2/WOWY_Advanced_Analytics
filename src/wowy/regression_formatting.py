@@ -14,6 +14,13 @@ def format_regression_results(
     )
     if top_n is not None:
         ranked = ranked[:top_n]
+    if not ranked:
+        return (
+            "Regression results (Game-level player model)\n"
+            f"observations={result.observations} players={result.players} "
+            f"intercept={result.intercept:.4f} home_court={result.home_court_advantage:.4f}\n"
+            "No players matched the current filters."
+        )
 
     name_width = max(len("player"), *(len(estimate.player_name) for estimate in ranked))
     player_id_width = max(

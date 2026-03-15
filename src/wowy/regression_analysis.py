@@ -18,9 +18,6 @@ def fit_player_regression(
     player_names: dict[int, str],
     min_games: int = 1,
     ridge_alpha: float = 1.0,
-    player_minute_stats: dict[int, tuple[float, float]] | None = None,
-    min_average_minutes: float | None = None,
-    min_total_minutes: float | None = None,
 ) -> RegressionResult:
     if min_games < 0:
         raise ValueError("Minimum games filter must be non-negative")
@@ -34,12 +31,6 @@ def fit_player_regression(
         player_id
         for player_id, games in games_by_player.items()
         if games >= min_games
-        and player_meets_minute_filters(
-            player_id=player_id,
-            player_minute_stats=player_minute_stats,
-            min_average_minutes=min_average_minutes,
-            min_total_minutes=min_total_minutes,
-        )
     )
     if not included_players:
         raise ValueError("No players met the minimum games requirement")
@@ -57,16 +48,8 @@ def fit_player_regression(
             player_id=player_id,
             player_name=player_names.get(player_id, str(player_id)),
             games=games_by_player[player_id],
-            average_minutes=(
-                player_minute_stats.get(player_id, (None, None))[0]
-                if player_minute_stats is not None
-                else None
-            ),
-            total_minutes=(
-                player_minute_stats.get(player_id, (None, None))[1]
-                if player_minute_stats is not None
-                else None
-            ),
+            average_minutes=None,
+            total_minutes=None,
             coefficient=model.coefficients[index + 2],
         )
         for index, player_id in enumerate(included_players)
@@ -79,29 +62,6 @@ def fit_player_regression(
         home_court_advantage=home_court_advantage,
         estimates=estimates,
     )
-
-
-def player_meets_minute_filters(
-    player_id: int,
-    player_minute_stats: dict[int, tuple[float, float]] | None,
-    min_average_minutes: float | None,
-    min_total_minutes: float | None,
-) -> bool:
-    if player_minute_stats is None:
-        return True
-    if min_average_minutes is None and min_total_minutes is None:
-        return True
-
-    minute_stats = player_minute_stats.get(player_id)
-    if minute_stats is None:
-        return False
-    average_minutes, total_minutes = minute_stats
-    if min_average_minutes is not None and average_minutes < min_average_minutes:
-        return False
-    if min_total_minutes is not None and total_minutes < min_total_minutes:
-        return False
-    return True
-
 
 def fit_regression_model(
     observations: list[RegressionObservation],
@@ -210,9 +170,6 @@ def tune_ridge_alpha(
     alphas: list[float],
     min_games: int = 1,
     validation_fraction: float = 0.2,
-    player_minute_stats: dict[int, tuple[float, float]] | None = None,
-    min_average_minutes: float | None = None,
-    min_total_minutes: float | None = None,
 ) -> RidgeTuningSummary:
     if not observations:
         raise ValueError("At least one regression observation is required")
@@ -237,12 +194,6 @@ def tune_ridge_alpha(
         for player_id, games in training_player_counts.items()
         if games >= min_games
         and player_id in player_names
-        and player_meets_minute_filters(
-            player_id=player_id,
-            player_minute_stats=player_minute_stats,
-            min_average_minutes=min_average_minutes,
-            min_total_minutes=min_total_minutes,
-        )
     )
     if not included_players:
         raise ValueError("No players met the minimum games requirement in training data")
