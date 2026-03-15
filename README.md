@@ -43,18 +43,21 @@ game_id,team,margin,players
 1,team_1,10,"player_A;player_B;player_C;player_D;player_E"
 2,team_1,6,"player_A;player_B;player_C;player_D;player_F"
 ```
+
+## Install
+
+Install dependencies with:
+
+```bash
+poetry install
+```
+
 ## Tests
 
 Run tests with:
 
 ```bash
-python -m pytest tests
-```
-
-If `pytest` is not installed:
-
-```bash
-pip install pytest
+poetry run pytest
 ```
 
 ## Example output
