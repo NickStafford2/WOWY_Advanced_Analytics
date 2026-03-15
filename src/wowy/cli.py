@@ -23,7 +23,9 @@ from wowy.types import WowyGameRecord, WowyPlayerStats
 
 
 def format_scope(teams: list[str] | None, seasons: list[str] | None) -> str:
-    team_label = ",".join(team.upper() for team in teams) if teams else "all cached teams"
+    team_label = (
+        ",".join(team.upper() for team in teams) if teams else "all cached teams"
+    )
     season_label = ",".join(seasons) if seasons else "all cached seasons"
     return f"teams={team_label} seasons={season_label}"
 
@@ -106,13 +108,13 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument(
         "--min-average-minutes",
         type=float,
-        default=None,
+        default=30,
         help="Minimum average minutes per appeared game required to include a player in output",
     )
     parser.add_argument(
         "--min-total-minutes",
         type=float,
-        default=None,
+        default=600,
         help="Minimum total minutes required to include a player in output",
     )
     return parser
@@ -214,7 +216,9 @@ def load_player_minute_stats(
         for player in players:
             if not player.appeared or player.minutes is None or player.minutes <= 0.0:
                 continue
-            totals[player.player_id] = totals.get(player.player_id, 0.0) + player.minutes
+            totals[player.player_id] = (
+                totals.get(player.player_id, 0.0) + player.minutes
+            )
             counts[player.player_id] = counts.get(player.player_id, 0) + 1
 
     return {
