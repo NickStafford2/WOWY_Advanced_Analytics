@@ -7,12 +7,12 @@
 - `game_id`: unique game identifier
 - `team`: team name or id
 - `margin`: final point differential for that team
-- `players`: semicolon-separated player list
+- `players`: semicolon-separated NBA `PLAYER_ID` values
 
 ## Example
 
 ```csv
 game_id,team,margin,players
-1,team_1,10,"player_A;player_B;player_C;player_D;player_E"
-2,team_1,-5,"player_B;player_C;player_D;player_E;player_F"
+1,team_1,10,"1628369;1627759;1628401;201143;1629057"
+2,team_1,-5,"1627759;1628401;201143;1629057;203935"
 ```

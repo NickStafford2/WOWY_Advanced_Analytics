@@ -3,12 +3,12 @@ from __future__ import annotations
 from wowy.types import GameRecord, PlayerStats
 
 
-def compute_wowy(games: list[GameRecord]) -> dict[str, PlayerStats]:
-    all_players: set[str] = set()
+def compute_wowy(games: list[GameRecord]) -> dict[int, PlayerStats]:
+    all_players: set[int] = set()
     for game in games:
         all_players.update(game["players"])
 
-    results: dict[str, PlayerStats] = {}
+    results: dict[int, PlayerStats] = {}
 
     for player in sorted(all_players):
         margins_with: list[float] = []
@@ -41,11 +41,11 @@ def compute_wowy(games: list[GameRecord]) -> dict[str, PlayerStats]:
 
 
 def filter_results(
-    results: dict[str, PlayerStats],
+    results: dict[int, PlayerStats],
     min_games_with: int = 1,
     min_games_without: int = 1,
-) -> dict[str, PlayerStats]:
-    filtered: dict[str, PlayerStats] = {}
+) -> dict[int, PlayerStats]:
+    filtered: dict[int, PlayerStats] = {}
 
     for player, stats in results.items():
         if stats["games_with"] < min_games_with:

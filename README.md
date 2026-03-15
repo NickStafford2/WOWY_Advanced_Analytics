@@ -23,7 +23,7 @@ wowy_score = average margin when player played - average margin when player did 
 
 Where:
 - `margin` is the final point differential from one team's perspective
-- `players` is the set of players who appeared in that game for that team
+- `players` is the set of NBA player ids who appeared in that game for that team
 
 This is a game-level presence model, not a possession-level or substitution-level plus-minus model.
 
@@ -40,12 +40,14 @@ Expected columns:
 - `margin`
 - `players`
 
+`players` should contain semicolon-separated NBA `PLAYER_ID` values.
+
 Example:
 
 ```csv
 game_id,team,margin,players
-1,team_1,10,"player_A;player_B;player_C;player_D;player_E"
-2,team_1,6,"player_A;player_B;player_C;player_D;player_F"
+1,team_1,10,"1628369;1627759;1628401;201143;1629057"
+2,team_1,6,"1628369;1627759;1628401;201143;203935"
 ```
 
 ## Real NBA data
@@ -56,7 +58,7 @@ The WOWY model stays unchanged:
 
 - one row per game from one team's perspective
 - `margin` remains final game point differential
-- `players` remains the semicolon-separated list of players who appeared for that team
+- `players` remains the semicolon-separated list of NBA `PLAYER_ID` values for that team
 
 Generate a normalized team-season CSV with:
 
@@ -110,9 +112,9 @@ poetry run pytest
 ```text
 WOWY results (Version 1)
 ------------------------------------------------------------------------
-player         with  without     avg_with    avg_without      score
+player_id     with  without     avg_with    avg_without      score
 ------------------------------------------------------------------------
-player_A          4         2         9.00          1.00       8.00
+1628369          4         2         9.00          1.00       8.00
 ```
 
 ## Next model direction

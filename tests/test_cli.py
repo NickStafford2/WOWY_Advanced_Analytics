@@ -16,9 +16,9 @@ def test_main_runs_with_temp_csv(
     write_games_csv(
         csv_path,
         [
-            ["1", "team_1", "10", "player_A;player_B;player_C"],
-            ["2", "team_1", "0", "player_B;player_C;player_D"],
-            ["3", "team_1", "-10", "player_C;player_D;player_E"],
+            ["1", "team_1", "10", "101;102;103"],
+            ["2", "team_1", "0", "102;103;104"],
+            ["3", "team_1", "-10", "103;104;105"],
         ],
     )
 
@@ -37,7 +37,7 @@ def test_main_runs_with_temp_csv(
 
     assert exit_code == 0
     assert "WOWY results (Version 1)" in captured.out
-    assert "player_A" in captured.out
+    assert "101" in captured.out
 
 
 def test_main_rejects_negative_filters():

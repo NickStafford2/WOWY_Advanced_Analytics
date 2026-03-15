@@ -7,7 +7,7 @@ class GameRecord(TypedDict):
     game_id: str
     team: str
     margin: float
-    players: set[str]
+    players: set[int]
 
 
 class PlayerStats(TypedDict):

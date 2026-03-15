@@ -36,12 +36,7 @@ def test_write_team_season_games_csv_uses_existing_games_shape(
                     pd.DataFrame(
                         {
                             "TEAM_ABBREVIATION": ["BOS", "BOS", "BOS", "LAL"],
-                            "PLAYER_NAME": [
-                                "Jayson Tatum",
-                                "Jaylen Brown",
-                                "Deep Bench",
-                                "Opponent Player",
-                            ],
+                            "PLAYER_ID": [1628369, 1627759, 999999, 200000],
                             "MIN": ["35:12", "34:01", "0:00", "33:44"],
                         }
                     ),
@@ -57,11 +52,7 @@ def test_write_team_season_games_csv_uses_existing_games_shape(
                 pd.DataFrame(
                     {
                         "TEAM_ABBREVIATION": ["BOS", "BOS", "LAL"],
-                        "PLAYER_NAME": [
-                            "Jayson Tatum",
-                            "Derrick White",
-                            "Opponent Player",
-                        ],
+                        "PLAYER_ID": [1628369, 1628401, 200000],
                         "MIN": ["36:00", "30:15", "31:02"],
                     }
                 ),
@@ -92,12 +83,12 @@ def test_write_team_season_games_csv_uses_existing_games_shape(
             "game_id": "0001",
             "team": "BOS",
             "margin": 12.0,
-            "players": {"Jayson Tatum", "Jaylen Brown"},
+            "players": {1628369, 1627759},
         },
         {
             "game_id": "0002",
             "team": "BOS",
             "margin": -5.0,
-            "players": {"Jayson Tatum", "Derrick White"},
+            "players": {1628369, 1628401},
         },
     ]

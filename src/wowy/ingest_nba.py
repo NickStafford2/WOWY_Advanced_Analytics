@@ -18,7 +18,7 @@ def fetch_team_season_games(
 
     Each returned record matches the current WOWY input model:
     one row per game from one team's perspective with `game_id`, `team`,
-    `margin`, and the set of players who appeared in that game.
+    `margin`, and the set of NBA player ids who appeared in that game.
     """
 
     team = teams.find_team_by_abbreviation(team_abbreviation.upper())
@@ -67,7 +67,9 @@ def write_team_season_games_csv(
                     "game_id": game["game_id"],
                     "team": game["team"],
                     "margin": game["margin"],
-                    "players": ";".join(sorted(game["players"])),
+                    "players": ";".join(
+                        str(player_id) for player_id in sorted(game["players"])
+                    ),
                 }
             )
 
@@ -89,7 +91,7 @@ def _fetch_game_record(game_id: str, team_abbreviation: str) -> GameRecord:
     player_rows = player_stats_df.loc[
         player_stats_df["TEAM_ABBREVIATION"] == team_abbreviation,
     ]
-    players = _extract_players_who_appeared(player_rows["PLAYER_NAME"], player_rows["MIN"])
+    players = _extract_players_who_appeared(player_rows["PLAYER_ID"], player_rows["MIN"])
     if not players:
         raise ValueError(
             f"No active players found for team {team_abbreviation!r} in game {game_id!r}"
@@ -104,17 +106,17 @@ def _fetch_game_record(game_id: str, team_abbreviation: str) -> GameRecord:
     }
 
 
-def _extract_players_who_appeared(player_names, minutes_played) -> set[str]:
-    """Return the players who logged non-zero minutes in the game."""
+def _extract_players_who_appeared(player_ids, minutes_played) -> set[int]:
+    """Return the NBA player ids that logged non-zero minutes in the game."""
 
-    players: set[str] = set()
+    players: set[int] = set()
 
-    for player_name, minutes in zip(player_names.tolist(), minutes_played.tolist(), strict=True):
-        if not player_name:
+    for player_id, minutes in zip(player_ids.tolist(), minutes_played.tolist(), strict=True):
+        if player_id is None:
             continue
         if not _played_in_game(minutes):
             continue
-        players.add(str(player_name).strip())
+        players.add(int(player_id))
 
     return players
 

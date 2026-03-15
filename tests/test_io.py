@@ -12,8 +12,8 @@ def test_load_games_from_csv(tmp_path: Path, write_games_csv):
     write_games_csv(
         csv_path,
         [
-            ["1", "team_1", "10", "player_A;player_B;player_C"],
-            ["2", "team_1", "-5", "player_B;player_C;player_D"],
+            ["1", "team_1", "10", "101;102;103"],
+            ["2", "team_1", "-5", "102;103;104"],
         ],
     )
 
@@ -23,7 +23,7 @@ def test_load_games_from_csv(tmp_path: Path, write_games_csv):
     assert games[0]["game_id"] == "1"
     assert games[0]["team"] == "team_1"
     assert games[0]["margin"] == 10.0
-    assert games[0]["players"] == {"player_A", "player_B", "player_C"}
+    assert games[0]["players"] == {101, 102, 103}
 
 
 def test_load_games_from_csv_missing_column(tmp_path: Path):
@@ -38,7 +38,7 @@ def test_load_games_from_csv_invalid_margin(tmp_path: Path, write_games_csv):
     csv_path = tmp_path / "bad_games.csv"
     write_games_csv(
         csv_path,
-        [["1", "team_1", "not_a_number", "player_A;player_B"]],
+        [["1", "team_1", "not_a_number", "101;102"]],
     )
 
     with pytest.raises(ValueError, match="Invalid margin"):
@@ -53,4 +53,15 @@ def test_load_games_from_csv_empty_players(tmp_path: Path, write_games_csv):
     )
 
     with pytest.raises(ValueError, match="has no players listed"):
+        load_games_from_csv(csv_path)
+
+
+def test_load_games_from_csv_invalid_player_id(tmp_path: Path, write_games_csv):
+    csv_path = tmp_path / "bad_games.csv"
+    write_games_csv(
+        csv_path,
+        [["1", "team_1", "10", "101;not_a_player_id"]],
+    )
+
+    with pytest.raises(ValueError, match="Invalid player id"):
         load_games_from_csv(csv_path)

@@ -25,9 +25,17 @@ def load_games_from_csv(csv_path: Path | str) -> list[GameRecord]:
                     f"Invalid margin at row {row_number}: {row['margin']!r}"
                 ) from exc
 
-            players = {
-                player.strip() for player in row["players"].split(";") if player.strip()
-            }
+            players: set[int] = set()
+            for player in row["players"].split(";"):
+                player_text = player.strip()
+                if not player_text:
+                    continue
+                try:
+                    players.add(int(player_text))
+                except ValueError as exc:
+                    raise ValueError(
+                        f"Invalid player id at row {row_number}: {player_text!r}"
+                    ) from exc
             if not players:
                 raise ValueError(f"Row {row_number} has no players listed")
 

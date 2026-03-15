@@ -5,8 +5,8 @@ from wowy.types import PlayerStats
 
 
 def test_format_results_table_contains_expected_text():
-    results: dict[str, PlayerStats] = {
-        "player_A": {
+    results: dict[int, PlayerStats] = {
+        203999: {
             "games_with": 3,
             "games_without": 2,
             "avg_margin_with": 5.0,
@@ -18,5 +18,6 @@ def test_format_results_table_contains_expected_text():
     output = format_results_table(results)
 
     assert "WOWY results (Version 1)" in output
-    assert "player_A" in output
+    assert "player_id" in output
+    assert "203999" in output
     assert "4.00" in output
