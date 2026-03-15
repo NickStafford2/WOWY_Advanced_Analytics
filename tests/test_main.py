@@ -7,6 +7,8 @@ from pathlib import Path
 import pytest
 
 from wowy.main import (
+    GameRecord,
+    PlayerStats,
     compute_wowy,
     filter_results,
     format_results_table,
@@ -16,7 +18,7 @@ from wowy.main import (
 
 
 def test_compute_wowy_basic():
-    games = [
+    games: list[GameRecord] = [
         {
             "game_id": "1",
             "team": "team_1",
@@ -47,7 +49,7 @@ def test_compute_wowy_basic():
 
 
 def test_filter_results():
-    results = {
+    results: dict[str, PlayerStats] = {
         "player_A": {
             "games_with": 3,
             "games_without": 3,
@@ -137,7 +139,7 @@ def test_load_games_from_csv_empty_players():
 
 
 def test_format_results_table_contains_expected_text():
-    results = {
+    results: dict[str, PlayerStats] = {
         "player_A": {
             "games_with": 3,
             "games_without": 2,
