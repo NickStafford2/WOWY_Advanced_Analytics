@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import argparse
 import csv
+import sys
 from pathlib import Path
 
 from nba_api.stats.static import teams as nba_teams
@@ -88,6 +89,31 @@ def combine_wowy_csvs(input_paths: list[Path], output_path: Path) -> None:
                     writer.writerow(row)
 
 
+def render_progress_line(
+    team_index: int,
+    team_total: int,
+    payload: dict,
+) -> None:
+    current = payload["current"]
+    total = payload["total"]
+    status = payload["status"]
+    team = payload["team"]
+    season = payload["season"]
+    game_id = payload["game_id"]
+    filled = 20 if total == 0 else int((current / total) * 20)
+    bar = "#" * filled + "-" * (20 - filled)
+    line = (
+        f"\r[{team_index}/{team_total}] {team} {season} "
+        f"[{bar}] {current}/{total} {status:<7} {game_id}"
+    )
+    sys.stdout.write(line)
+    sys.stdout.flush()
+
+
+def quiet_log(_: str) -> None:
+    return None
+
+
 def main(argv: list[str] | None = None) -> int:
     parser = build_parser()
     args = parser.parse_args(argv)
@@ -95,7 +121,8 @@ def main(argv: list[str] | None = None) -> int:
     team_codes = resolve_teams(args.teams)
     wowy_csv_paths: list[Path] = []
 
-    for team_code in team_codes:
+    team_total = len(team_codes)
+    for team_index, team_code in enumerate(team_codes, start=1):
         wowy_csv_path = DEFAULT_WOWY_GAMES_DIR / f"{team_code}_{args.season}.csv"
         write_team_season_games_csv(
             team_abbreviation=team_code,
@@ -106,7 +133,14 @@ def main(argv: list[str] | None = None) -> int:
             normalized_game_players_csv_path=DEFAULT_NORMALIZED_GAME_PLAYERS_DIR
             / f"{team_code}_{args.season}.csv",
             season_type=args.season_type,
+            log=quiet_log,
+            progress=lambda payload, team_index=team_index: render_progress_line(
+                team_index,
+                team_total,
+                payload,
+            ),
         )
+        sys.stdout.write("\n")
         wowy_csv_paths.append(wowy_csv_path)
 
     if args.skip_combine:

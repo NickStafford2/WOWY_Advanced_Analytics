@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from pathlib import Path
+from typing import Callable
 
 from nba_api.stats.static import teams
 
@@ -25,6 +26,7 @@ from wowy.types import (
 DEFAULT_NORMALIZED_GAMES_DIR = Path("data/normalized/nba/games")
 DEFAULT_NORMALIZED_GAME_PLAYERS_DIR = Path("data/normalized/nba/game_players")
 DEFAULT_WOWY_GAMES_DIR = Path("data/raw/nba/team_games")
+ProgressFn = Callable[[dict], None]
 
 
 def fetch_team_season_data(
@@ -32,6 +34,8 @@ def fetch_team_season_data(
     season: str,
     season_type: str = "Regular Season",
     source_data_dir: Path = DEFAULT_SOURCE_DATA_DIR,
+    log: Callable[[str], None] | None = print,
+    progress: ProgressFn | None = None,
 ) -> tuple[list[NormalizedGameRecord], list[NormalizedGamePlayerRecord]]:
     """Fetch one NBA team-season and return canonical normalized game-level records."""
 
@@ -45,6 +49,7 @@ def fetch_team_season_data(
         season=season,
         season_type=season_type,
         source_data_dir=source_data_dir,
+        log=log,
     )
     games_df = result_set_to_data_frame(finder_payload["resultSets"][0])
 
@@ -55,7 +60,8 @@ def fetch_team_season_data(
     normalized_game_players: list[NormalizedGamePlayerRecord] = []
 
     unique_games_df = games_df.drop_duplicates(subset=["GAME_ID"])
-    for _, game_row in unique_games_df.iterrows():
+    total_games = len(unique_games_df)
+    for game_index, (_, game_row) in enumerate(unique_games_df.iterrows(), start=1):
         game_id = str(game_row["GAME_ID"])
         try:
             normalized_game, game_players = fetch_normalized_game_data(
@@ -67,15 +73,39 @@ def fetch_team_season_data(
                 is_home=extract_is_home(game_row, team["abbreviation"]),
                 season_type=season_type,
                 source_data_dir=source_data_dir,
+                log=log,
             )
         except ValueError as exc:
-            print(
-                f"skip game {game_id} {team['abbreviation']} {season} reason={exc}"
-            )
+            if log is not None:
+                log(
+                    f"skip game {game_id} {team['abbreviation']} {season} reason={exc}"
+                )
+            if progress is not None:
+                progress(
+                    {
+                        "team": team["abbreviation"],
+                        "season": season,
+                        "game_id": game_id,
+                        "current": game_index,
+                        "total": total_games,
+                        "status": "skipped",
+                    }
+                )
             continue
 
         normalized_games.append(normalized_game)
         normalized_game_players.extend(game_players)
+        if progress is not None:
+            progress(
+                {
+                    "team": team["abbreviation"],
+                    "season": season,
+                    "game_id": game_id,
+                    "current": game_index,
+                    "total": total_games,
+                    "status": "ok",
+                }
+            )
 
     return normalized_games, normalized_game_players
 
@@ -85,6 +115,8 @@ def fetch_team_season_games(
     season: str,
     season_type: str = "Regular Season",
     source_data_dir: Path = DEFAULT_SOURCE_DATA_DIR,
+    log: Callable[[str], None] | None = print,
+    progress: ProgressFn | None = None,
 ) -> list[WowyGameRecord]:
     """Fetch one NBA team-season and return rows in the existing game CSV shape.
 
@@ -97,6 +129,8 @@ def fetch_team_season_games(
         season=season,
         season_type=season_type,
         source_data_dir=source_data_dir,
+        log=log,
+        progress=progress,
     )
     return derive_wowy_games(normalized_games, normalized_game_players)
 
@@ -108,6 +142,8 @@ def write_team_season_normalized_csvs(
     game_players_csv_path: Path | str,
     season_type: str = "Regular Season",
     source_data_dir: Path = DEFAULT_SOURCE_DATA_DIR,
+    log: Callable[[str], None] | None = print,
+    progress: ProgressFn | None = None,
 ) -> tuple[list[NormalizedGameRecord], list[NormalizedGamePlayerRecord]]:
     """Fetch one NBA team-season and write canonical normalized CSVs."""
 
@@ -116,6 +152,8 @@ def write_team_season_normalized_csvs(
         season=season,
         season_type=season_type,
         source_data_dir=source_data_dir,
+        log=log,
+        progress=progress,
     )
     write_normalized_games_csv(games_csv_path, normalized_games)
     write_normalized_game_players_csv(game_players_csv_path, normalized_game_players)
@@ -130,6 +168,8 @@ def write_team_season_games_csv(
     normalized_game_players_csv_path: Path | str | None = None,
     season_type: str = "Regular Season",
     source_data_dir: Path = DEFAULT_SOURCE_DATA_DIR,
+    log: Callable[[str], None] | None = print,
+    progress: ProgressFn | None = None,
 ) -> None:
     """Fetch one NBA team-season and write normalized CSVs plus derived WOWY output."""
 
@@ -149,6 +189,8 @@ def write_team_season_games_csv(
         game_players_csv_path=normalized_game_players_path,
         season_type=season_type,
         source_data_dir=source_data_dir,
+        log=log,
+        progress=progress,
     )
     derived_games = derive_wowy_games(normalized_games, normalized_game_players)
     write_wowy_games_csv(csv_path, derived_games)

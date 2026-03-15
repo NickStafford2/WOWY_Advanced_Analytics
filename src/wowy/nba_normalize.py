@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from pathlib import Path
+from typing import Callable
 
 import pandas as pd
 
@@ -95,12 +96,14 @@ def fetch_normalized_game_data(
     season_type: str,
     source_data_dir: Path,
     source: str = "nba_api",
+    log: Callable[[str], None] | None = print,
 ) -> tuple[NormalizedGameRecord, list[NormalizedGamePlayerRecord]]:
     """Fetch one NBA game and normalize it into canonical game-level records."""
 
     box_score_payload = load_or_fetch_box_score(
         game_id=game_id,
         source_data_dir=source_data_dir,
+        log=log,
     )
     player_stats_df = result_set_to_data_frame(box_score_payload["resultSets"][0])
     team_stats_df = result_set_to_data_frame(box_score_payload["resultSets"][1])

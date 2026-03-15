@@ -5,6 +5,8 @@ import json
 from collections import Counter
 from pathlib import Path
 
+from nba_api.stats.static import teams as nba_teams
+
 from wowy.nba_cache import DEFAULT_SOURCE_DATA_DIR
 
 
@@ -42,17 +44,31 @@ def find_team_season_cache_paths(
     season: str,
     source_data_dir: Path,
     team_codes: list[str] | None,
-) -> list[Path]:
+) -> dict[str, Path]:
     paths = sorted(
         (source_data_dir / "team_seasons").glob(
             f"*_{season}_regular_season_leaguegamefinder.json"
         )
     )
+    path_by_team = {
+        path.name.split("_", maxsplit=1)[0]: path
+        for path in paths
+    }
     if not team_codes:
-        return paths
+        return path_by_team
 
     allowed = {team_code.upper() for team_code in team_codes}
-    return [path for path in paths if path.name.split("_", maxsplit=1)[0] in allowed]
+    return {
+        team_code: path
+        for team_code, path in path_by_team.items()
+        if team_code in allowed
+    }
+
+
+def resolve_requested_teams(team_codes: list[str] | None) -> list[str]:
+    if team_codes:
+        return sorted(team_code.upper() for team_code in team_codes)
+    return sorted(team["abbreviation"] for team in nba_teams.get_teams())
 
 
 def classify_box_score_cache(box_dir: Path, game_id: str) -> str:
@@ -107,6 +123,18 @@ def summarize_team_season_cache(team_cache_path: Path, source_data_dir: Path) ->
     }
 
 
+def empty_team_summary(team_code: str) -> dict:
+    return {
+        "team": team_code,
+        "total_games": 0,
+        "ok": 0,
+        "empty": 0,
+        "missing": 0,
+        "corrupt": 0,
+        "percent_ok": 0.0,
+    }
+
+
 def format_summary(rows: list[dict]) -> str:
     if not rows:
         return "No cached team-season files found for the requested season."
@@ -152,15 +180,19 @@ def main(argv: list[str] | None = None) -> int:
     parser = build_parser()
     args = parser.parse_args(argv)
 
+    requested_teams = resolve_requested_teams(args.teams)
     team_cache_paths = find_team_season_cache_paths(
         season=args.season,
         source_data_dir=args.source_data_dir,
         team_codes=args.teams,
     )
-    rows = [
-        summarize_team_season_cache(team_cache_path, args.source_data_dir)
-        for team_cache_path in team_cache_paths
-    ]
+    rows = []
+    for team_code in requested_teams:
+        team_cache_path = team_cache_paths.get(team_code)
+        if team_cache_path is None:
+            rows.append(empty_team_summary(team_code))
+            continue
+        rows.append(summarize_team_season_cache(team_cache_path, args.source_data_dir))
     print(format_summary(rows))
     return 0
 

@@ -4,6 +4,7 @@ import json
 import os
 import time
 from pathlib import Path
+from typing import Callable
 
 from requests import RequestException
 from nba_api.stats.endpoints import boxscoretraditionalv2, leaguegamefinder
@@ -12,6 +13,7 @@ DEFAULT_SOURCE_DATA_DIR = Path("data/source/nba")
 BOX_SCORE_REQUEST_RETRIES = 3
 BOX_SCORE_RETRY_BACKOFF_SECONDS = 2.0
 BOX_SCORE_REQUEST_DELAY_SECONDS = 0.6
+LogFn = Callable[[str], None]
 
 
 def load_or_fetch_league_games(
@@ -20,6 +22,7 @@ def load_or_fetch_league_games(
     season: str,
     season_type: str,
     source_data_dir: Path,
+    log: LogFn | None = print,
 ) -> dict:
     """Load a cached team-season response or fetch and cache it from the NBA API."""
 
@@ -33,7 +36,8 @@ def load_or_fetch_league_games(
     if cached_payload is not None:
         return cached_payload
 
-    print(f"api league_games {team_abbreviation} {season} {season_type}")
+    if log is not None:
+        log(f"api league_games {team_abbreviation} {season} {season_type}")
     finder = leaguegamefinder.LeagueGameFinder(
         team_id_nullable=str(team_id),
         season_nullable=season,
@@ -44,7 +48,11 @@ def load_or_fetch_league_games(
     return payload
 
 
-def load_or_fetch_box_score(game_id: str, source_data_dir: Path) -> dict:
+def load_or_fetch_box_score(
+    game_id: str,
+    source_data_dir: Path,
+    log: LogFn | None = print,
+) -> dict:
     """Load a cached box score response or fetch and cache it from the NBA API."""
 
     cache_path = box_score_cache_path(game_id, source_data_dir=source_data_dir)
@@ -57,7 +65,8 @@ def load_or_fetch_box_score(game_id: str, source_data_dir: Path) -> dict:
     for attempt in range(1, BOX_SCORE_REQUEST_RETRIES + 1):
         try:
             time.sleep(BOX_SCORE_REQUEST_DELAY_SECONDS)
-            print(f"api box_score {game_id} attempt={attempt}")
+            if log is not None:
+                log(f"api box_score {game_id} attempt={attempt}")
             box_score = boxscoretraditionalv2.BoxScoreTraditionalV2(game_id=game_id)
             payload = box_score.get_dict()
             write_cached_payload(cache_path, payload)
@@ -97,7 +106,6 @@ def load_cached_payload(cache_path: Path) -> dict | None:
         with open(cache_path, "r", encoding="utf-8") as f:
             return json.load(f)
     except json.JSONDecodeError:
-        print(f"ignore corrupt cache {cache_path}")
         return None
 
 
