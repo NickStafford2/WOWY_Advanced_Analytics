@@ -16,7 +16,7 @@ venv/
 .pytest_cache/
 
 # Data
-data/combined/*
+data/*
 data/combined/regression/*
 !data/combined/regression/
 !data/combined/regression/maybe.example.csv
