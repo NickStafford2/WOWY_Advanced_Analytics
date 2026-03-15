@@ -21,7 +21,9 @@ from wowy.regression_types import RegressionPlayerEstimate, RegressionResult
 
 
 def format_scope(teams: list[str] | None, seasons: list[str] | None) -> str:
-    team_label = ",".join(team.upper() for team in teams) if teams else "all cached teams"
+    team_label = (
+        ",".join(team.upper() for team in teams) if teams else "all cached teams"
+    )
     season_label = ",".join(seasons) if seasons else "all cached seasons"
     return f"teams={team_label} seasons={season_label}"
 
@@ -104,13 +106,13 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument(
         "--ridge-alpha",
         type=float,
-        default=1.0,
+        default=10.0,
         help="Ridge regularization strength for player coefficients",
     )
     parser.add_argument(
         "--top-n",
         type=int,
-        default=None,
+        default=40,
         help="Maximum number of players to include in output",
     )
     parser.add_argument(
@@ -132,13 +134,13 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument(
         "--min-average-minutes",
         type=float,
-        default=None,
+        default=30,
         help="Minimum average minutes per appeared game required to include a player in output",
     )
     parser.add_argument(
         "--min-total-minutes",
         type=float,
-        default=None,
+        default=600,
         help="Minimum total minutes required to include a player in output",
     )
     return parser
@@ -193,7 +195,9 @@ def attach_minute_stats_to_result(
             player_id=estimate.player_id,
             player_name=estimate.player_name,
             games=estimate.games,
-            average_minutes=player_minute_stats.get(estimate.player_id, (None, None))[0],
+            average_minutes=player_minute_stats.get(estimate.player_id, (None, None))[
+                0
+            ],
             total_minutes=player_minute_stats.get(estimate.player_id, (None, None))[1],
             coefficient=estimate.coefficient,
         )
@@ -324,7 +328,9 @@ def main(argv: list[str] | None = None) -> int:
     games_csv = args.games_csv
     game_players_csv = args.game_players_csv
     ridge_alpha = args.ridge_alpha
-    print(f"[1/3] preparing regression inputs for {format_scope(args.team, args.season)}")
+    print(
+        f"[1/3] preparing regression inputs for {format_scope(args.team, args.season)}"
+    )
     if games_csv is None or game_players_csv is None:
         games_csv, game_players_csv = prepare_regression_inputs(
             teams=args.team,
