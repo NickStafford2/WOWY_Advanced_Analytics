@@ -486,6 +486,81 @@ def test_write_team_season_games_csv_resumes_from_cached_partial_source_data(
     ]
 
 
+def test_write_team_season_games_csv_raises_on_inconsistent_outputs(
+    tmp_path: Path,
+    monkeypatch,
+):
+    source_data_dir = tmp_path / "source-data"
+
+    monkeypatch.setattr(
+        "wowy.ingest_nba.teams.find_team_by_abbreviation",
+        lambda abbreviation: {"id": 1610612738, "abbreviation": "BOS"},
+    )
+
+    class FakeLeagueGameFinder:
+        def __init__(self, **kwargs):
+            pass
+
+        def get_dict(self):
+            return {
+                "resultSets": [
+                    {
+                        "headers": ["GAME_ID", "GAME_DATE", "MATCHUP"],
+                        "rowSet": [["0001", "2024-04-01", "BOS vs. LAL"]],
+                    }
+                ]
+            }
+
+    class FakeBoxScoreTraditionalV2:
+        def __init__(self, game_id: str):
+            self.game_id = game_id
+
+        def get_dict(self):
+            return {
+                "resultSets": [
+                    {
+                        "headers": [
+                            "TEAM_ABBREVIATION",
+                            "PLAYER_ID",
+                            "PLAYER_NAME",
+                            "MIN",
+                        ],
+                        "rowSet": [
+                            ["BOS", 1628369, "Jayson Tatum", "35:12"],
+                            ["LAL", 200000, "Opponent Player", "33:44"],
+                        ],
+                    },
+                    {
+                        "headers": ["TEAM_ABBREVIATION", "PLUS_MINUS"],
+                        "rowSet": [["BOS", 12], ["LAL", -12]],
+                    },
+                ]
+            }
+
+    monkeypatch.setattr(
+        "wowy.nba_cache.leaguegamefinder.LeagueGameFinder",
+        FakeLeagueGameFinder,
+    )
+    monkeypatch.setattr(
+        "wowy.nba_cache.boxscoretraditionalv2.BoxScoreTraditionalV2",
+        FakeBoxScoreTraditionalV2,
+    )
+    monkeypatch.setattr(
+        "wowy.ingest_nba.validate_team_season_files",
+        lambda **kwargs: "wowy_data",
+    )
+
+    with pytest.raises(ValueError, match="Inconsistent team-season cache"):
+        write_team_season_games_csv(
+            "BOS",
+            "2023-24",
+            tmp_path / "games.csv",
+            normalized_games_csv_path=tmp_path / "normalized" / "games.csv",
+            normalized_game_players_csv_path=tmp_path / "normalized" / "game_players.csv",
+            source_data_dir=source_data_dir,
+        )
+
+
 def test_extract_matchup_fields_accept_requested_team_on_either_side() -> None:
     home_row = {"GAME_ID": "0001", "MATCHUP": "MIA @ WAS"}
     away_row = {"GAME_ID": "0002", "MATCHUP": "WAS @ MIA"}

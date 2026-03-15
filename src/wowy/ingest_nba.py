@@ -5,6 +5,7 @@ from typing import Callable
 
 from nba_api.stats.static import teams
 
+from wowy.cache_validation import validate_team_season_files
 from wowy.derive_wowy import derive_wowy_games, write_wowy_games_csv
 from wowy.nba_cache import (
     DEFAULT_SOURCE_DATA_DIR,
@@ -239,6 +240,15 @@ def write_team_season_games_csv(
         result.artifacts.normalized_game_players,
     )
     write_wowy_games_csv(csv_path, result.artifacts.wowy_games)
+    consistency = validate_team_season_files(
+        normalized_games_path=normalized_games_path,
+        normalized_game_players_path=normalized_game_players_path,
+        wowy_path=Path(csv_path),
+    )
+    if consistency != "ok":
+        raise ValueError(
+            f"Inconsistent team-season cache for {team_abbreviation.upper()} {season}: {consistency}"
+        )
     return result.summary
 
 

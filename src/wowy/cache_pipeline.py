@@ -7,6 +7,7 @@ from typing import Callable
 
 from nba_api.stats.static import teams as nba_teams
 
+from wowy.cache_validation import validate_team_season_consistency
 from wowy.combine_games_cli import combine_csv_paths, combine_normalized_files
 from wowy.derive_wowy import WOWY_HEADER, derive_wowy_games, write_wowy_games_csv
 from wowy.ingest_nba import (
@@ -138,6 +139,17 @@ def rebuild_wowy_for_team_season(
     game_players = load_normalized_game_players_from_csv(game_players_path)
     derived_games = derive_wowy_games(games, game_players)
     write_wowy_games_csv(output_path, derived_games)
+    consistency = validate_team_season_consistency(
+        team=team_season.team,
+        season=team_season.season,
+        normalized_games_input_dir=normalized_games_input_dir,
+        normalized_game_players_input_dir=normalized_game_players_input_dir,
+        wowy_output_dir=wowy_output_dir,
+    )
+    if consistency != "ok":
+        raise ValueError(
+            f"Inconsistent team-season cache for {team_season.team} {team_season.season}: {consistency}"
+        )
     return output_path
 
 
@@ -171,9 +183,25 @@ def ensure_team_season_data(
         )
         return
 
-    if not wowy_cache_is_current(wowy_path, games_path, game_players_path):
+    consistency = (
+        validate_team_season_consistency(
+            team=team_season.team,
+            season=team_season.season,
+            normalized_games_input_dir=normalized_games_input_dir,
+            normalized_game_players_input_dir=normalized_game_players_input_dir,
+            wowy_output_dir=wowy_output_dir,
+        )
+        if wowy_path.exists()
+        else "missing"
+    )
+
+    if (
+        not wowy_cache_is_current(wowy_path, games_path, game_players_path)
+        or consistency != "ok"
+    ):
         if log is not None:
-            log(f"rebuild {team_season.team} {team_season.season}")
+            reason = "stale" if consistency == "ok" else consistency
+            log(f"rebuild {team_season.team} {team_season.season} reason={reason}")
         rebuild_wowy_for_team_season(
             team_season=team_season,
             normalized_games_input_dir=normalized_games_input_dir,
