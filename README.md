@@ -44,6 +44,17 @@ game_id,team,margin,players
 2,team_1,6,"player_A;player_B;player_C;player_D;player_F"
 ```
 
+## Real NBA data
+
+The planned real-data path uses `nba_api` to fetch NBA game-level box score data and convert it into the same `games.csv` format above.
+
+The WOWY model stays unchanged:
+
+- one row per game from one team's perspective
+- `margin` remains final game point differential
+- `players` remains the semicolon-separated list of players who appeared for that team
+
+
 ## Install
 
 Install dependencies with:
