@@ -97,8 +97,8 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument(
         "--min-games",
         type=int,
-        default=1,
-        help="Minimum games required to include a player in the regression output",
+        default=35,
+        help="Minimum games required to include a player in the regression output (default: 35)",
     )
     parser.add_argument(
         "--ridge-alpha",
