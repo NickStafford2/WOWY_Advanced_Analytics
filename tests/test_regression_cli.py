@@ -89,6 +89,57 @@ def test_run_regression_applies_top_n(tmp_path: Path):
     assert len(report.splitlines()) == 6
 
 
+def test_run_regression_applies_minute_filters(tmp_path: Path):
+    games_csv = tmp_path / "games.csv"
+    games_csv.write_text(
+        (
+            "game_id,season,game_date,team,opponent,is_home,margin,season_type,source\n"
+            "1,2023-24,2024-04-01,BOS,MIL,true,2,Regular Season,nba_api\n"
+            "1,2023-24,2024-04-01,MIL,BOS,false,-2,Regular Season,nba_api\n"
+            "2,2023-24,2024-04-03,BOS,NYK,false,-2,Regular Season,nba_api\n"
+            "2,2023-24,2024-04-03,NYK,BOS,true,2,Regular Season,nba_api\n"
+            "3,2023-24,2024-04-05,BOS,LAL,true,0,Regular Season,nba_api\n"
+            "3,2023-24,2024-04-05,LAL,BOS,false,0,Regular Season,nba_api\n"
+        ),
+        encoding="utf-8",
+    )
+    game_players_csv = tmp_path / "game_players.csv"
+    game_players_csv.write_text(
+        (
+            "game_id,team,player_id,player_name,appeared,minutes\n"
+            "1,BOS,101,Player 101,true,30\n"
+            "1,BOS,102,Player 102,true,10\n"
+            "1,MIL,201,Player 201,true,48\n"
+            "2,BOS,101,Player 101,true,30\n"
+            "2,BOS,102,Player 102,true,10\n"
+            "2,NYK,202,Player 202,true,48\n"
+            "3,BOS,101,Player 101,true,30\n"
+            "3,BOS,102,Player 102,true,10\n"
+            "3,LAL,203,Player 203,true,48\n"
+        ),
+        encoding="utf-8",
+    )
+
+    report = run_regression(
+        games_csv,
+        game_players_csv,
+        min_games=1,
+        ridge_alpha=1.0,
+        player_minute_stats={
+            101: (30.0, 90.0),
+            102: (10.0, 30.0),
+            201: (48.0, 48.0),
+            202: (48.0, 48.0),
+            203: (48.0, 48.0),
+        },
+        min_average_minutes=20.0,
+        min_total_minutes=40.0,
+    )
+
+    assert "Player 101" in report
+    assert "Player 102" not in report
+
+
 def test_main_runs_with_temp_csvs(
     tmp_path: Path,
     capsys: pytest.CaptureFixture[str],
@@ -138,6 +189,63 @@ def test_main_runs_with_temp_csvs(
     captured = capsys.readouterr()
     assert exit_code == 0
     assert "Regression results (Game-level player model)" in captured.out
+
+
+def test_main_applies_minute_filters_with_explicit_csvs(
+    tmp_path: Path,
+    capsys: pytest.CaptureFixture[str],
+):
+    games_csv = tmp_path / "games.csv"
+    games_csv.write_text(
+        (
+            "game_id,season,game_date,team,opponent,is_home,margin,season_type,source\n"
+            "1,2023-24,2024-04-01,BOS,MIL,true,2,Regular Season,nba_api\n"
+            "1,2023-24,2024-04-01,MIL,BOS,false,-2,Regular Season,nba_api\n"
+            "2,2023-24,2024-04-03,BOS,NYK,false,-2,Regular Season,nba_api\n"
+            "2,2023-24,2024-04-03,NYK,BOS,true,2,Regular Season,nba_api\n"
+            "3,2023-24,2024-04-05,BOS,LAL,true,0,Regular Season,nba_api\n"
+            "3,2023-24,2024-04-05,LAL,BOS,false,0,Regular Season,nba_api\n"
+        ),
+        encoding="utf-8",
+    )
+    game_players_csv = tmp_path / "game_players.csv"
+    game_players_csv.write_text(
+        (
+            "game_id,team,player_id,player_name,appeared,minutes\n"
+            "1,BOS,101,Player 101,true,30\n"
+            "1,BOS,102,Player 102,true,10\n"
+            "1,MIL,201,Player 201,true,48\n"
+            "2,BOS,101,Player 101,true,30\n"
+            "2,BOS,102,Player 102,true,10\n"
+            "2,NYK,202,Player 202,true,48\n"
+            "3,BOS,101,Player 101,true,30\n"
+            "3,BOS,102,Player 102,true,10\n"
+            "3,LAL,203,Player 203,true,48\n"
+        ),
+        encoding="utf-8",
+    )
+
+    exit_code = main(
+        [
+            "--games-csv",
+            str(games_csv),
+            "--game-players-csv",
+            str(game_players_csv),
+            "--min-games",
+            "1",
+            "--ridge-alpha",
+            "1.0",
+            "--min-average-minutes",
+            "20",
+            "--min-total-minutes",
+            "40",
+        ]
+    )
+
+    captured = capsys.readouterr()
+    assert exit_code == 0
+    assert "Player 101" in captured.out
+    assert "Player 102" not in captured.out
 
 
 def test_main_runs_with_cached_scope_without_explicit_csvs(
@@ -379,6 +487,16 @@ def test_main_rejects_negative_ridge_alpha():
 def test_main_rejects_negative_top_n():
     with pytest.raises(ValueError, match="non-negative"):
         main(["--top-n", "-1"])
+
+
+def test_main_rejects_negative_min_average_minutes():
+    with pytest.raises(ValueError, match="non-negative"):
+        main(["--min-average-minutes", "-1"])
+
+
+def test_main_rejects_negative_min_total_minutes():
+    with pytest.raises(ValueError, match="non-negative"):
+        main(["--min-total-minutes", "-1"])
 
 
 def test_parse_ridge_grid_rejects_invalid_values():

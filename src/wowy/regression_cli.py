@@ -4,6 +4,7 @@ import argparse
 from pathlib import Path
 
 from wowy.cache_pipeline import prepare_regression_inputs
+from wowy.cli import load_player_minute_stats
 from wowy.ingest_nba import (
     DEFAULT_NORMALIZED_GAME_PLAYERS_DIR,
     DEFAULT_NORMALIZED_GAMES_DIR,
@@ -128,7 +129,56 @@ def build_parser() -> argparse.ArgumentParser:
         default=0.2,
         help="Fraction of games held out for ridge tuning when --tune-ridge is used",
     )
+    parser.add_argument(
+        "--min-average-minutes",
+        type=float,
+        default=None,
+        help="Minimum average minutes per appeared game required to include a player in output",
+    )
+    parser.add_argument(
+        "--min-total-minutes",
+        type=float,
+        default=None,
+        help="Minimum total minutes required to include a player in output",
+    )
     return parser
+
+
+def validate_filters(
+    min_games: int,
+    ridge_alpha: float,
+    top_n: int | None = None,
+    min_average_minutes: float | None = None,
+    min_total_minutes: float | None = None,
+) -> None:
+    if min_games < 0:
+        raise ValueError("Minimum games filter must be non-negative")
+    if ridge_alpha < 0:
+        raise ValueError("Ridge alpha must be non-negative")
+    if top_n is not None and top_n < 0:
+        raise ValueError("Top-n filter must be non-negative")
+    if min_average_minutes is not None and min_average_minutes < 0:
+        raise ValueError("Minimum average minutes filter must be non-negative")
+    if min_total_minutes is not None and min_total_minutes < 0:
+        raise ValueError("Minimum total minutes filter must be non-negative")
+
+
+def load_player_minute_stats_from_players(
+    game_players_csv_path: Path | str,
+) -> dict[int, tuple[float, float]]:
+    totals: dict[int, float] = {}
+    counts: dict[int, int] = {}
+
+    for player in load_normalized_game_players_from_csv(game_players_csv_path):
+        if not player.appeared or player.minutes is None or player.minutes <= 0.0:
+            continue
+        totals[player.player_id] = totals.get(player.player_id, 0.0) + player.minutes
+        counts[player.player_id] = counts.get(player.player_id, 0) + 1
+
+    return {
+        player_id: (totals[player_id] / counts[player_id], totals[player_id])
+        for player_id in totals
+    }
 
 
 def run_regression(
@@ -139,13 +189,17 @@ def run_regression(
     top_n: int | None = None,
     teams: list[str] | None = None,
     seasons: list[str] | None = None,
+    player_minute_stats: dict[int, tuple[float, float]] | None = None,
+    min_average_minutes: float | None = None,
+    min_total_minutes: float | None = None,
 ) -> str:
-    if min_games < 0:
-        raise ValueError("Minimum games filter must be non-negative")
-    if ridge_alpha < 0:
-        raise ValueError("Ridge alpha must be non-negative")
-    if top_n is not None and top_n < 0:
-        raise ValueError("Top-n filter must be non-negative")
+    validate_filters(
+        min_games=min_games,
+        ridge_alpha=ridge_alpha,
+        top_n=top_n,
+        min_average_minutes=min_average_minutes,
+        min_total_minutes=min_total_minutes,
+    )
 
     games = load_normalized_games_from_csv(games_csv_path)
     game_players = load_normalized_game_players_from_csv(game_players_csv_path)
@@ -161,6 +215,9 @@ def run_regression(
         player_names=player_names,
         min_games=min_games,
         ridge_alpha=ridge_alpha,
+        player_minute_stats=player_minute_stats,
+        min_average_minutes=min_average_minutes,
+        min_total_minutes=min_total_minutes,
     )
     return format_regression_results(result, top_n=top_n)
 
@@ -192,9 +249,17 @@ def build_tuning_report(best_alpha: float, results) -> str:
 def main(argv: list[str] | None = None) -> int:
     parser = build_parser()
     args = parser.parse_args(argv)
+    validate_filters(
+        min_games=args.min_games,
+        ridge_alpha=args.ridge_alpha,
+        top_n=args.top_n,
+        min_average_minutes=args.min_average_minutes,
+        min_total_minutes=args.min_total_minutes,
+    )
     games_csv = args.games_csv
     game_players_csv = args.game_players_csv
     ridge_alpha = args.ridge_alpha
+    player_minute_stats = None
     print(f"[1/3] preparing regression inputs for {format_scope(args.team, args.season)}")
     if games_csv is None or game_players_csv is None:
         games_csv, game_players_csv = prepare_regression_inputs(
@@ -208,6 +273,16 @@ def main(argv: list[str] | None = None) -> int:
             normalized_game_players_input_dir=args.normalized_game_players_input_dir,
             wowy_output_dir=args.wowy_output_dir,
         )
+    if args.min_average_minutes is not None or args.min_total_minutes is not None:
+        if args.games_csv is not None and args.game_players_csv is not None:
+            player_minute_stats = load_player_minute_stats_from_players(game_players_csv)
+        else:
+            player_minute_stats = load_player_minute_stats(
+                teams=args.team,
+                seasons=args.season,
+                normalized_games_input_dir=args.normalized_games_input_dir,
+                normalized_game_players_input_dir=args.normalized_game_players_input_dir,
+            )
     print(f"[2/3] loading regression data from {games_csv} and {game_players_csv}")
     if args.tune_ridge:
         print("[3/4] tuning ridge alpha on a validation split")
@@ -242,6 +317,9 @@ def main(argv: list[str] | None = None) -> int:
             top_n=args.top_n,
             teams=args.team,
             seasons=args.season,
+            player_minute_stats=player_minute_stats,
+            min_average_minutes=args.min_average_minutes,
+            min_total_minutes=args.min_total_minutes,
         )
     )
     return 0
