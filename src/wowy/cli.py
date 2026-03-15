@@ -53,8 +53,8 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument(
         "--min-games-with",
         type=int,
-        default=2,
-        help="Minimum games with player required to include player in output",
+        default=15,
+        help="Minimum games with player required to include player in output (default: 15)",
     )
     parser.add_argument(
         "--min-games-without",
