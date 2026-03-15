@@ -4,7 +4,7 @@ import csv
 from pathlib import Path
 
 from wowy.atomic_io import atomic_text_writer
-from wowy.types import NormalizedGamePlayerRecord, NormalizedGameRecord
+from wowy.nba.models import NormalizedGamePlayerRecord, NormalizedGameRecord
 
 
 NORMALIZED_GAMES_HEADER = [

@@ -3,7 +3,7 @@ from __future__ import annotations
 from collections import defaultdict
 
 from wowy.apps.regression.models import RegressionObservation
-from wowy.types import NormalizedGamePlayerRecord, NormalizedGameRecord
+from wowy.nba.models import NormalizedGamePlayerRecord, NormalizedGameRecord
 
 LINEUP_WEIGHT_SUM = 5.0
 

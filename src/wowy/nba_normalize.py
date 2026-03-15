@@ -10,10 +10,7 @@ from wowy.nba_cache import (
     load_or_fetch_box_score,
     load_or_fetch_box_score_with_source,
 )
-from wowy.types import (
-    NormalizedGamePlayerRecord,
-    NormalizedGameRecord,
-)
+from wowy.nba.models import NormalizedGamePlayerRecord, NormalizedGameRecord
 
 
 def result_set_to_data_frame(result_set: dict) -> pd.DataFrame:

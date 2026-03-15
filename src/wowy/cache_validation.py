@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from wowy.derive_wowy import derive_wowy_games
+from wowy.apps.wowy.derive import derive_wowy_games
 from wowy.io import load_games_from_csv
 from wowy.normalized_io import (
     load_normalized_game_players_from_csv,

@@ -14,7 +14,7 @@ from wowy.progress import TerminalProgressBar
 from wowy.shared.filters import validate_top_n_and_minutes
 from wowy.shared.minutes import build_player_minute_stats, passes_minute_filters
 from wowy.shared.scope import format_scope
-from wowy.types import WowyGameRecord, WowyPlayerStats
+from wowy.apps.wowy.models import WowyGameRecord, WowyPlayerStats
 
 
 def validate_filters(

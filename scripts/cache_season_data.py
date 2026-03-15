@@ -9,7 +9,7 @@ from nba_api.stats.static import teams as nba_teams
 
 from wowy.atomic_io import atomic_text_writer
 from wowy.combine_games_cli import combine_normalized_files
-from wowy.ingest_nba import (
+from wowy.nba.ingest import (
     DEFAULT_NORMALIZED_GAME_PLAYERS_DIR,
     DEFAULT_NORMALIZED_GAMES_DIR,
     DEFAULT_SOURCE_DATA_DIR,

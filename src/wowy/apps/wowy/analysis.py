@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from typing import Callable
 
-from wowy.types import WowyGameRecord, WowyPlayerStats
+from wowy.apps.wowy.models import WowyGameRecord, WowyPlayerStats
 
 
 ProgressFn = Callable[[int, int, str | None], None]

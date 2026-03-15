@@ -5,11 +5,8 @@ from collections import defaultdict
 from pathlib import Path
 
 from wowy.atomic_io import atomic_text_writer
-from wowy.types import (
-    NormalizedGamePlayerRecord,
-    NormalizedGameRecord,
-    WowyGameRecord,
-)
+from wowy.apps.wowy.models import WowyGameRecord
+from wowy.nba.models import NormalizedGamePlayerRecord, NormalizedGameRecord
 
 
 WOWY_HEADER = ["game_id", "season", "team", "margin", "players"]

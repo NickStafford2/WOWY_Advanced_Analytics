@@ -3,7 +3,7 @@ from __future__ import annotations
 import csv
 from pathlib import Path
 
-from wowy.types import WowyGameRecord
+from wowy.apps.wowy.models import WowyGameRecord
 
 
 def load_games_from_csv(csv_path: Path | str) -> list[WowyGameRecord]:
