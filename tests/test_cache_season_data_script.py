@@ -76,3 +76,19 @@ def test_main_prints_team_summary(capsys, monkeypatch, tmp_path: Path) -> None:
     assert "league=cached" in captured.out
     assert "boxscores=3 fetched, 77 cached" in captured.out
     assert "skipped=2" in captured.out
+
+
+def test_main_reports_consistency_failure_cleanly(capsys, monkeypatch) -> None:
+    monkeypatch.setattr(MODULE, "resolve_teams", lambda team_codes: ["ATL"])
+
+    def raise_consistency_error(**kwargs) -> None:
+        raise ValueError("Inconsistent team-season cache for ATL 2022-23: wowy_data")
+
+    monkeypatch.setattr(MODULE, "write_team_season_games_csv", raise_consistency_error)
+
+    exit_code = MODULE.main(["2022-23", "--skip-combine"])
+    captured = capsys.readouterr()
+
+    assert exit_code == 1
+    assert "[ 1/1] ATL 2022-23 failed consistency=wowy_data" in captured.out
+    assert "Inconsistent cache for ATL 2022-23: wowy_data" in captured.err

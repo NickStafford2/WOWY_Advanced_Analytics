@@ -137,6 +137,25 @@ def render_team_complete_line(
     write_status_line(line)
 
 
+def render_team_failed_line(
+    team_index: int,
+    team_total: int,
+    team: str,
+    season: str,
+    reason: str,
+) -> None:
+    line = f"  [{team_index:>2}/{team_total}] {team} {season} failed consistency={reason}"
+    write_status_line(line)
+
+
+def parse_consistency_failure(message: str) -> str | None:
+    prefix = "Inconsistent team-season cache for "
+    if not message.startswith(prefix):
+        return None
+    _, _, reason = message.rpartition(": ")
+    return reason or None
+
+
 def main(argv: list[str] | None = None) -> int:
     parser = build_parser()
     args = parser.parse_args(argv)
@@ -155,21 +174,39 @@ def main(argv: list[str] | None = None) -> int:
         normalized_game_players_path = (
             DEFAULT_NORMALIZED_GAME_PLAYERS_DIR / f"{team_code}_{args.season}.csv"
         )
-        summary = write_team_season_games_csv(
-            team_abbreviation=team_code,
-            season=args.season,
-            csv_path=wowy_csv_path,
-            normalized_games_csv_path=normalized_games_path,
-            normalized_game_players_csv_path=normalized_game_players_path,
-            season_type=args.season_type,
-            source_data_dir=DEFAULT_SOURCE_DATA_DIR,
-            log=quiet_log,
-            progress=lambda payload, team_index=team_index: render_progress_line(
-                team_index,
-                team_total,
-                payload,
-            ),
-        )
+        try:
+            summary = write_team_season_games_csv(
+                team_abbreviation=team_code,
+                season=args.season,
+                csv_path=wowy_csv_path,
+                normalized_games_csv_path=normalized_games_path,
+                normalized_game_players_csv_path=normalized_game_players_path,
+                season_type=args.season_type,
+                source_data_dir=DEFAULT_SOURCE_DATA_DIR,
+                log=quiet_log,
+                progress=lambda payload, team_index=team_index: render_progress_line(
+                    team_index,
+                    team_total,
+                    payload,
+                ),
+            )
+        except ValueError as exc:
+            reason = parse_consistency_failure(str(exc))
+            if reason is None:
+                raise
+            render_team_failed_line(
+                team_index=team_index,
+                team_total=team_total,
+                team=team_code,
+                season=args.season,
+                reason=reason,
+            )
+            sys.stdout.write("\n")
+            sys.stderr.write(
+                f"Inconsistent cache for {team_code} {args.season}: {reason}\n"
+            )
+            sys.stderr.flush()
+            return 1
         render_team_complete_line(team_index, team_total, summary)
         sys.stdout.write("\n")
         normalized_games_paths.append(normalized_games_path)
