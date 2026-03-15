@@ -15,7 +15,7 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument(
         "--csv",
         type=Path,
-        default=Path(__file__).resolve().parent / "games.csv",
+        default=Path("data/combined/wowy/games.csv"),
         help="Path to the games CSV file",
     )
     parser.add_argument(
