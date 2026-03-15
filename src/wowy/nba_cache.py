@@ -10,6 +10,8 @@ from requests import RequestException
 from nba_api.stats.endpoints import boxscoretraditionalv2, leaguegamefinder
 
 DEFAULT_SOURCE_DATA_DIR = Path("data/source/nba")
+LEAGUE_GAMES_REQUEST_RETRIES = 3
+LEAGUE_GAMES_RETRY_BACKOFF_SECONDS = 2.0
 BOX_SCORE_REQUEST_RETRIES = 3
 BOX_SCORE_RETRY_BACKOFF_SECONDS = 2.0
 BOX_SCORE_REQUEST_DELAY_SECONDS = 0.6
@@ -36,16 +38,35 @@ def load_or_fetch_league_games(
     if cached_payload is not None:
         return cached_payload
 
-    if log is not None:
-        log(f"api league_games {team_abbreviation} {season} {season_type}")
-    finder = leaguegamefinder.LeagueGameFinder(
-        team_id_nullable=str(team_id),
-        season_nullable=season,
-        season_type_nullable=season_type,
+    last_error: Exception | None = None
+
+    for attempt in range(1, LEAGUE_GAMES_REQUEST_RETRIES + 1):
+        try:
+            if log is not None:
+                log(
+                    f"api league_games {team_abbreviation} {season} {season_type} "
+                    f"attempt={attempt}"
+                )
+            finder = leaguegamefinder.LeagueGameFinder(
+                team_id_nullable=str(team_id),
+                season_nullable=season,
+                season_type_nullable=season_type,
+            )
+            payload = finder.get_dict()
+            write_cached_payload(cache_path, payload)
+            return payload
+        except RequestException as exc:
+            last_error = exc
+            if attempt == LEAGUE_GAMES_REQUEST_RETRIES:
+                break
+            time.sleep(LEAGUE_GAMES_RETRY_BACKOFF_SECONDS * attempt)
+
+    if last_error is not None:
+        raise last_error
+
+    raise RuntimeError(
+        f"Failed to fetch league games for {team_abbreviation!r} in {season!r}"
     )
-    payload = finder.get_dict()
-    write_cached_payload(cache_path, payload)
-    return payload
 
 
 def load_or_fetch_box_score(

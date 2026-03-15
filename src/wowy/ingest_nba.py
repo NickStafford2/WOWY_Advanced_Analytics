@@ -19,6 +19,7 @@ from wowy.nba_normalize import (
 from wowy.types import (
     NormalizedGamePlayerRecord,
     NormalizedGameRecord,
+    TeamSeasonArtifacts,
 )
 
 
@@ -109,6 +110,31 @@ def fetch_team_season_data(
     return normalized_games, normalized_game_players
 
 
+def build_team_season_artifacts(
+    team_abbreviation: str,
+    season: str,
+    season_type: str = "Regular Season",
+    source_data_dir: Path = DEFAULT_SOURCE_DATA_DIR,
+    log: Callable[[str], None] | None = print,
+    progress: ProgressFn | None = None,
+) -> TeamSeasonArtifacts:
+    """Fetch one NBA team-season and return normalized plus derived WOWY records."""
+
+    normalized_games, normalized_game_players = fetch_team_season_data(
+        team_abbreviation=team_abbreviation,
+        season=season,
+        season_type=season_type,
+        source_data_dir=source_data_dir,
+        log=log,
+        progress=progress,
+    )
+    return TeamSeasonArtifacts(
+        normalized_games=normalized_games,
+        normalized_game_players=normalized_game_players,
+        wowy_games=derive_wowy_games(normalized_games, normalized_game_players),
+    )
+
+
 def write_team_season_normalized_csvs(
     team_abbreviation: str,
     season: str,
@@ -121,7 +147,7 @@ def write_team_season_normalized_csvs(
 ) -> tuple[list[NormalizedGameRecord], list[NormalizedGamePlayerRecord]]:
     """Fetch one NBA team-season and write canonical normalized CSVs."""
 
-    normalized_games, normalized_game_players = fetch_team_season_data(
+    artifacts = build_team_season_artifacts(
         team_abbreviation=team_abbreviation,
         season=season,
         season_type=season_type,
@@ -129,9 +155,12 @@ def write_team_season_normalized_csvs(
         log=log,
         progress=progress,
     )
-    write_normalized_games_csv(games_csv_path, normalized_games)
-    write_normalized_game_players_csv(game_players_csv_path, normalized_game_players)
-    return normalized_games, normalized_game_players
+    write_normalized_games_csv(games_csv_path, artifacts.normalized_games)
+    write_normalized_game_players_csv(
+        game_players_csv_path,
+        artifacts.normalized_game_players,
+    )
+    return artifacts.normalized_games, artifacts.normalized_game_players
 
 
 def write_team_season_games_csv(
@@ -156,18 +185,20 @@ def write_team_season_games_csv(
         or DEFAULT_NORMALIZED_GAME_PLAYERS_DIR / f"{team_abbreviation.upper()}_{season}.csv"
     )
 
-    normalized_games, normalized_game_players = write_team_season_normalized_csvs(
+    artifacts = build_team_season_artifacts(
         team_abbreviation=team_abbreviation,
         season=season,
-        games_csv_path=normalized_games_path,
-        game_players_csv_path=normalized_game_players_path,
         season_type=season_type,
         source_data_dir=source_data_dir,
         log=log,
         progress=progress,
     )
-    derived_games = derive_wowy_games(normalized_games, normalized_game_players)
-    write_wowy_games_csv(csv_path, derived_games)
+    write_normalized_games_csv(normalized_games_path, artifacts.normalized_games)
+    write_normalized_game_players_csv(
+        normalized_game_players_path,
+        artifacts.normalized_game_players,
+    )
+    write_wowy_games_csv(csv_path, artifacts.wowy_games)
 
 
 def load_player_names_from_cache(

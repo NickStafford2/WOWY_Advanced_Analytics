@@ -36,6 +36,13 @@ class NormalizedGamePlayerRecord:
 
 
 @dataclass(frozen=True)
+class TeamSeasonArtifacts:
+    normalized_games: list[NormalizedGameRecord]
+    normalized_game_players: list[NormalizedGamePlayerRecord]
+    wowy_games: list[WowyGameRecord]
+
+
+@dataclass(frozen=True)
 class WowyPlayerStats:
     games_with: int
     games_without: int
