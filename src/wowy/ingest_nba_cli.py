@@ -27,7 +27,7 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument(
         "--csv",
         type=Path,
-        default=Path("games.csv"),
+        default=None,
         help="Output CSV path",
     )
     parser.add_argument(
@@ -43,11 +43,12 @@ def main(argv: list[str] | None = None) -> int:
 
     parser = build_parser()
     args = parser.parse_args(argv)
+    csv_path = args.csv or Path("data/raw/nba/team_games") / f"{args.team.upper()}_{args.season}.csv"
 
     write_team_season_games_csv(
         team_abbreviation=args.team,
         season=args.season,
-        csv_path=args.csv,
+        csv_path=csv_path,
         season_type=args.season_type,
     )
     return 0
