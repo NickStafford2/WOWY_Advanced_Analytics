@@ -110,4 +110,5 @@ Regression is more adjusted than WOWY, but it is still a coarse game-level model
 More detail:
 
 - [docs/models.md](docs/models.md)
+- [docs/architecture.md](docs/architecture.md)
 - [docs/roadmap.md](docs/roadmap.md)
