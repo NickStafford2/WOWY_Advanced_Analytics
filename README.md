@@ -139,6 +139,13 @@ Run the regression analysis on those combined normalized files with:
 poetry run wowy-regression
 ```
 
+If you want one-step pipeline scripts, run:
+
+```bash
+poetry run python scripts/run_wowy_pipeline.py BOS:2023-24
+poetry run python scripts/run_regression_pipeline.py BOS:2023-24 NYK:2023-24
+```
+
 
 ## Install
 
