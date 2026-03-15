@@ -21,3 +21,8 @@
 - Do not refactor unrelated files.
 - Do not add advanced modeling features unless asked.
 - Follow Python 3.12 best practices.
+
+  ## Data files
+  - Treat `data/` as generated or cached project data.
+  - Do not bulk-read files under `data/`.
+  - Only inspect specific files when needed, and prefer small samples, headers, or row counts.
