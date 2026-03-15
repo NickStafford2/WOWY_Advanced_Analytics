@@ -11,17 +11,18 @@ def sort_score(item: tuple[str, PlayerStats]) -> float:
 
 
 def format_results_table(results: dict[str, PlayerStats]) -> str:
+    ranked = sorted(results.items(), key=sort_score, reverse=True)
+    player_width = max(len("player"), *(len(player) for player, _ in ranked))
+
     lines = [
         "WOWY results (Version 1)",
-        "-" * 72,
+        "-" * (player_width + 54),
         (
-            f"{'player':<12} {'with':>6} {'without':>8} "
+            f"{'player':<{player_width}} {'with':>6} {'without':>8} "
             f"{'avg_with':>12} {'avg_without':>14} {'score':>10}"
         ),
-        "-" * 72,
+        "-" * (player_width + 54),
     ]
-
-    ranked = sorted(results.items(), key=sort_score, reverse=True)
 
     for player, stats in ranked:
         avg_margin_with = stats["avg_margin_with"]
@@ -32,7 +33,7 @@ def format_results_table(results: dict[str, PlayerStats]) -> str:
             raise ValueError("format_results_table received incomplete player stats")
 
         lines.append(
-            f"{player:<12} "
+            f"{player:<{player_width}} "
             f"{stats['games_with']:>6} "
             f"{stats['games_without']:>8} "
             f"{avg_margin_with:>12.2f} "
