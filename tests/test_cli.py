@@ -219,6 +219,34 @@ def test_run_wowy_applies_top_n(tmp_path: Path, write_games_csv):
     assert "Player 102" not in report
 
 
+def test_run_wowy_applies_minutes_filters(tmp_path: Path, write_games_csv):
+    csv_path = tmp_path / "games.csv"
+    write_games_csv(
+        csv_path,
+        [
+            ["1", "2023-24", "team_1", "10", "101;102"],
+            ["2", "2023-24", "team_1", "0", "101"],
+            ["3", "2023-24", "team_1", "-10", "102"],
+        ],
+    )
+
+    report = run_wowy(
+        csv_path,
+        min_games_with=1,
+        min_games_without=1,
+        player_names={101: "Player 101", 102: "Player 102"},
+        player_minute_stats={
+            101: (28.0, 56.0),
+            102: (12.0, 24.0),
+        },
+        min_average_minutes=20.0,
+        min_total_minutes=40.0,
+    )
+
+    assert "Player 101" in report
+    assert "Player 102" not in report
+
+
 def test_main_rejects_negative_filters():
     with pytest.raises(ValueError, match="non-negative"):
         main(["--min-games-with", "-1"])
@@ -227,6 +255,27 @@ def test_main_rejects_negative_filters():
 def test_main_rejects_negative_top_n():
     with pytest.raises(ValueError, match="non-negative"):
         main(["--top-n", "-1"])
+
+
+def test_main_rejects_minutes_filters_with_explicit_csv(
+    tmp_path: Path,
+    write_games_csv,
+):
+    csv_path = tmp_path / "games.csv"
+    write_games_csv(
+        csv_path,
+        [["1", "2023-24", "team_1", "10", "101;102"]],
+    )
+
+    with pytest.raises(ValueError, match="cache-managed inputs"):
+        main(
+            [
+                "--csv",
+                str(csv_path),
+                "--min-average-minutes",
+                "20",
+            ]
+        )
 
 
 def test_build_wowy_report_formats_preloaded_games():
@@ -244,6 +293,69 @@ def test_build_wowy_report_formats_preloaded_games():
 
     assert "WOWY results (Version 1)" in report
     assert "Player 101" in report
+
+
+def test_main_filters_cached_scope_by_minutes(
+    tmp_path: Path,
+    capsys: pytest.CaptureFixture[str],
+    monkeypatch,
+):
+    normalized_games_dir = tmp_path / "normalized_games"
+    normalized_games_dir.mkdir()
+    (normalized_games_dir / "BOS_2023-24.csv").write_text(
+        (
+            "game_id,season,game_date,team,opponent,is_home,margin,season_type,source\n"
+            "1,2023-24,2024-04-01,BOS,MIL,true,10,Regular Season,nba_api\n"
+            "2,2023-24,2024-04-03,BOS,NYK,false,-5,Regular Season,nba_api\n"
+            "3,2023-24,2024-04-05,BOS,LAL,true,8,Regular Season,nba_api\n"
+        ),
+        encoding="utf-8",
+    )
+    normalized_players_dir = tmp_path / "normalized_game_players"
+    normalized_players_dir.mkdir()
+    (normalized_players_dir / "BOS_2023-24.csv").write_text(
+        (
+            "game_id,team,player_id,player_name,appeared,minutes\n"
+            "1,BOS,101,Player 101,true,35.0\n"
+            "1,BOS,102,Player 102,true,10.0\n"
+            "2,BOS,101,Player 101,true,33.0\n"
+            "3,BOS,102,Player 102,true,12.0\n"
+            "3,BOS,103,Player 103,true,28.0\n"
+        ),
+        encoding="utf-8",
+    )
+
+    monkeypatch.setattr("wowy.cli.load_player_names_from_cache", lambda _: {})
+
+    exit_code = main(
+        [
+            "--team",
+            "BOS",
+            "--normalized-games-input-dir",
+            str(normalized_games_dir),
+            "--normalized-game-players-input-dir",
+            str(normalized_players_dir),
+            "--wowy-output-dir",
+            str(tmp_path / "team_games"),
+            "--combined-wowy-csv",
+            str(tmp_path / "combined" / "games.csv"),
+            "--source-data-dir",
+            str(tmp_path / "source"),
+            "--min-games-with",
+            "1",
+            "--min-games-without",
+            "1",
+            "--min-average-minutes",
+            "20",
+            "--min-total-minutes",
+            "60",
+        ]
+    )
+
+    captured = capsys.readouterr()
+    assert exit_code == 0
+    assert "101" in captured.out
+    assert "102" not in captured.out
 
 
 def test_help_works(capsys: pytest.CaptureFixture[str]):

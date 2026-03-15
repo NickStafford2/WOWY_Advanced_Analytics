@@ -18,6 +18,8 @@ def format_results_table(
     ranked = sorted(results.items(), key=sort_score, reverse=True)
     if top_n is not None:
         ranked = ranked[:top_n]
+    if not ranked:
+        return "WOWY results (Version 1)\nNo players matched the current filters."
     player_names = player_names or {}
     name_width = max(
         len("player"),
