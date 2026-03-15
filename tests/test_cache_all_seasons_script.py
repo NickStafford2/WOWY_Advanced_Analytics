@@ -44,3 +44,19 @@ def test_build_command_passes_through_optional_flags() -> None:
         "NYK",
         "--skip-combine",
     ]
+
+
+def test_run_exits_cleanly_on_keyboard_interrupt(
+    capsys,
+    monkeypatch,
+) -> None:
+    def raise_keyboard_interrupt(*args, **kwargs) -> None:
+        raise KeyboardInterrupt
+
+    monkeypatch.setattr(MODULE.subprocess, "run", raise_keyboard_interrupt)
+
+    exit_code = MODULE.run(["--start-year", "2024", "--first-year", "2024"])
+    captured = capsys.readouterr()
+
+    assert exit_code == 130
+    assert "Interrupted. Shutting down cleanly." in captured.err

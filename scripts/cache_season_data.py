@@ -164,5 +164,14 @@ def main(argv: list[str] | None = None) -> int:
     return 0
 
 
+def run(argv: list[str] | None = None) -> int:
+    try:
+        return main(argv)
+    except KeyboardInterrupt:
+        sys.stderr.write("\nInterrupted. Shutting down cleanly.\n")
+        sys.stderr.flush()
+        return 130
+
+
 if __name__ == "__main__":
-    raise SystemExit(main())
+    raise SystemExit(run())
