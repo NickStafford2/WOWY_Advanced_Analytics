@@ -15,9 +15,11 @@ def test_format_results_table_contains_expected_text():
         }
     }
 
-    output = format_results_table(results)
+    output = format_results_table(results, player_names={203999: "Jae Crowder"})
 
     assert "WOWY results (Version 1)" in output
+    assert "player" in output
     assert "player_id" in output
+    assert "Jae Crowder" in output
     assert "203999" in output
     assert "4.00" in output

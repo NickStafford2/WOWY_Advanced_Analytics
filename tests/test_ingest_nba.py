@@ -3,7 +3,7 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
-from wowy.ingest_nba import write_team_season_games_csv
+from wowy.ingest_nba import load_player_names_from_cache, write_team_season_games_csv
 from wowy.io import load_games_from_csv
 
 
@@ -18,7 +18,7 @@ def test_write_team_season_games_csv_uses_existing_games_shape(
 
     class FakeLeagueGameFinder:
         def __init__(self, **kwargs):
-            assert kwargs["team_id_nullable"] == 1610612738
+            assert kwargs["team_id_nullable"] == "1610612738"
             assert kwargs["season_nullable"] == "2023-24"
             assert kwargs["season_type_nullable"] == "Regular Season"
 
@@ -41,12 +41,17 @@ def test_write_team_season_games_csv_uses_existing_games_shape(
                 return {
                     "resultSets": [
                         {
-                            "headers": ["TEAM_ABBREVIATION", "PLAYER_ID", "MIN"],
+                            "headers": [
+                                "TEAM_ABBREVIATION",
+                                "PLAYER_ID",
+                                "PLAYER_NAME",
+                                "MIN",
+                            ],
                             "rowSet": [
-                                ["BOS", 1628369, "35:12"],
-                                ["BOS", 1627759, "34:01"],
-                                ["BOS", 999999, "0:00"],
-                                ["LAL", 200000, "33:44"],
+                                ["BOS", 1628369, "Jayson Tatum", "35:12"],
+                                ["BOS", 1627759, "Jaylen Brown", "34:01"],
+                                ["BOS", 999999, "Deep Bench", "0:00"],
+                                ["LAL", 200000, "Opponent Player", "33:44"],
                             ],
                         },
                         {
@@ -59,11 +64,16 @@ def test_write_team_season_games_csv_uses_existing_games_shape(
             return {
                 "resultSets": [
                     {
-                        "headers": ["TEAM_ABBREVIATION", "PLAYER_ID", "MIN"],
+                        "headers": [
+                            "TEAM_ABBREVIATION",
+                            "PLAYER_ID",
+                            "PLAYER_NAME",
+                            "MIN",
+                        ],
                         "rowSet": [
-                            ["BOS", 1628369, "36:00"],
-                            ["BOS", 1628401, "30:15"],
-                            ["LAL", 200000, "31:02"],
+                            ["BOS", 1628369, "Jayson Tatum", "36:00"],
+                            ["BOS", 1628401, "Derrick White", "30:15"],
+                            ["LAL", 200000, "Opponent Player", "31:02"],
                         ],
                     },
                     {
@@ -112,3 +122,7 @@ def test_write_team_season_games_csv_uses_existing_games_shape(
     assert team_season_cache.exists()
     assert box_score_cache.exists()
     assert json.loads(team_season_cache.read_text(encoding="utf-8"))["resultSets"]
+
+    player_names = load_player_names_from_cache()
+    assert player_names[1628369] == "Jayson Tatum"
+    assert player_names[1628401] == "Derrick White"

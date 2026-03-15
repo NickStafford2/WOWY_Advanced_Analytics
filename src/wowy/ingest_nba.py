@@ -86,6 +86,33 @@ def write_team_season_games_csv(
             )
 
 
+def load_player_names_from_cache() -> dict[int, str]:
+    """Load a player-id-to-name mapping from cached NBA box score payloads."""
+
+    player_names: dict[int, str] = {}
+
+    for cache_path in sorted((SOURCE_DATA_DIR / "boxscores").glob("*.json")):
+        payload = _load_cached_payload(cache_path)
+        if payload is None:
+            continue
+        for result_set in payload["resultSets"]:
+            headers = result_set["headers"]
+            if "PLAYER_ID" not in headers or "PLAYER_NAME" not in headers:
+                continue
+            player_stats_df = _result_set_to_data_frame(result_set)
+            for player_id, player_name in zip(
+                player_stats_df["PLAYER_ID"].tolist(),
+                player_stats_df["PLAYER_NAME"].tolist(),
+                strict=True,
+            ):
+                if player_id is None or not player_name:
+                    continue
+                player_names[int(player_id)] = str(player_name)
+            break
+
+    return player_names
+
+
 def _fetch_game_record(game_id: str, team_abbreviation: str) -> GameRecord:
     """Fetch one NBA game and normalize the selected team into a `GameRecord`."""
 

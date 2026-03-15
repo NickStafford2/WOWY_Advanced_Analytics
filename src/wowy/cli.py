@@ -5,6 +5,7 @@ from pathlib import Path
 
 from wowy.analysis import compute_wowy, filter_results
 from wowy.formatting import print_results
+from wowy.ingest_nba import load_player_names_from_cache
 from wowy.io import load_games_from_csv
 
 
@@ -47,5 +48,6 @@ def main(argv: list[str] | None = None) -> int:
         min_games_with=args.min_games_with,
         min_games_without=args.min_games_without,
     )
-    print_results(filtered_results)
+    player_names = load_player_names_from_cache()
+    print_results(filtered_results, player_names=player_names)
     return 0

@@ -10,21 +10,31 @@ def sort_score(item: tuple[int, PlayerStats]) -> float:
     return score
 
 
-def format_results_table(results: dict[int, PlayerStats]) -> str:
+def format_results_table(
+    results: dict[int, PlayerStats],
+    player_names: dict[int, str] | None = None,
+) -> str:
     ranked = sorted(results.items(), key=sort_score, reverse=True)
-    player_width = max(len("player_id"), *(len(str(player)) for player, _ in ranked))
+    player_names = player_names or {}
+    name_width = max(
+        len("player"),
+        *(len(player_names.get(player, str(player))) for player, _ in ranked),
+    )
+    player_id_width = max(len("player_id"), *(len(str(player)) for player, _ in ranked))
 
     lines = [
         "WOWY results (Version 1)",
-        "-" * (player_width + 54),
+        "-" * (name_width + player_id_width + 55),
         (
-            f"{'player_id':<{player_width}} {'with':>6} {'without':>8} "
+            f"{'player':<{name_width}} {'player_id':<{player_id_width}} "
+            f"{'with':>6} {'without':>8} "
             f"{'avg_with':>12} {'avg_without':>14} {'score':>10}"
         ),
-        "-" * (player_width + 54),
+        "-" * (name_width + player_id_width + 55),
     ]
 
     for player, stats in ranked:
+        player_name = player_names.get(player, str(player))
         player_text = str(player)
         avg_margin_with = stats["avg_margin_with"]
         avg_margin_without = stats["avg_margin_without"]
@@ -34,7 +44,8 @@ def format_results_table(results: dict[int, PlayerStats]) -> str:
             raise ValueError("format_results_table received incomplete player stats")
 
         lines.append(
-            f"{player_text:<{player_width}} "
+            f"{player_name:<{name_width}} "
+            f"{player_text:<{player_id_width}} "
             f"{stats['games_with']:>6} "
             f"{stats['games_without']:>8} "
             f"{avg_margin_with:>12.2f} "
@@ -45,5 +56,8 @@ def format_results_table(results: dict[int, PlayerStats]) -> str:
     return "\n".join(lines)
 
 
-def print_results(results: dict[int, PlayerStats]) -> None:
-    print(format_results_table(results))
+def print_results(
+    results: dict[int, PlayerStats],
+    player_names: dict[int, str] | None = None,
+) -> None:
+    print(format_results_table(results, player_names=player_names))
