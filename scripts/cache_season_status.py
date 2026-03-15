@@ -9,17 +9,20 @@ from pathlib import Path
 from nba_api.stats.static import teams as nba_teams
 
 from wowy.cache_pipeline import TeamSeasonScope, wowy_cache_is_current
-from wowy.derive_wowy import WOWY_HEADER
+from wowy.derive_wowy import WOWY_HEADER, derive_wowy_games
 from wowy.ingest_nba import (
     DEFAULT_NORMALIZED_GAME_PLAYERS_DIR,
     DEFAULT_NORMALIZED_GAMES_DIR,
     DEFAULT_SOURCE_DATA_DIR,
     DEFAULT_WOWY_GAMES_DIR,
 )
+from wowy.io import load_games_from_csv
 from wowy.nba_cache import league_games_cache_path
 from wowy.normalized_io import (
     NORMALIZED_GAME_PLAYERS_HEADER,
     NORMALIZED_GAMES_HEADER,
+    load_normalized_game_players_from_csv,
+    load_normalized_games_from_csv,
 )
 
 
@@ -208,6 +211,55 @@ def summarize_wowy_cache(
     return "current", row_count
 
 
+def validate_team_season_consistency(
+    team: str,
+    season: str,
+    normalized_games_dir: Path,
+    normalized_game_players_dir: Path,
+    wowy_dir: Path,
+) -> str:
+    normalized_games_path = normalized_games_dir / f"{team}_{season}.csv"
+    normalized_game_players_path = normalized_game_players_dir / f"{team}_{season}.csv"
+    wowy_path = wowy_dir / f"{team}_{season}.csv"
+
+    try:
+        games = load_normalized_games_from_csv(normalized_games_path)
+        game_players = load_normalized_game_players_from_csv(normalized_game_players_path)
+        wowy_games = load_games_from_csv(wowy_path)
+    except ValueError:
+        return "corrupt"
+
+    game_keys = [(game.game_id, game.team) for game in games]
+    if len(set(game_keys)) != len(game_keys):
+        return "dup_games"
+
+    player_keys = {(player.game_id, player.team) for player in game_players}
+    missing_player_keys = sorted(set(game_keys) - player_keys)
+    if missing_player_keys:
+        return "missing_players"
+
+    try:
+        derived_wowy_games = derive_wowy_games(games, game_players)
+    except ValueError:
+        return "invalid_players"
+
+    derived_by_key = {(game.game_id, game.team): game for game in derived_wowy_games}
+    wowy_by_key = {(game.game_id, game.team): game for game in wowy_games}
+    if set(derived_by_key) != set(wowy_by_key):
+        return "wowy_keys"
+
+    for key, derived_game in derived_by_key.items():
+        wowy_game = wowy_by_key[key]
+        if (
+            derived_game.season != wowy_game.season
+            or derived_game.margin != wowy_game.margin
+            or derived_game.players != wowy_game.players
+        ):
+            return "wowy_data"
+
+    return "ok"
+
+
 def summarize_team_season(
     team: str,
     season: str,
@@ -259,6 +311,19 @@ def summarize_team_season(
             )
         ),
         "wowy": f"{wowy_status}" + (f" ({wowy_rows})" if wowy_rows else ""),
+        "consistency": (
+            validate_team_season_consistency(
+                team=team,
+                season=season,
+                normalized_games_dir=normalized_games_dir,
+                normalized_game_players_dir=normalized_game_players_dir,
+                wowy_dir=wowy_dir,
+            )
+            if normalized_games_status == "ok"
+            and normalized_players_status == "ok"
+            and wowy_status in {"current", "stale"}
+            else "-"
+        ),
     }
 
 
@@ -292,6 +357,10 @@ def format_summary(rows: list[dict], season: str) -> str:
         *(len(row["normalized_players"]) for row in rows),
     )
     wowy_width = max(len("wowy"), *(len(row["wowy"]) for row in rows))
+    consistency_width = max(
+        len("consistency"),
+        *(len(row["consistency"]) for row in rows),
+    )
 
     header = sep.join(
         [
@@ -305,6 +374,7 @@ def format_summary(rows: list[dict], season: str) -> str:
             f"{'norm_games':<{normalized_games_width}}",
             f"{'norm_players':<{normalized_players_width}}",
             f"{'wowy':<{wowy_width}}",
+            f"{'consistency':<{consistency_width}}",
         ]
     )
     divider = "-" * len(header)
@@ -324,6 +394,7 @@ def format_summary(rows: list[dict], season: str) -> str:
                     f"{row['normalized_games']:>{normalized_games_width}}",
                     f"{row['normalized_players']:>{normalized_players_width}}",
                     f"{row['wowy']:>{wowy_width}}",
+                    f"{row['consistency']:<{consistency_width}}",
                 ]
             )
         )

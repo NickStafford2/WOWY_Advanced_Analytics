@@ -142,6 +142,7 @@ def test_main_reports_current_cache_state(
     assert "bad" in captured.out
     assert "ATL" in captured.out
     assert "current (2)" in captured.out
+    assert "ok" in captured.out
 
 
 def test_main_reports_stale_wowy_cache(
@@ -249,3 +250,117 @@ def test_main_reports_corrupt_source_cache(
     assert exit_code == 0
     assert "ATL" in captured.out
     assert "corrupt" in captured.out
+
+
+def test_main_reports_missing_normalized_player_coverage(
+    capsys,
+    monkeypatch,
+    tmp_path: Path,
+) -> None:
+    monkeypatch.setattr(MODULE, "resolve_requested_teams", lambda team_codes: ["ATL"])
+
+    source_dir = tmp_path / "source"
+    normalized_games_dir = tmp_path / "normalized_games"
+    normalized_players_dir = tmp_path / "normalized_players"
+    wowy_dir = tmp_path / "wowy"
+
+    team_season_path = source_dir / "team_seasons" / "ATL_2022-23_regular_season_leaguegamefinder.json"
+    team_season_path.parent.mkdir(parents=True, exist_ok=True)
+    team_season_path.write_text(
+        json.dumps({"resultSets": [{"headers": ["GAME_ID"], "rowSet": [["0001"], ["0002"]]}]}),
+        encoding="utf-8",
+    )
+
+    write_csv(
+        normalized_games_dir / "ATL_2022-23.csv",
+        MODULE.NORMALIZED_GAMES_HEADER,
+        [
+            ["0001", "2022-23", "2022-10-01", "ATL", "BOS", "true", "5", "Regular Season", "nba_api"],
+            ["0002", "2022-23", "2022-10-03", "ATL", "NYK", "false", "-2", "Regular Season", "nba_api"],
+        ],
+    )
+    write_csv(
+        normalized_players_dir / "ATL_2022-23.csv",
+        MODULE.NORMALIZED_GAME_PLAYERS_HEADER,
+        [["0001", "ATL", "101", "Player 101", "true", "30.0"]],
+    )
+    write_csv(
+        wowy_dir / "ATL_2022-23.csv",
+        MODULE.WOWY_HEADER,
+        [
+            ["0001", "2022-23", "ATL", "5.0", "101"],
+            ["0002", "2022-23", "ATL", "-2.0", "102"],
+        ],
+    )
+
+    exit_code = MODULE.main(
+        [
+            "2022-23",
+            "--source-data-dir",
+            str(source_dir),
+            "--normalized-games-dir",
+            str(normalized_games_dir),
+            "--normalized-game-players-dir",
+            str(normalized_players_dir),
+            "--wowy-dir",
+            str(wowy_dir),
+        ]
+    )
+    captured = capsys.readouterr()
+
+    assert exit_code == 0
+    assert "missing_players" in captured.out
+
+
+def test_main_reports_wowy_data_mismatch(
+    capsys,
+    monkeypatch,
+    tmp_path: Path,
+) -> None:
+    monkeypatch.setattr(MODULE, "resolve_requested_teams", lambda team_codes: ["ATL"])
+
+    source_dir = tmp_path / "source"
+    normalized_games_dir = tmp_path / "normalized_games"
+    normalized_players_dir = tmp_path / "normalized_players"
+    wowy_dir = tmp_path / "wowy"
+
+    team_season_path = source_dir / "team_seasons" / "ATL_2022-23_regular_season_leaguegamefinder.json"
+    team_season_path.parent.mkdir(parents=True, exist_ok=True)
+    team_season_path.write_text(
+        json.dumps({"resultSets": [{"headers": ["GAME_ID"], "rowSet": [["0001"]]}]}),
+        encoding="utf-8",
+    )
+
+    write_csv(
+        normalized_games_dir / "ATL_2022-23.csv",
+        MODULE.NORMALIZED_GAMES_HEADER,
+        [["0001", "2022-23", "2022-10-01", "ATL", "BOS", "true", "5", "Regular Season", "nba_api"]],
+    )
+    write_csv(
+        normalized_players_dir / "ATL_2022-23.csv",
+        MODULE.NORMALIZED_GAME_PLAYERS_HEADER,
+        [["0001", "ATL", "101", "Player 101", "true", "30.0"]],
+    )
+    write_csv(
+        wowy_dir / "ATL_2022-23.csv",
+        MODULE.WOWY_HEADER,
+        [["0001", "2022-23", "ATL", "99.0", "101"]],
+    )
+
+    exit_code = MODULE.main(
+        [
+            "2022-23",
+            "--source-data-dir",
+            str(source_dir),
+            "--normalized-games-dir",
+            str(normalized_games_dir),
+            "--normalized-game-players-dir",
+            str(normalized_players_dir),
+            "--wowy-dir",
+            str(wowy_dir),
+        ]
+    )
+    captured = capsys.readouterr()
+
+    assert exit_code == 0
+    assert "wowy_data" in captured.out
