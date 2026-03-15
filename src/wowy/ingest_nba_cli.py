@@ -12,8 +12,18 @@ def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
         description="Fetch one NBA team-season and write games.csv in WOWY format."
     )
-    parser.add_argument("team", help="NBA team abbreviation, for example BOS")
-    parser.add_argument("season", help="NBA season string, for example 2023-24")
+    parser.add_argument(
+        "team",
+        nargs="?",
+        default="BOS",
+        help="NBA team abbreviation, for example BOS",
+    )
+    parser.add_argument(
+        "season",
+        nargs="?",
+        default="2023-24",
+        help="NBA season string, for example 2023-24",
+    )
     parser.add_argument(
         "--csv",
         type=Path,
