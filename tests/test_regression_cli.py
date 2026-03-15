@@ -23,17 +23,17 @@ def test_run_regression_returns_report_text(tmp_path: Path):
     )
     game_players_csv = tmp_path / "game_players.csv"
     game_players_csv.write_text(
-        (
-            "game_id,team,player_id,player_name,appeared,minutes\n"
-            "1,BOS,101,Player 101,true,\n"
-            "1,MIL,201,Player 201,true,\n"
-            "2,BOS,102,Player 102,true,\n"
-            "2,NYK,202,Player 202,true,\n"
-            "3,BOS,101,Player 101,true,\n"
-            "3,BOS,102,Player 102,true,\n"
-            "3,LAL,201,Player 201,true,\n"
-            "3,LAL,202,Player 202,true,\n"
-        ),
+            (
+                "game_id,team,player_id,player_name,appeared,minutes\n"
+                "1,BOS,101,Player 101,true,48\n"
+                "1,MIL,201,Player 201,true,48\n"
+                "2,BOS,102,Player 102,true,48\n"
+                "2,NYK,202,Player 202,true,48\n"
+                "3,BOS,101,Player 101,true,24\n"
+                "3,BOS,102,Player 102,true,24\n"
+                "3,LAL,201,Player 201,true,24\n"
+                "3,LAL,202,Player 202,true,24\n"
+            ),
         encoding="utf-8",
     )
 
@@ -64,17 +64,17 @@ def test_run_regression_applies_top_n(tmp_path: Path):
     )
     game_players_csv = tmp_path / "game_players.csv"
     game_players_csv.write_text(
-        (
-            "game_id,team,player_id,player_name,appeared,minutes\n"
-            "1,BOS,101,Player 101,true,\n"
-            "1,MIL,201,Player 201,true,\n"
-            "2,BOS,102,Player 102,true,\n"
-            "2,NYK,202,Player 202,true,\n"
-            "3,BOS,101,Player 101,true,\n"
-            "3,BOS,102,Player 102,true,\n"
-            "3,LAL,201,Player 201,true,\n"
-            "3,LAL,202,Player 202,true,\n"
-        ),
+            (
+                "game_id,team,player_id,player_name,appeared,minutes\n"
+                "1,BOS,101,Player 101,true,48\n"
+                "1,MIL,201,Player 201,true,48\n"
+                "2,BOS,102,Player 102,true,48\n"
+                "2,NYK,202,Player 202,true,48\n"
+                "3,BOS,101,Player 101,true,24\n"
+                "3,BOS,102,Player 102,true,24\n"
+                "3,LAL,201,Player 201,true,24\n"
+                "3,LAL,202,Player 202,true,24\n"
+            ),
         encoding="utf-8",
     )
 
@@ -108,17 +108,17 @@ def test_main_runs_with_temp_csvs(
     )
     game_players_csv = tmp_path / "game_players.csv"
     game_players_csv.write_text(
-        (
-            "game_id,team,player_id,player_name,appeared,minutes\n"
-            "1,BOS,101,Player 101,true,\n"
-            "1,MIL,201,Player 201,true,\n"
-            "2,BOS,102,Player 102,true,\n"
-            "2,NYK,202,Player 202,true,\n"
-            "3,BOS,101,Player 101,true,\n"
-            "3,BOS,102,Player 102,true,\n"
-            "3,LAL,201,Player 201,true,\n"
-            "3,LAL,202,Player 202,true,\n"
-        ),
+            (
+                "game_id,team,player_id,player_name,appeared,minutes\n"
+                "1,BOS,101,Player 101,true,48\n"
+                "1,MIL,201,Player 201,true,48\n"
+                "2,BOS,102,Player 102,true,48\n"
+                "2,NYK,202,Player 202,true,48\n"
+                "3,BOS,101,Player 101,true,24\n"
+                "3,BOS,102,Player 102,true,24\n"
+                "3,LAL,201,Player 201,true,24\n"
+                "3,LAL,202,Player 202,true,24\n"
+            ),
         encoding="utf-8",
     )
 
@@ -179,35 +179,35 @@ def test_main_runs_with_cached_scope_without_explicit_csvs(
     normalized_players_dir = tmp_path / "normalized_game_players"
     normalized_players_dir.mkdir()
     (normalized_players_dir / "BOS_2023-24.csv").write_text(
-        (
-            "game_id,team,player_id,player_name,appeared,minutes\n"
-            "1,BOS,101,Player 101,true,\n"
-            "2,BOS,102,Player 102,true,\n"
-            "3,BOS,101,Player 101,true,\n"
-            "3,BOS,102,Player 102,true,\n"
-        ),
+            (
+                "game_id,team,player_id,player_name,appeared,minutes\n"
+                "1,BOS,101,Player 101,true,48\n"
+                "2,BOS,102,Player 102,true,48\n"
+                "3,BOS,101,Player 101,true,24\n"
+                "3,BOS,102,Player 102,true,24\n"
+            ),
         encoding="utf-8",
     )
     (normalized_players_dir / "MIL_2023-24.csv").write_text(
-        (
-            "game_id,team,player_id,player_name,appeared,minutes\n"
-            "1,MIL,201,Player 201,true,\n"
-        ),
+            (
+                "game_id,team,player_id,player_name,appeared,minutes\n"
+                "1,MIL,201,Player 201,true,48\n"
+            ),
         encoding="utf-8",
     )
     (normalized_players_dir / "NYK_2023-24.csv").write_text(
-        (
-            "game_id,team,player_id,player_name,appeared,minutes\n"
-            "2,NYK,202,Player 202,true,\n"
-        ),
+            (
+                "game_id,team,player_id,player_name,appeared,minutes\n"
+                "2,NYK,202,Player 202,true,48\n"
+            ),
         encoding="utf-8",
     )
     (normalized_players_dir / "LAL_2023-24.csv").write_text(
-        (
-            "game_id,team,player_id,player_name,appeared,minutes\n"
-            "3,LAL,201,Player 201,true,\n"
-            "3,LAL,202,Player 202,true,\n"
-        ),
+            (
+                "game_id,team,player_id,player_name,appeared,minutes\n"
+                "3,LAL,201,Player 201,true,24\n"
+                "3,LAL,202,Player 202,true,24\n"
+            ),
         encoding="utf-8",
     )
 
@@ -290,47 +290,47 @@ def test_main_filters_cached_scope_by_team_and_season(
     normalized_players_dir = tmp_path / "normalized_game_players"
     normalized_players_dir.mkdir()
     (normalized_players_dir / "BOS_2023-24.csv").write_text(
-        (
-            "game_id,team,player_id,player_name,appeared,minutes\n"
-            "1,BOS,101,Player 101,true,\n"
-            "2,BOS,102,Player 102,true,\n"
-            "3,BOS,101,Player 101,true,\n"
-            "3,BOS,102,Player 102,true,\n"
-        ),
+            (
+                "game_id,team,player_id,player_name,appeared,minutes\n"
+                "1,BOS,101,Player 101,true,48\n"
+                "2,BOS,102,Player 102,true,48\n"
+                "3,BOS,101,Player 101,true,24\n"
+                "3,BOS,102,Player 102,true,24\n"
+            ),
         encoding="utf-8",
     )
     (normalized_players_dir / "MIL_2023-24.csv").write_text(
-        (
-            "game_id,team,player_id,player_name,appeared,minutes\n"
-            "1,MIL,201,Player 201,true,\n"
-        ),
+            (
+                "game_id,team,player_id,player_name,appeared,minutes\n"
+                "1,MIL,201,Player 201,true,48\n"
+            ),
         encoding="utf-8",
     )
     (normalized_players_dir / "NYK_2023-24.csv").write_text(
-        (
-            "game_id,team,player_id,player_name,appeared,minutes\n"
-            "2,NYK,202,Player 202,true,\n"
-        ),
+            (
+                "game_id,team,player_id,player_name,appeared,minutes\n"
+                "2,NYK,202,Player 202,true,48\n"
+            ),
         encoding="utf-8",
     )
     (normalized_players_dir / "LAL_2023-24.csv").write_text(
-        (
-            "game_id,team,player_id,player_name,appeared,minutes\n"
-            "3,LAL,201,Player 201,true,\n"
-            "3,LAL,202,Player 202,true,\n"
-        ),
+            (
+                "game_id,team,player_id,player_name,appeared,minutes\n"
+                "3,LAL,201,Player 201,true,24\n"
+                "3,LAL,202,Player 202,true,24\n"
+            ),
         encoding="utf-8",
     )
     (normalized_players_dir / "NYK_2024-25.csv").write_text(
-        (
-            "game_id,team,player_id,player_name,appeared,minutes\n"
-            "4,NYK,201,Player 201,true,\n"
-            "4,BOS,101,Player 101,true,\n"
-            "5,NYK,201,Player 201,true,\n"
-            "5,MIL,301,Player 301,true,\n"
-            "6,NYK,202,Player 202,true,\n"
-            "6,CLE,302,Player 302,true,\n"
-        ),
+            (
+                "game_id,team,player_id,player_name,appeared,minutes\n"
+                "4,NYK,201,Player 201,true,48\n"
+                "4,BOS,101,Player 101,true,48\n"
+                "5,NYK,201,Player 201,true,48\n"
+                "5,MIL,301,Player 301,true,48\n"
+                "6,NYK,202,Player 202,true,48\n"
+                "6,CLE,302,Player 302,true,48\n"
+            ),
         encoding="utf-8",
     )
 
