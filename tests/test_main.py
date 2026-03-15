@@ -6,7 +6,7 @@ from pathlib import Path
 
 import pytest
 
-from src.main import (
+from wowy.main import (
     compute_wowy,
     filter_results,
     format_results_table,
