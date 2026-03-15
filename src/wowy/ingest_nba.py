@@ -19,7 +19,6 @@ from wowy.nba_normalize import (
 from wowy.types import (
     NormalizedGamePlayerRecord,
     NormalizedGameRecord,
-    WowyGameRecord,
 )
 
 
@@ -108,31 +107,6 @@ def fetch_team_season_data(
             )
 
     return normalized_games, normalized_game_players
-
-
-def fetch_team_season_games(
-    team_abbreviation: str,
-    season: str,
-    season_type: str = "Regular Season",
-    source_data_dir: Path = DEFAULT_SOURCE_DATA_DIR,
-    log: Callable[[str], None] | None = print,
-    progress: ProgressFn | None = None,
-) -> list[WowyGameRecord]:
-    """Fetch one NBA team-season and return rows in the existing game CSV shape.
-
-    Each returned record matches the current WOWY input model:
-    one row per game from one team's perspective with `game_id`, `team`,
-    `margin`, and the set of NBA player ids who appeared in that game.
-    """
-    normalized_games, normalized_game_players = fetch_team_season_data(
-        team_abbreviation=team_abbreviation,
-        season=season,
-        season_type=season_type,
-        source_data_dir=source_data_dir,
-        log=log,
-        progress=progress,
-    )
-    return derive_wowy_games(normalized_games, normalized_game_players)
 
 
 def write_team_season_normalized_csvs(

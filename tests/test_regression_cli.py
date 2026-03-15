@@ -176,6 +176,83 @@ def test_main_runs_with_cached_scope_without_explicit_csvs(
     assert "Regression results (Game-level player model)" in captured.out
 
 
+def test_main_filters_cached_scope_by_team_and_season(
+    tmp_path: Path,
+    capsys: pytest.CaptureFixture[str],
+):
+    normalized_games_dir = tmp_path / "normalized_games"
+    normalized_games_dir.mkdir()
+    (normalized_games_dir / "BOS_2023-24.csv").write_text(
+        (
+            "game_id,season,game_date,team,opponent,is_home,margin,season_type,source\n"
+            "1,2023-24,2024-04-01,BOS,MIL,true,2,Regular Season,nba_api\n"
+            "2,2023-24,2024-04-03,BOS,NYK,false,-2,Regular Season,nba_api\n"
+            "3,2023-24,2024-04-05,BOS,LAL,true,0,Regular Season,nba_api\n"
+        ),
+        encoding="utf-8",
+    )
+    (normalized_games_dir / "NYK_2024-25.csv").write_text(
+        (
+            "game_id,season,game_date,team,opponent,is_home,margin,season_type,source\n"
+            "4,2024-25,2025-01-01,NYK,BOS,true,20,Regular Season,nba_api\n"
+            "5,2024-25,2025-01-03,NYK,MIL,false,15,Regular Season,nba_api\n"
+            "6,2024-25,2025-01-05,NYK,CLE,true,10,Regular Season,nba_api\n"
+        ),
+        encoding="utf-8",
+    )
+    normalized_players_dir = tmp_path / "normalized_game_players"
+    normalized_players_dir.mkdir()
+    (normalized_players_dir / "BOS_2023-24.csv").write_text(
+        (
+            "game_id,team,player_id,player_name,appeared,minutes\n"
+            "1,BOS,101,Player 101,true,\n"
+            "2,BOS,102,Player 102,true,\n"
+            "3,BOS,101,Player 101,true,\n"
+            "3,BOS,102,Player 102,true,\n"
+        ),
+        encoding="utf-8",
+    )
+    (normalized_players_dir / "NYK_2024-25.csv").write_text(
+        (
+            "game_id,team,player_id,player_name,appeared,minutes\n"
+            "4,NYK,201,Player 201,true,\n"
+            "5,NYK,201,Player 201,true,\n"
+            "6,NYK,202,Player 202,true,\n"
+        ),
+        encoding="utf-8",
+    )
+
+    exit_code = main(
+        [
+            "--team",
+            "BOS",
+            "--season",
+            "2023-24",
+            "--normalized-games-input-dir",
+            str(normalized_games_dir),
+            "--normalized-game-players-input-dir",
+            str(normalized_players_dir),
+            "--wowy-output-dir",
+            str(tmp_path / "team_games"),
+            "--combined-games-csv",
+            str(tmp_path / "combined" / "games.csv"),
+            "--combined-game-players-csv",
+            str(tmp_path / "combined" / "game_players.csv"),
+            "--source-data-dir",
+            str(tmp_path / "source"),
+            "--min-games",
+            "1",
+            "--ridge-alpha",
+            "0.0",
+        ]
+    )
+
+    captured = capsys.readouterr()
+    assert exit_code == 0
+    assert "Player 101" in captured.out
+    assert "Player 201" not in captured.out
+
+
 def test_main_rejects_negative_filters():
     with pytest.raises(ValueError, match="non-negative"):
         main(["--min-games", "-1"])

@@ -9,7 +9,6 @@ from wowy.nba_cache import load_cached_payload, load_or_fetch_box_score
 from wowy.types import (
     NormalizedGamePlayerRecord,
     NormalizedGameRecord,
-    WowyGameRecord,
 )
 
 
@@ -44,48 +43,6 @@ def load_player_names_from_cache(source_data_dir: Path) -> dict[int, str]:
             break
 
     return player_names
-
-
-def fetch_game_record(
-    game_id: str,
-    season: str,
-    team_abbreviation: str,
-    source_data_dir: Path,
-) -> WowyGameRecord:
-    """Fetch one NBA game and normalize the selected team into a WowyGameRecord."""
-
-    box_score_payload = load_or_fetch_box_score(
-        game_id=game_id,
-        source_data_dir=source_data_dir,
-    )
-    player_stats_df = result_set_to_data_frame(box_score_payload["resultSets"][0])
-    team_stats_df = result_set_to_data_frame(box_score_payload["resultSets"][1])
-
-    team_rows = team_stats_df.loc[
-        team_stats_df["TEAM_ABBREVIATION"] == team_abbreviation,
-    ]
-    if team_rows.empty:
-        raise ValueError(
-            f"Team {team_abbreviation!r} not found in box score for game {game_id!r}"
-        )
-
-    player_rows = player_stats_df.loc[
-        player_stats_df["TEAM_ABBREVIATION"] == team_abbreviation,
-    ]
-    players = extract_players_who_appeared(player_rows["PLAYER_ID"], player_rows["MIN"])
-    if not players:
-        raise ValueError(
-            f"No active players found for team {team_abbreviation!r} in game {game_id!r}"
-        )
-
-    plus_minus = float(team_rows.iloc[0]["PLUS_MINUS"])
-    return WowyGameRecord(
-        game_id=game_id,
-        season=season,
-        team=team_abbreviation,
-        margin=plus_minus,
-        players=players,
-    )
 
 
 def fetch_normalized_game_data(
