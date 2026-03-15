@@ -124,69 +124,13 @@ If you want to bulk-cache a season manually, keep using:
 poetry run python scripts/cache_season_data.py 2024-25
 ```
 
-## Internal tools
-
-If you already have normalized game and game-player tables, derive the current WOWY input CSV with:
-
-```bash
-poetry run python -m wowy.derive_wowy_cli
-```
-
-Generate normalized team-season CSVs plus a derived WOWY CSV with:
-
-```bash
-poetry run python -m wowy.ingest_nba_cli
-```
-
-This currently defaults to `BOS`, `2023-24`, and writes:
-
-```text
-data/normalized/nba/games/BOS_2023-24.csv
-data/normalized/nba/game_players/BOS_2023-24.csv
-data/raw/nba/team_games/BOS_2023-24.csv
-```
-
-You can override the defaults:
-
-```bash
-poetry run python -m wowy.ingest_nba_cli NYK 2022-23 --csv games.csv --normalized-games-csv normalized_games.csv --normalized-game-players-csv normalized_game_players.csv --season-type "Regular Season"
-```
-
-Combine local normalized CSVs into one regression input set with:
-
-```bash
-poetry run python -m wowy.combine_games_cli
-```
-
-This writes:
-
-```text
-data/combined/regression/games.csv
-data/combined/regression/game_players.csv
-```
-
-Run the regression analysis on those combined normalized files with:
-
-```bash
-poetry run regression
-```
-
-This now uses ridge regularization by default so the player-only game-level model remains solvable on real data. You can tune it with `--ridge-alpha`.
-
-If you want one-step pipeline scripts, run:
-
-```bash
-poetry run python scripts/run_wowy_pipeline.py BOS:2023-24
-poetry run python scripts/run_regression_pipeline.py BOS:2023-24 NYK:2023-24 --ridge-alpha 1.0
-```
-
 To fetch and cache a whole season across many teams, run:
 
 ```bash
 poetry run python scripts/cache_season_data.py 2023-24
 ```
 
-That reuses the existing ingestion path for each team, writes the per-team normalized and WOWY CSVs, and by default also writes combined WOWY and regression inputs.
+That refreshes the cache and writes per-team normalized and WOWY files under `data/normalized/nba/` and `data/raw/nba/team_games/`.
 
 
 ## Install
