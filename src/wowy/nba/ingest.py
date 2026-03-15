@@ -19,7 +19,7 @@ from wowy.nba.normalize import (
     result_set_to_data_frame,
 )
 from wowy.nba.validation import validate_team_season_files
-from wowy.normalized_io import (
+from wowy.data.normalized_io import (
     write_normalized_game_players_csv,
     write_normalized_games_csv,
 )

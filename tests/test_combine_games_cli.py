@@ -12,7 +12,7 @@ from wowy.data.combine import (
     combine_normalized_files,
 )
 from wowy.data.combine_cli import main
-from wowy.normalized_io import (
+from wowy.data.normalized_io import (
     NORMALIZED_GAME_PLAYERS_HEADER,
     NORMALIZED_GAMES_HEADER,
 )

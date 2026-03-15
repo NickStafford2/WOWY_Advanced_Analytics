@@ -18,7 +18,7 @@ from wowy.nba.paths import (
     wowy_games_path,
 )
 from wowy.nba.team_seasons import TeamSeasonScope, resolve_team_seasons
-from wowy.normalized_io import load_normalized_games_from_csv
+from wowy.data.normalized_io import load_normalized_games_from_csv
 
 
 def prepare_wowy_inputs(

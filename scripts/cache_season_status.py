@@ -10,7 +10,7 @@ from nba_api.stats.static import teams as nba_teams
 
 from wowy.nba.cache_sync import wowy_cache_is_current
 from wowy.nba.team_seasons import TeamSeasonScope
-from wowy.cache_validation import validate_team_season_consistency
+from wowy.nba.validation import validate_team_season_consistency
 from wowy.apps.wowy.derive import WOWY_HEADER
 from wowy.nba.ingest import (
     DEFAULT_NORMALIZED_GAME_PLAYERS_DIR,
@@ -19,7 +19,7 @@ from wowy.nba.ingest import (
     DEFAULT_WOWY_GAMES_DIR,
 )
 from wowy.nba.cache import league_games_cache_path
-from wowy.normalized_io import (
+from wowy.data.normalized_io import (
     NORMALIZED_GAME_PLAYERS_HEADER,
     NORMALIZED_GAMES_HEADER,
 )

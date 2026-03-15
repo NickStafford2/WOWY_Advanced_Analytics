@@ -7,7 +7,7 @@ from wowy.apps.regression.data import build_regression_observations, count_playe
 from wowy.apps.regression.formatting import format_regression_results
 from wowy.apps.regression.models import RegressionPlayerEstimate, RegressionResult
 from wowy.nba.prepare import prepare_regression_inputs
-from wowy.normalized_io import (
+from wowy.data.normalized_io import (
     load_normalized_game_players_from_csv,
     load_normalized_games_from_csv,
 )

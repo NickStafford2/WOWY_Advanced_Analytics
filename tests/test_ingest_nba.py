@@ -13,9 +13,9 @@ from wowy.nba.ingest import (
     load_player_names_from_cache,
     write_team_season_games_csv,
 )
-from wowy.io import load_games_from_csv
+from wowy.data.wowy_io import load_games_from_csv
 from wowy.nba.normalize import parse_minutes_to_float, played_in_game
-from wowy.normalized_io import (
+from wowy.data.normalized_io import (
     load_normalized_game_players_from_csv,
     load_normalized_games_from_csv,
 )

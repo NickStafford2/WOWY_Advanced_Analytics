@@ -5,7 +5,7 @@ from pathlib import Path
 from typing import Any
 
 from wowy.atomic_io import atomic_text_writer
-from wowy.normalized_io import (
+from wowy.data.normalized_io import (
     NORMALIZED_GAME_PLAYERS_HEADER,
     NORMALIZED_GAMES_HEADER,
 )

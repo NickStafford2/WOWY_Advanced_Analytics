@@ -19,7 +19,7 @@ from wowy.nba.paths import (
 )
 from wowy.nba.team_seasons import TeamSeasonScope
 from wowy.nba.validation import validate_team_season_consistency
-from wowy.normalized_io import (
+from wowy.data.normalized_io import (
     load_normalized_game_players_from_csv,
     load_normalized_games_from_csv,
 )

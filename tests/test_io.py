@@ -4,7 +4,7 @@ from pathlib import Path
 
 import pytest
 
-from wowy.io import load_games_from_csv
+from wowy.data.wowy_io import load_games_from_csv
 
 
 def test_load_games_from_csv(tmp_path: Path, write_games_csv):
