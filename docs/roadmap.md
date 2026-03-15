@@ -1,17 +1,24 @@
 # Roadmap
+I do not plan to implement play by play tracking for quite some time. Most important is game data. The goal is for rough analysis for historical players, where there is not much data.
 
 ## Current version
 
-- Load game data from `games.csv`
-- Compute a simple game-level WOWY score
+- Load normalized game-level data from CSV
+- Compute a simple game-level WOWY baseline
 - Filter players by minimum games with and without
+- Support local NBA team-season ingestion and CSV combination
+
+## Current interpretation
+
+- The current WOWY score is a baseline only
+- It is useful for debugging the data pipeline and comparing simple outputs
+- It is not expected to be a strong standalone player metric on pooled real NBA data
 
 ## Planned next steps
 
-- Add minutes played to the input data
-- Build a minutes-weighted version of the model
-- Replace simple WOWY with a regression-based player matrix
+- Build a regression-based player matrix on the same/similar normalized game-level data
 - Add ridge regression for more stable player estimates
+- Decide whether player identity should move from player name to stable player id
 - Compare results to RAPM-style models
 
 ## Not in scope yet
@@ -21,4 +28,4 @@
 - substitution-level lineup tracking
 - complex production infrastructure
 
-The current goal is to keep the project simple and understandable while building toward a more advanced model.
+The current goal is to keep the data pipeline simple and understandable while moving the modeling work from raw WOWY toward regression.

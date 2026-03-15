@@ -13,6 +13,8 @@ The current version estimates a player's impact by comparing:
 
 This is intentionally a simple starting point before moving to more advanced adjusted models like ridge regression or RAPM-style methods.
 
+The current WOWY implementation should be treated as a baseline, not a final player evaluation model. On pooled real NBA data it is expected to be noisy and heavily confounded by team, season, and rotation context.
+
 ## Current model
 
 Version 1 computes:
@@ -24,6 +26,8 @@ Where:
 - `players` is the set of players who appeared in that game for that team
 
 This is a game-level presence model, not a possession-level or substitution-level plus-minus model.
+
+The normalized game CSV format is the stable data contract for this project. New ingestion or modeling work should continue to read and write this same game-level shape unless there is a deliberate format change.
 
 ## Input data
 
@@ -54,18 +58,34 @@ The WOWY model stays unchanged:
 - `margin` remains final game point differential
 - `players` remains the semicolon-separated list of players who appeared for that team
 
-Generate a `games.csv` file from one NBA team-season with:
+Generate a normalized team-season CSV with:
 
 ```bash
 poetry run wowy-ingest-nba
 ```
 
-This currently defaults to `BOS`, `2023-24`, and writes `games.csv`.
+This currently defaults to `BOS`, `2023-24`, and writes:
+
+```text
+data/raw/nba/team_games/BOS_2023-24.csv
+```
 
 You can override the defaults:
 
 ```bash
 poetry run wowy-ingest-nba NYK 2022-23 --csv games.csv --season-type "Regular Season"
+```
+
+Combine local normalized CSVs into one analysis file with:
+
+```bash
+poetry run wowy-combine-games
+```
+
+This writes:
+
+```text
+data/combined/games.csv
 ```
 
 
@@ -94,3 +114,7 @@ player         with  without     avg_with    avg_without      score
 ------------------------------------------------------------------------
 player_A          4         2         9.00          1.00       8.00
 ```
+
+## Next model direction
+
+The next phase of the project is a regression-based player matrix built on the same normalized game-level data. The current WOWY score remains useful as a simple baseline and debugging reference, but future model development is expected to move away from direct with-or-without averages.

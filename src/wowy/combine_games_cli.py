@@ -23,7 +23,7 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument(
         "--output",
         type=Path,
-        default=Path("data/combined/games.csv"),
+        default=Path("data/combined/wowy/games.example.csv"),
         help="Combined output CSV path",
     )
     return parser
@@ -47,9 +47,7 @@ def combine_game_csvs(input_dir: Path, output_path: Path) -> None:
                 reader = csv.reader(input_file)
                 header = next(reader, None)
                 if header != EXPECTED_HEADER:
-                    raise ValueError(
-                        f"Unexpected CSV header in {csv_path}: {header!r}"
-                    )
+                    raise ValueError(f"Unexpected CSV header in {csv_path}: {header!r}")
                 for row in reader:
                     writer.writerow(row)
 
