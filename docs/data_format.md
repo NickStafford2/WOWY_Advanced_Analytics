@@ -21,6 +21,8 @@ The repository now has two game-level CSV contracts:
 - `season_type`
 - `source`
 
+This file should carry enough game-level context for future regression work, including opponent identity and home/away status.
+
 ## Canonical normalized game players
 
 `normalized_game_players.csv` should contain one row per player appearance record for a team-game.
@@ -35,6 +37,8 @@ The repository now has two game-level CSV contracts:
 - `minutes`
 
 `minutes` is included for future use but is not part of the current WOWY computation.
+
+Rows with `appeared = false` are allowed in the normalized layer. The derived WOWY format should include only players with `appeared = true`.
 
 ## Derived WOWY compatibility format
 

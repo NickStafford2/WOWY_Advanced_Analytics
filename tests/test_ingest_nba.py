@@ -5,10 +5,14 @@ from pathlib import Path
 
 from wowy.ingest_nba import load_player_names_from_cache, write_team_season_games_csv
 from wowy.io import load_games_from_csv
+from wowy.normalized_io import (
+    load_normalized_game_players_from_csv,
+    load_normalized_games_from_csv,
+)
 from wowy.types import GameRecord
 
 
-def test_write_team_season_games_csv_uses_existing_games_shape(
+def test_write_team_season_games_csv_writes_normalized_and_derived_outputs(
     tmp_path: Path,
     monkeypatch,
 ):
@@ -29,8 +33,12 @@ def test_write_team_season_games_csv_uses_existing_games_shape(
             return {
                 "resultSets": [
                     {
-                        "headers": ["GAME_ID"],
-                        "rowSet": [["0001"], ["0001"], ["0002"]],
+                        "headers": ["GAME_ID", "GAME_DATE", "MATCHUP"],
+                        "rowSet": [
+                            ["0001", "2024-04-01", "BOS vs. LAL"],
+                            ["0001", "2024-04-01", "BOS vs. LAL"],
+                            ["0002", "2024-04-03", "BOS @ LAL"],
+                        ],
                     }
                 ]
             }
@@ -96,19 +104,39 @@ def test_write_team_season_games_csv_uses_existing_games_shape(
     )
 
     csv_path = tmp_path / "games.csv"
+    normalized_games_csv = tmp_path / "normalized" / "games.csv"
+    normalized_game_players_csv = tmp_path / "normalized" / "game_players.csv"
     write_team_season_games_csv(
         "BOS",
         "2023-24",
         csv_path,
+        normalized_games_csv_path=normalized_games_csv,
+        normalized_game_players_csv_path=normalized_game_players_csv,
         source_data_dir=source_data_dir,
     )
 
     games = load_games_from_csv(csv_path)
+    normalized_games = load_normalized_games_from_csv(normalized_games_csv)
+    normalized_game_players = load_normalized_game_players_from_csv(
+        normalized_game_players_csv
+    )
 
     assert games == [
         GameRecord("0001", "BOS", 12.0, {1628369, 1627759}),
         GameRecord("0002", "BOS", -5.0, {1628369, 1628401}),
     ]
+    assert [game.game_date for game in normalized_games] == ["2024-04-01", "2024-04-03"]
+    assert [game.opponent for game in normalized_games] == ["LAL", "LAL"]
+    assert [game.is_home for game in normalized_games] == [True, False]
+    assert [player.player_id for player in normalized_game_players] == [
+        1628369,
+        1627759,
+        999999,
+        1628369,
+        1628401,
+    ]
+    assert normalized_game_players[0].minutes == 35.2
+    assert normalized_game_players[2].appeared is False
 
     team_season_cache = (
         source_data_dir

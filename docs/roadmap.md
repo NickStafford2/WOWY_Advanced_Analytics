@@ -29,6 +29,12 @@ I do not plan to implement play by play tracking for quite some time. Most impor
 - Reserve `minutes` in the normalized player schema without using it yet
 - Add a derivation step from normalized tables to WOWY `games.csv`
 
+## Phase 2 status
+
+- Make NBA ingestion write canonical normalized team-season CSVs directly
+- Continue deriving the existing WOWY team-season CSV from those normalized outputs
+- Keep the current WOWY CLI unchanged while shifting ingestion toward the normalized layer
+
 ## Not in scope yet
 
 - possession-level data

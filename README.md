@@ -86,7 +86,7 @@ Normalized game-player columns:
 
 ## Real NBA data
 
-The planned real-data path uses `nba_api` to fetch NBA game-level box score data and convert it into the same `games.csv` format above.
+The planned real-data path uses `nba_api` to fetch NBA game-level box score data, write canonical normalized tables, and derive the same `games.csv` format above.
 
 The WOWY model stays unchanged:
 
@@ -100,7 +100,7 @@ If you already have normalized game and game-player tables, derive the current W
 poetry run wowy-derive-wowy
 ```
 
-Generate a normalized team-season CSV with:
+Generate normalized team-season CSVs plus a derived WOWY CSV with:
 
 ```bash
 poetry run wowy-ingest-nba
@@ -109,13 +109,15 @@ poetry run wowy-ingest-nba
 This currently defaults to `BOS`, `2023-24`, and writes:
 
 ```text
+data/normalized/nba/games/BOS_2023-24.csv
+data/normalized/nba/game_players/BOS_2023-24.csv
 data/raw/nba/team_games/BOS_2023-24.csv
 ```
 
 You can override the defaults:
 
 ```bash
-poetry run wowy-ingest-nba NYK 2022-23 --csv games.csv --season-type "Regular Season"
+poetry run wowy-ingest-nba NYK 2022-23 --csv games.csv --normalized-games-csv normalized_games.csv --normalized-game-players-csv normalized_game_players.csv --season-type "Regular Season"
 ```
 
 Combine local normalized CSVs into one analysis file with:
