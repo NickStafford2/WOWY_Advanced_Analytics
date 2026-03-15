@@ -62,7 +62,7 @@ Examples:
 poetry run wowy --season 2024-25 --team BOS --top-n 25
 poetry run regression --season 2024-25 --ridge-alpha 1.0 --top-n 25
 poetry run regression --season 2024-25 --team BOS --ridge-alpha 1.0 --min-games 20 --min-average-minutes 15 --min-total-minutes 500
-poetry run regression --games-csv data/combined/regression/games.csv --game-players-csv data/combined/regression/game_players.csv --tune-ridge
+poetry run regression --season 2024-25 --team BOS --tune-ridge
 ```
 
 Both CLIs rebuild stale derived WOWY files automatically. If you request a specific scope with `--season` and optionally `--team`, missing team-season data is intended to be fetched automatically.

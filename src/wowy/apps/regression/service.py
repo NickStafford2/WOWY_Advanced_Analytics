@@ -213,7 +213,7 @@ def build_tuning_report(best_alpha: float, results) -> str:
 
 
 def prepare_and_run_regression(args) -> str:
-    """CLI entrypoint for regression, including optional ridge tuning."""
+    """CLI entrypoint for regression using the cache-managed pipeline."""
     validate_filters(
         min_games=args.min_games,
         ridge_alpha=args.ridge_alpha,
@@ -221,24 +221,21 @@ def prepare_and_run_regression(args) -> str:
         min_average_minutes=args.min_average_minutes,
         min_total_minutes=args.min_total_minutes,
     )
-    games_csv = args.games_csv
-    game_players_csv = args.game_players_csv
     ridge_alpha = args.ridge_alpha
     print(
         f"[1/3] preparing regression inputs for {format_scope(args.team, args.season)}"
     )
-    if games_csv is None or game_players_csv is None:
-        games_csv, game_players_csv = prepare_regression_inputs(
-            teams=args.team,
-            seasons=args.season,
-            combined_games_csv=args.combined_games_csv,
-            combined_game_players_csv=args.combined_game_players_csv,
-            season_type=args.season_type,
-            source_data_dir=args.source_data_dir,
-            normalized_games_input_dir=args.normalized_games_input_dir,
-            normalized_game_players_input_dir=args.normalized_game_players_input_dir,
-            wowy_output_dir=args.wowy_output_dir,
-        )
+    games_csv, game_players_csv = prepare_regression_inputs(
+        teams=args.team,
+        seasons=args.season,
+        combined_games_csv=args.combined_games_csv,
+        combined_game_players_csv=args.combined_game_players_csv,
+        season_type=args.season_type,
+        source_data_dir=args.source_data_dir,
+        normalized_games_input_dir=args.normalized_games_input_dir,
+        normalized_game_players_input_dir=args.normalized_game_players_input_dir,
+        wowy_output_dir=args.wowy_output_dir,
+    )
     print(f"[2/3] loading regression data from {games_csv} and {game_players_csv}")
     if args.tune_ridge:
         print("[3/4] tuning ridge alpha on a validation split")

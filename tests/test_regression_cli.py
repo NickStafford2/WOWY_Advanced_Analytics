@@ -4,7 +4,9 @@ from pathlib import Path
 
 import pytest
 
-from wowy.apps.regression.cli import main, parse_ridge_grid, run_regression
+from wowy.apps.regression.cli import main
+
+from wowy.apps.regression.service import parse_ridge_grid, run_regression
 
 
 def test_run_regression_returns_report_text(tmp_path: Path):
@@ -23,17 +25,17 @@ def test_run_regression_returns_report_text(tmp_path: Path):
     )
     game_players_csv = tmp_path / "game_players.csv"
     game_players_csv.write_text(
-            (
-                "game_id,team,player_id,player_name,appeared,minutes\n"
-                "1,BOS,101,Player 101,true,48\n"
-                "1,MIL,201,Player 201,true,48\n"
-                "2,BOS,102,Player 102,true,48\n"
-                "2,NYK,202,Player 202,true,48\n"
-                "3,BOS,101,Player 101,true,24\n"
-                "3,BOS,102,Player 102,true,24\n"
-                "3,LAL,201,Player 201,true,24\n"
-                "3,LAL,202,Player 202,true,24\n"
-            ),
+        (
+            "game_id,team,player_id,player_name,appeared,minutes\n"
+            "1,BOS,101,Player 101,true,48\n"
+            "1,MIL,201,Player 201,true,48\n"
+            "2,BOS,102,Player 102,true,48\n"
+            "2,NYK,202,Player 202,true,48\n"
+            "3,BOS,101,Player 101,true,24\n"
+            "3,BOS,102,Player 102,true,24\n"
+            "3,LAL,201,Player 201,true,24\n"
+            "3,LAL,202,Player 202,true,24\n"
+        ),
         encoding="utf-8",
     )
 
@@ -64,17 +66,17 @@ def test_run_regression_applies_top_n(tmp_path: Path):
     )
     game_players_csv = tmp_path / "game_players.csv"
     game_players_csv.write_text(
-            (
-                "game_id,team,player_id,player_name,appeared,minutes\n"
-                "1,BOS,101,Player 101,true,48\n"
-                "1,MIL,201,Player 201,true,48\n"
-                "2,BOS,102,Player 102,true,48\n"
-                "2,NYK,202,Player 202,true,48\n"
-                "3,BOS,101,Player 101,true,24\n"
-                "3,BOS,102,Player 102,true,24\n"
-                "3,LAL,201,Player 201,true,24\n"
-                "3,LAL,202,Player 202,true,24\n"
-            ),
+        (
+            "game_id,team,player_id,player_name,appeared,minutes\n"
+            "1,BOS,101,Player 101,true,48\n"
+            "1,MIL,201,Player 201,true,48\n"
+            "2,BOS,102,Player 102,true,48\n"
+            "2,NYK,202,Player 202,true,48\n"
+            "3,BOS,101,Player 101,true,24\n"
+            "3,BOS,102,Player 102,true,24\n"
+            "3,LAL,201,Player 201,true,24\n"
+            "3,LAL,202,Player 202,true,24\n"
+        ),
         encoding="utf-8",
     )
 
@@ -188,118 +190,6 @@ def test_run_regression_team_scope_applies_minute_filters_after_fit(tmp_path: Pa
     assert "Player 203" in report
 
 
-def test_main_runs_with_temp_csvs(
-    tmp_path: Path,
-    capsys: pytest.CaptureFixture[str],
-):
-    games_csv = tmp_path / "games.csv"
-    games_csv.write_text(
-        (
-            "game_id,season,game_date,team,opponent,is_home,margin,season_type,source\n"
-            "1,2023-24,2024-04-01,BOS,MIL,true,2,Regular Season,nba_api\n"
-            "1,2023-24,2024-04-01,MIL,BOS,false,-2,Regular Season,nba_api\n"
-            "2,2023-24,2024-04-03,BOS,NYK,false,-2,Regular Season,nba_api\n"
-            "2,2023-24,2024-04-03,NYK,BOS,true,2,Regular Season,nba_api\n"
-            "3,2023-24,2024-04-05,BOS,LAL,true,0,Regular Season,nba_api\n"
-            "3,2023-24,2024-04-05,LAL,BOS,false,0,Regular Season,nba_api\n"
-        ),
-        encoding="utf-8",
-    )
-    game_players_csv = tmp_path / "game_players.csv"
-    game_players_csv.write_text(
-            (
-                "game_id,team,player_id,player_name,appeared,minutes\n"
-                "1,BOS,101,Player 101,true,48\n"
-                "1,MIL,201,Player 201,true,48\n"
-                "2,BOS,102,Player 102,true,48\n"
-                "2,NYK,202,Player 202,true,48\n"
-                "3,BOS,101,Player 101,true,24\n"
-                "3,BOS,102,Player 102,true,24\n"
-                "3,LAL,201,Player 201,true,24\n"
-                "3,LAL,202,Player 202,true,24\n"
-            ),
-        encoding="utf-8",
-    )
-
-    exit_code = main(
-        [
-            "--games-csv",
-            str(games_csv),
-            "--game-players-csv",
-            str(game_players_csv),
-            "--min-games",
-            "1",
-            "--ridge-alpha",
-            "1.0",
-            "--min-average-minutes",
-            "0",
-            "--min-total-minutes",
-            "0",
-        ]
-    )
-
-    captured = capsys.readouterr()
-    assert exit_code == 0
-    assert "Regression results (Game-level player model)" in captured.out
-
-
-def test_main_applies_minute_filters_with_explicit_csvs(
-    tmp_path: Path,
-    capsys: pytest.CaptureFixture[str],
-):
-    games_csv = tmp_path / "games.csv"
-    games_csv.write_text(
-        (
-            "game_id,season,game_date,team,opponent,is_home,margin,season_type,source\n"
-            "1,2023-24,2024-04-01,BOS,MIL,true,2,Regular Season,nba_api\n"
-            "1,2023-24,2024-04-01,MIL,BOS,false,-2,Regular Season,nba_api\n"
-            "2,2023-24,2024-04-03,BOS,NYK,false,-2,Regular Season,nba_api\n"
-            "2,2023-24,2024-04-03,NYK,BOS,true,2,Regular Season,nba_api\n"
-            "3,2023-24,2024-04-05,BOS,LAL,true,0,Regular Season,nba_api\n"
-            "3,2023-24,2024-04-05,LAL,BOS,false,0,Regular Season,nba_api\n"
-        ),
-        encoding="utf-8",
-    )
-    game_players_csv = tmp_path / "game_players.csv"
-    game_players_csv.write_text(
-        (
-            "game_id,team,player_id,player_name,appeared,minutes\n"
-            "1,BOS,101,Player 101,true,30\n"
-            "1,BOS,102,Player 102,true,10\n"
-            "1,MIL,201,Player 201,true,48\n"
-            "2,BOS,101,Player 101,true,30\n"
-            "2,BOS,102,Player 102,true,10\n"
-            "2,NYK,202,Player 202,true,48\n"
-            "3,BOS,101,Player 101,true,30\n"
-            "3,BOS,102,Player 102,true,10\n"
-            "3,LAL,203,Player 203,true,48\n"
-        ),
-        encoding="utf-8",
-    )
-
-    exit_code = main(
-        [
-            "--games-csv",
-            str(games_csv),
-            "--game-players-csv",
-            str(game_players_csv),
-            "--min-games",
-            "1",
-            "--ridge-alpha",
-            "1.0",
-            "--min-average-minutes",
-            "20",
-            "--min-total-minutes",
-            "40",
-        ]
-    )
-
-    captured = capsys.readouterr()
-    assert exit_code == 0
-    assert "Player 101" in captured.out
-    assert "Player 102" not in captured.out
-
-
 def test_main_runs_with_cached_scope_without_explicit_csvs(
     tmp_path: Path,
     capsys: pytest.CaptureFixture[str],
@@ -339,35 +229,35 @@ def test_main_runs_with_cached_scope_without_explicit_csvs(
     normalized_players_dir = tmp_path / "normalized_game_players"
     normalized_players_dir.mkdir()
     (normalized_players_dir / "BOS_2023-24.csv").write_text(
-            (
-                "game_id,team,player_id,player_name,appeared,minutes\n"
-                "1,BOS,101,Player 101,true,48\n"
-                "2,BOS,102,Player 102,true,48\n"
-                "3,BOS,101,Player 101,true,24\n"
-                "3,BOS,102,Player 102,true,24\n"
-            ),
+        (
+            "game_id,team,player_id,player_name,appeared,minutes\n"
+            "1,BOS,101,Player 101,true,48\n"
+            "2,BOS,102,Player 102,true,48\n"
+            "3,BOS,101,Player 101,true,24\n"
+            "3,BOS,102,Player 102,true,24\n"
+        ),
         encoding="utf-8",
     )
     (normalized_players_dir / "MIL_2023-24.csv").write_text(
-            (
-                "game_id,team,player_id,player_name,appeared,minutes\n"
-                "1,MIL,201,Player 201,true,48\n"
-            ),
+        (
+            "game_id,team,player_id,player_name,appeared,minutes\n"
+            "1,MIL,201,Player 201,true,48\n"
+        ),
         encoding="utf-8",
     )
     (normalized_players_dir / "NYK_2023-24.csv").write_text(
-            (
-                "game_id,team,player_id,player_name,appeared,minutes\n"
-                "2,NYK,202,Player 202,true,48\n"
-            ),
+        (
+            "game_id,team,player_id,player_name,appeared,minutes\n"
+            "2,NYK,202,Player 202,true,48\n"
+        ),
         encoding="utf-8",
     )
     (normalized_players_dir / "LAL_2023-24.csv").write_text(
-            (
-                "game_id,team,player_id,player_name,appeared,minutes\n"
-                "3,LAL,201,Player 201,true,24\n"
-                "3,LAL,202,Player 202,true,24\n"
-            ),
+        (
+            "game_id,team,player_id,player_name,appeared,minutes\n"
+            "3,LAL,201,Player 201,true,24\n"
+            "3,LAL,202,Player 202,true,24\n"
+        ),
         encoding="utf-8",
     )
 
@@ -454,47 +344,47 @@ def test_main_filters_cached_scope_by_team_and_season(
     normalized_players_dir = tmp_path / "normalized_game_players"
     normalized_players_dir.mkdir()
     (normalized_players_dir / "BOS_2023-24.csv").write_text(
-            (
-                "game_id,team,player_id,player_name,appeared,minutes\n"
-                "1,BOS,101,Player 101,true,48\n"
-                "2,BOS,102,Player 102,true,48\n"
-                "3,BOS,101,Player 101,true,24\n"
-                "3,BOS,102,Player 102,true,24\n"
-            ),
+        (
+            "game_id,team,player_id,player_name,appeared,minutes\n"
+            "1,BOS,101,Player 101,true,48\n"
+            "2,BOS,102,Player 102,true,48\n"
+            "3,BOS,101,Player 101,true,24\n"
+            "3,BOS,102,Player 102,true,24\n"
+        ),
         encoding="utf-8",
     )
     (normalized_players_dir / "MIL_2023-24.csv").write_text(
-            (
-                "game_id,team,player_id,player_name,appeared,minutes\n"
-                "1,MIL,201,Player 201,true,48\n"
-            ),
+        (
+            "game_id,team,player_id,player_name,appeared,minutes\n"
+            "1,MIL,201,Player 201,true,48\n"
+        ),
         encoding="utf-8",
     )
     (normalized_players_dir / "NYK_2023-24.csv").write_text(
-            (
-                "game_id,team,player_id,player_name,appeared,minutes\n"
-                "2,NYK,202,Player 202,true,48\n"
-            ),
+        (
+            "game_id,team,player_id,player_name,appeared,minutes\n"
+            "2,NYK,202,Player 202,true,48\n"
+        ),
         encoding="utf-8",
     )
     (normalized_players_dir / "LAL_2023-24.csv").write_text(
-            (
-                "game_id,team,player_id,player_name,appeared,minutes\n"
-                "3,LAL,201,Player 201,true,24\n"
-                "3,LAL,202,Player 202,true,24\n"
-            ),
+        (
+            "game_id,team,player_id,player_name,appeared,minutes\n"
+            "3,LAL,201,Player 201,true,24\n"
+            "3,LAL,202,Player 202,true,24\n"
+        ),
         encoding="utf-8",
     )
     (normalized_players_dir / "NYK_2024-25.csv").write_text(
-            (
-                "game_id,team,player_id,player_name,appeared,minutes\n"
-                "4,NYK,201,Player 201,true,48\n"
-                "4,BOS,101,Player 101,true,48\n"
-                "5,NYK,201,Player 201,true,48\n"
-                "5,MIL,301,Player 301,true,48\n"
-                "6,NYK,202,Player 202,true,48\n"
-                "6,CLE,302,Player 302,true,48\n"
-            ),
+        (
+            "game_id,team,player_id,player_name,appeared,minutes\n"
+            "4,NYK,201,Player 201,true,48\n"
+            "4,BOS,101,Player 101,true,48\n"
+            "5,NYK,201,Player 201,true,48\n"
+            "5,MIL,301,Player 301,true,48\n"
+            "6,NYK,202,Player 202,true,48\n"
+            "6,CLE,302,Player 302,true,48\n"
+        ),
         encoding="utf-8",
     )
 
@@ -562,67 +452,3 @@ def test_main_rejects_negative_min_total_minutes():
 def test_parse_ridge_grid_rejects_invalid_values():
     with pytest.raises(ValueError, match="non-negative"):
         parse_ridge_grid("1,-3")
-
-
-def test_main_can_tune_ridge_with_temp_csvs(
-    tmp_path: Path,
-    capsys: pytest.CaptureFixture[str],
-):
-    games_csv = tmp_path / "games.csv"
-    games_csv.write_text(
-        (
-            "game_id,season,game_date,team,opponent,is_home,margin,season_type,source\n"
-            "1,2023-24,2024-04-01,BOS,MIL,true,4,Regular Season,nba_api\n"
-            "1,2023-24,2024-04-01,MIL,BOS,false,-4,Regular Season,nba_api\n"
-            "2,2023-24,2024-04-03,BOS,MIL,true,3,Regular Season,nba_api\n"
-            "2,2023-24,2024-04-03,MIL,BOS,false,-3,Regular Season,nba_api\n"
-            "3,2023-24,2024-04-05,BOS,MIL,true,5,Regular Season,nba_api\n"
-            "3,2023-24,2024-04-05,MIL,BOS,false,-5,Regular Season,nba_api\n"
-            "4,2023-24,2024-04-07,BOS,MIL,true,4,Regular Season,nba_api\n"
-            "4,2023-24,2024-04-07,MIL,BOS,false,-4,Regular Season,nba_api\n"
-            "5,2023-24,2024-04-09,BOS,MIL,true,5,Regular Season,nba_api\n"
-            "5,2023-24,2024-04-09,MIL,BOS,false,-5,Regular Season,nba_api\n"
-        ),
-        encoding="utf-8",
-    )
-    game_players_csv = tmp_path / "game_players.csv"
-    game_players_csv.write_text(
-        (
-            "game_id,team,player_id,player_name,appeared,minutes\n"
-            "1,BOS,101,Player 101,true,48\n"
-            "1,MIL,201,Player 201,true,48\n"
-            "2,BOS,101,Player 101,true,48\n"
-            "2,MIL,201,Player 201,true,48\n"
-            "3,BOS,101,Player 101,true,48\n"
-            "3,MIL,201,Player 201,true,48\n"
-            "4,BOS,101,Player 101,true,48\n"
-            "4,MIL,201,Player 201,true,48\n"
-            "5,BOS,101,Player 101,true,48\n"
-            "5,MIL,201,Player 201,true,48\n"
-        ),
-        encoding="utf-8",
-    )
-
-    exit_code = main(
-        [
-            "--games-csv",
-            str(games_csv),
-            "--game-players-csv",
-            str(game_players_csv),
-            "--min-games",
-            "1",
-            "--tune-ridge",
-            "--ridge-grid",
-            "0.1,1,10",
-            "--min-average-minutes",
-            "0",
-            "--min-total-minutes",
-            "0",
-        ]
-    )
-
-    captured = capsys.readouterr()
-    assert exit_code == 0
-    assert "Ridge tuning results" in captured.out
-    assert "selected ridge alpha:" in captured.out
-    assert "Regression results (Game-level player model)" in captured.out

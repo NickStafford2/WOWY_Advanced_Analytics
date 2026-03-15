@@ -9,31 +9,12 @@ from wowy.nba.ingest import (
     DEFAULT_SOURCE_DATA_DIR,
     DEFAULT_WOWY_GAMES_DIR,
 )
-from wowy.apps.regression.service import (
-    build_tuning_report,
-    filter_regression_scope,
-    parse_ridge_grid,
-    prepare_and_run_regression,
-    run_regression,
-    validate_filters,
-)
+from wowy.apps.regression.service import prepare_and_run_regression
 
 
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
         description="Run regression on cached data, fetching missing requested scope when needed."
-    )
-    parser.add_argument(
-        "--games-csv",
-        type=Path,
-        default=None,
-        help="Optional explicit combined normalized games CSV path",
-    )
-    parser.add_argument(
-        "--game-players-csv",
-        type=Path,
-        default=None,
-        help="Optional explicit combined normalized game-player CSV path",
     )
     parser.add_argument(
         "--team",
