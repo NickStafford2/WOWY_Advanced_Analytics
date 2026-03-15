@@ -3,11 +3,26 @@ from __future__ import annotations
 import argparse
 import csv
 from pathlib import Path
-from typing import Any
+from typing import TypedDict
 
 
-def load_games_from_csv(csv_path: Path | str) -> list[dict[str, Any]]:
-    games: list[dict[str, Any]] = []
+class GameRecord(TypedDict):
+    game_id: str
+    team: str
+    margin: float
+    players: set[str]
+
+
+class PlayerStats(TypedDict):
+    games_with: int
+    games_without: int
+    avg_margin_with: float | None
+    avg_margin_without: float | None
+    wowy_score: float | None
+
+
+def load_games_from_csv(csv_path: Path | str) -> list[GameRecord]:
+    games: list[GameRecord] = []
 
     with open(csv_path, "r", encoding="utf-8", newline="") as f:
         reader = csv.DictReader(f)
@@ -31,7 +46,7 @@ def load_games_from_csv(csv_path: Path | str) -> list[dict[str, Any]]:
             if not players:
                 raise ValueError(f"Row {row_number} has no players listed")
 
-            game = {
+            game: GameRecord = {
                 "game_id": row["game_id"],
                 "team": row["team"],
                 "margin": margin,
@@ -42,14 +57,12 @@ def load_games_from_csv(csv_path: Path | str) -> list[dict[str, Any]]:
     return games
 
 
-def compute_wowy(
-    games: list[dict[str, Any]],
-) -> dict[str, dict[str, float | int | None]]:
+def compute_wowy(games: list[GameRecord]) -> dict[str, PlayerStats]:
     all_players: set[str] = set()
     for game in games:
         all_players.update(game["players"])
 
-    results: dict[str, dict[str, float | int | None]] = {}
+    results: dict[str, PlayerStats] = {}
 
     for player in sorted(all_players):
         margins_with: list[float] = []
@@ -66,7 +79,7 @@ def compute_wowy(
             sum(margins_without) / len(margins_without) if margins_without else None
         )
 
-        wowy_score = None
+        wowy_score: float | None = None
         if avg_with is not None and avg_without is not None:
             wowy_score = avg_with - avg_without
 
@@ -82,11 +95,11 @@ def compute_wowy(
 
 
 def filter_results(
-    results: dict[str, dict[str, float | int | None]],
+    results: dict[str, PlayerStats],
     min_games_with: int = 1,
     min_games_without: int = 1,
-) -> dict[str, dict[str, float | int | None]]:
-    filtered: dict[str, dict[str, float | int | None]] = {}
+) -> dict[str, PlayerStats]:
+    filtered: dict[str, PlayerStats] = {}
 
     for player, stats in results.items():
         if stats["games_with"] < min_games_with:
@@ -100,7 +113,14 @@ def filter_results(
     return filtered
 
 
-def format_results_table(results: dict[str, dict[str, float | int | None]]) -> str:
+def sort_score(item: tuple[str, PlayerStats]) -> float:
+    score = item[1]["wowy_score"]
+    if score is None:
+        raise ValueError("format_results_table received an unscored player")
+    return score
+
+
+def format_results_table(results: dict[str, PlayerStats]) -> str:
     lines = [
         "WOWY results (Version 1)",
         "-" * 72,
@@ -111,26 +131,29 @@ def format_results_table(results: dict[str, dict[str, float | int | None]]) -> s
         "-" * 72,
     ]
 
-    ranked = sorted(
-        results.items(),
-        key=lambda item: item[1]["wowy_score"],
-        reverse=True,
-    )
+    ranked = sorted(results.items(), key=sort_score, reverse=True)
 
     for player, stats in ranked:
+        avg_margin_with = stats["avg_margin_with"]
+        avg_margin_without = stats["avg_margin_without"]
+        wowy_score = stats["wowy_score"]
+
+        if avg_margin_with is None or avg_margin_without is None or wowy_score is None:
+            raise ValueError("format_results_table received incomplete player stats")
+
         lines.append(
             f"{player:<12} "
             f"{stats['games_with']:>6} "
             f"{stats['games_without']:>8} "
-            f"{stats['avg_margin_with']:>12.2f} "
-            f"{stats['avg_margin_without']:>14.2f} "
-            f"{stats['wowy_score']:>10.2f}"
+            f"{avg_margin_with:>12.2f} "
+            f"{avg_margin_without:>14.2f} "
+            f"{wowy_score:>10.2f}"
         )
 
     return "\n".join(lines)
 
 
-def print_results(results: dict[str, dict[str, float | int | None]]) -> None:
+def print_results(results: dict[str, PlayerStats]) -> None:
     print(format_results_table(results))
 
 
