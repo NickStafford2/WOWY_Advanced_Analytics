@@ -11,6 +11,8 @@ def test_write_team_season_games_csv_uses_existing_games_shape(
     tmp_path: Path,
     monkeypatch,
 ):
+    source_data_dir = tmp_path / "source-data"
+
     monkeypatch.setattr(
         "wowy.ingest_nba.teams.find_team_by_abbreviation",
         lambda abbreviation: {"id": 1610612738, "abbreviation": "BOS"},
@@ -93,8 +95,12 @@ def test_write_team_season_games_csv_uses_existing_games_shape(
     )
 
     csv_path = tmp_path / "games.csv"
-    monkeypatch.chdir(tmp_path)
-    write_team_season_games_csv("BOS", "2023-24", csv_path)
+    write_team_season_games_csv(
+        "BOS",
+        "2023-24",
+        csv_path,
+        source_data_dir=source_data_dir,
+    )
 
     games = load_games_from_csv(csv_path)
 
@@ -114,15 +120,15 @@ def test_write_team_season_games_csv_uses_existing_games_shape(
     ]
 
     team_season_cache = (
-        tmp_path
-        / "data/source/nba/team_seasons/BOS_2023-24_regular_season_leaguegamefinder.json"
+        source_data_dir
+        / "team_seasons/BOS_2023-24_regular_season_leaguegamefinder.json"
     )
-    box_score_cache = tmp_path / "data/source/nba/boxscores/0001_boxscoretraditionalv2.json"
+    box_score_cache = source_data_dir / "boxscores/0001_boxscoretraditionalv2.json"
 
     assert team_season_cache.exists()
     assert box_score_cache.exists()
     assert json.loads(team_season_cache.read_text(encoding="utf-8"))["resultSets"]
 
-    player_names = load_player_names_from_cache()
+    player_names = load_player_names_from_cache(source_data_dir)
     assert player_names[1628369] == "Jayson Tatum"
     assert player_names[1628401] == "Derrick White"

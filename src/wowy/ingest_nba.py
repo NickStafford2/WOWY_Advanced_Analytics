@@ -12,7 +12,7 @@ from nba_api.stats.static import teams
 
 from wowy.types import GameRecord
 
-SOURCE_DATA_DIR = Path("data/source/nba")
+DEFAULT_SOURCE_DATA_DIR = Path("data/source/nba")
 BOX_SCORE_REQUEST_RETRIES = 3
 BOX_SCORE_RETRY_BACKOFF_SECONDS = 2.0
 BOX_SCORE_REQUEST_DELAY_SECONDS = 0.6
@@ -22,6 +22,7 @@ def fetch_team_season_games(
     team_abbreviation: str,
     season: str,
     season_type: str = "Regular Season",
+    source_data_dir: Path = DEFAULT_SOURCE_DATA_DIR,
 ) -> list[GameRecord]:
     """Fetch one NBA team-season and return rows in the existing game CSV shape.
 
@@ -39,6 +40,7 @@ def fetch_team_season_games(
         team_abbreviation=team["abbreviation"],
         season=season,
         season_type=season_type,
+        source_data_dir=source_data_dir,
     )
     games_df = _result_set_to_data_frame(finder_payload["resultSets"][0])
 
@@ -49,7 +51,11 @@ def fetch_team_season_games(
 
     for game_id in games_df["GAME_ID"].drop_duplicates().tolist():
         records.append(
-            _fetch_game_record(game_id=game_id, team_abbreviation=team["abbreviation"])
+            _fetch_game_record(
+                game_id=game_id,
+                team_abbreviation=team["abbreviation"],
+                source_data_dir=source_data_dir,
+            )
         )
 
     return records
@@ -60,6 +66,7 @@ def write_team_season_games_csv(
     season: str,
     csv_path: Path | str,
     season_type: str = "Regular Season",
+    source_data_dir: Path = DEFAULT_SOURCE_DATA_DIR,
 ) -> None:
     """Fetch one NBA team-season and write it as the existing `games.csv` format."""
 
@@ -67,6 +74,7 @@ def write_team_season_games_csv(
         team_abbreviation=team_abbreviation,
         season=season,
         season_type=season_type,
+        source_data_dir=source_data_dir,
     )
 
     with open(csv_path, "w", encoding="utf-8", newline="") as f:
@@ -86,12 +94,14 @@ def write_team_season_games_csv(
             )
 
 
-def load_player_names_from_cache() -> dict[int, str]:
+def load_player_names_from_cache(
+    source_data_dir: Path = DEFAULT_SOURCE_DATA_DIR,
+) -> dict[int, str]:
     """Load a player-id-to-name mapping from cached NBA box score payloads."""
 
     player_names: dict[int, str] = {}
 
-    for cache_path in sorted((SOURCE_DATA_DIR / "boxscores").glob("*.json")):
+    for cache_path in sorted((source_data_dir / "boxscores").glob("*.json")):
         payload = _load_cached_payload(cache_path)
         if payload is None:
             continue
@@ -113,10 +123,17 @@ def load_player_names_from_cache() -> dict[int, str]:
     return player_names
 
 
-def _fetch_game_record(game_id: str, team_abbreviation: str) -> GameRecord:
+def _fetch_game_record(
+    game_id: str,
+    team_abbreviation: str,
+    source_data_dir: Path,
+) -> GameRecord:
     """Fetch one NBA game and normalize the selected team into a `GameRecord`."""
 
-    box_score_payload = _load_or_fetch_box_score(game_id)
+    box_score_payload = _load_or_fetch_box_score(
+        game_id=game_id,
+        source_data_dir=source_data_dir,
+    )
     player_stats_df = _result_set_to_data_frame(box_score_payload["resultSets"][0])
     team_stats_df = _result_set_to_data_frame(box_score_payload["resultSets"][1])
 
@@ -181,6 +198,7 @@ def _load_or_fetch_league_games(
     team_abbreviation: str,
     season: str,
     season_type: str,
+    source_data_dir: Path,
 ) -> dict:
     """Load a cached team-season response or fetch and cache it from the NBA API."""
 
@@ -188,6 +206,7 @@ def _load_or_fetch_league_games(
         team_abbreviation=team_abbreviation,
         season=season,
         season_type=season_type,
+        source_data_dir=source_data_dir,
     )
     cached_payload = _load_cached_payload(cache_path)
     if cached_payload is not None:
@@ -205,10 +224,10 @@ def _load_or_fetch_league_games(
     return payload
 
 
-def _load_or_fetch_box_score(game_id: str) -> dict:
+def _load_or_fetch_box_score(game_id: str, source_data_dir: Path) -> dict:
     """Load a cached box score response or fetch and cache it from the NBA API."""
 
-    cache_path = _box_score_cache_path(game_id)
+    cache_path = _box_score_cache_path(game_id, source_data_dir=source_data_dir)
     cached_payload = _load_cached_payload(cache_path)
     if cached_payload is not None:
         print(f"cache box_score {game_id}")
@@ -241,18 +260,19 @@ def _league_games_cache_path(
     team_abbreviation: str,
     season: str,
     season_type: str,
+    source_data_dir: Path,
 ) -> Path:
     """Return the cache path for one team-season league game finder response."""
 
     season_type_slug = season_type.lower().replace(" ", "_")
     filename = f"{team_abbreviation}_{season}_{season_type_slug}_leaguegamefinder.json"
-    return SOURCE_DATA_DIR / "team_seasons" / filename
+    return source_data_dir / "team_seasons" / filename
 
 
-def _box_score_cache_path(game_id: str) -> Path:
+def _box_score_cache_path(game_id: str, source_data_dir: Path) -> Path:
     """Return the cache path for one game box score response."""
 
-    return SOURCE_DATA_DIR / "boxscores" / f"{game_id}_boxscoretraditionalv2.json"
+    return source_data_dir / "boxscores" / f"{game_id}_boxscoretraditionalv2.json"
 
 
 def _load_cached_payload(cache_path: Path) -> dict | None:
