@@ -86,11 +86,11 @@ def test_write_team_season_games_csv_uses_existing_games_shape(
             }
 
     monkeypatch.setattr(
-        "wowy.ingest_nba.leaguegamefinder.LeagueGameFinder",
+        "wowy.nba_cache.leaguegamefinder.LeagueGameFinder",
         FakeLeagueGameFinder,
     )
     monkeypatch.setattr(
-        "wowy.ingest_nba.boxscoretraditionalv2.BoxScoreTraditionalV2",
+        "wowy.nba_cache.boxscoretraditionalv2.BoxScoreTraditionalV2",
         FakeBoxScoreTraditionalV2,
     )
 
