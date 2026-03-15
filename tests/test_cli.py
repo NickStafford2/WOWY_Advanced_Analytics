@@ -45,6 +45,62 @@ def test_main_runs_with_temp_csv(
     assert "101" in captured.out
 
 
+def test_main_runs_with_cached_scope_without_explicit_csv(
+    tmp_path: Path,
+    capsys: pytest.CaptureFixture[str],
+    monkeypatch,
+):
+    normalized_games_dir = tmp_path / "normalized_games"
+    normalized_games_dir.mkdir()
+    (normalized_games_dir / "BOS_2023-24.csv").write_text(
+        (
+            "game_id,season,game_date,team,opponent,is_home,margin,season_type,source\n"
+            "1,2023-24,2024-04-01,BOS,MIL,true,10,Regular Season,nba_api\n"
+            "2,2023-24,2024-04-03,BOS,NYK,false,-5,Regular Season,nba_api\n"
+        ),
+        encoding="utf-8",
+    )
+    normalized_players_dir = tmp_path / "normalized_game_players"
+    normalized_players_dir.mkdir()
+    (normalized_players_dir / "BOS_2023-24.csv").write_text(
+        (
+            "game_id,team,player_id,player_name,appeared,minutes\n"
+            "1,BOS,101,Player 101,true,35.0\n"
+            "1,BOS,102,Player 102,true,30.0\n"
+            "2,BOS,102,Player 102,true,31.0\n"
+            "2,BOS,103,Player 103,true,29.0\n"
+        ),
+        encoding="utf-8",
+    )
+
+    monkeypatch.setattr("wowy.cli.load_player_names_from_cache", lambda _: {})
+
+    exit_code = main(
+        [
+            "--team",
+            "BOS",
+            "--normalized-games-input-dir",
+            str(normalized_games_dir),
+            "--normalized-game-players-input-dir",
+            str(normalized_players_dir),
+            "--wowy-output-dir",
+            str(tmp_path / "team_games"),
+            "--combined-wowy-csv",
+            str(tmp_path / "combined" / "games.csv"),
+            "--source-data-dir",
+            str(tmp_path / "source"),
+            "--min-games-with",
+            "1",
+            "--min-games-without",
+            "1",
+        ]
+    )
+
+    captured = capsys.readouterr()
+    assert exit_code == 0
+    assert "WOWY results (Version 1)" in captured.out
+
+
 def test_run_wowy_returns_report_text(tmp_path: Path, write_games_csv):
     csv_path = tmp_path / "games.csv"
     write_games_csv(
@@ -123,4 +179,4 @@ def test_help_works(capsys: pytest.CaptureFixture[str]):
 
     assert exc_info.value.code == 0
     captured = capsys.readouterr()
-    assert "Compute a simple game-level WOWY score from a CSV file." in captured.out
+    assert "Run WOWY on cached data" in captured.out

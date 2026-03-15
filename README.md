@@ -95,16 +95,47 @@ The WOWY model stays unchanged:
 - `margin` remains final game point differential
 - `players` remains the semicolon-separated list of NBA `PLAYER_ID` values for that team
 
+## Main commands
+
+Run WOWY on cached data:
+
+```bash
+poetry run wowy
+```
+
+Run regression on cached data:
+
+```bash
+poetry run regression
+```
+
+Both commands use cached data by default. If you request a specific scope with `--season` and optionally `--team`, missing team-season data is fetched automatically and derived WOWY files are rebuilt automatically when stale.
+
+Examples:
+
+```bash
+poetry run wowy --season 2024-25 --team BOS --top-n 25
+poetry run regression --season 2024-25 --ridge-alpha 1.0 --top-n 25
+```
+
+If you want to bulk-cache a season manually, keep using:
+
+```bash
+poetry run python scripts/cache_season_data.py 2024-25
+```
+
+## Internal tools
+
 If you already have normalized game and game-player tables, derive the current WOWY input CSV with:
 
 ```bash
-poetry run wowy-derive-wowy
+poetry run python -m wowy.derive_wowy_cli
 ```
 
 Generate normalized team-season CSVs plus a derived WOWY CSV with:
 
 ```bash
-poetry run wowy-ingest-nba
+poetry run python -m wowy.ingest_nba_cli
 ```
 
 This currently defaults to `BOS`, `2023-24`, and writes:
@@ -118,13 +149,13 @@ data/raw/nba/team_games/BOS_2023-24.csv
 You can override the defaults:
 
 ```bash
-poetry run wowy-ingest-nba NYK 2022-23 --csv games.csv --normalized-games-csv normalized_games.csv --normalized-game-players-csv normalized_game_players.csv --season-type "Regular Season"
+poetry run python -m wowy.ingest_nba_cli NYK 2022-23 --csv games.csv --normalized-games-csv normalized_games.csv --normalized-game-players-csv normalized_game_players.csv --season-type "Regular Season"
 ```
 
 Combine local normalized CSVs into one regression input set with:
 
 ```bash
-poetry run wowy-combine-games
+poetry run python -m wowy.combine_games_cli
 ```
 
 This writes:
@@ -137,7 +168,7 @@ data/combined/regression/game_players.csv
 Run the regression analysis on those combined normalized files with:
 
 ```bash
-poetry run wowy-regression
+poetry run regression
 ```
 
 This now uses ridge regularization by default so the player-only game-level model remains solvable on real data. You can tune it with `--ridge-alpha`.

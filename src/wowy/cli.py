@@ -4,21 +4,45 @@ import argparse
 from pathlib import Path
 
 from wowy.analysis import compute_wowy, filter_results
+from wowy.cache_pipeline import prepare_wowy_inputs
 from wowy.formatting import format_results_table
-from wowy.ingest_nba import DEFAULT_SOURCE_DATA_DIR, load_player_names_from_cache
+from wowy.ingest_nba import (
+    DEFAULT_NORMALIZED_GAME_PLAYERS_DIR,
+    DEFAULT_NORMALIZED_GAMES_DIR,
+    DEFAULT_SOURCE_DATA_DIR,
+    DEFAULT_WOWY_GAMES_DIR,
+    load_player_names_from_cache,
+)
 from wowy.io import load_games_from_csv
 from wowy.types import WowyGameRecord
 
 
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
-        description="Compute a simple game-level WOWY score from a CSV file."
+        description="Run WOWY on cached data, fetching missing requested scope when needed."
     )
     parser.add_argument(
         "--csv",
         type=Path,
-        default=Path("data/combined/wowy/games.csv"),
-        help="Path to the games CSV file",
+        default=None,
+        help="Optional explicit WOWY games CSV path",
+    )
+    parser.add_argument(
+        "--team",
+        action="append",
+        default=None,
+        help="Filter to a team abbreviation. Repeat to include multiple teams.",
+    )
+    parser.add_argument(
+        "--season",
+        action="append",
+        default=None,
+        help="Filter to a season string. Repeat to include multiple seasons.",
+    )
+    parser.add_argument(
+        "--season-type",
+        default="Regular Season",
+        help="NBA season type to fetch when requested scope is missing from cache",
     )
     parser.add_argument(
         "--min-games-with",
@@ -37,6 +61,30 @@ def build_parser() -> argparse.ArgumentParser:
         type=Path,
         default=DEFAULT_SOURCE_DATA_DIR,
         help="Path to cached source data used for player names",
+    )
+    parser.add_argument(
+        "--normalized-games-input-dir",
+        type=Path,
+        default=DEFAULT_NORMALIZED_GAMES_DIR,
+        help=argparse.SUPPRESS,
+    )
+    parser.add_argument(
+        "--normalized-game-players-input-dir",
+        type=Path,
+        default=DEFAULT_NORMALIZED_GAME_PLAYERS_DIR,
+        help=argparse.SUPPRESS,
+    )
+    parser.add_argument(
+        "--wowy-output-dir",
+        type=Path,
+        default=DEFAULT_WOWY_GAMES_DIR,
+        help=argparse.SUPPRESS,
+    )
+    parser.add_argument(
+        "--combined-wowy-csv",
+        type=Path,
+        default=Path("data/combined/wowy/games.csv"),
+        help=argparse.SUPPRESS,
     )
     parser.add_argument(
         "--top-n",
@@ -105,10 +153,23 @@ def main(argv: list[str] | None = None) -> int:
         args.min_games_without,
         top_n=args.top_n,
     )
-    player_names = load_player_names_from_cache(args.source_data_dir)
+    if args.csv is not None:
+        csv_path = args.csv
+        player_names = load_player_names_from_cache(args.source_data_dir)
+    else:
+        csv_path, player_names = prepare_wowy_inputs(
+            teams=args.team,
+            seasons=args.season,
+            combined_wowy_csv=args.combined_wowy_csv,
+            season_type=args.season_type,
+            source_data_dir=args.source_data_dir,
+            normalized_games_input_dir=args.normalized_games_input_dir,
+            normalized_game_players_input_dir=args.normalized_game_players_input_dir,
+            wowy_output_dir=args.wowy_output_dir,
+        )
     print(
         run_wowy(
-            args.csv,
+            csv_path,
             min_games_with=args.min_games_with,
             min_games_without=args.min_games_without,
             player_names=player_names,
