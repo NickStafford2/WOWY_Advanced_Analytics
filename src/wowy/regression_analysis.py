@@ -69,10 +69,10 @@ def solve_normal_equation(
     for observation in observations:
         row = [0.0 for _ in range(feature_count)]
         row[0] = 1.0
-        for player_id in observation.player_ids:
+        for player_id, weight in observation.player_weights.items():
             feature_index = player_index.get(player_id)
             if feature_index is not None:
-                row[feature_index] = 1.0
+                row[feature_index] = weight
 
         for i in range(feature_count):
             target[i] += row[i] * observation.margin

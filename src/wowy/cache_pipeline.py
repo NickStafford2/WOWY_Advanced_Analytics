@@ -232,6 +232,8 @@ def prepare_regression_inputs(
     if not team_seasons:
         raise ValueError("No cached data matched the requested regression scope")
 
+    requested_team_seasons = list(team_seasons)
+
     for team_season in team_seasons:
         ensure_team_season_data(
             team_season=team_season,
@@ -242,6 +244,31 @@ def prepare_regression_inputs(
             wowy_output_dir=wowy_output_dir,
             log=log,
         )
+
+    if teams:
+        opponent_team_seasons: set[TeamSeasonScope] = set()
+        for team_season in requested_team_seasons:
+            games = load_normalized_games_from_csv(
+                normalized_games_path(team_season, normalized_games_input_dir)
+            )
+            for game in games:
+                opponent_team_seasons.add(
+                    TeamSeasonScope(team=game.opponent, season=game.season)
+                )
+
+        for team_season in sorted(opponent_team_seasons):
+            if team_season in requested_team_seasons:
+                continue
+            ensure_team_season_data(
+                team_season=team_season,
+                season_type=season_type,
+                source_data_dir=source_data_dir,
+                normalized_games_input_dir=normalized_games_input_dir,
+                normalized_game_players_input_dir=normalized_game_players_input_dir,
+                wowy_output_dir=wowy_output_dir,
+                log=log,
+            )
+            team_seasons.append(team_season)
 
     combine_normalized_files(
         games_input_paths=[

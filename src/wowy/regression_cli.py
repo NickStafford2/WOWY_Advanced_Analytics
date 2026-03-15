@@ -115,6 +115,8 @@ def run_regression(
     min_games: int,
     ridge_alpha: float = 1.0,
     top_n: int | None = None,
+    teams: list[str] | None = None,
+    seasons: list[str] | None = None,
 ) -> str:
     if min_games < 0:
         raise ValueError("Minimum games filter must be non-negative")
@@ -125,6 +127,12 @@ def run_regression(
 
     games = load_normalized_games_from_csv(games_csv_path)
     game_players = load_normalized_game_players_from_csv(game_players_csv_path)
+    games, game_players = filter_regression_scope(
+        games,
+        game_players,
+        teams=teams,
+        seasons=seasons,
+    )
     observations, player_names = build_regression_observations(games, game_players)
     result = fit_player_regression(
         observations,
@@ -159,9 +167,38 @@ def main(argv: list[str] | None = None) -> int:
             min_games=args.min_games,
             ridge_alpha=args.ridge_alpha,
             top_n=args.top_n,
+            teams=args.team,
+            seasons=args.season,
         )
     )
     return 0
+
+
+def filter_regression_scope(
+    games,
+    game_players,
+    teams: list[str] | None,
+    seasons: list[str] | None,
+):
+    if not teams and not seasons:
+        return games, game_players
+
+    normalized_teams = {team.upper() for team in teams or []}
+    normalized_seasons = set(seasons or [])
+    selected_game_ids = {
+        game.game_id
+        for game in games
+        if (not normalized_seasons or game.season in normalized_seasons)
+        and (not normalized_teams or game.team in normalized_teams)
+    }
+    if not selected_game_ids:
+        raise ValueError("No games matched the requested regression scope")
+
+    filtered_games = [game for game in games if game.game_id in selected_game_ids]
+    filtered_game_players = [
+        player for player in game_players if player.game_id in selected_game_ids
+    ]
+    return filtered_games, filtered_game_players
 
 
 if __name__ == "__main__":

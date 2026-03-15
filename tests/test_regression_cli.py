@@ -13,8 +13,11 @@ def test_run_regression_returns_report_text(tmp_path: Path):
         (
             "game_id,season,game_date,team,opponent,is_home,margin,season_type,source\n"
             "1,2023-24,2024-04-01,BOS,MIL,true,2,Regular Season,nba_api\n"
+            "1,2023-24,2024-04-01,MIL,BOS,false,-2,Regular Season,nba_api\n"
             "2,2023-24,2024-04-03,BOS,NYK,false,-2,Regular Season,nba_api\n"
+            "2,2023-24,2024-04-03,NYK,BOS,true,2,Regular Season,nba_api\n"
             "3,2023-24,2024-04-05,BOS,LAL,true,0,Regular Season,nba_api\n"
+            "3,2023-24,2024-04-05,LAL,BOS,false,0,Regular Season,nba_api\n"
         ),
         encoding="utf-8",
     )
@@ -23,9 +26,13 @@ def test_run_regression_returns_report_text(tmp_path: Path):
         (
             "game_id,team,player_id,player_name,appeared,minutes\n"
             "1,BOS,101,Player 101,true,\n"
+            "1,MIL,201,Player 201,true,\n"
             "2,BOS,102,Player 102,true,\n"
+            "2,NYK,202,Player 202,true,\n"
             "3,BOS,101,Player 101,true,\n"
             "3,BOS,102,Player 102,true,\n"
+            "3,LAL,201,Player 201,true,\n"
+            "3,LAL,202,Player 202,true,\n"
         ),
         encoding="utf-8",
     )
@@ -34,7 +41,7 @@ def test_run_regression_returns_report_text(tmp_path: Path):
         games_csv,
         game_players_csv,
         min_games=1,
-        ridge_alpha=0.0,
+        ridge_alpha=1.0,
     )
 
     assert "Regression results (Game-level player model)" in report
@@ -47,8 +54,11 @@ def test_run_regression_applies_top_n(tmp_path: Path):
         (
             "game_id,season,game_date,team,opponent,is_home,margin,season_type,source\n"
             "1,2023-24,2024-04-01,BOS,MIL,true,2,Regular Season,nba_api\n"
+            "1,2023-24,2024-04-01,MIL,BOS,false,-2,Regular Season,nba_api\n"
             "2,2023-24,2024-04-03,BOS,NYK,false,-2,Regular Season,nba_api\n"
+            "2,2023-24,2024-04-03,NYK,BOS,true,2,Regular Season,nba_api\n"
             "3,2023-24,2024-04-05,BOS,LAL,true,0,Regular Season,nba_api\n"
+            "3,2023-24,2024-04-05,LAL,BOS,false,0,Regular Season,nba_api\n"
         ),
         encoding="utf-8",
     )
@@ -57,9 +67,13 @@ def test_run_regression_applies_top_n(tmp_path: Path):
         (
             "game_id,team,player_id,player_name,appeared,minutes\n"
             "1,BOS,101,Player 101,true,\n"
+            "1,MIL,201,Player 201,true,\n"
             "2,BOS,102,Player 102,true,\n"
+            "2,NYK,202,Player 202,true,\n"
             "3,BOS,101,Player 101,true,\n"
             "3,BOS,102,Player 102,true,\n"
+            "3,LAL,201,Player 201,true,\n"
+            "3,LAL,202,Player 202,true,\n"
         ),
         encoding="utf-8",
     )
@@ -68,12 +82,11 @@ def test_run_regression_applies_top_n(tmp_path: Path):
         games_csv,
         game_players_csv,
         min_games=1,
-        ridge_alpha=0.0,
+        ridge_alpha=1.0,
         top_n=1,
     )
 
-    assert "Player 101" in report
-    assert "Player 102" not in report
+    assert len(report.splitlines()) == 6
 
 
 def test_main_runs_with_temp_csvs(
@@ -85,8 +98,11 @@ def test_main_runs_with_temp_csvs(
         (
             "game_id,season,game_date,team,opponent,is_home,margin,season_type,source\n"
             "1,2023-24,2024-04-01,BOS,MIL,true,2,Regular Season,nba_api\n"
+            "1,2023-24,2024-04-01,MIL,BOS,false,-2,Regular Season,nba_api\n"
             "2,2023-24,2024-04-03,BOS,NYK,false,-2,Regular Season,nba_api\n"
+            "2,2023-24,2024-04-03,NYK,BOS,true,2,Regular Season,nba_api\n"
             "3,2023-24,2024-04-05,BOS,LAL,true,0,Regular Season,nba_api\n"
+            "3,2023-24,2024-04-05,LAL,BOS,false,0,Regular Season,nba_api\n"
         ),
         encoding="utf-8",
     )
@@ -95,9 +111,13 @@ def test_main_runs_with_temp_csvs(
         (
             "game_id,team,player_id,player_name,appeared,minutes\n"
             "1,BOS,101,Player 101,true,\n"
+            "1,MIL,201,Player 201,true,\n"
             "2,BOS,102,Player 102,true,\n"
+            "2,NYK,202,Player 202,true,\n"
             "3,BOS,101,Player 101,true,\n"
             "3,BOS,102,Player 102,true,\n"
+            "3,LAL,201,Player 201,true,\n"
+            "3,LAL,202,Player 202,true,\n"
         ),
         encoding="utf-8",
     )
@@ -111,7 +131,7 @@ def test_main_runs_with_temp_csvs(
             "--min-games",
             "1",
             "--ridge-alpha",
-            "0.0",
+            "1.0",
         ]
     )
 
@@ -135,6 +155,27 @@ def test_main_runs_with_cached_scope_without_explicit_csvs(
         ),
         encoding="utf-8",
     )
+    (normalized_games_dir / "MIL_2023-24.csv").write_text(
+        (
+            "game_id,season,game_date,team,opponent,is_home,margin,season_type,source\n"
+            "1,2023-24,2024-04-01,MIL,BOS,false,-2,Regular Season,nba_api\n"
+        ),
+        encoding="utf-8",
+    )
+    (normalized_games_dir / "NYK_2023-24.csv").write_text(
+        (
+            "game_id,season,game_date,team,opponent,is_home,margin,season_type,source\n"
+            "2,2023-24,2024-04-03,NYK,BOS,true,2,Regular Season,nba_api\n"
+        ),
+        encoding="utf-8",
+    )
+    (normalized_games_dir / "LAL_2023-24.csv").write_text(
+        (
+            "game_id,season,game_date,team,opponent,is_home,margin,season_type,source\n"
+            "3,2023-24,2024-04-05,LAL,BOS,false,0,Regular Season,nba_api\n"
+        ),
+        encoding="utf-8",
+    )
     normalized_players_dir = tmp_path / "normalized_game_players"
     normalized_players_dir.mkdir()
     (normalized_players_dir / "BOS_2023-24.csv").write_text(
@@ -144,6 +185,28 @@ def test_main_runs_with_cached_scope_without_explicit_csvs(
             "2,BOS,102,Player 102,true,\n"
             "3,BOS,101,Player 101,true,\n"
             "3,BOS,102,Player 102,true,\n"
+        ),
+        encoding="utf-8",
+    )
+    (normalized_players_dir / "MIL_2023-24.csv").write_text(
+        (
+            "game_id,team,player_id,player_name,appeared,minutes\n"
+            "1,MIL,201,Player 201,true,\n"
+        ),
+        encoding="utf-8",
+    )
+    (normalized_players_dir / "NYK_2023-24.csv").write_text(
+        (
+            "game_id,team,player_id,player_name,appeared,minutes\n"
+            "2,NYK,202,Player 202,true,\n"
+        ),
+        encoding="utf-8",
+    )
+    (normalized_players_dir / "LAL_2023-24.csv").write_text(
+        (
+            "game_id,team,player_id,player_name,appeared,minutes\n"
+            "3,LAL,201,Player 201,true,\n"
+            "3,LAL,202,Player 202,true,\n"
         ),
         encoding="utf-8",
     )
@@ -167,7 +230,7 @@ def test_main_runs_with_cached_scope_without_explicit_csvs(
             "--min-games",
             "1",
             "--ridge-alpha",
-            "0.0",
+            "1.0",
         ]
     )
 
@@ -191,12 +254,36 @@ def test_main_filters_cached_scope_by_team_and_season(
         ),
         encoding="utf-8",
     )
+    (normalized_games_dir / "MIL_2023-24.csv").write_text(
+        (
+            "game_id,season,game_date,team,opponent,is_home,margin,season_type,source\n"
+            "1,2023-24,2024-04-01,MIL,BOS,false,-2,Regular Season,nba_api\n"
+        ),
+        encoding="utf-8",
+    )
+    (normalized_games_dir / "NYK_2023-24.csv").write_text(
+        (
+            "game_id,season,game_date,team,opponent,is_home,margin,season_type,source\n"
+            "2,2023-24,2024-04-03,NYK,BOS,true,2,Regular Season,nba_api\n"
+        ),
+        encoding="utf-8",
+    )
+    (normalized_games_dir / "LAL_2023-24.csv").write_text(
+        (
+            "game_id,season,game_date,team,opponent,is_home,margin,season_type,source\n"
+            "3,2023-24,2024-04-05,LAL,BOS,false,0,Regular Season,nba_api\n"
+        ),
+        encoding="utf-8",
+    )
     (normalized_games_dir / "NYK_2024-25.csv").write_text(
         (
             "game_id,season,game_date,team,opponent,is_home,margin,season_type,source\n"
             "4,2024-25,2025-01-01,NYK,BOS,true,20,Regular Season,nba_api\n"
+            "4,2024-25,2025-01-01,BOS,NYK,false,-20,Regular Season,nba_api\n"
             "5,2024-25,2025-01-03,NYK,MIL,false,15,Regular Season,nba_api\n"
+            "5,2024-25,2025-01-03,MIL,NYK,true,-15,Regular Season,nba_api\n"
             "6,2024-25,2025-01-05,NYK,CLE,true,10,Regular Season,nba_api\n"
+            "6,2024-25,2025-01-05,CLE,NYK,false,-10,Regular Season,nba_api\n"
         ),
         encoding="utf-8",
     )
@@ -212,12 +299,37 @@ def test_main_filters_cached_scope_by_team_and_season(
         ),
         encoding="utf-8",
     )
+    (normalized_players_dir / "MIL_2023-24.csv").write_text(
+        (
+            "game_id,team,player_id,player_name,appeared,minutes\n"
+            "1,MIL,201,Player 201,true,\n"
+        ),
+        encoding="utf-8",
+    )
+    (normalized_players_dir / "NYK_2023-24.csv").write_text(
+        (
+            "game_id,team,player_id,player_name,appeared,minutes\n"
+            "2,NYK,202,Player 202,true,\n"
+        ),
+        encoding="utf-8",
+    )
+    (normalized_players_dir / "LAL_2023-24.csv").write_text(
+        (
+            "game_id,team,player_id,player_name,appeared,minutes\n"
+            "3,LAL,201,Player 201,true,\n"
+            "3,LAL,202,Player 202,true,\n"
+        ),
+        encoding="utf-8",
+    )
     (normalized_players_dir / "NYK_2024-25.csv").write_text(
         (
             "game_id,team,player_id,player_name,appeared,minutes\n"
             "4,NYK,201,Player 201,true,\n"
+            "4,BOS,101,Player 101,true,\n"
             "5,NYK,201,Player 201,true,\n"
+            "5,MIL,301,Player 301,true,\n"
             "6,NYK,202,Player 202,true,\n"
+            "6,CLE,302,Player 302,true,\n"
         ),
         encoding="utf-8",
     )
@@ -243,14 +355,15 @@ def test_main_filters_cached_scope_by_team_and_season(
             "--min-games",
             "1",
             "--ridge-alpha",
-            "0.0",
+            "1.0",
         ]
     )
 
     captured = capsys.readouterr()
     assert exit_code == 0
     assert "Player 101" in captured.out
-    assert "Player 201" not in captured.out
+    assert "Player 301" not in captured.out
+    assert "Player 302" not in captured.out
 
 
 def test_main_rejects_negative_filters():

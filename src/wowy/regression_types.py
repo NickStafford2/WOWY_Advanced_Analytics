@@ -8,11 +8,10 @@ class RegressionObservation:
     game_id: str
     season: str
     game_date: str
-    team: str
-    opponent: str
-    is_home: bool
+    home_team: str
+    away_team: str
     margin: float
-    player_ids: set[int]
+    player_weights: dict[int, float]
 
 
 @dataclass(frozen=True)
