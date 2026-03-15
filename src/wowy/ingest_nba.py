@@ -56,16 +56,24 @@ def fetch_team_season_data(
 
     unique_games_df = games_df.drop_duplicates(subset=["GAME_ID"])
     for _, game_row in unique_games_df.iterrows():
-        normalized_game, game_players = fetch_normalized_game_data(
-            game_id=str(game_row["GAME_ID"]),
-            team_abbreviation=team["abbreviation"],
-            season=season,
-            game_date=extract_game_date(game_row),
-            opponent=extract_opponent(game_row, team["abbreviation"]),
-            is_home=extract_is_home(game_row, team["abbreviation"]),
-            season_type=season_type,
-            source_data_dir=source_data_dir,
-        )
+        game_id = str(game_row["GAME_ID"])
+        try:
+            normalized_game, game_players = fetch_normalized_game_data(
+                game_id=game_id,
+                team_abbreviation=team["abbreviation"],
+                season=season,
+                game_date=extract_game_date(game_row),
+                opponent=extract_opponent(game_row, team["abbreviation"]),
+                is_home=extract_is_home(game_row, team["abbreviation"]),
+                season_type=season_type,
+                source_data_dir=source_data_dir,
+            )
+        except ValueError as exc:
+            print(
+                f"skip game {game_id} {team['abbreviation']} {season} reason={exc}"
+            )
+            continue
+
         normalized_games.append(normalized_game)
         normalized_game_players.extend(game_players)
 

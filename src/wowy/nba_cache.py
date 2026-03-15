@@ -30,7 +30,6 @@ def load_or_fetch_league_games(
     )
     cached_payload = load_cached_payload(cache_path)
     if cached_payload is not None:
-        print(f"cache league_games {team_abbreviation} {season} {season_type}")
         return cached_payload
 
     print(f"api league_games {team_abbreviation} {season} {season_type}")
@@ -50,7 +49,6 @@ def load_or_fetch_box_score(game_id: str, source_data_dir: Path) -> dict:
     cache_path = box_score_cache_path(game_id, source_data_dir=source_data_dir)
     cached_payload = load_cached_payload(cache_path)
     if cached_payload is not None:
-        print(f"cache box_score {game_id}")
         return cached_payload
 
     last_error: Exception | None = None

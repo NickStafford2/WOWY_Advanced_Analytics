@@ -151,3 +151,102 @@ def test_write_team_season_games_csv_writes_normalized_and_derived_outputs(
     player_names = load_player_names_from_cache(source_data_dir)
     assert player_names[1628369] == "Jayson Tatum"
     assert player_names[1628401] == "Derrick White"
+
+
+def test_write_team_season_games_csv_skips_empty_box_scores(
+    tmp_path: Path,
+    monkeypatch,
+):
+    source_data_dir = tmp_path / "source-data"
+
+    monkeypatch.setattr(
+        "wowy.ingest_nba.teams.find_team_by_abbreviation",
+        lambda abbreviation: {"id": 1610612737, "abbreviation": "ATL"},
+    )
+
+    class FakeLeagueGameFinder:
+        def __init__(self, **kwargs):
+            pass
+
+        def get_dict(self):
+            return {
+                "resultSets": [
+                    {
+                        "headers": ["GAME_ID", "GAME_DATE", "MATCHUP"],
+                        "rowSet": [
+                            ["0001", "2024-04-01", "ATL vs. MIL"],
+                            ["0002", "2024-04-03", "ATL vs. BOS"],
+                        ],
+                    }
+                ]
+            }
+
+    class FakeBoxScoreTraditionalV2:
+        def __init__(self, game_id: str):
+            self.game_id = game_id
+
+        def get_dict(self):
+            if self.game_id == "0001":
+                return {
+                    "resultSets": [
+                        {
+                            "headers": [
+                                "TEAM_ABBREVIATION",
+                                "PLAYER_ID",
+                                "PLAYER_NAME",
+                                "MIN",
+                            ],
+                            "rowSet": [],
+                        },
+                        {
+                            "headers": ["TEAM_ABBREVIATION", "PLUS_MINUS"],
+                            "rowSet": [],
+                        },
+                    ]
+                }
+
+            return {
+                "resultSets": [
+                    {
+                        "headers": [
+                            "TEAM_ABBREVIATION",
+                            "PLAYER_ID",
+                            "PLAYER_NAME",
+                            "MIN",
+                        ],
+                        "rowSet": [
+                            ["ATL", 101, "Player 101", "36:00"],
+                            ["ATL", 102, "Player 102", "30:15"],
+                        ],
+                    },
+                    {
+                        "headers": ["TEAM_ABBREVIATION", "PLUS_MINUS"],
+                        "rowSet": [["ATL", -5]],
+                    },
+                ]
+            }
+
+    monkeypatch.setattr(
+        "wowy.nba_cache.leaguegamefinder.LeagueGameFinder",
+        FakeLeagueGameFinder,
+    )
+    monkeypatch.setattr(
+        "wowy.nba_cache.boxscoretraditionalv2.BoxScoreTraditionalV2",
+        FakeBoxScoreTraditionalV2,
+    )
+
+    csv_path = tmp_path / "games.csv"
+    write_team_season_games_csv(
+        "ATL",
+        "2023-24",
+        csv_path,
+        normalized_games_csv_path=tmp_path / "normalized" / "games.csv",
+        normalized_game_players_csv_path=tmp_path / "normalized" / "game_players.csv",
+        source_data_dir=source_data_dir,
+    )
+
+    games = load_games_from_csv(csv_path)
+
+    assert games == [
+        WowyGameRecord("0002", "ATL", -5.0, {101, 102}),
+    ]

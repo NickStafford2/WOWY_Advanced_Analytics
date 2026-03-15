@@ -148,6 +148,14 @@ poetry run python scripts/run_wowy_pipeline.py BOS:2023-24
 poetry run python scripts/run_regression_pipeline.py BOS:2023-24 NYK:2023-24 --ridge-alpha 1.0
 ```
 
+To fetch and cache a whole season across many teams, run:
+
+```bash
+poetry run python scripts/cache_season_data.py 2023-24
+```
+
+That reuses the existing ingestion path for each team, writes the per-team normalized and WOWY CSVs, and by default also writes combined WOWY and regression inputs.
+
 
 ## Install
 

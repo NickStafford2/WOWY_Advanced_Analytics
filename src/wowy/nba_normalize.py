@@ -105,6 +105,9 @@ def fetch_normalized_game_data(
     player_stats_df = result_set_to_data_frame(box_score_payload["resultSets"][0])
     team_stats_df = result_set_to_data_frame(box_score_payload["resultSets"][1])
 
+    if player_stats_df.empty or team_stats_df.empty:
+        raise ValueError(f"Box score is empty for game {game_id!r}")
+
     team_rows = team_stats_df.loc[
         team_stats_df["TEAM_ABBREVIATION"] == team_abbreviation,
     ]
