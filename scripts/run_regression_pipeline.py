@@ -3,7 +3,7 @@ from __future__ import annotations
 import argparse
 from pathlib import Path
 
-from wowy.combine_games_cli import combine_normalized_data
+from wowy.combine_games_cli import combine_normalized_files
 from wowy.ingest_nba import (
     DEFAULT_NORMALIZED_GAME_PLAYERS_DIR,
     DEFAULT_NORMALIZED_GAMES_DIR,
@@ -67,21 +67,28 @@ def main(argv: list[str] | None = None) -> int:
     parser = build_parser()
     args = parser.parse_args(argv)
 
+    normalized_games_paths: list[Path] = []
+    normalized_game_players_paths: list[Path] = []
     for spec in args.team_seasons:
         team, season = parse_team_season_spec(spec)
+        normalized_games_path = DEFAULT_NORMALIZED_GAMES_DIR / f"{team}_{season}.csv"
+        normalized_game_players_path = (
+            DEFAULT_NORMALIZED_GAME_PLAYERS_DIR / f"{team}_{season}.csv"
+        )
         write_team_season_games_csv(
             team_abbreviation=team,
             season=season,
             csv_path=DEFAULT_WOWY_GAMES_DIR / f"{team}_{season}.csv",
-            normalized_games_csv_path=DEFAULT_NORMALIZED_GAMES_DIR / f"{team}_{season}.csv",
-            normalized_game_players_csv_path=DEFAULT_NORMALIZED_GAME_PLAYERS_DIR
-            / f"{team}_{season}.csv",
+            normalized_games_csv_path=normalized_games_path,
+            normalized_game_players_csv_path=normalized_game_players_path,
             season_type=args.season_type,
         )
+        normalized_games_paths.append(normalized_games_path)
+        normalized_game_players_paths.append(normalized_game_players_path)
 
-    combine_normalized_data(
-        games_input_dir=DEFAULT_NORMALIZED_GAMES_DIR,
-        game_players_input_dir=DEFAULT_NORMALIZED_GAME_PLAYERS_DIR,
+    combine_normalized_files(
+        games_input_paths=normalized_games_paths,
+        game_players_input_paths=normalized_game_players_paths,
         games_output_path=args.games_output,
         game_players_output_path=args.game_players_output,
     )

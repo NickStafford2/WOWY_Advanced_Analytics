@@ -7,7 +7,7 @@ from pathlib import Path
 
 from nba_api.stats.static import teams as nba_teams
 
-from wowy.combine_games_cli import combine_normalized_data
+from wowy.combine_games_cli import combine_normalized_files
 from wowy.ingest_nba import (
     DEFAULT_NORMALIZED_GAME_PLAYERS_DIR,
     DEFAULT_NORMALIZED_GAMES_DIR,
@@ -119,19 +119,25 @@ def main(argv: list[str] | None = None) -> int:
     args = parser.parse_args(argv)
 
     team_codes = resolve_teams(args.teams)
+    normalized_games_paths: list[Path] = []
+    normalized_game_players_paths: list[Path] = []
     wowy_csv_paths: list[Path] = []
 
     team_total = len(team_codes)
     for team_index, team_code in enumerate(team_codes, start=1):
         wowy_csv_path = DEFAULT_WOWY_GAMES_DIR / f"{team_code}_{args.season}.csv"
+        normalized_games_path = (
+            DEFAULT_NORMALIZED_GAMES_DIR / f"{team_code}_{args.season}.csv"
+        )
+        normalized_game_players_path = (
+            DEFAULT_NORMALIZED_GAME_PLAYERS_DIR / f"{team_code}_{args.season}.csv"
+        )
         write_team_season_games_csv(
             team_abbreviation=team_code,
             season=args.season,
             csv_path=wowy_csv_path,
-            normalized_games_csv_path=DEFAULT_NORMALIZED_GAMES_DIR
-            / f"{team_code}_{args.season}.csv",
-            normalized_game_players_csv_path=DEFAULT_NORMALIZED_GAME_PLAYERS_DIR
-            / f"{team_code}_{args.season}.csv",
+            normalized_games_csv_path=normalized_games_path,
+            normalized_game_players_csv_path=normalized_game_players_path,
             season_type=args.season_type,
             log=quiet_log,
             progress=lambda payload, team_index=team_index: render_progress_line(
@@ -141,14 +147,16 @@ def main(argv: list[str] | None = None) -> int:
             ),
         )
         sys.stdout.write("\n")
+        normalized_games_paths.append(normalized_games_path)
+        normalized_game_players_paths.append(normalized_game_players_path)
         wowy_csv_paths.append(wowy_csv_path)
 
     if args.skip_combine:
         return 0
 
-    combine_normalized_data(
-        games_input_dir=DEFAULT_NORMALIZED_GAMES_DIR,
-        game_players_input_dir=DEFAULT_NORMALIZED_GAME_PLAYERS_DIR,
+    combine_normalized_files(
+        games_input_paths=normalized_games_paths,
+        game_players_input_paths=normalized_game_players_paths,
         games_output_path=args.combined_regression_games_csv,
         game_players_output_path=args.combined_regression_game_players_csv,
     )
