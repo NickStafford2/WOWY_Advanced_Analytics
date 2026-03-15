@@ -5,7 +5,12 @@ from pathlib import Path
 
 import pytest
 
-from wowy.ingest_nba import load_player_names_from_cache, write_team_season_games_csv
+from wowy.ingest_nba import (
+    extract_is_home,
+    extract_opponent,
+    load_player_names_from_cache,
+    write_team_season_games_csv,
+)
 from wowy.io import load_games_from_csv
 from wowy.nba_normalize import parse_minutes_to_float, played_in_game
 from wowy.normalized_io import (
@@ -253,6 +258,16 @@ def test_write_team_season_games_csv_skips_empty_box_scores(
     assert games == [
         WowyGameRecord("0002", "2023-24", "ATL", -5.0, {101, 102}),
     ]
+
+
+def test_extract_matchup_fields_accept_requested_team_on_either_side() -> None:
+    home_row = {"GAME_ID": "0001", "MATCHUP": "MIA @ WAS"}
+    away_row = {"GAME_ID": "0002", "MATCHUP": "WAS @ MIA"}
+
+    assert extract_opponent(home_row, "WAS") == "MIA"
+    assert extract_is_home(home_row, "WAS") is True
+    assert extract_opponent(away_row, "WAS") == "MIA"
+    assert extract_is_home(away_row, "WAS") is False
 
 
 @pytest.mark.parametrize(

@@ -192,14 +192,18 @@ def extract_opponent(game_row, team_abbreviation: str) -> str:
 
     if " vs. " in matchup:
         left, right = matchup.split(" vs. ", maxsplit=1)
-        if left != team_abbreviation:
-            raise ValueError(f"Unexpected MATCHUP for game {game_row['GAME_ID']!r}: {matchup!r}")
-        return right
+        if left == team_abbreviation:
+            return right
+        if right == team_abbreviation:
+            return left
+        raise ValueError(f"Unexpected MATCHUP for game {game_row['GAME_ID']!r}: {matchup!r}")
     if " @ " in matchup:
         left, right = matchup.split(" @ ", maxsplit=1)
-        if left != team_abbreviation:
-            raise ValueError(f"Unexpected MATCHUP for game {game_row['GAME_ID']!r}: {matchup!r}")
-        return right
+        if left == team_abbreviation:
+            return right
+        if right == team_abbreviation:
+            return left
+        raise ValueError(f"Unexpected MATCHUP for game {game_row['GAME_ID']!r}: {matchup!r}")
 
     raise ValueError(f"Unsupported MATCHUP for game {game_row['GAME_ID']!r}: {matchup!r}")
 
@@ -207,7 +211,17 @@ def extract_opponent(game_row, team_abbreviation: str) -> str:
 def extract_is_home(game_row, team_abbreviation: str) -> bool:
     matchup = str(game_row.get("MATCHUP", "")).strip()
     if " vs. " in matchup:
-        return True
+        left, right = matchup.split(" vs. ", maxsplit=1)
+        if left == team_abbreviation:
+            return True
+        if right == team_abbreviation:
+            return False
+        raise ValueError(f"Unexpected MATCHUP for game {game_row['GAME_ID']!r}: {matchup!r}")
     if " @ " in matchup:
-        return False
+        left, right = matchup.split(" @ ", maxsplit=1)
+        if left == team_abbreviation:
+            return False
+        if right == team_abbreviation:
+            return True
+        raise ValueError(f"Unexpected MATCHUP for game {game_row['GAME_ID']!r}: {matchup!r}")
     raise ValueError(f"Unsupported MATCHUP for game {game_row['GAME_ID']!r}: {matchup!r}")
