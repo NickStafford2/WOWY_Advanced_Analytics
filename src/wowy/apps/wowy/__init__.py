@@ -1,0 +1,1 @@
+"""WOWY application package."""

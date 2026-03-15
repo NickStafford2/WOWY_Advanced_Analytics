@@ -5,20 +5,17 @@ from typing import Callable
 
 from nba_api.stats.static import teams
 
-from wowy.cache_validation import validate_team_season_files
-from wowy.derive_wowy import derive_wowy_games, write_wowy_games_csv
-from wowy.nba_cache import (
-    DEFAULT_SOURCE_DATA_DIR,
-    load_or_fetch_league_games_with_source,
-)
-from wowy.normalized_io import (
-    write_normalized_game_players_csv,
-    write_normalized_games_csv,
-)
-from wowy.nba_normalize import (
+from wowy.apps.wowy.derive import derive_wowy_games, write_wowy_games_csv
+from wowy.nba.cache import DEFAULT_SOURCE_DATA_DIR, load_or_fetch_league_games_with_source
+from wowy.nba.normalize import (
     fetch_normalized_game_data_with_source,
     load_player_names_from_cache as load_cached_player_names,
     result_set_to_data_frame,
+)
+from wowy.nba.validation import validate_team_season_files
+from wowy.normalized_io import (
+    write_normalized_game_players_csv,
+    write_normalized_games_csv,
 )
 from wowy.types import (
     NormalizedGamePlayerRecord,
@@ -43,8 +40,6 @@ def fetch_team_season_data(
     log: Callable[[str], None] | None = print,
     progress: ProgressFn | None = None,
 ) -> tuple[list[NormalizedGameRecord], list[NormalizedGamePlayerRecord]]:
-    """Fetch one NBA team-season and return canonical normalized game-level records."""
-
     result = build_team_season_artifacts(
         team_abbreviation=team_abbreviation,
         season=season,
@@ -64,8 +59,6 @@ def build_team_season_artifacts(
     log: Callable[[str], None] | None = print,
     progress: ProgressFn | None = None,
 ) -> TeamSeasonBuildResult:
-    """Fetch one NBA team-season and return normalized plus derived WOWY records."""
-
     team = teams.find_team_by_abbreviation(team_abbreviation.upper())
     if team is None:
         raise ValueError(f"Unknown NBA team abbreviation: {team_abbreviation!r}")
@@ -186,8 +179,6 @@ def write_team_season_normalized_csvs(
     log: Callable[[str], None] | None = print,
     progress: ProgressFn | None = None,
 ) -> tuple[list[NormalizedGameRecord], list[NormalizedGamePlayerRecord]]:
-    """Fetch one NBA team-season and write canonical normalized CSVs."""
-
     result = build_team_season_artifacts(
         team_abbreviation=team_abbreviation,
         season=season,
@@ -214,9 +205,7 @@ def write_team_season_games_csv(
     source_data_dir: Path = DEFAULT_SOURCE_DATA_DIR,
     log: Callable[[str], None] | None = print,
     progress: ProgressFn | None = None,
- ) -> TeamSeasonRunSummary:
-    """Fetch one NBA team-season and write normalized CSVs plus derived WOWY output."""
-
+) -> TeamSeasonRunSummary:
     normalized_games_path = Path(
         normalized_games_csv_path
         or DEFAULT_NORMALIZED_GAMES_DIR / f"{team_abbreviation.upper()}_{season}.csv"
@@ -255,55 +244,42 @@ def write_team_season_games_csv(
 def load_player_names_from_cache(
     source_data_dir: Path = DEFAULT_SOURCE_DATA_DIR,
 ) -> dict[int, str]:
-    """Load a player-id-to-name mapping from cached NBA box score payloads."""
-
     return load_cached_player_names(source_data_dir)
 
 
 def extract_game_date(game_row) -> str:
-    game_date = str(game_row.get("GAME_DATE", "")).strip()
-    if not game_date:
-        raise ValueError(f"Missing GAME_DATE for game {game_row['GAME_ID']!r}")
-    return game_date
+    return str(game_row["GAME_DATE"])
 
 
 def extract_opponent(game_row, team_abbreviation: str) -> str:
-    matchup = str(game_row.get("MATCHUP", "")).strip()
-    if not matchup:
-        raise ValueError(f"Missing MATCHUP for game {game_row['GAME_ID']!r}")
-
+    matchup = str(game_row["MATCHUP"])
     if " vs. " in matchup:
         left, right = matchup.split(" vs. ", maxsplit=1)
-        if left == team_abbreviation:
-            return right
-        if right == team_abbreviation:
-            return left
-        raise ValueError(f"Unexpected MATCHUP for game {game_row['GAME_ID']!r}: {matchup!r}")
-    if " @ " in matchup:
+    elif " @ " in matchup:
         left, right = matchup.split(" @ ", maxsplit=1)
-        if left == team_abbreviation:
-            return right
-        if right == team_abbreviation:
-            return left
-        raise ValueError(f"Unexpected MATCHUP for game {game_row['GAME_ID']!r}: {matchup!r}")
+    else:
+        raise ValueError(f"Unrecognized matchup string {matchup!r}")
 
-    raise ValueError(f"Unsupported MATCHUP for game {game_row['GAME_ID']!r}: {matchup!r}")
+    if team_abbreviation == left:
+        return right
+    if team_abbreviation == right:
+        return left
+    raise ValueError(f"Failed to parse opponent from matchup {matchup!r}")
 
 
 def extract_is_home(game_row, team_abbreviation: str) -> bool:
-    matchup = str(game_row.get("MATCHUP", "")).strip()
+    matchup = str(game_row["MATCHUP"])
     if " vs. " in matchup:
         left, right = matchup.split(" vs. ", maxsplit=1)
-        if left == team_abbreviation:
+        if team_abbreviation == left:
             return True
-        if right == team_abbreviation:
+        if team_abbreviation == right:
             return False
-        raise ValueError(f"Unexpected MATCHUP for game {game_row['GAME_ID']!r}: {matchup!r}")
-    if " @ " in matchup:
+    elif " @ " in matchup:
         left, right = matchup.split(" @ ", maxsplit=1)
-        if left == team_abbreviation:
+        if team_abbreviation == left:
             return False
-        if right == team_abbreviation:
+        if team_abbreviation == right:
             return True
-        raise ValueError(f"Unexpected MATCHUP for game {game_row['GAME_ID']!r}: {matchup!r}")
-    raise ValueError(f"Unsupported MATCHUP for game {game_row['GAME_ID']!r}: {matchup!r}")
+
+    raise ValueError(f"Unrecognized matchup string {matchup!r}")
