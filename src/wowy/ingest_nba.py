@@ -31,12 +31,12 @@ def fetch_team_season_games(
     if team is None:
         raise ValueError(f"Unknown NBA team abbreviation: {team_abbreviation!r}")
 
-    finder_payload = _load_or_fetch_league_games(
-        team["id"],
-        team["abbreviation"],
-        season,
-        season_type,
-        source_data_dir,
+    finder_payload = load_or_fetch_league_games(
+        team_id=team["id"],
+        team_abbreviation=team["abbreviation"],
+        season=season,
+        season_type=season_type,
+        source_data_dir=source_data_dir,
     )
     games_df = result_set_to_data_frame(finder_payload["resultSets"][0])
 
@@ -92,21 +92,3 @@ def load_player_names_from_cache(
     """Load a player-id-to-name mapping from cached NBA box score payloads."""
 
     return load_cached_player_names(source_data_dir)
-
-
-def _load_or_fetch_league_games(
-    team_id: int,
-    team_abbreviation: str,
-    season: str,
-    season_type: str,
-    source_data_dir: Path,
-) -> dict:
-    """Load a cached team-season response or fetch and cache it from the NBA API."""
-
-    return load_or_fetch_league_games(
-        team_id=team_id,
-        team_abbreviation=team_abbreviation,
-        season=season,
-        season_type=season_type,
-        source_data_dir=source_data_dir,
-    )
