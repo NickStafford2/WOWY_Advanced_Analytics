@@ -95,8 +95,8 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument(
         "--top-n",
         type=int,
-        default=None,
-        help="Maximum number of players to include in output",
+        default=40,
+        help="Maximum number of players to include in output (default: 40)",
     )
     return parser
 
