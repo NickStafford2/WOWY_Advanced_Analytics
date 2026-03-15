@@ -20,3 +20,4 @@ data/combined/*
 data/combined/regression/*
 !data/combined/regression/
 !data/combined/regression/maybe.example.csv
+data/source/*

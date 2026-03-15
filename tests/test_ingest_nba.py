@@ -1,8 +1,7 @@
 from __future__ import annotations
 
+import json
 from pathlib import Path
-
-import pandas as pd
 
 from wowy.ingest_nba import write_team_season_games_csv
 from wowy.io import load_games_from_csv
@@ -23,46 +22,56 @@ def test_write_team_season_games_csv_uses_existing_games_shape(
             assert kwargs["season_nullable"] == "2023-24"
             assert kwargs["season_type_nullable"] == "Regular Season"
 
-        def get_data_frames(self):
-            return [pd.DataFrame({"GAME_ID": ["0001", "0001", "0002"]})]
+        def get_dict(self):
+            return {
+                "resultSets": [
+                    {
+                        "headers": ["GAME_ID"],
+                        "rowSet": [["0001"], ["0001"], ["0002"]],
+                    }
+                ]
+            }
 
     class FakeBoxScoreTraditionalV2:
         def __init__(self, game_id: str):
             self.game_id = game_id
 
-        def get_data_frames(self):
+        def get_dict(self):
             if self.game_id == "0001":
-                return [
-                    pd.DataFrame(
+                return {
+                    "resultSets": [
                         {
-                            "TEAM_ABBREVIATION": ["BOS", "BOS", "BOS", "LAL"],
-                            "PLAYER_ID": [1628369, 1627759, 999999, 200000],
-                            "MIN": ["35:12", "34:01", "0:00", "33:44"],
-                        }
-                    ),
-                    pd.DataFrame(
+                            "headers": ["TEAM_ABBREVIATION", "PLAYER_ID", "MIN"],
+                            "rowSet": [
+                                ["BOS", 1628369, "35:12"],
+                                ["BOS", 1627759, "34:01"],
+                                ["BOS", 999999, "0:00"],
+                                ["LAL", 200000, "33:44"],
+                            ],
+                        },
                         {
-                            "TEAM_ABBREVIATION": ["BOS", "LAL"],
-                            "PLUS_MINUS": [12, -12],
-                        }
-                    ),
-                ]
+                            "headers": ["TEAM_ABBREVIATION", "PLUS_MINUS"],
+                            "rowSet": [["BOS", 12], ["LAL", -12]],
+                        },
+                    ]
+                }
 
-            return [
-                pd.DataFrame(
+            return {
+                "resultSets": [
                     {
-                        "TEAM_ABBREVIATION": ["BOS", "BOS", "LAL"],
-                        "PLAYER_ID": [1628369, 1628401, 200000],
-                        "MIN": ["36:00", "30:15", "31:02"],
-                    }
-                ),
-                pd.DataFrame(
+                        "headers": ["TEAM_ABBREVIATION", "PLAYER_ID", "MIN"],
+                        "rowSet": [
+                            ["BOS", 1628369, "36:00"],
+                            ["BOS", 1628401, "30:15"],
+                            ["LAL", 200000, "31:02"],
+                        ],
+                    },
                     {
-                        "TEAM_ABBREVIATION": ["BOS", "LAL"],
-                        "PLUS_MINUS": [-5, 5],
-                    }
-                ),
-            ]
+                        "headers": ["TEAM_ABBREVIATION", "PLUS_MINUS"],
+                        "rowSet": [["BOS", -5], ["LAL", 5]],
+                    },
+                ]
+            }
 
     monkeypatch.setattr(
         "wowy.ingest_nba.leaguegamefinder.LeagueGameFinder",
@@ -74,6 +83,7 @@ def test_write_team_season_games_csv_uses_existing_games_shape(
     )
 
     csv_path = tmp_path / "games.csv"
+    monkeypatch.chdir(tmp_path)
     write_team_season_games_csv("BOS", "2023-24", csv_path)
 
     games = load_games_from_csv(csv_path)
@@ -92,3 +102,13 @@ def test_write_team_season_games_csv_uses_existing_games_shape(
             "players": {1628369, 1628401},
         },
     ]
+
+    team_season_cache = (
+        tmp_path
+        / "data/source/nba/team_seasons/BOS_2023-24_regular_season_leaguegamefinder.json"
+    )
+    box_score_cache = tmp_path / "data/source/nba/boxscores/0001_boxscoretraditionalv2.json"
+
+    assert team_season_cache.exists()
+    assert box_score_cache.exists()
+    assert json.loads(team_season_cache.read_text(encoding="utf-8"))["resultSets"]
