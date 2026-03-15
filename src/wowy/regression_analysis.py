@@ -3,6 +3,8 @@ from __future__ import annotations
 from statistics import mean
 from typing import Callable
 
+import numpy as np
+
 from wowy.regression_data import count_player_games
 from wowy.regression_types import (
     RegressionModel,
@@ -98,8 +100,8 @@ def fit_regression_model(
         for index, team_season in enumerate(team_seasons)
     }
 
-    gram = [[0.0 for _ in range(feature_count)] for _ in range(feature_count)]
-    target = [0.0 for _ in range(feature_count)]
+    gram = np.zeros((feature_count, feature_count), dtype=float)
+    target = np.zeros(feature_count, dtype=float)
 
     total_steps = (len(observations) * 2) + max(feature_count - 2, 0) + feature_count
     completed_steps = 0
@@ -244,8 +246,8 @@ def build_feature_row(
     home_court_sign: float,
     team_effect_key: str,
     opponent_effect_key: str,
-) -> list[float]:
-    row = [0.0 for _ in range(feature_count)]
+) -> np.ndarray:
+    row = np.zeros(feature_count, dtype=float)
     row[0] = 1.0
     row[1] = home_court_sign
     row[team_effect_index[team_effect_key]] = 1.0
@@ -258,16 +260,13 @@ def build_feature_row(
 
 
 def accumulate_row(
-    gram: list[list[float]],
-    target: list[float],
-    row: list[float],
+    gram: np.ndarray,
+    target: np.ndarray,
+    row: np.ndarray,
     margin: float,
 ) -> None:
-    feature_count = len(row)
-    for i in range(feature_count):
-        target[i] += row[i] * margin
-        for j in range(feature_count):
-            gram[i][j] += row[i] * row[j]
+    target += row * margin
+    gram += np.outer(row, row)
 
 
 def team_season_key(team: str, season: str) -> str:
@@ -275,49 +274,24 @@ def team_season_key(team: str, season: str) -> str:
 
 
 def solve_linear_system(
-    matrix: list[list[float]],
-    vector: list[float],
+    matrix: np.ndarray,
+    vector: np.ndarray,
     progress: ProgressFn | None = None,
     progress_offset: int = 0,
     progress_total: int | None = None,
 ) -> list[float]:
     size = len(vector)
-    augmented = [row[:] + [value] for row, value in zip(matrix, vector, strict=True)]
     total = progress_total if progress_total is not None else progress_offset + size
 
-    for pivot_index in range(size):
-        pivot_row = max(
-            range(pivot_index, size),
-            key=lambda row_index: abs(augmented[row_index][pivot_index]),
-        )
-        pivot_value = augmented[pivot_row][pivot_index]
-        if abs(pivot_value) < 1e-9:
-            raise ValueError(
-                "Regression system is singular; the current game-level regression design matrix is not identifiable for this input."
-            )
-
-        if pivot_row != pivot_index:
-            augmented[pivot_index], augmented[pivot_row] = (
-                augmented[pivot_row],
-                augmented[pivot_index],
-            )
-
-        pivot_value = augmented[pivot_index][pivot_index]
-        for column_index in range(pivot_index, size + 1):
-            augmented[pivot_index][column_index] /= pivot_value
-
-        for row_index in range(size):
-            if row_index == pivot_index:
-                continue
-            factor = augmented[row_index][pivot_index]
-            if factor == 0:
-                continue
-            for column_index in range(pivot_index, size + 1):
-                augmented[row_index][column_index] -= (
-                    factor * augmented[pivot_index][column_index]
-                )
-
-        if progress is not None:
+    if progress is not None:
+        for pivot_index in range(size):
             progress(progress_offset + pivot_index + 1, total, "solving linear system")
 
-    return [augmented[row_index][size] for row_index in range(size)]
+    try:
+        solution = np.linalg.solve(matrix, vector)
+    except np.linalg.LinAlgError as exc:
+        raise ValueError(
+            "Regression system is singular; the current game-level regression design matrix is not identifiable for this input."
+        ) from exc
+
+    return solution.tolist()

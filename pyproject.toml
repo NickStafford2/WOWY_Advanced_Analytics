@@ -5,7 +5,7 @@ description = "Simple game-level WOWY basketball impact prototype"
 readme = "README.md"
 requires-python = ">=3.12,<3.13"
 authors = [{ name = "Nicholas Stafford" }]
-dependencies = ["nba_api>=1.7,<2.0"]
+dependencies = ["nba_api>=1.7,<2.0", "numpy>=2.0,<3.0"]
 
 [project.scripts]
 wowy = "wowy.main:main"
