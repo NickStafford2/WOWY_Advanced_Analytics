@@ -12,6 +12,7 @@ from requests import RequestException
 DEFAULT_SOURCE_DATA_DIR = Path("data/source/nba")
 LEAGUE_GAMES_REQUEST_RETRIES = 3
 LEAGUE_GAMES_RETRY_BACKOFF_SECONDS = 2.0
+LEAGUE_GAMES_REQUEST_DELAY_SECONDS = 0.6
 BOX_SCORE_REQUEST_RETRIES = 3
 BOX_SCORE_RETRY_BACKOFF_SECONDS = 2.0
 BOX_SCORE_REQUEST_DELAY_SECONDS = 0.6
@@ -40,6 +41,7 @@ def load_or_fetch_league_games_with_source(
 
     for attempt in range(1, LEAGUE_GAMES_REQUEST_RETRIES + 1):
         try:
+            time.sleep(LEAGUE_GAMES_REQUEST_DELAY_SECONDS)
             if log is not None:
                 log(
                     f"api league_games {team_abbreviation} {season} {season_type} "
@@ -53,7 +55,7 @@ def load_or_fetch_league_games_with_source(
             payload = finder.get_dict()
             write_cached_payload(cache_path, payload)
             return payload, "fetched"
-        except RequestException as exc:
+        except (json.JSONDecodeError, RequestException) as exc:
             last_error = exc
             if attempt == LEAGUE_GAMES_REQUEST_RETRIES:
                 break
@@ -107,7 +109,7 @@ def load_or_fetch_box_score_with_source(
             payload = box_score.get_dict()
             write_cached_payload(cache_path, payload)
             return payload, "fetched"
-        except RequestException as exc:
+        except (json.JSONDecodeError, RequestException) as exc:
             last_error = exc
             if attempt == BOX_SCORE_REQUEST_RETRIES:
                 break

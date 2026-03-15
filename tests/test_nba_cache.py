@@ -62,7 +62,7 @@ def test_load_or_fetch_league_games_retries_and_caches(tmp_path: Path, monkeypat
     assert payload["resultSets"][0]["rowSet"] == [["0001"]]
     assert source == "fetched"
     assert len(calls) == 3
-    assert sleeps == [2.0, 4.0]
+    assert sleeps == [0.6, 2.0, 0.6, 4.0, 0.6]
 
     cached_payload, cached_source = load_or_fetch_league_games_with_source(
         team_id=1610612738,
@@ -75,6 +75,42 @@ def test_load_or_fetch_league_games_retries_and_caches(tmp_path: Path, monkeypat
     assert cached_payload == payload
     assert cached_source == "cached"
     assert len(calls) == 3
+
+
+def test_load_or_fetch_league_games_retries_json_decode_error(
+    tmp_path: Path,
+    monkeypatch,
+):
+    calls: list[int] = []
+    sleeps: list[float] = []
+
+    class FakeLeagueGameFinder:
+        def __init__(self, **kwargs):
+            calls.append(1)
+            if len(calls) < 3:
+                raise json.JSONDecodeError("Expecting value", "", 0)
+
+        def get_dict(self):
+            return {"resultSets": [{"headers": ["GAME_ID"], "rowSet": [["0002"]]}]}
+
+    monkeypatch.setattr(
+        "wowy.nba.cache.leaguegamefinder.LeagueGameFinder",
+        FakeLeagueGameFinder,
+    )
+    monkeypatch.setattr("wowy.nba.cache.time.sleep", sleeps.append)
+
+    payload, source = load_or_fetch_league_games_with_source(
+        team_id=1610612738,
+        team_abbreviation="BOS",
+        season="2023-24",
+        season_type="Regular Season",
+        source_data_dir=tmp_path,
+    )
+
+    assert payload["resultSets"][0]["rowSet"] == [["0002"]]
+    assert source == "fetched"
+    assert len(calls) == 3
+    assert sleeps == [0.6, 2.0, 0.6, 4.0, 0.6]
 
 
 def test_load_or_fetch_box_score_reports_cache_source(tmp_path: Path, monkeypatch):
