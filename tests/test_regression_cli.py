@@ -231,6 +231,10 @@ def test_main_runs_with_temp_csvs(
             "1",
             "--ridge-alpha",
             "1.0",
+            "--min-average-minutes",
+            "0",
+            "--min-total-minutes",
+            "0",
         ]
     )
 
@@ -387,6 +391,10 @@ def test_main_runs_with_cached_scope_without_explicit_csvs(
             "1",
             "--ridge-alpha",
             "1.0",
+            "--min-average-minutes",
+            "0",
+            "--min-total-minutes",
+            "0",
         ]
     )
 
@@ -512,6 +520,10 @@ def test_main_filters_cached_scope_by_team_and_season(
             "1",
             "--ridge-alpha",
             "1.0",
+            "--min-average-minutes",
+            "0",
+            "--min-total-minutes",
+            "0",
         ]
     )
 
@@ -602,6 +614,10 @@ def test_main_can_tune_ridge_with_temp_csvs(
             "--tune-ridge",
             "--ridge-grid",
             "0.1,1,10",
+            "--min-average-minutes",
+            "0",
+            "--min-total-minutes",
+            "0",
         ]
     )
 

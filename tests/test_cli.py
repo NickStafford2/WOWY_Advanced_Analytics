@@ -9,9 +9,8 @@ from wowy.main import main
 from wowy.types import WowyGameRecord
 
 
-def test_main_runs_with_temp_csv(
+def test_main_rejects_temp_csv_when_default_minutes_filters_are_active(
     tmp_path: Path,
-    capsys: pytest.CaptureFixture[str],
     monkeypatch,
     write_games_csv,
 ):
@@ -27,24 +26,17 @@ def test_main_runs_with_temp_csv(
 
     monkeypatch.setattr("wowy.cli.load_player_names_from_cache", lambda _: {})
 
-    exit_code = main(
-        [
-            "--csv",
-            str(csv_path),
-            "--min-games-with",
-            "1",
-            "--min-games-without",
-            "1",
-        ]
-    )
-
-    captured = capsys.readouterr()
-
-    assert exit_code == 0
-    assert "WOWY results (Version 1)" in captured.out
-    assert "101" in captured.out
-    assert "avg_min" in captured.out
-    assert "tot_min" in captured.out
+    with pytest.raises(ValueError, match="cache-managed inputs"):
+        main(
+            [
+                "--csv",
+                str(csv_path),
+                "--min-games-with",
+                "1",
+                "--min-games-without",
+                "1",
+            ]
+        )
 
 
 def test_main_runs_with_cached_scope_without_explicit_csv(
@@ -95,6 +87,10 @@ def test_main_runs_with_cached_scope_without_explicit_csv(
             "1",
             "--min-games-without",
             "1",
+            "--min-average-minutes",
+            "0",
+            "--min-total-minutes",
+            "0",
         ]
     )
 
@@ -168,6 +164,10 @@ def test_main_filters_cached_scope_by_team_and_season(
             "1",
             "--min-games-without",
             "1",
+            "--min-average-minutes",
+            "0",
+            "--min-total-minutes",
+            "0",
         ]
     )
 

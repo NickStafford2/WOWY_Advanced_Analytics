@@ -19,6 +19,7 @@ from wowy.ingest_nba import (
 )
 from wowy.io import load_games_from_csv
 from wowy.normalized_io import load_normalized_game_players_from_csv
+from wowy.progress import TerminalProgressBar
 from wowy.types import WowyGameRecord, WowyPlayerStats
 
 
@@ -146,8 +147,17 @@ def build_wowy_report(
     player_minute_stats: dict[int, tuple[float, float]] | None = None,
     min_average_minutes: float | None = None,
     min_total_minutes: float | None = None,
+    show_progress: bool = False,
 ) -> str:
-    results = compute_wowy(games)
+    progress_bar = None
+    progress = None
+    if show_progress:
+        all_players = {player_id for game in games for player_id in game.players}
+        progress_bar = TerminalProgressBar("WOWY", total=len(all_players))
+        progress = lambda current, _total, detail: progress_bar.update(current, detail)
+    results = compute_wowy(games, progress=progress)
+    if progress_bar is not None:
+        progress_bar.finish("done")
     filtered_results = filter_results(
         results,
         min_games_with=min_games_with,
@@ -176,6 +186,7 @@ def run_wowy(
     player_minute_stats: dict[int, tuple[float, float]] | None = None,
     min_average_minutes: float | None = None,
     min_total_minutes: float | None = None,
+    show_progress: bool = False,
 ) -> str:
     validate_filters(
         min_games_with,
@@ -194,6 +205,7 @@ def run_wowy(
         player_minute_stats=player_minute_stats,
         min_average_minutes=min_average_minutes,
         min_total_minutes=min_total_minutes,
+        show_progress=show_progress,
     )
 
 
@@ -327,6 +339,7 @@ def main(argv: list[str] | None = None) -> int:
             player_minute_stats=player_minute_stats,
             min_average_minutes=args.min_average_minutes,
             min_total_minutes=args.min_total_minutes,
+            show_progress=True,
         )
     )
     return 0

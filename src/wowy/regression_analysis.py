@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from statistics import mean
+from typing import Callable
 
 from wowy.regression_data import count_player_games
 from wowy.regression_types import (
@@ -12,12 +13,15 @@ from wowy.regression_types import (
     RidgeTuningSummary,
 )
 
+ProgressFn = Callable[[int, int, str | None], None]
+
 
 def fit_player_regression(
     observations: list[RegressionObservation],
     player_names: dict[int, str],
     min_games: int = 1,
     ridge_alpha: float = 1.0,
+    progress: ProgressFn | None = None,
 ) -> RegressionResult:
     if min_games < 0:
         raise ValueError("Minimum games filter must be non-negative")
@@ -39,6 +43,7 @@ def fit_player_regression(
         observations,
         included_players,
         ridge_alpha=ridge_alpha,
+        progress=progress,
     )
     intercept = model.coefficients[0]
     home_court_advantage = model.coefficients[1]
@@ -67,6 +72,7 @@ def fit_regression_model(
     observations: list[RegressionObservation],
     player_ids: list[int],
     ridge_alpha: float = 1.0,
+    progress: ProgressFn | None = None,
 ) -> RegressionModel:
     team_seasons = sorted(
         {
@@ -95,6 +101,9 @@ def fit_regression_model(
     gram = [[0.0 for _ in range(feature_count)] for _ in range(feature_count)]
     target = [0.0 for _ in range(feature_count)]
 
+    total_steps = (len(observations) * 2) + max(feature_count - 2, 0) + feature_count
+    completed_steps = 0
+
     for observation in observations:
         home_team_season = team_season_key(observation.home_team, observation.season)
         away_team_season = team_season_key(observation.away_team, observation.season)
@@ -113,6 +122,9 @@ def fit_regression_model(
             ),
             margin=observation.margin,
         )
+        completed_steps += 1
+        if progress is not None:
+            progress(completed_steps, total_steps, "building gram matrix")
         accumulate_row(
             gram=gram,
             target=target,
@@ -128,14 +140,26 @@ def fit_regression_model(
             ),
             margin=-observation.margin,
         )
+        completed_steps += 1
+        if progress is not None:
+            progress(completed_steps, total_steps, "building gram matrix")
 
     for diagonal_index in range(2, feature_count):
         gram[diagonal_index][diagonal_index] += ridge_alpha
+        completed_steps += 1
+        if progress is not None:
+            progress(completed_steps, total_steps, "applying ridge penalty")
 
     return RegressionModel(
         player_ids=player_ids,
         team_seasons=team_seasons,
-        coefficients=solve_linear_system(gram, target),
+        coefficients=solve_linear_system(
+            gram,
+            target,
+            progress=progress,
+            progress_offset=completed_steps,
+            progress_total=total_steps,
+        ),
     )
 
 
@@ -250,9 +274,16 @@ def team_season_key(team: str, season: str) -> str:
     return f"{team}:{season}"
 
 
-def solve_linear_system(matrix: list[list[float]], vector: list[float]) -> list[float]:
+def solve_linear_system(
+    matrix: list[list[float]],
+    vector: list[float],
+    progress: ProgressFn | None = None,
+    progress_offset: int = 0,
+    progress_total: int | None = None,
+) -> list[float]:
     size = len(vector)
     augmented = [row[:] + [value] for row, value in zip(matrix, vector, strict=True)]
+    total = progress_total if progress_total is not None else progress_offset + size
 
     for pivot_index in range(size):
         pivot_row = max(
@@ -285,5 +316,8 @@ def solve_linear_system(matrix: list[list[float]], vector: list[float]) -> list[
                 augmented[row_index][column_index] -= (
                     factor * augmented[pivot_index][column_index]
                 )
+
+        if progress is not None:
+            progress(progress_offset + pivot_index + 1, total, "solving linear system")
 
     return [augmented[row_index][size] for row_index in range(size)]

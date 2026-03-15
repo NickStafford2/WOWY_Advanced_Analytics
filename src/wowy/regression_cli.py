@@ -14,8 +14,9 @@ from wowy.normalized_io import (
     load_normalized_game_players_from_csv,
     load_normalized_games_from_csv,
 )
+from wowy.progress import TerminalProgressBar
 from wowy.regression_analysis import fit_player_regression, tune_ridge_alpha
-from wowy.regression_data import build_regression_observations
+from wowy.regression_data import build_regression_observations, count_player_games
 from wowy.regression_formatting import format_regression_results
 from wowy.regression_types import RegressionPlayerEstimate, RegressionResult
 
@@ -255,6 +256,7 @@ def run_regression(
     player_minute_stats: dict[int, tuple[float, float]] | None = None,
     min_average_minutes: float | None = None,
     min_total_minutes: float | None = None,
+    show_progress: bool = False,
 ) -> str:
     validate_filters(
         min_games=min_games,
@@ -275,12 +277,32 @@ def run_regression(
     if player_minute_stats is None:
         player_minute_stats = build_player_minute_stats(game_players)
     observations, player_names = build_regression_observations(games, game_players)
+    progress_bar = None
+    progress = None
+    if show_progress:
+        player_count = sum(
+            1
+            for games_played in count_player_games(observations).values()
+            if games_played >= min_games
+        )
+        team_seasons = {
+            f"{game.team}:{game.season}" for game in games
+        } | {
+            f"{game.opponent}:{game.season}" for game in games
+        }
+        feature_count = 2 + player_count + (2 * len(team_seasons))
+        total_steps = (len(observations) * 2) + max(feature_count - 2, 0) + feature_count
+        progress_bar = TerminalProgressBar("Regression", total=total_steps)
+        progress = lambda current, _total, detail: progress_bar.update(current, detail)
     result = fit_player_regression(
         observations,
         player_names=player_names,
         min_games=min_games,
         ridge_alpha=ridge_alpha,
+        progress=progress,
     )
+    if progress_bar is not None:
+        progress_bar.finish("done")
     result = attach_minute_stats_to_result(result, player_minute_stats)
     result = filter_regression_estimates_by_minutes(
         result,
@@ -380,6 +402,7 @@ def main(argv: list[str] | None = None) -> int:
             player_minute_stats=None,
             min_average_minutes=args.min_average_minutes,
             min_total_minutes=args.min_total_minutes,
+            show_progress=True,
         )
     )
     return 0

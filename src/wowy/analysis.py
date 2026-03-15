@@ -1,16 +1,25 @@
 from __future__ import annotations
 
+from typing import Callable
+
 from wowy.types import WowyGameRecord, WowyPlayerStats
 
 
-def compute_wowy(games: list[WowyGameRecord]) -> dict[int, WowyPlayerStats]:
+ProgressFn = Callable[[int, int, str | None], None]
+
+
+def compute_wowy(
+    games: list[WowyGameRecord],
+    progress: ProgressFn | None = None,
+) -> dict[int, WowyPlayerStats]:
     all_players: set[int] = set()
     for game in games:
         all_players.update(game.players)
 
     results: dict[int, WowyPlayerStats] = {}
-
-    for player in sorted(all_players):
+    sorted_players = sorted(all_players)
+    total_players = len(sorted_players)
+    for index, player in enumerate(sorted_players, start=1):
         margins_with: list[float] = []
         margins_without: list[float] = []
         team_seasons_with_player: set[tuple[str, str]] = set()
@@ -43,6 +52,9 @@ def compute_wowy(games: list[WowyGameRecord]) -> dict[int, WowyPlayerStats]:
             avg_margin_without=avg_without,
             wowy_score=wowy_score,
         )
+
+        if progress is not None:
+            progress(index, total_players, f"player={player}")
 
     return results
 
