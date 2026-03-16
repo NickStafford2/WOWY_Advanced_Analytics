@@ -102,6 +102,7 @@
 
 .control-panel select,
 .control-panel input,
+.control-output,
 .run-button {
   min-height: 48px;
   border-radius: 14px;
@@ -110,9 +111,16 @@
 }
 
 .control-panel select,
-.control-panel input {
+.control-panel input,
+.control-output {
   padding: 0 14px;
   background: rgba(255, 255, 255, 0.92);
+}
+
+.control-output {
+  display: flex;
+  align-items: center;
+  color: #445464;
 }
 
 .run-button {

@@ -43,6 +43,12 @@ Run regression:
 poetry run regression
 ```
 
+Run the Flask backend for the web prototype:
+
+```bash
+poetry run wowy-web
+```
+
 Show CLI usage:
 
 ```bash
@@ -55,6 +61,8 @@ Run tests:
 ```bash
 poetry run pytest
 ```
+
+The React frontend lives in `frontend/` and can be started there with `npm run dev`.
 
 Examples:
 

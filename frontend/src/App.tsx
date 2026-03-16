@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useEffect, useEffectEvent, useMemo, useState } from 'react'
 import type { ChangeEvent } from 'react'
 import './App.css'
 
@@ -54,13 +54,27 @@ type SpanChartPayload = {
   series: SpanSeries[]
 }
 
+type MetricOptionsPayload = {
+  metric: string
+  metric_label: string
+  available_teams: string[]
+  available_seasons: string[]
+  filters: {
+    team: string[] | null
+    season_type: string
+    min_games_with: number
+    min_games_without: number
+    min_average_minutes: number
+    min_total_minutes: number
+    top_n: number
+  }
+}
+
 type ErrorPayload = {
   error?: string
 }
 
 type LoadChartOptions = {
-  nextStartSeason?: string
-  nextEndSeason?: string
   nextTopN?: number
 }
 
@@ -93,42 +107,72 @@ type ChartModel = {
 }
 
 function App() {
+  const [availableTeams, setAvailableTeams] = useState<string[]>([])
   const [availableSeasons, setAvailableSeasons] = useState<string[]>([])
-  const [startSeason, setStartSeason] = useState('')
-  const [endSeason, setEndSeason] = useState('')
+  const [selectedTeam, setSelectedTeam] = useState('')
   const [topN, setTopN] = useState(12)
   const [chartData, setChartData] = useState<SpanChartPayload | null>(null)
+  const [metricLabel, setMetricLabel] = useState('WOWY')
+  const [isBootstrapping, setIsBootstrapping] = useState(true)
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState('')
 
-  const loadChart = useCallback((options: LoadChartOptions) => {
-    const {
-      nextStartSeason = startSeason,
-      nextEndSeason = endSeason,
-      nextTopN = topN,
-    } = options
+  const loadChart = useEffectEvent(async (options: LoadChartOptions) => {
+    const { nextTopN = topN } = options
 
-    void (async () => {
-      setIsLoading(true)
+    setIsLoading(true)
+    setError('')
+
+    const params = new URLSearchParams({
+      min_games_with: '1',
+      min_games_without: '1',
+      min_average_minutes: '0',
+      min_total_minutes: '0',
+      top_n: String(nextTopN),
+    })
+
+    if (selectedTeam) {
+      params.set('team', selectedTeam)
+    }
+
+    try {
+      const response = await fetch(`/api/metrics/wowy/span-chart?${params.toString()}`)
+      const payload = (await response.json()) as unknown
+
+      if (!response.ok) {
+        const errorPayload = payload as ErrorPayload
+        throw new Error(errorPayload.error ?? 'Request failed')
+      }
+
+      const chartPayload = payload as SpanChartPayload
+      setMetricLabel(chartPayload.metric_label)
+      setTopN(chartPayload.span.top_n)
+      setChartData(chartPayload)
+    } catch (caughtError) {
+      const message =
+        caughtError instanceof Error ? caughtError.message : 'Request failed'
+      setError(message)
+      setChartData(null)
+    } finally {
+      setIsLoading(false)
+    }
+  })
+
+  const loadOptions = useEffectEvent(
+    async ({ nextTeam, bootstrapChart }: { nextTeam: string; bootstrapChart: boolean }) => {
+      setIsBootstrapping(true)
       setError('')
 
-      const params = new URLSearchParams({
-        min_games_with: '1',
-        min_games_without: '1',
-        min_average_minutes: '0',
-        min_total_minutes: '0',
-        top_n: String(nextTopN),
-      })
-
-      if (nextStartSeason) {
-        params.set('start_season', nextStartSeason)
-      }
-      if (nextEndSeason) {
-        params.set('end_season', nextEndSeason)
+      const params = new URLSearchParams()
+      if (nextTeam) {
+        params.set('team', nextTeam)
       }
 
       try {
-        const response = await fetch(`/api/wowy/span-chart?${params.toString()}`)
+        const query = params.toString()
+        const response = await fetch(
+          `/api/metrics/wowy/options${query ? `?${query}` : ''}`,
+        )
         const payload = (await response.json()) as unknown
 
         if (!response.ok) {
@@ -136,26 +180,31 @@ function App() {
           throw new Error(errorPayload.error ?? 'Request failed')
         }
 
-        const chartPayload = payload as SpanChartPayload
-        setAvailableSeasons(chartPayload.span.available_seasons)
-        setStartSeason(chartPayload.span.start_season)
-        setEndSeason(chartPayload.span.end_season)
-        setTopN(chartPayload.span.top_n)
-        setChartData(chartPayload)
+        const optionsPayload = payload as MetricOptionsPayload
+        setMetricLabel(optionsPayload.metric_label)
+        setAvailableTeams(optionsPayload.available_teams)
+        setAvailableSeasons(optionsPayload.available_seasons)
+        setSelectedTeam(nextTeam)
+        setTopN((currentTopN) => currentTopN || optionsPayload.filters.top_n)
+
+        if (bootstrapChart) {
+          await loadChart({ nextTopN: topN })
+        }
       } catch (caughtError) {
         const message =
           caughtError instanceof Error ? caughtError.message : 'Request failed'
         setError(message)
         setChartData(null)
+        setAvailableSeasons([])
       } finally {
-        setIsLoading(false)
+        setIsBootstrapping(false)
       }
-    })()
-  }, [endSeason, startSeason, topN])
+    },
+  )
 
   useEffect(() => {
-    void loadChart({})
-  }, [loadChart])
+    void loadOptions({ nextTeam: '', bootstrapChart: true })
+  }, [])
 
   const chartModel = useMemo<ChartModel>(
     () => buildChartModel(chartData?.series ?? []),
@@ -164,6 +213,11 @@ function App() {
 
   function handleTopNChange(event: ChangeEvent<HTMLInputElement>) {
     setTopN(Number(event.target.value))
+  }
+
+  function handleTeamChange(event: ChangeEvent<HTMLSelectElement>) {
+    const nextTeam = event.target.value
+    void loadOptions({ nextTeam, bootstrapChart: false })
   }
 
   return (
@@ -180,7 +234,7 @@ function App() {
           </div>
           <div className="hero-note">
             <span>Metric</span>
-            <strong>{chartData?.metric_label ?? 'WOWY'}</strong>
+            <strong>{metricLabel}</strong>
             <small>Top players ranked by span-average metric value</small>
           </div>
         </div>
@@ -188,33 +242,24 @@ function App() {
 
       <section className="control-panel">
         <label>
-          <span>Start season</span>
-          <select
-            value={startSeason}
-            onChange={(event) => setStartSeason(event.target.value)}
-            disabled={isLoading || availableSeasons.length === 0}
-          >
-            {availableSeasons.map((season) => (
-              <option key={season} value={season}>
-                {season}
+          <span>Team</span>
+          <select value={selectedTeam} onChange={handleTeamChange} disabled={isBootstrapping}>
+            <option value="">All teams</option>
+            {availableTeams.map((team) => (
+              <option key={team} value={team}>
+                {team}
               </option>
             ))}
           </select>
         </label>
 
         <label>
-          <span>End season</span>
-          <select
-            value={endSeason}
-            onChange={(event) => setEndSeason(event.target.value)}
-            disabled={isLoading || availableSeasons.length === 0}
-          >
-            {availableSeasons.map((season) => (
-              <option key={season} value={season}>
-                {season}
-              </option>
-            ))}
-          </select>
+          <span>Cached seasons</span>
+          <output className="control-output">
+            {availableSeasons.length === 0
+              ? 'No seasons loaded'
+              : `${availableSeasons[0]} to ${availableSeasons.at(-1)}`}
+          </output>
         </label>
 
         <label>
@@ -232,9 +277,13 @@ function App() {
           type="button"
           className="run-button"
           onClick={() => void loadChart({})}
-          disabled={isLoading || !startSeason || !endSeason || startSeason > endSeason}
+          disabled={
+            isLoading ||
+            isBootstrapping ||
+            availableSeasons.length === 0
+          }
         >
-          {isLoading ? 'Loading...' : 'Update chart'}
+          {isLoading || isBootstrapping ? 'Loading...' : 'Update chart'}
         </button>
       </section>
 
@@ -243,7 +292,9 @@ function App() {
           <div>
             <p className="panel-label">Line chart</p>
             <h2>
-              {startSeason && endSeason ? `${startSeason} to ${endSeason}` : 'Selected span'}
+              {chartData?.span.start_season && chartData?.span.end_season
+                ? `${chartData.span.start_season} to ${chartData.span.end_season}`
+                : 'Full cached history'}
             </h2>
           </div>
           {chartData ? (
@@ -255,7 +306,9 @@ function App() {
         </div>
 
         {error ? <p className="status error">{error}</p> : null}
-        {!error && isLoading ? <p className="status">Loading WOWY chart...</p> : null}
+        {!error && (isLoading || isBootstrapping) ? (
+          <p className="status">Loading WOWY chart...</p>
+        ) : null}
         {!error && !isLoading && chartData && chartData.series.length === 0 ? (
           <p className="status">No players matched the current filters.</p>
         ) : null}

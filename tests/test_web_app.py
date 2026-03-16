@@ -3,6 +3,108 @@ from __future__ import annotations
 from pathlib import Path
 
 from wowy.web.app import create_app
+from wowy.web.service import refresh_metric_store
+
+
+def _refresh_wowy_store(tmp_path: Path) -> Path:
+    player_metrics_db_path = tmp_path / "app" / "player_metrics.sqlite3"
+    refresh_metric_store(
+        "wowy",
+        season_type="Regular Season",
+        db_path=player_metrics_db_path,
+        source_data_dir=tmp_path / "source",
+        normalized_games_input_dir=tmp_path / "normalized_games",
+        normalized_game_players_input_dir=tmp_path / "normalized_game_players",
+        wowy_output_dir=tmp_path / "team_games",
+        combined_wowy_csv=tmp_path / "combined" / "games.csv",
+    )
+    return player_metrics_db_path
+
+
+def test_wowy_options_endpoint_returns_cached_teams_and_seasons(
+    tmp_path: Path,
+    monkeypatch,
+):
+    normalized_games_dir = tmp_path / "normalized_games"
+    normalized_games_dir.mkdir()
+    (normalized_games_dir / "BOS_2022-23.csv").write_text(
+        (
+            "game_id,season,game_date,team,opponent,is_home,margin,season_type,source\n"
+            "1,2022-23,2023-04-01,BOS,MIL,true,10,Regular Season,nba_api\n"
+        ),
+        encoding="utf-8",
+    )
+    (normalized_games_dir / "BOS_2023-24.csv").write_text(
+        (
+            "game_id,season,game_date,team,opponent,is_home,margin,season_type,source\n"
+            "2,2023-24,2024-04-01,BOS,MIL,true,8,Regular Season,nba_api\n"
+        ),
+        encoding="utf-8",
+    )
+    (normalized_games_dir / "NYK_2023-24.csv").write_text(
+        (
+            "game_id,season,game_date,team,opponent,is_home,margin,season_type,source\n"
+            "3,2023-24,2024-04-01,NYK,BOS,true,4,Regular Season,nba_api\n"
+        ),
+        encoding="utf-8",
+    )
+    normalized_players_dir = tmp_path / "normalized_game_players"
+    normalized_players_dir.mkdir()
+    (normalized_players_dir / "BOS_2022-23.csv").write_text(
+        (
+            "game_id,team,player_id,player_name,appeared,minutes\n"
+            "1,BOS,101,Player 101,true,34.0\n"
+        ),
+        encoding="utf-8",
+    )
+    (normalized_players_dir / "BOS_2023-24.csv").write_text(
+        (
+            "game_id,team,player_id,player_name,appeared,minutes\n"
+            "2,BOS,101,Player 101,true,35.0\n"
+        ),
+        encoding="utf-8",
+    )
+    (normalized_players_dir / "NYK_2023-24.csv").write_text(
+        (
+            "game_id,team,player_id,player_name,appeared,minutes\n"
+            "3,NYK,201,Player 201,true,33.0\n"
+        ),
+        encoding="utf-8",
+    )
+    monkeypatch.setattr(
+        "wowy.nba.prepare.load_player_names_from_cache",
+        lambda _: {101: "Player 101", 201: "Player 201"},
+    )
+    player_metrics_db_path = _refresh_wowy_store(tmp_path)
+
+    app = create_app(
+        source_data_dir=tmp_path / "source",
+        normalized_games_input_dir=normalized_games_dir,
+        normalized_game_players_input_dir=normalized_players_dir,
+        wowy_output_dir=tmp_path / "team_games",
+        combined_wowy_csv=tmp_path / "combined" / "games.csv",
+        player_metrics_db_path=player_metrics_db_path,
+    )
+    client = app.test_client()
+
+    response = client.get("/api/wowy/options", query_string={"team": "BOS"})
+
+    assert response.status_code == 200
+    assert response.get_json() == {
+        "metric": "wowy",
+        "metric_label": "WOWY",
+        "available_teams": ["BOS", "NYK"],
+        "available_seasons": ["2022-23", "2023-24"],
+        "filters": {
+            "team": ["BOS"],
+            "season_type": "Regular Season",
+            "min_games_with": 15,
+            "min_games_without": 2,
+            "min_average_minutes": 30.0,
+            "min_total_minutes": 600.0,
+            "top_n": 30,
+        },
+    }
 
 
 def test_wowy_player_seasons_endpoint_returns_rows_from_cache(
@@ -37,6 +139,7 @@ def test_wowy_player_seasons_endpoint_returns_rows_from_cache(
         "wowy.nba.prepare.load_player_names_from_cache",
         lambda _: {101: "Player 101", 102: "Player 102"},
     )
+    player_metrics_db_path = _refresh_wowy_store(tmp_path)
 
     app = create_app(
         source_data_dir=tmp_path / "source",
@@ -44,7 +147,7 @@ def test_wowy_player_seasons_endpoint_returns_rows_from_cache(
         normalized_game_players_input_dir=normalized_players_dir,
         wowy_output_dir=tmp_path / "team_games",
         combined_wowy_csv=tmp_path / "combined" / "games.csv",
-        player_metrics_db_path=tmp_path / "app" / "player_metrics.sqlite3",
+        player_metrics_db_path=player_metrics_db_path,
     )
     client = app.test_client()
 
@@ -63,6 +166,7 @@ def test_wowy_player_seasons_endpoint_returns_rows_from_cache(
     payload = response.get_json()
     assert payload == {
         "metric": "wowy",
+        "metric_label": "WOWY",
         "filters": {
             "team": ["BOS"],
             "season": None,
@@ -77,11 +181,13 @@ def test_wowy_player_seasons_endpoint_returns_rows_from_cache(
                 "season": "2022-23",
                 "player_id": 101,
                 "player_name": "Player 101",
+                "value": 12.0,
+                "sample_size": 2,
+                "secondary_sample_size": 1,
                 "games_with": 2,
                 "games_without": 1,
                 "avg_margin_with": 7.0,
                 "avg_margin_without": -5.0,
-                "wowy_score": 12.0,
                 "average_minutes": 34.0,
                 "total_minutes": 68.0,
             },
@@ -89,11 +195,13 @@ def test_wowy_player_seasons_endpoint_returns_rows_from_cache(
                 "season": "2022-23",
                 "player_id": 102,
                 "player_name": "Player 102",
+                "value": -1.5,
+                "sample_size": 2,
+                "secondary_sample_size": 1,
                 "games_with": 2,
                 "games_without": 1,
                 "avg_margin_with": 2.5,
                 "avg_margin_without": 4.0,
-                "wowy_score": -1.5,
                 "average_minutes": 31.0,
                 "total_minutes": 62.0,
             },
@@ -122,6 +230,25 @@ def test_wowy_player_seasons_endpoint_returns_bad_request_for_invalid_filters(
     assert response.status_code == 400
     assert response.get_json() == {
         "error": "Minimum game filters must be non-negative"
+    }
+
+
+def test_wowy_options_endpoint_requires_prebuilt_store(tmp_path: Path):
+    app = create_app(
+        source_data_dir=tmp_path / "source",
+        normalized_games_input_dir=tmp_path / "normalized_games",
+        normalized_game_players_input_dir=tmp_path / "normalized_game_players",
+        wowy_output_dir=tmp_path / "team_games",
+        combined_wowy_csv=tmp_path / "combined" / "games.csv",
+        player_metrics_db_path=tmp_path / "app" / "player_metrics.sqlite3",
+    )
+    client = app.test_client()
+
+    response = client.get("/api/wowy/options")
+
+    assert response.status_code == 400
+    assert response.get_json() == {
+        "error": "Metric store has not been built for the requested scope"
     }
 
 
@@ -176,6 +303,7 @@ def test_wowy_span_chart_endpoint_returns_series_for_selected_span(
         "wowy.nba.prepare.load_player_names_from_cache",
         lambda _: {101: "Player 101", 102: "Player 102", 103: "Player 103"},
     )
+    player_metrics_db_path = _refresh_wowy_store(tmp_path)
 
     app = create_app(
         source_data_dir=tmp_path / "source",
@@ -183,7 +311,7 @@ def test_wowy_span_chart_endpoint_returns_series_for_selected_span(
         normalized_game_players_input_dir=normalized_players_dir,
         wowy_output_dir=tmp_path / "team_games",
         combined_wowy_csv=tmp_path / "combined" / "games.csv",
-        player_metrics_db_path=tmp_path / "app" / "player_metrics.sqlite3",
+        player_metrics_db_path=player_metrics_db_path,
     )
     client = app.test_client()
 
@@ -191,8 +319,6 @@ def test_wowy_span_chart_endpoint_returns_series_for_selected_span(
         "/api/wowy/span-chart",
         query_string={
             "team": "BOS",
-            "start_season": "2022-23",
-            "end_season": "2023-24",
             "top_n": "2",
             "min_games_with": "1",
             "min_games_without": "1",

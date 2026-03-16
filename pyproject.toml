@@ -11,6 +11,7 @@ dependencies = ["nba_api>=1.7,<2.0", "numpy>=2.0,<3.0", "matplotlib (>=3.10.8,<4
 wowy = "wowy.apps.wowy.cli:main"
 regression = "wowy.apps.regression.cli:main"
 wowy-web = "wowy.web.cli:main"
+wowy-refresh-web-store = "wowy.web.refresh_cli:main"
 
 [dependency-groups]
 test = ["pytest>=8.0,<9.0"]
