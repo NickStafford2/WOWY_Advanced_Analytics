@@ -33,27 +33,6 @@ type SpanSeries = {
   points: SpanPoint[]
 }
 
-type SpanChartPayload = {
-  metric: string
-  metric_label: string
-  span: {
-    start_season: string
-    end_season: string
-    available_seasons: string[]
-    top_n: number
-  }
-  filters: {
-    team: string[] | null
-    season: string[] | null
-    season_type: string
-    min_games_with: number
-    min_games_without: number
-    min_average_minutes: number
-    min_total_minutes: number
-  }
-  series: SpanSeries[]
-}
-
 type PlayerSeasonRow = {
   season: string
   player_id: number
@@ -138,6 +117,7 @@ type TableRow = {
   avg_margin_with: number | null
   avg_margin_without: number | null
   score: number | null
+  season_count: number
 }
 
 function App() {
@@ -145,7 +125,6 @@ function App() {
   const [availableSeasons, setAvailableSeasons] = useState<string[]>([])
   const [selectedTeam, setSelectedTeam] = useState('')
   const [topN, setTopN] = useState(12)
-  const [chartData, setChartData] = useState<SpanChartPayload | null>(null)
   const [playerSeasonRows, setPlayerSeasonRows] = useState<PlayerSeasonRow[]>([])
   const [metricLabel, setMetricLabel] = useState('WOWY')
   const [isBootstrapping, setIsBootstrapping] = useState(true)
@@ -171,34 +150,21 @@ function App() {
     }
 
     try {
-      const playerSeasonParams = new URLSearchParams(params)
-      const [chartResponse, playerSeasonsResponse] = await Promise.all([
-        fetch(`/api/metrics/wowy/span-chart?${params.toString()}`),
-        fetch(`/api/metrics/wowy/player-seasons?${playerSeasonParams.toString()}`),
-      ])
-      const chartPayloadRaw = (await chartResponse.json()) as unknown
-      const playerSeasonsPayloadRaw = (await playerSeasonsResponse.json()) as unknown
+      const response = await fetch(`/api/metrics/wowy/player-seasons?${params.toString()}`)
+      const payload = (await response.json()) as unknown
 
-      if (!chartResponse.ok) {
-        const errorPayload = chartPayloadRaw as ErrorPayload
+      if (!response.ok) {
+        const errorPayload = payload as ErrorPayload
         throw new Error(errorPayload.error ?? 'Request failed')
       }
-      if (!playerSeasonsResponse.ok) {
-        const errorPayload = playerSeasonsPayloadRaw as ErrorPayload
-        throw new Error(errorPayload.error ?? 'Request failed')
-      }
-
-      const chartPayload = chartPayloadRaw as SpanChartPayload
-      const playerSeasonsPayload = playerSeasonsPayloadRaw as PlayerSeasonsPayload
-      setMetricLabel(chartPayload.metric_label)
-      setTopN(chartPayload.span.top_n)
-      setChartData(chartPayload)
+      const playerSeasonsPayload = payload as PlayerSeasonsPayload
+      setMetricLabel(playerSeasonsPayload.metric_label)
+      setTopN(nextTopN)
       setPlayerSeasonRows(playerSeasonsPayload.rows)
     } catch (caughtError) {
       const message =
         caughtError instanceof Error ? caughtError.message : 'Request failed'
       setError(message)
-      setChartData(null)
       setPlayerSeasonRows([])
     } finally {
       setIsLoading(false)
@@ -241,7 +207,6 @@ function App() {
         const message =
           caughtError instanceof Error ? caughtError.message : 'Request failed'
         setError(message)
-        setChartData(null)
         setPlayerSeasonRows([])
         setAvailableSeasons([])
       } finally {
@@ -254,13 +219,17 @@ function App() {
     void loadOptions({ nextTeam: '', bootstrapChart: true })
   }, [])
 
-  const chartModel = useMemo<ChartModel>(
-    () => buildChartModel(chartData?.series ?? []),
-    [chartData],
-  )
   const tableRows = useMemo<TableRow[]>(
-    () => buildTableRows(chartData?.series ?? [], playerSeasonRows),
-    [chartData, playerSeasonRows],
+    () => buildTableRows(playerSeasonRows).slice(0, topN),
+    [playerSeasonRows, topN],
+  )
+  const displaySeries = useMemo<SpanSeries[]>(
+    () => buildDisplaySeries(tableRows, playerSeasonRows, availableSeasons),
+    [tableRows, playerSeasonRows, availableSeasons],
+  )
+  const chartModel = useMemo<ChartModel>(
+    () => buildChartModel(displaySeries),
+    [displaySeries],
   )
 
   function handleTopNChange(event: ChangeEvent<HTMLInputElement>) {
@@ -344,15 +313,15 @@ function App() {
           <div>
             <p className="panel-label">Line chart</p>
             <h2>
-              {chartData?.span.start_season && chartData?.span.end_season
-                ? `${chartData.span.start_season} to ${chartData.span.end_season}`
+              {availableSeasons.length > 0
+                ? `${availableSeasons[0]} to ${availableSeasons.at(-1)}`
                 : 'Full cached history'}
             </h2>
           </div>
-          {chartData ? (
+          {playerSeasonRows.length > 0 ? (
             <div className="chart-meta">
-              <span>{chartData.series.length} series</span>
-              <span>{chartData.span.available_seasons.length} seasons loaded</span>
+              <span>{tableRows.length} series</span>
+              <span>{availableSeasons.length} seasons loaded</span>
             </div>
           ) : null}
         </div>
@@ -361,10 +330,10 @@ function App() {
         {!error && (isLoading || isBootstrapping) ? (
           <p className="status">Loading WOWY chart...</p>
         ) : null}
-        {!error && !isLoading && chartData && chartData.series.length === 0 ? (
+        {!error && !isLoading && playerSeasonRows.length === 0 ? (
           <p className="status">No players matched the current filters.</p>
         ) : null}
-        {!error && !isLoading && chartData && chartData.series.length > 0 ? (
+        {!error && !isLoading && tableRows.length > 0 ? (
           <>
             <div className="chart-layout">
               <div className="chart-frame">
@@ -440,34 +409,13 @@ function App() {
                 </svg>
               </div>
 
-              <aside className="legend-panel">
-                <p className="panel-label">Top players</p>
-                <ul className="legend-list">
-                  {chartData.series.map((series, index) => (
-                    <li key={series.player_id}>
-                      <span
-                        className="legend-swatch"
-                        style={{ backgroundColor: SERIES_COLORS[index % SERIES_COLORS.length] }}
-                      />
-                      <div>
-                        <strong>{series.player_name}</strong>
-                        <small>
-                          Span avg {chartData.metric_label} {series.span_average_value.toFixed(2)}.
-                          Appeared in {series.season_count} season
-                          {series.season_count === 1 ? '' : 's'}
-                        </small>
-                      </div>
-                    </li>
-                  ))}
-                </ul>
-              </aside>
             </div>
 
             <div className="results-table-panel">
               <div className="table-header">
                 <div>
                   <p className="panel-label">Ranked table</p>
-                  <h3>Top {chartData.span.top_n} players all time</h3>
+                  <h3>Top {topN} players by pooled WOWY</h3>
                 </div>
               </div>
               <div className="results-table-frame">
@@ -483,7 +431,7 @@ function App() {
                       <th>Without</th>
                       <th>Avg With</th>
                       <th>Avg Without</th>
-                      <th>Score</th>
+                      <th>WOWY</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -594,14 +542,14 @@ function uniqueSeasons(series: SpanSeries[]): string[] {
   return [...new Set(series.flatMap((entry) => entry.points.map((point) => point.season)))]
 }
 
-function buildTableRows(series: SpanSeries[], playerSeasonRows: PlayerSeasonRow[]): TableRow[] {
+function buildTableRows(playerSeasonRows: PlayerSeasonRow[]): TableRow[] {
   const rowsByPlayer = new Map<number, PlayerSeasonRow[]>()
   for (const row of playerSeasonRows) {
     rowsByPlayer.set(row.player_id, [...(rowsByPlayer.get(row.player_id) ?? []), row])
   }
 
-  return series.map((entry, index) => {
-    const playerRows = rowsByPlayer.get(entry.player_id) ?? []
+  const rows = [...rowsByPlayer.entries()].map(([playerId, playerRows]) => {
+    const playerName = playerRows[0]?.player_name ?? String(playerId)
     const gamesWith = sumBy(playerRows, (row) => row.games_with ?? row.sample_size ?? 0)
     const gamesWithout = sumBy(
       playerRows,
@@ -621,9 +569,9 @@ function buildTableRows(series: SpanSeries[], playerSeasonRows: PlayerSeasonRow[
     )
 
     return {
-      rank: index + 1,
-      player_id: entry.player_id,
-      player_name: entry.player_name,
+      rank: 0,
+      player_id: playerId,
+      player_name: playerName,
       average_minutes: averageMinutes,
       total_minutes: totalMinutes,
       games_with: gamesWith,
@@ -634,8 +582,45 @@ function buildTableRows(series: SpanSeries[], playerSeasonRows: PlayerSeasonRow[
         avgMarginWith !== null && avgMarginWithout !== null
           ? avgMarginWith - avgMarginWithout
           : null,
+      season_count: playerRows.length,
     }
   })
+
+  rows.sort((left, right) => {
+    const leftScore = left.score ?? Number.NEGATIVE_INFINITY
+    const rightScore = right.score ?? Number.NEGATIVE_INFINITY
+    if (rightScore !== leftScore) {
+      return rightScore - leftScore
+    }
+    return left.player_name.localeCompare(right.player_name)
+  })
+
+  return rows.map((row, index) => ({ ...row, rank: index + 1 }))
+}
+
+function buildDisplaySeries(
+  tableRows: TableRow[],
+  playerSeasonRows: PlayerSeasonRow[],
+  seasons: string[],
+): SpanSeries[] {
+  const valuesByPlayer = new Map<number, Map<string, number>>()
+  for (const row of playerSeasonRows) {
+    if (!valuesByPlayer.has(row.player_id)) {
+      valuesByPlayer.set(row.player_id, new Map())
+    }
+    valuesByPlayer.get(row.player_id)?.set(row.season, row.value)
+  }
+
+  return tableRows.map((row) => ({
+    player_id: row.player_id,
+    player_name: row.player_name,
+    span_average_value: row.score ?? 0,
+    season_count: row.season_count,
+    points: seasons.map((season) => ({
+      season,
+      value: valuesByPlayer.get(row.player_id)?.get(season) ?? null,
+    })),
+  }))
 }
 
 function sumBy<T>(items: T[], fn: (item: T) => number): number {
