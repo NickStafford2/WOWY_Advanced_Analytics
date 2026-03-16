@@ -1,8 +1,18 @@
 from __future__ import annotations
 
-from wowy.apps.wowy.service import build_wowy_player_season_records
+from pathlib import Path
+
+from wowy.apps.wowy.service import (
+    build_wowy_player_season_records,
+    prepare_wowy_player_season_records,
+    serialize_wowy_player_season_records,
+)
 from wowy.apps.wowy.analysis import compute_wowy, filter_results
-from wowy.apps.wowy.models import WowyGameRecord, WowyPlayerStats
+from wowy.apps.wowy.models import (
+    WowyGameRecord,
+    WowyPlayerSeasonRecord,
+    WowyPlayerStats,
+)
 
 
 def test_compute_wowy_basic():
@@ -89,3 +99,127 @@ def test_build_wowy_player_season_records_returns_one_row_per_player_per_season(
     assert records[0].wowy_score == 12.0
     assert records[2].total_minutes == 60.0
     assert records[3].average_minutes == 34.0
+
+
+def test_serialize_wowy_player_season_records_returns_json_ready_rows():
+    records = [
+        WowyPlayerSeasonRecord(
+            season="2023-24",
+            player_id=101,
+            player_name="Player 101",
+            games_with=2,
+            games_without=1,
+            avg_margin_with=3.0,
+            avg_margin_without=1.0,
+            wowy_score=2.0,
+            average_minutes=34.0,
+            total_minutes=68.0,
+        )
+    ]
+
+    assert serialize_wowy_player_season_records(records) == [
+        {
+            "season": "2023-24",
+            "player_id": 101,
+            "player_name": "Player 101",
+            "games_with": 2,
+            "games_without": 1,
+            "avg_margin_with": 3.0,
+            "avg_margin_without": 1.0,
+            "wowy_score": 2.0,
+            "average_minutes": 34.0,
+            "total_minutes": 68.0,
+        }
+    ]
+
+
+def test_prepare_wowy_player_season_records_builds_web_ready_rows_from_cache(
+    tmp_path: Path,
+    monkeypatch,
+):
+    normalized_games_dir = tmp_path / "normalized_games"
+    normalized_games_dir.mkdir()
+    (normalized_games_dir / "BOS_2022-23.csv").write_text(
+        (
+            "game_id,season,game_date,team,opponent,is_home,margin,season_type,source\n"
+            "1,2022-23,2023-04-01,BOS,MIL,true,10,Regular Season,nba_api\n"
+            "2,2022-23,2023-04-03,BOS,NYK,false,-5,Regular Season,nba_api\n"
+            "3,2022-23,2023-04-05,BOS,LAL,true,4,Regular Season,nba_api\n"
+        ),
+        encoding="utf-8",
+    )
+    (normalized_games_dir / "BOS_2023-24.csv").write_text(
+        (
+            "game_id,season,game_date,team,opponent,is_home,margin,season_type,source\n"
+            "4,2023-24,2024-04-01,BOS,MIL,true,8,Regular Season,nba_api\n"
+            "5,2023-24,2024-04-03,BOS,NYK,false,-2,Regular Season,nba_api\n"
+            "6,2023-24,2024-04-05,BOS,LAL,true,1,Regular Season,nba_api\n"
+        ),
+        encoding="utf-8",
+    )
+    normalized_players_dir = tmp_path / "normalized_game_players"
+    normalized_players_dir.mkdir()
+    (normalized_players_dir / "BOS_2022-23.csv").write_text(
+        (
+            "game_id,team,player_id,player_name,appeared,minutes\n"
+            "1,BOS,101,Player 101,true,34.0\n"
+            "1,BOS,102,Player 102,true,31.0\n"
+            "2,BOS,102,Player 102,true,31.0\n"
+            "3,BOS,101,Player 101,true,34.0\n"
+        ),
+        encoding="utf-8",
+    )
+    (normalized_players_dir / "BOS_2023-24.csv").write_text(
+        (
+            "game_id,team,player_id,player_name,appeared,minutes\n"
+            "4,BOS,101,Player 101,true,35.0\n"
+            "4,BOS,103,Player 103,true,30.0\n"
+            "5,BOS,101,Player 101,true,33.0\n"
+            "6,BOS,103,Player 103,true,30.0\n"
+        ),
+        encoding="utf-8",
+    )
+
+    monkeypatch.setattr(
+        "wowy.nba.prepare.load_player_names_from_cache",
+        lambda _: {101: "Player 101", 102: "Player 102", 103: "Player 103"},
+    )
+
+    records = prepare_wowy_player_season_records(
+        teams=["BOS"],
+        seasons=None,
+        season_type="Regular Season",
+        source_data_dir=tmp_path / "source",
+        normalized_games_input_dir=normalized_games_dir,
+        normalized_game_players_input_dir=normalized_players_dir,
+        wowy_output_dir=tmp_path / "team_games",
+        combined_wowy_csv=tmp_path / "combined" / "games.csv",
+        min_games_with=1,
+        min_games_without=1,
+        min_average_minutes=0.0,
+        min_total_minutes=0.0,
+        load_player_names_fn=lambda _: {
+            101: "Player 101",
+            102: "Player 102",
+            103: "Player 103",
+        },
+    )
+
+    assert [(record.season, record.player_id) for record in records] == [
+        ("2022-23", 101),
+        ("2022-23", 102),
+        ("2023-24", 103),
+        ("2023-24", 101),
+    ]
+    assert serialize_wowy_player_season_records(records)[0] == {
+        "season": "2022-23",
+        "player_id": 101,
+        "player_name": "Player 101",
+        "games_with": 2,
+        "games_without": 1,
+        "avg_margin_with": 7.0,
+        "avg_margin_without": -5.0,
+        "wowy_score": 12.0,
+        "average_minutes": 34.0,
+        "total_minutes": 68.0,
+    }

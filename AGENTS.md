@@ -16,7 +16,7 @@
 - Run the app with `poetry run wowy`.
 
 ## Coding style
-- Keep changes minimal, readable, and focused.
+- Keep changes simple, readable, and focused.
 - Prefer small pure functions.
 - Do not refactor unrelated files.
 - Do not add advanced modeling features unless asked.
@@ -30,12 +30,18 @@
 ## Portfolio roadmap
 - This project is intended to become a simple portfolio web app for cross-year basketball player comparison.
 - The target user flow is: choose a year span and metric (`wowy` or `regression`), then view an interactive chart of the top 30 players across that span.
+- The intended web stack is Flask for the backend and React for the frontend.
 - Prefer a narrow first version over a broad app. One page, one chart, and a small controls panel is enough.
 - Keep the current data/cache pipeline and reuse it. Do not replace the existing CLI/data preparation path unless there is a clear reason.
 - The next recommended implementation order is:
 - 1. Add reusable structured player-season outputs for WOWY and regression instead of terminal-only table formatting.
 - 2. Add span ranking logic that selects the top N players across a chosen season range.
-- 3. Add a minimal web backend that returns chart-ready rows for a metric and season span.
-- 4. Add a minimal frontend that lets the user pick a span and metric and renders an interactive line chart.
+- 3. Add a minimal Flask backend that returns chart-ready rows for a metric and season span.
+- 4. Add a minimal React frontend that lets the user pick a span and metric and renders an interactive line chart.
 - 5. Keep the scope tight. Do not build authentication, accounts, background workers, or deployment infrastructure unless explicitly requested.
 - Prefer interactive web charting over static matplotlib output for this roadmap.
+- Keep backend and frontend responsibilities separated:
+- Flask should return structured JSON, not terminal-formatted report strings.
+- React should handle controls, loading state, errors, and chart rendering.
+- Prefer reusing existing pure Python service logic from the analytics layer in Flask routes.
+- For the first web version, support WOWY first and then add regression after the end-to-end flow is working.
