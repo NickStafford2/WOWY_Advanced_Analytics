@@ -3,6 +3,8 @@ from __future__ import annotations
 from pathlib import Path
 
 from wowy.apps.wowy.service import (
+    available_wowy_seasons,
+    build_wowy_span_chart_rows,
     build_wowy_player_season_records,
     prepare_wowy_player_season_records,
     serialize_wowy_player_season_records,
@@ -223,3 +225,41 @@ def test_prepare_wowy_player_season_records_builds_web_ready_rows_from_cache(
         "average_minutes": 34.0,
         "total_minutes": 68.0,
     }
+
+
+def test_build_wowy_span_chart_rows_ranks_players_across_selected_seasons():
+    records = [
+        WowyPlayerSeasonRecord("2022-23", 101, "Player 101", 2, 1, 7.0, -5.0, 12.0, 34.0, 68.0),
+        WowyPlayerSeasonRecord("2022-23", 102, "Player 102", 2, 1, 2.5, 4.0, -1.5, 31.0, 62.0),
+        WowyPlayerSeasonRecord("2023-24", 101, "Player 101", 2, 1, 3.0, 1.0, 2.0, 34.0, 68.0),
+        WowyPlayerSeasonRecord("2023-24", 103, "Player 103", 2, 1, 4.5, -2.0, 6.5, 30.0, 60.0),
+    ]
+
+    assert available_wowy_seasons(records) == ["2022-23", "2023-24"]
+    assert build_wowy_span_chart_rows(
+        records,
+        start_season="2022-23",
+        end_season="2023-24",
+        top_n=2,
+    ) == [
+        {
+            "player_id": 101,
+            "player_name": "Player 101",
+            "average_wowy_score": 7.0,
+            "season_count": 2,
+            "points": [
+                {"season": "2022-23", "wowy_score": 12.0},
+                {"season": "2023-24", "wowy_score": 2.0},
+            ],
+        },
+        {
+            "player_id": 103,
+            "player_name": "Player 103",
+            "average_wowy_score": 6.5,
+            "season_count": 1,
+            "points": [
+                {"season": "2022-23", "wowy_score": None},
+                {"season": "2023-24", "wowy_score": 6.5},
+            ],
+        },
+    ]
