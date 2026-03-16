@@ -22,19 +22,20 @@ const SERIES_COLORS = [
 
 type SpanPoint = {
   season: string
-  wowy_score: number | null
+  value: number | null
 }
 
 type SpanSeries = {
   player_id: number
   player_name: string
-  average_wowy_score: number
+  average_value: number
   season_count: number
   points: SpanPoint[]
 }
 
 type SpanChartPayload = {
-  metric: 'wowy'
+  metric: string
+  metric_label: string
   span: {
     start_season: string
     end_season: string
@@ -75,7 +76,7 @@ type ChartTick = {
 
 type ChartPoint = {
   season: string
-  wowy_score: number
+  value: number
   x: number
   y: number
 }
@@ -179,8 +180,8 @@ function App() {
           </div>
           <div className="hero-note">
             <span>Metric</span>
-            <strong>WOWY</strong>
-            <small>Top players ranked by average WOWY score in span</small>
+            <strong>{chartData?.metric_label ?? 'WOWY'}</strong>
+            <small>Top players ranked by average metric value in span</small>
           </div>
         </div>
       </section>
@@ -265,7 +266,7 @@ function App() {
                 className="wowy-chart"
                 viewBox={`0 0 ${CHART_WIDTH} ${CHART_HEIGHT}`}
                 role="img"
-                aria-label="WOWY score line chart by season"
+                aria-label="Metric leader line chart by season"
               >
                 {chartModel.gridLines.map((line) => (
                   <g key={line.value}>
@@ -324,7 +325,7 @@ function App() {
                           fill={SERIES_COLORS[index % SERIES_COLORS.length]}
                         />
                         <title>
-                          {series.player_name} {point.season}: {point.wowy_score.toFixed(2)}
+                          {series.player_name} {point.season}: {point.value.toFixed(2)}
                         </title>
                       </g>
                     ))}
@@ -345,7 +346,7 @@ function App() {
                     <div>
                       <strong>{series.player_name}</strong>
                       <small>
-                        Avg WOWY {series.average_wowy_score.toFixed(2)} across{' '}
+                        Avg {chartData.metric_label} {series.average_value.toFixed(2)} across{' '}
                         {series.season_count} season{series.season_count === 1 ? '' : 's'}
                       </small>
                     </div>
@@ -363,15 +364,15 @@ function App() {
 function buildChartModel(series: SpanSeries[]): ChartModel {
   const seasons = uniqueSeasons(series)
   const scoredPoints = series.flatMap((entry) =>
-    entry.points.filter((point): point is ChartPointBase => point.wowy_score !== null),
+    entry.points.filter((point): point is ChartPointBase => point.value !== null),
   )
 
   if (seasons.length === 0 || scoredPoints.length === 0) {
     return { gridLines: [], xTicks: [], series: [] }
   }
 
-  const minScore = Math.min(...scoredPoints.map((point) => point.wowy_score))
-  const maxScore = Math.max(...scoredPoints.map((point) => point.wowy_score))
+  const minScore = Math.min(...scoredPoints.map((point) => point.value))
+  const maxScore = Math.max(...scoredPoints.map((point) => point.value))
   const spread = maxScore - minScore || 1
   const yMin = minScore - spread * 0.15
   const yMax = maxScore + spread * 0.15
@@ -391,7 +392,7 @@ function buildChartModel(series: SpanSeries[]): ChartModel {
     xTicks: seasons.map((season, index) => ({ season, x: xForSeason(index) })),
     series: series.map<ChartSeries>((entry) => {
       const points: ChartPoint[] = entry.points
-        .filter((point): point is ChartPointBase => point.wowy_score !== null)
+        .filter((point): point is ChartPointBase => point.value !== null)
         .map((point) => {
           const index = seasonIndex.get(point.season)
           if (index === undefined) {
@@ -400,7 +401,7 @@ function buildChartModel(series: SpanSeries[]): ChartModel {
           return {
             ...point,
             x: xForSeason(index),
-            y: yForScore(point.wowy_score),
+            y: yForScore(point.value),
           }
         })
 
@@ -415,7 +416,7 @@ function buildChartModel(series: SpanSeries[]): ChartModel {
 
 type ChartPointBase = {
   season: string
-  wowy_score: number
+  value: number
 }
 
 function buildGridLines(

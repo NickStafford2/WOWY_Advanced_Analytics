@@ -349,12 +349,12 @@ def build_wowy_span_chart_rows(
         {
             "player_id": player_id,
             "player_name": player_names[player_id],
-            "average_wowy_score": score_totals[player_id] / season_counts[player_id],
+            "average_value": score_totals[player_id] / season_counts[player_id],
             "season_count": season_counts[player_id],
             "points": [
                 {
                     "season": season,
-                    "wowy_score": season_scores[player_id].get(season),
+                    "value": season_scores[player_id].get(season),
                 }
                 for season in seasons
             ],

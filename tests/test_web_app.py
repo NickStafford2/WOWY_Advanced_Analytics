@@ -201,6 +201,7 @@ def test_wowy_span_chart_endpoint_returns_series_for_selected_span(
     assert response.status_code == 200
     payload = response.get_json()
     assert payload["metric"] == "wowy"
+    assert payload["metric_label"] == "WOWY"
     assert payload["span"] == {
         "start_season": "2022-23",
         "end_season": "2023-24",
@@ -211,21 +212,21 @@ def test_wowy_span_chart_endpoint_returns_series_for_selected_span(
         {
             "player_id": 101,
             "player_name": "Player 101",
-            "average_wowy_score": 7.0,
+            "average_value": 7.0,
             "season_count": 2,
             "points": [
-                {"season": "2022-23", "wowy_score": 12.0},
-                {"season": "2023-24", "wowy_score": 2.0},
+                {"season": "2022-23", "value": 12.0},
+                {"season": "2023-24", "value": 2.0},
             ],
         },
         {
             "player_id": 103,
             "player_name": "Player 103",
-            "average_wowy_score": 6.5,
+            "average_value": 6.5,
             "season_count": 1,
             "points": [
-                {"season": "2022-23", "wowy_score": None},
-                {"season": "2023-24", "wowy_score": 6.5},
+                {"season": "2022-23", "value": None},
+                {"season": "2023-24", "value": 6.5},
             ],
         },
     ]

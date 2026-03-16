@@ -184,6 +184,7 @@ def _build_wowy_span_chart_payload(
     )
     return {
         "metric": "wowy",
+        "metric_label": "WOWY",
         "span": {
             "start_season": start_season,
             "end_season": end_season,
