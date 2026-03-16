@@ -54,6 +54,27 @@ type SpanChartPayload = {
   series: SpanSeries[]
 }
 
+type PlayerSeasonRow = {
+  season: string
+  player_id: number
+  player_name: string
+  value: number
+  sample_size: number | null
+  secondary_sample_size: number | null
+  games_with?: number
+  games_without?: number
+  avg_margin_with?: number
+  avg_margin_without?: number
+  average_minutes: number | null
+  total_minutes: number | null
+}
+
+type PlayerSeasonsPayload = {
+  metric: string
+  metric_label: string
+  rows: PlayerSeasonRow[]
+}
+
 type MetricOptionsPayload = {
   metric: string
   metric_label: string
@@ -106,12 +127,26 @@ type ChartModel = {
   series: ChartSeries[]
 }
 
+type TableRow = {
+  rank: number
+  player_id: number
+  player_name: string
+  average_minutes: number | null
+  total_minutes: number
+  games_with: number
+  games_without: number
+  avg_margin_with: number | null
+  avg_margin_without: number | null
+  score: number | null
+}
+
 function App() {
   const [availableTeams, setAvailableTeams] = useState<string[]>([])
   const [availableSeasons, setAvailableSeasons] = useState<string[]>([])
   const [selectedTeam, setSelectedTeam] = useState('')
   const [topN, setTopN] = useState(12)
   const [chartData, setChartData] = useState<SpanChartPayload | null>(null)
+  const [playerSeasonRows, setPlayerSeasonRows] = useState<PlayerSeasonRow[]>([])
   const [metricLabel, setMetricLabel] = useState('WOWY')
   const [isBootstrapping, setIsBootstrapping] = useState(true)
   const [isLoading, setIsLoading] = useState(true)
@@ -136,23 +171,35 @@ function App() {
     }
 
     try {
-      const response = await fetch(`/api/metrics/wowy/span-chart?${params.toString()}`)
-      const payload = (await response.json()) as unknown
+      const playerSeasonParams = new URLSearchParams(params)
+      const [chartResponse, playerSeasonsResponse] = await Promise.all([
+        fetch(`/api/metrics/wowy/span-chart?${params.toString()}`),
+        fetch(`/api/metrics/wowy/player-seasons?${playerSeasonParams.toString()}`),
+      ])
+      const chartPayloadRaw = (await chartResponse.json()) as unknown
+      const playerSeasonsPayloadRaw = (await playerSeasonsResponse.json()) as unknown
 
-      if (!response.ok) {
-        const errorPayload = payload as ErrorPayload
+      if (!chartResponse.ok) {
+        const errorPayload = chartPayloadRaw as ErrorPayload
+        throw new Error(errorPayload.error ?? 'Request failed')
+      }
+      if (!playerSeasonsResponse.ok) {
+        const errorPayload = playerSeasonsPayloadRaw as ErrorPayload
         throw new Error(errorPayload.error ?? 'Request failed')
       }
 
-      const chartPayload = payload as SpanChartPayload
+      const chartPayload = chartPayloadRaw as SpanChartPayload
+      const playerSeasonsPayload = playerSeasonsPayloadRaw as PlayerSeasonsPayload
       setMetricLabel(chartPayload.metric_label)
       setTopN(chartPayload.span.top_n)
       setChartData(chartPayload)
+      setPlayerSeasonRows(playerSeasonsPayload.rows)
     } catch (caughtError) {
       const message =
         caughtError instanceof Error ? caughtError.message : 'Request failed'
       setError(message)
       setChartData(null)
+      setPlayerSeasonRows([])
     } finally {
       setIsLoading(false)
     }
@@ -195,6 +242,7 @@ function App() {
           caughtError instanceof Error ? caughtError.message : 'Request failed'
         setError(message)
         setChartData(null)
+        setPlayerSeasonRows([])
         setAvailableSeasons([])
       } finally {
         setIsBootstrapping(false)
@@ -209,6 +257,10 @@ function App() {
   const chartModel = useMemo<ChartModel>(
     () => buildChartModel(chartData?.series ?? []),
     [chartData],
+  )
+  const tableRows = useMemo<TableRow[]>(
+    () => buildTableRows(chartData?.series ?? [], playerSeasonRows),
+    [chartData, playerSeasonRows],
   )
 
   function handleTopNChange(event: ChangeEvent<HTMLInputElement>) {
@@ -313,102 +365,147 @@ function App() {
           <p className="status">No players matched the current filters.</p>
         ) : null}
         {!error && !isLoading && chartData && chartData.series.length > 0 ? (
-          <div className="chart-layout">
-            <div className="chart-frame">
-              <svg
-                className="wowy-chart"
-                viewBox={`0 0 ${CHART_WIDTH} ${CHART_HEIGHT}`}
-                role="img"
-                aria-label="Metric leader line chart by season"
-              >
-                {chartModel.gridLines.map((line) => (
-                  <g key={line.value}>
-                    <line
-                      x1={CHART_PADDING.left}
-                      x2={CHART_WIDTH - CHART_PADDING.right}
-                      y1={line.y}
-                      y2={line.y}
-                      className="grid-line"
-                    />
-                    <text x={18} y={line.y + 4} className="axis-label">
-                      {line.value.toFixed(1)}
-                    </text>
-                  </g>
-                ))}
-
-                {chartModel.xTicks.map((tick) => (
-                  <g key={tick.season}>
-                    <line
-                      x1={tick.x}
-                      x2={tick.x}
-                      y1={CHART_PADDING.top}
-                      y2={CHART_HEIGHT - CHART_PADDING.bottom}
-                      className="grid-line grid-line-vertical"
-                    />
-                    <text
-                      x={tick.x}
-                      y={CHART_HEIGHT - 16}
-                      textAnchor="middle"
-                      className="axis-label"
-                    >
-                      {tick.season}
-                    </text>
-                  </g>
-                ))}
-
-                {chartModel.series.map((series, index) => (
-                  <g key={series.player_id}>
-                    {series.segments.map((segment, segmentIndex) => (
-                      <polyline
-                        key={`${series.player_id}-${segmentIndex}`}
-                        points={segment}
-                        fill="none"
-                        stroke={SERIES_COLORS[index % SERIES_COLORS.length]}
-                        strokeWidth="3"
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
+          <>
+            <div className="chart-layout">
+              <div className="chart-frame">
+                <svg
+                  className="wowy-chart"
+                  viewBox={`0 0 ${CHART_WIDTH} ${CHART_HEIGHT}`}
+                  role="img"
+                  aria-label="Metric leader line chart by season"
+                >
+                  {chartModel.gridLines.map((line) => (
+                    <g key={line.value}>
+                      <line
+                        x1={CHART_PADDING.left}
+                        x2={CHART_WIDTH - CHART_PADDING.right}
+                        y1={line.y}
+                        y2={line.y}
+                        className="grid-line"
                       />
-                    ))}
-                    {series.points.map((point) => (
-                      <g key={`${series.player_id}-${point.season}`}>
-                        <circle
-                          cx={point.x}
-                          cy={point.y}
-                          r="4.5"
-                          fill={SERIES_COLORS[index % SERIES_COLORS.length]}
+                      <text x={18} y={line.y + 4} className="axis-label">
+                        {line.value.toFixed(1)}
+                      </text>
+                    </g>
+                  ))}
+
+                  {chartModel.xTicks.map((tick) => (
+                    <g key={tick.season}>
+                      <line
+                        x1={tick.x}
+                        x2={tick.x}
+                        y1={CHART_PADDING.top}
+                        y2={CHART_HEIGHT - CHART_PADDING.bottom}
+                        className="grid-line grid-line-vertical"
+                      />
+                      <text
+                        x={tick.x}
+                        y={CHART_HEIGHT - 16}
+                        textAnchor="middle"
+                        className="axis-label"
+                      >
+                        {tick.season}
+                      </text>
+                    </g>
+                  ))}
+
+                  {chartModel.series.map((series, index) => (
+                    <g key={series.player_id}>
+                      {series.segments.map((segment, segmentIndex) => (
+                        <polyline
+                          key={`${series.player_id}-${segmentIndex}`}
+                          points={segment}
+                          fill="none"
+                          stroke={SERIES_COLORS[index % SERIES_COLORS.length]}
+                          strokeWidth="3"
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
                         />
-                        <title>
-                          {series.player_name} {point.season}: {point.value.toFixed(2)}
-                        </title>
-                      </g>
-                    ))}
-                  </g>
-                ))}
-              </svg>
+                      ))}
+                      {series.points.map((point) => (
+                        <g key={`${series.player_id}-${point.season}`}>
+                          <circle
+                            cx={point.x}
+                            cy={point.y}
+                            r="4.5"
+                            fill={SERIES_COLORS[index % SERIES_COLORS.length]}
+                          />
+                          <title>
+                            {series.player_name} {point.season}: {point.value.toFixed(2)}
+                          </title>
+                        </g>
+                      ))}
+                    </g>
+                  ))}
+                </svg>
+              </div>
+
+              <aside className="legend-panel">
+                <p className="panel-label">Top players</p>
+                <ul className="legend-list">
+                  {chartData.series.map((series, index) => (
+                    <li key={series.player_id}>
+                      <span
+                        className="legend-swatch"
+                        style={{ backgroundColor: SERIES_COLORS[index % SERIES_COLORS.length] }}
+                      />
+                      <div>
+                        <strong>{series.player_name}</strong>
+                        <small>
+                          Span avg {chartData.metric_label} {series.span_average_value.toFixed(2)}.
+                          Appeared in {series.season_count} season
+                          {series.season_count === 1 ? '' : 's'}
+                        </small>
+                      </div>
+                    </li>
+                  ))}
+                </ul>
+              </aside>
             </div>
 
-            <aside className="legend-panel">
-              <p className="panel-label">Top players</p>
-              <ul className="legend-list">
-                {chartData.series.map((series, index) => (
-                  <li key={series.player_id}>
-                    <span
-                      className="legend-swatch"
-                      style={{ backgroundColor: SERIES_COLORS[index % SERIES_COLORS.length] }}
-                    />
-                    <div>
-                      <strong>{series.player_name}</strong>
-                      <small>
-                        Span avg {chartData.metric_label} {series.span_average_value.toFixed(2)}.
-                        Appeared in {series.season_count} season
-                        {series.season_count === 1 ? '' : 's'}
-                      </small>
-                    </div>
-                  </li>
-                ))}
-              </ul>
-            </aside>
-          </div>
+            <div className="results-table-panel">
+              <div className="table-header">
+                <div>
+                  <p className="panel-label">Ranked table</p>
+                  <h3>Top {chartData.span.top_n} players all time</h3>
+                </div>
+              </div>
+              <div className="results-table-frame">
+                <table className="results-table">
+                  <thead>
+                    <tr>
+                      <th>Rank</th>
+                      <th>Player</th>
+                      <th>Player ID</th>
+                      <th>Avg Min</th>
+                      <th>Tot Min</th>
+                      <th>With</th>
+                      <th>Without</th>
+                      <th>Avg With</th>
+                      <th>Avg Without</th>
+                      <th>Score</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {tableRows.map((row) => (
+                      <tr key={row.player_id}>
+                        <td>{row.rank}</td>
+                        <td>{row.player_name}</td>
+                        <td>{row.player_id}</td>
+                        <td>{formatNumber(row.average_minutes, 1)}</td>
+                        <td>{formatNumber(row.total_minutes, 1)}</td>
+                        <td>{row.games_with}</td>
+                        <td>{row.games_without}</td>
+                        <td>{formatNumber(row.avg_margin_with, 2)}</td>
+                        <td>{formatNumber(row.avg_margin_without, 2)}</td>
+                        <td>{formatNumber(row.score, 2)}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </>
         ) : null}
       </section>
     </main>
@@ -495,6 +592,82 @@ function toSegments(points: ChartPoint[]): string[] {
 
 function uniqueSeasons(series: SpanSeries[]): string[] {
   return [...new Set(series.flatMap((entry) => entry.points.map((point) => point.season)))]
+}
+
+function buildTableRows(series: SpanSeries[], playerSeasonRows: PlayerSeasonRow[]): TableRow[] {
+  const rowsByPlayer = new Map<number, PlayerSeasonRow[]>()
+  for (const row of playerSeasonRows) {
+    rowsByPlayer.set(row.player_id, [...(rowsByPlayer.get(row.player_id) ?? []), row])
+  }
+
+  return series.map((entry, index) => {
+    const playerRows = rowsByPlayer.get(entry.player_id) ?? []
+    const gamesWith = sumBy(playerRows, (row) => row.games_with ?? row.sample_size ?? 0)
+    const gamesWithout = sumBy(
+      playerRows,
+      (row) => row.games_without ?? row.secondary_sample_size ?? 0,
+    )
+    const totalMinutes = sumBy(playerRows, (row) => row.total_minutes ?? 0)
+    const averageMinutes = gamesWith > 0 ? totalMinutes / gamesWith : null
+    const avgMarginWith = weightedAverage(
+      playerRows,
+      (row) => row.avg_margin_with ?? null,
+      (row) => row.games_with ?? row.sample_size ?? 0,
+    )
+    const avgMarginWithout = weightedAverage(
+      playerRows,
+      (row) => row.avg_margin_without ?? null,
+      (row) => row.games_without ?? row.secondary_sample_size ?? 0,
+    )
+
+    return {
+      rank: index + 1,
+      player_id: entry.player_id,
+      player_name: entry.player_name,
+      average_minutes: averageMinutes,
+      total_minutes: totalMinutes,
+      games_with: gamesWith,
+      games_without: gamesWithout,
+      avg_margin_with: avgMarginWith,
+      avg_margin_without: avgMarginWithout,
+      score:
+        avgMarginWith !== null && avgMarginWithout !== null
+          ? avgMarginWith - avgMarginWithout
+          : null,
+    }
+  })
+}
+
+function sumBy<T>(items: T[], fn: (item: T) => number): number {
+  return items.reduce((total, item) => total + fn(item), 0)
+}
+
+function weightedAverage<T>(
+  items: T[],
+  valueFn: (item: T) => number | null,
+  weightFn: (item: T) => number,
+): number | null {
+  let weightedTotal = 0
+  let weightTotal = 0
+
+  for (const item of items) {
+    const value = valueFn(item)
+    const weight = weightFn(item)
+    if (value === null || weight <= 0) {
+      continue
+    }
+    weightedTotal += value * weight
+    weightTotal += weight
+  }
+
+  return weightTotal > 0 ? weightedTotal / weightTotal : null
+}
+
+function formatNumber(value: number | null, decimals: number): string {
+  if (value === null) {
+    return '-'
+  }
+  return value.toFixed(decimals)
 }
 
 export default App
