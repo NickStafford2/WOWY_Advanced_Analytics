@@ -245,7 +245,7 @@ def test_build_wowy_span_chart_rows_ranks_players_across_selected_seasons():
         {
             "player_id": 101,
             "player_name": "Player 101",
-            "average_value": 7.0,
+            "span_average_value": 7.0,
             "season_count": 2,
             "points": [
                 {"season": "2022-23", "value": 12.0},
@@ -255,7 +255,7 @@ def test_build_wowy_span_chart_rows_ranks_players_across_selected_seasons():
         {
             "player_id": 103,
             "player_name": "Player 103",
-            "average_value": 3.25,
+            "span_average_value": 3.25,
             "season_count": 1,
             "points": [
                 {"season": "2022-23", "value": None},

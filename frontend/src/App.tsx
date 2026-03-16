@@ -28,7 +28,7 @@ type SpanPoint = {
 type SpanSeries = {
   player_id: number
   player_name: string
-  average_value: number
+  span_average_value: number
   season_count: number
   points: SpanPoint[]
 }
@@ -346,7 +346,7 @@ function App() {
                     <div>
                       <strong>{series.player_name}</strong>
                       <small>
-                        Span avg {chartData.metric_label} {series.average_value.toFixed(2)}.
+                        Span avg {chartData.metric_label} {series.span_average_value.toFixed(2)}.
                         Appeared in {series.season_count} season
                         {series.season_count === 1 ? '' : 's'}
                       </small>

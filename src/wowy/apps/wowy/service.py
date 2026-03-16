@@ -350,7 +350,7 @@ def build_wowy_span_chart_rows(
         {
             "player_id": player_id,
             "player_name": player_names[player_id],
-            "average_value": score_totals[player_id] / span_length,
+            "span_average_value": score_totals[player_id] / span_length,
             "season_count": season_counts[player_id],
             "points": [
                 {

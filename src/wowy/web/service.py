@@ -181,7 +181,7 @@ def build_metric_span_chart_rows(
         {
             "player_id": player_id,
             "player_name": names[player_id],
-            "average_value": totals[player_id] / span_length,
+            "span_average_value": totals[player_id] / span_length,
             "season_count": counts[player_id],
             "points": [
                 {
