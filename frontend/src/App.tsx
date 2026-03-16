@@ -181,7 +181,7 @@ function App() {
           <div className="hero-note">
             <span>Metric</span>
             <strong>{chartData?.metric_label ?? 'WOWY'}</strong>
-            <small>Top players ranked by average metric value in span</small>
+            <small>Top players ranked by span-average metric value</small>
           </div>
         </div>
       </section>
@@ -346,8 +346,9 @@ function App() {
                     <div>
                       <strong>{series.player_name}</strong>
                       <small>
-                        Avg {chartData.metric_label} {series.average_value.toFixed(2)} across{' '}
-                        {series.season_count} season{series.season_count === 1 ? '' : 's'}
+                        Span avg {chartData.metric_label} {series.average_value.toFixed(2)}.
+                        Appeared in {series.season_count} season
+                        {series.season_count === 1 ? '' : 's'}
                       </small>
                     </div>
                   </li>

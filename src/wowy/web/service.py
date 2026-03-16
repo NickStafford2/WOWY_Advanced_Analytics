@@ -167,10 +167,11 @@ def build_metric_span_chart_rows(
         names[row.player_id] = row.player_name
         season_values.setdefault(row.player_id, {})[row.season] = row.value
 
+    span_length = len(seasons)
     ranked_player_ids = sorted(
         totals,
         key=lambda player_id: (
-            totals[player_id] / counts[player_id],
+            totals[player_id],
             names[player_id],
         ),
         reverse=True,
@@ -180,7 +181,7 @@ def build_metric_span_chart_rows(
         {
             "player_id": player_id,
             "player_name": names[player_id],
-            "average_value": totals[player_id] / counts[player_id],
+            "average_value": totals[player_id] / span_length,
             "season_count": counts[player_id],
             "points": [
                 {

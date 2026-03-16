@@ -255,7 +255,7 @@ def test_build_wowy_span_chart_rows_ranks_players_across_selected_seasons():
         {
             "player_id": 103,
             "player_name": "Player 103",
-            "average_value": 6.5,
+            "average_value": 3.25,
             "season_count": 1,
             "points": [
                 {"season": "2022-23", "value": None},
