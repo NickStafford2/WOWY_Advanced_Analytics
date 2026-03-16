@@ -110,13 +110,13 @@ type TableRow = {
   rank: number
   player_id: number
   player_name: string
+  span_average_value: number
   average_minutes: number | null
   total_minutes: number
   games_with: number
   games_without: number
   avg_margin_with: number | null
   avg_margin_without: number | null
-  score: number | null
   season_count: number
 }
 
@@ -138,10 +138,10 @@ function App() {
     setError('')
 
     const params = new URLSearchParams({
-      min_games_with: '1',
-      min_games_without: '1',
-      min_average_minutes: '0',
-      min_total_minutes: '0',
+      min_games_with: '15',
+      min_games_without: '2',
+      min_average_minutes: '30',
+      min_total_minutes: '600',
       top_n: String(nextTopN),
     })
 
@@ -415,7 +415,7 @@ function App() {
               <div className="table-header">
                 <div>
                   <p className="panel-label">Ranked table</p>
-                  <h3>Top {topN} players by pooled WOWY</h3>
+                  <h3>Top {topN} players by multi-season WOWY profile</h3>
                 </div>
               </div>
               <div className="results-table-frame">
@@ -425,13 +425,14 @@ function App() {
                       <th>Rank</th>
                       <th>Player</th>
                       <th>Player ID</th>
+                      <th>Span Avg WOWY</th>
+                      <th>Seasons</th>
                       <th>Avg Min</th>
                       <th>Tot Min</th>
                       <th>With</th>
                       <th>Without</th>
                       <th>Avg With</th>
                       <th>Avg Without</th>
-                      <th>WOWY</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -440,13 +441,14 @@ function App() {
                         <td>{row.rank}</td>
                         <td>{row.player_name}</td>
                         <td>{row.player_id}</td>
+                        <td>{formatNumber(row.span_average_value, 2)}</td>
+                        <td>{row.season_count}</td>
                         <td>{formatNumber(row.average_minutes, 1)}</td>
                         <td>{formatNumber(row.total_minutes, 1)}</td>
                         <td>{row.games_with}</td>
                         <td>{row.games_without}</td>
                         <td>{formatNumber(row.avg_margin_with, 2)}</td>
                         <td>{formatNumber(row.avg_margin_without, 2)}</td>
-                        <td>{formatNumber(row.score, 2)}</td>
                       </tr>
                     ))}
                   </tbody>
@@ -547,6 +549,7 @@ function buildTableRows(playerSeasonRows: PlayerSeasonRow[]): TableRow[] {
   for (const row of playerSeasonRows) {
     rowsByPlayer.set(row.player_id, [...(rowsByPlayer.get(row.player_id) ?? []), row])
   }
+  const fullSpanLength = new Set(playerSeasonRows.map((row) => row.season)).size || 1
 
   const rows = [...rowsByPlayer.entries()].map(([playerId, playerRows]) => {
     const playerName = playerRows[0]?.player_name ?? String(playerId)
@@ -567,28 +570,26 @@ function buildTableRows(playerSeasonRows: PlayerSeasonRow[]): TableRow[] {
       (row) => row.avg_margin_without ?? null,
       (row) => row.games_without ?? row.secondary_sample_size ?? 0,
     )
+    const spanAverageValue = sumBy(playerRows, (row) => row.value) / fullSpanLength
 
     return {
       rank: 0,
       player_id: playerId,
       player_name: playerName,
+      span_average_value: spanAverageValue,
       average_minutes: averageMinutes,
       total_minutes: totalMinutes,
       games_with: gamesWith,
       games_without: gamesWithout,
       avg_margin_with: avgMarginWith,
       avg_margin_without: avgMarginWithout,
-      score:
-        avgMarginWith !== null && avgMarginWithout !== null
-          ? avgMarginWith - avgMarginWithout
-          : null,
       season_count: playerRows.length,
     }
   })
 
   rows.sort((left, right) => {
-    const leftScore = left.score ?? Number.NEGATIVE_INFINITY
-    const rightScore = right.score ?? Number.NEGATIVE_INFINITY
+    const leftScore = left.span_average_value
+    const rightScore = right.span_average_value
     if (rightScore !== leftScore) {
       return rightScore - leftScore
     }
@@ -614,7 +615,7 @@ function buildDisplaySeries(
   return tableRows.map((row) => ({
     player_id: row.player_id,
     player_name: row.player_name,
-    span_average_value: row.score ?? 0,
+    span_average_value: row.span_average_value,
     season_count: row.season_count,
     points: seasons.map((season) => ({
       season,
