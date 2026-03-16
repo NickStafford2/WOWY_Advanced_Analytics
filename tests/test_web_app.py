@@ -44,6 +44,7 @@ def test_wowy_player_seasons_endpoint_returns_rows_from_cache(
         normalized_game_players_input_dir=normalized_players_dir,
         wowy_output_dir=tmp_path / "team_games",
         combined_wowy_csv=tmp_path / "combined" / "games.csv",
+        player_metrics_db_path=tmp_path / "app" / "player_metrics.sqlite3",
     )
     client = app.test_client()
 
@@ -109,6 +110,7 @@ def test_wowy_player_seasons_endpoint_returns_bad_request_for_invalid_filters(
         normalized_game_players_input_dir=tmp_path / "normalized_game_players",
         wowy_output_dir=tmp_path / "team_games",
         combined_wowy_csv=tmp_path / "combined" / "games.csv",
+        player_metrics_db_path=tmp_path / "app" / "player_metrics.sqlite3",
     )
     client = app.test_client()
 
@@ -181,6 +183,7 @@ def test_wowy_span_chart_endpoint_returns_series_for_selected_span(
         normalized_game_players_input_dir=normalized_players_dir,
         wowy_output_dir=tmp_path / "team_games",
         combined_wowy_csv=tmp_path / "combined" / "games.csv",
+        player_metrics_db_path=tmp_path / "app" / "player_metrics.sqlite3",
     )
     client = app.test_client()
 

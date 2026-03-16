@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import os
+import tempfile
 from contextlib import contextmanager
 from pathlib import Path
 from typing import Iterator, TextIO
@@ -12,7 +13,13 @@ def atomic_text_writer(path: Path | str, newline: str | None = None) -> Iterator
 
     path = Path(path)
     path.parent.mkdir(parents=True, exist_ok=True)
-    temp_path = path.with_suffix(f"{path.suffix}.tmp-{os.getpid()}")
+    temp_fd, temp_name = tempfile.mkstemp(
+        prefix=f"{path.name}.tmp-{os.getpid()}-",
+        dir=path.parent,
+        text=True,
+    )
+    os.close(temp_fd)
+    temp_path = Path(temp_name)
 
     try:
         with open(temp_path, "w", encoding="utf-8", newline=newline) as f:
