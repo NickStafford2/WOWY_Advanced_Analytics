@@ -7,12 +7,14 @@ I do not plan to implement play by play tracking for quite some time. Most impor
 - Game-level data only
 - Local NBA team-season ingestion and cache tooling
 - Regression uses minute-weighted player features and ridge tuning
+- The current web direction is a player-first WOWY app over the full cached history span
 
 ## Current interpretation
 
 - WOWY is a baseline only
 - Regression is the main path for more adjusted analysis
 - Neither path is meant to be a finished possession-level metric
+- For the web app, the primary WOWY leaderboard should reflect the strongest multi-season WOWY player profiles, not pooled all-games rankings that can overreact to tiny with/without samples
 
 ## Planned next steps
 

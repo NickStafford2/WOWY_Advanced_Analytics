@@ -9,6 +9,10 @@ The repository currently has two analysis paths built on game-level NBA data:
 - WOWY baseline on derived `games.csv`
 - ridge regression on normalized game and player rows
 
+The current web app goal is player comparison over the full cached history.
+The primary WOWY web ranking is the strongest multi-season WOWY profile across that full history, with team filters used only to restrict the underlying game sample when requested.
+Supporting stats like minutes and with/without counts are context for the ranked players, not the main ranking signal.
+
 WOWY is a simple presence model:
 
 `wowy_score = average margin when player played - average margin when player did not play`
@@ -107,6 +111,12 @@ poetry run python -m wowy.data.combine_cli
 ## Output notes
 
 WOWY output includes player name or id, minute summaries, with/without samples, average margins, and score.
+
+For the web app, treat the primary WOWY ranking differently from a pooled all-games with/without estimate:
+
+- Primary web ranking: multi-season WOWY profile across the full cached history span
+- Supporting web columns: minutes, with/without samples, average margins, and other context
+- Non-goal: replacing the main leaderboard with noisy pooled with/without rankings that push role players with tiny samples above long-term stars
 
 Regression output includes observation count, fitted player count, intercept, home-court estimate, and ranked player coefficients.
 
