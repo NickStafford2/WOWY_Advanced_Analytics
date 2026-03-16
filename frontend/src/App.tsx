@@ -1,4 +1,5 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
+import type { ChangeEvent } from 'react'
 import './App.css'
 
 const CHART_WIDTH = 920
@@ -17,66 +18,152 @@ const SERIES_COLORS = [
   '#588157',
   '#bc6c25',
   '#7f5539',
-]
+] as const
+
+type SpanPoint = {
+  season: string
+  wowy_score: number | null
+}
+
+type SpanSeries = {
+  player_id: number
+  player_name: string
+  average_wowy_score: number
+  season_count: number
+  points: SpanPoint[]
+}
+
+type SpanChartPayload = {
+  metric: 'wowy'
+  span: {
+    start_season: string
+    end_season: string
+    available_seasons: string[]
+    top_n: number
+  }
+  filters: {
+    team: string[] | null
+    season: string[] | null
+    season_type: string
+    min_games_with: number
+    min_games_without: number
+    min_average_minutes: number
+    min_total_minutes: number
+  }
+  series: SpanSeries[]
+}
+
+type ErrorPayload = {
+  error?: string
+}
+
+type LoadChartOptions = {
+  nextStartSeason?: string
+  nextEndSeason?: string
+  nextTopN?: number
+}
+
+type ChartGridLine = {
+  value: number
+  y: number
+}
+
+type ChartTick = {
+  season: string
+  x: number
+}
+
+type ChartPoint = {
+  season: string
+  wowy_score: number
+  x: number
+  y: number
+}
+
+type ChartSeries = Omit<SpanSeries, 'points'> & {
+  points: ChartPoint[]
+  segments: string[]
+}
+
+type ChartModel = {
+  gridLines: ChartGridLine[]
+  xTicks: ChartTick[]
+  series: ChartSeries[]
+}
 
 function App() {
-  const [availableSeasons, setAvailableSeasons] = useState([])
+  const [availableSeasons, setAvailableSeasons] = useState<string[]>([])
   const [startSeason, setStartSeason] = useState('')
   const [endSeason, setEndSeason] = useState('')
   const [topN, setTopN] = useState(12)
-  const [chartData, setChartData] = useState(null)
+  const [chartData, setChartData] = useState<SpanChartPayload | null>(null)
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState('')
 
-  useEffect(() => {
-    loadChart({})
-  }, [])
+  const loadChart = useCallback((options: LoadChartOptions) => {
+    const {
+      nextStartSeason = startSeason,
+      nextEndSeason = endSeason,
+      nextTopN = topN,
+    } = options
 
-  async function loadChart({
-    nextStartSeason = startSeason,
-    nextEndSeason = endSeason,
-    nextTopN = topN,
-  }) {
-    setIsLoading(true)
-    setError('')
+    void (async () => {
+      setIsLoading(true)
+      setError('')
 
-    const params = new URLSearchParams({
-      min_games_with: '1',
-      min_games_without: '1',
-      min_average_minutes: '0',
-      min_total_minutes: '0',
-      top_n: String(nextTopN),
-    })
+      const params = new URLSearchParams({
+        min_games_with: '1',
+        min_games_without: '1',
+        min_average_minutes: '0',
+        min_total_minutes: '0',
+        top_n: String(nextTopN),
+      })
 
-    if (nextStartSeason) {
-      params.set('start_season', nextStartSeason)
-    }
-    if (nextEndSeason) {
-      params.set('end_season', nextEndSeason)
-    }
-
-    try {
-      const response = await fetch(`/api/wowy/span-chart?${params.toString()}`)
-      const payload = await response.json()
-
-      if (!response.ok) {
-        throw new Error(payload.error ?? 'Request failed')
+      if (nextStartSeason) {
+        params.set('start_season', nextStartSeason)
+      }
+      if (nextEndSeason) {
+        params.set('end_season', nextEndSeason)
       }
 
-      setAvailableSeasons(payload.span.available_seasons)
-      setStartSeason(payload.span.start_season)
-      setEndSeason(payload.span.end_season)
-      setTopN(payload.span.top_n)
-      setChartData(payload)
-    } catch (caughtError) {
-      setError(caughtError.message)
-      setChartData(null)
-    } finally {
-      setIsLoading(false)
-    }
-  }
+      try {
+        const response = await fetch(`/api/wowy/span-chart?${params.toString()}`)
+        const payload = (await response.json()) as unknown
 
-  const chartModel = useMemo(() => buildChartModel(chartData?.series ?? []), [chartData])
+        if (!response.ok) {
+          const errorPayload = payload as ErrorPayload
+          throw new Error(errorPayload.error ?? 'Request failed')
+        }
+
+        const chartPayload = payload as SpanChartPayload
+        setAvailableSeasons(chartPayload.span.available_seasons)
+        setStartSeason(chartPayload.span.start_season)
+        setEndSeason(chartPayload.span.end_season)
+        setTopN(chartPayload.span.top_n)
+        setChartData(chartPayload)
+      } catch (caughtError) {
+        const message =
+          caughtError instanceof Error ? caughtError.message : 'Request failed'
+        setError(message)
+        setChartData(null)
+      } finally {
+        setIsLoading(false)
+      }
+    })()
+  }, [endSeason, startSeason, topN])
+
+  useEffect(() => {
+    void loadChart({})
+  }, [loadChart])
+
+  const chartModel = useMemo<ChartModel>(
+    () => buildChartModel(chartData?.series ?? []),
+    [chartData],
+  )
+
+  function handleTopNChange(event: ChangeEvent<HTMLInputElement>) {
+    setTopN(Number(event.target.value))
+  }
 
   return (
     <main className="page-shell">
@@ -136,14 +223,14 @@ function App() {
             min="1"
             max="30"
             value={topN}
-            onChange={(event) => setTopN(Number(event.target.value))}
+            onChange={handleTopNChange}
           />
         </label>
 
         <button
           type="button"
           className="run-button"
-          onClick={() => loadChart({})}
+          onClick={() => void loadChart({})}
           disabled={isLoading || !startSeason || !endSeason || startSeason > endSeason}
         >
           {isLoading ? 'Loading...' : 'Update chart'}
@@ -273,10 +360,10 @@ function App() {
   )
 }
 
-function buildChartModel(series) {
+function buildChartModel(series: SpanSeries[]): ChartModel {
   const seasons = uniqueSeasons(series)
   const scoredPoints = series.flatMap((entry) =>
-    entry.points.filter((point) => point.wowy_score !== null),
+    entry.points.filter((point): point is ChartPointBase => point.wowy_score !== null),
   )
 
   if (seasons.length === 0 || scoredPoints.length === 0) {
@@ -290,25 +377,32 @@ function buildChartModel(series) {
   const yMax = maxScore + spread * 0.15
   const chartInnerWidth = CHART_WIDTH - CHART_PADDING.left - CHART_PADDING.right
   const chartInnerHeight = CHART_HEIGHT - CHART_PADDING.top - CHART_PADDING.bottom
+  const seasonIndex = new Map(seasons.map((season, index) => [season, index]))
 
-  const xForSeason = (season, index) =>
+  const xForSeason = (index: number) =>
     CHART_PADDING.left +
     (seasons.length === 1 ? chartInnerWidth / 2 : (index / (seasons.length - 1)) * chartInnerWidth)
 
-  const yForScore = (score) =>
+  const yForScore = (score: number) =>
     CHART_PADDING.top + ((yMax - score) / (yMax - yMin || 1)) * chartInnerHeight
 
   return {
     gridLines: buildGridLines(yMin, yMax, yForScore),
-    xTicks: seasons.map((season, index) => ({ season, x: xForSeason(season, index) })),
-    series: series.map((entry) => {
-      const points = entry.points
-        .filter((point) => point.wowy_score !== null)
-        .map((point) => ({
-          ...point,
-          x: xForSeason(point.season, seasons.indexOf(point.season)),
-          y: yForScore(point.wowy_score),
-        }))
+    xTicks: seasons.map((season, index) => ({ season, x: xForSeason(index) })),
+    series: series.map<ChartSeries>((entry) => {
+      const points: ChartPoint[] = entry.points
+        .filter((point): point is ChartPointBase => point.wowy_score !== null)
+        .map((point) => {
+          const index = seasonIndex.get(point.season)
+          if (index === undefined) {
+            throw new Error(`Unknown season ${point.season}`)
+          }
+          return {
+            ...point,
+            x: xForSeason(index),
+            y: yForScore(point.wowy_score),
+          }
+        })
 
       return {
         ...entry,
@@ -319,7 +413,16 @@ function buildChartModel(series) {
   }
 }
 
-function buildGridLines(yMin, yMax, yForScore) {
+type ChartPointBase = {
+  season: string
+  wowy_score: number
+}
+
+function buildGridLines(
+  yMin: number,
+  yMax: number,
+  yForScore: (score: number) => number,
+): ChartGridLine[] {
   const steps = 5
   return Array.from({ length: steps + 1 }, (_, index) => {
     const value = yMin + ((yMax - yMin) / steps) * index
@@ -327,7 +430,7 @@ function buildGridLines(yMin, yMax, yForScore) {
   })
 }
 
-function toSegments(points) {
+function toSegments(points: ChartPoint[]): string[] {
   if (points.length === 0) {
     return []
   }
@@ -335,7 +438,7 @@ function toSegments(points) {
   return [points.map((point) => `${point.x},${point.y}`).join(' ')]
 }
 
-function uniqueSeasons(series) {
+function uniqueSeasons(series: SpanSeries[]): string[] {
   return [...new Set(series.flatMap((entry) => entry.points.map((point) => point.season)))]
 }
 
