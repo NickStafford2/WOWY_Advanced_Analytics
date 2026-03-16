@@ -10,6 +10,7 @@ from wowy.nba.ingest import (
     DEFAULT_SOURCE_DATA_DIR,
     DEFAULT_WOWY_GAMES_DIR,
 )
+from wowy.progress import TerminalProgressBar
 from wowy.web.service import WOWY_METRIC, refresh_metric_store
 
 
@@ -70,6 +71,7 @@ def build_parser() -> argparse.ArgumentParser:
 def main(argv: list[str] | None = None) -> int:
     parser = build_parser()
     args = parser.parse_args(argv)
+    progress_bar = TerminalProgressBar("Refresh", total=1)
     refresh_metric_store(
         args.metric,
         season_type=args.season_type,
@@ -79,6 +81,24 @@ def main(argv: list[str] | None = None) -> int:
         normalized_game_players_input_dir=args.normalized_game_players_input_dir,
         wowy_output_dir=args.wowy_output_dir,
         combined_wowy_csv=args.combined_wowy_csv,
+        progress=lambda current, total, detail: _update_progress(
+            progress_bar,
+            current=current,
+            total=total,
+            detail=detail,
+        ),
     )
+    progress_bar.finish(detail="done")
     print(f"refreshed {args.metric} store at {args.player_metrics_db_path}")
     return 0
+
+
+def _update_progress(
+    progress_bar: TerminalProgressBar,
+    *,
+    current: int,
+    total: int,
+    detail: str,
+) -> None:
+    progress_bar.total = max(total, 1)
+    progress_bar.update(current, detail=detail)

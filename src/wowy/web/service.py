@@ -26,6 +26,7 @@ from wowy.nba.team_seasons import list_cached_team_seasons
 
 
 BuildRowsFn = Callable[..., list[PlayerSeasonMetricRow]]
+RefreshProgressFn = Callable[[int, int, str], None]
 
 
 @dataclass(frozen=True)
@@ -125,6 +126,7 @@ def refresh_metric_store(
     normalized_game_players_input_dir: Path,
     wowy_output_dir: Path,
     combined_wowy_csv: Path,
+    progress: RefreshProgressFn | None = None,
 ) -> None:
     definition = get_metric_definition(metric)
     source_fingerprint = build_cache_fingerprint(
@@ -135,8 +137,9 @@ def refresh_metric_store(
     available_teams = sorted({team_season.team for team_season in cached_team_seasons})
     team_scopes: list[list[str] | None] = [None, *[[team] for team in available_teams]]
 
-    for teams in team_scopes:
+    for index, teams in enumerate(team_scopes):
         scope_key, team_filter = build_scope_key(teams=teams, season_type=season_type)
+        scope_label = team_filter or "all-teams"
         scope_seasons = sorted(
             {
                 team_season.season
@@ -144,12 +147,16 @@ def refresh_metric_store(
                 if teams is None or team_season.team in teams
             }
         )
+        if progress is not None:
+            progress(index, len(team_scopes), f"building {scope_label}")
         metadata = load_metric_store_metadata(db_path, metric, scope_key)
         if (
             metadata is not None
             and metadata.source_fingerprint == source_fingerprint
             and metadata.build_version == definition.build_version
         ):
+            if progress is not None:
+                progress(index + 1, len(team_scopes), f"cached {scope_label}")
             continue
 
         rows = definition.build_rows(
@@ -182,6 +189,8 @@ def refresh_metric_store(
             available_teams=available_teams,
             available_seasons=scope_seasons,
         )
+        if progress is not None:
+            progress(index + 1, len(team_scopes), f"built {scope_label}")
 
 
 def build_metric_player_seasons_payload(
