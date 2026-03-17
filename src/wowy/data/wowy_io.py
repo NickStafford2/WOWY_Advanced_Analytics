@@ -5,6 +5,7 @@ from pathlib import Path
 
 from wowy.atomic_io import atomic_text_writer
 from wowy.apps.wowy.models import WowyGameRecord, WowyPlayerSeasonRecord
+from wowy.nba.seasons import canonicalize_season_string
 
 
 WOWY_PLAYER_SEASON_HEADER = [
@@ -57,7 +58,7 @@ def load_games_from_csv(csv_path: Path | str) -> list[WowyGameRecord]:
 
             game = WowyGameRecord(
                 game_id=row["game_id"],
-                season=row["season"],
+                season=require_canonical_season(row["season"], row_number),
                 team=row["team"],
                 margin=margin,
                 players=players,
@@ -90,3 +91,15 @@ def write_player_season_records_csv(
                     "total_minutes": "" if record.total_minutes is None else record.total_minutes,
                 }
             )
+
+
+def require_canonical_season(value: str | None, row_number: int) -> str:
+    text = (value or "").strip()
+    if not text:
+        raise ValueError(f"Invalid season at row {row_number}: {value!r}")
+    canonical = canonicalize_season_string(text)
+    if text != canonical:
+        raise ValueError(
+            f"Invalid season at row {row_number}: expected canonical season {canonical!r}, got {text!r}"
+        )
+    return canonical

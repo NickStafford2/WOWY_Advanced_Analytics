@@ -8,6 +8,7 @@ from wowy.data.normalized_io import (
     load_normalized_games_from_csv,
 )
 from wowy.data.wowy_io import load_games_from_csv
+from wowy.nba.seasons import canonicalize_season_string
 
 
 def validate_team_season_files(
@@ -59,6 +60,7 @@ def validate_team_season_consistency(
     normalized_game_players_input_dir: Path,
     wowy_output_dir: Path,
 ) -> str:
+    season = canonicalize_season_string(season)
     return validate_team_season_files(
         normalized_games_path=normalized_games_input_dir / f"{team}_{season}.csv",
         normalized_game_players_path=(

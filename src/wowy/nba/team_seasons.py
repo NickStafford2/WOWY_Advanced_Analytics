@@ -6,6 +6,7 @@ from pathlib import Path
 from nba_api.stats.static import teams as nba_teams
 
 from wowy.nba.ingest import DEFAULT_NORMALIZED_GAMES_DIR
+from wowy.nba.seasons import canonicalize_season_string
 
 
 @dataclass(frozen=True, order=True)
@@ -20,7 +21,12 @@ def parse_team_season_filename(path: Path) -> TeamSeasonScope:
         raise ValueError(
             f"Unexpected team-season filename {path.name!r}. Expected TEAM_SEASON.csv."
         )
-    return TeamSeasonScope(team=team.upper(), season=season)
+    canonical_season = canonicalize_season_string(season)
+    if season != canonical_season:
+        raise ValueError(
+            f"Non-canonical season key in filename {path.name!r}. Expected {canonical_season!r}."
+        )
+    return TeamSeasonScope(team=team.upper(), season=canonical_season)
 
 
 def list_cached_team_seasons(
@@ -38,15 +44,20 @@ def resolve_team_seasons(
     normalized_games_input_dir: Path = DEFAULT_NORMALIZED_GAMES_DIR,
 ) -> list[TeamSeasonScope]:
     normalized_teams = [team.upper() for team in teams] if teams else None
+    normalized_seasons = (
+        [canonicalize_season_string(season) for season in seasons]
+        if seasons
+        else None
+    )
     cached_team_seasons = list_cached_team_seasons(normalized_games_input_dir)
 
-    if seasons:
+    if normalized_seasons:
         target_teams = normalized_teams or sorted(
             team["abbreviation"] for team in nba_teams.get_teams()
         )
         return sorted(
             TeamSeasonScope(team=team, season=season)
-            for season in seasons
+            for season in normalized_seasons
             for team in target_teams
         )
 

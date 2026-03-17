@@ -19,6 +19,7 @@ from wowy.nba.normalize import (
     result_set_to_data_frame,
 )
 from wowy.nba.validation import validate_team_season_files
+from wowy.nba.seasons import canonicalize_season_string
 from wowy.data.normalized_io import (
     write_normalized_game_players_csv,
     write_normalized_games_csv,
@@ -39,6 +40,7 @@ def fetch_team_season_data(
     log: Callable[[str], None] | None = print,
     progress: ProgressFn | None = None,
 ) -> tuple[list[NormalizedGameRecord], list[NormalizedGamePlayerRecord]]:
+    season = canonicalize_season_string(season)
     result = build_team_season_artifacts(
         team_abbreviation=team_abbreviation,
         season=season,
@@ -58,6 +60,7 @@ def build_team_season_artifacts(
     log: Callable[[str], None] | None = print,
     progress: ProgressFn | None = None,
 ) -> TeamSeasonBuildResult:
+    season = canonicalize_season_string(season)
     team = teams.find_team_by_abbreviation(team_abbreviation.upper())
     if team is None:
         raise ValueError(f"Unknown NBA team abbreviation: {team_abbreviation!r}")
@@ -178,6 +181,7 @@ def write_team_season_normalized_csvs(
     log: Callable[[str], None] | None = print,
     progress: ProgressFn | None = None,
 ) -> tuple[list[NormalizedGameRecord], list[NormalizedGamePlayerRecord]]:
+    season = canonicalize_season_string(season)
     result = build_team_season_artifacts(
         team_abbreviation=team_abbreviation,
         season=season,
@@ -205,6 +209,7 @@ def write_team_season_games_csv(
     log: Callable[[str], None] | None = print,
     progress: ProgressFn | None = None,
 ) -> TeamSeasonRunSummary:
+    season = canonicalize_season_string(season)
     normalized_games_path = Path(
         normalized_games_csv_path
         or DEFAULT_NORMALIZED_GAMES_DIR / f"{team_abbreviation.upper()}_{season}.csv"

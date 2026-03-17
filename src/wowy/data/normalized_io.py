@@ -5,6 +5,7 @@ from pathlib import Path
 
 from wowy.atomic_io import atomic_text_writer
 from wowy.nba.models import NormalizedGamePlayerRecord, NormalizedGameRecord
+from wowy.nba.seasons import canonicalize_season_string
 
 
 # Canonical normalized layer used by ingestion, cache validation, and regression.
@@ -48,7 +49,10 @@ def load_normalized_games_from_csv(
             games.append(
                 NormalizedGameRecord(
                     game_id=row["game_id"],
-                    season=require_text(row["season"], "season", row_number),
+                    season=require_canonical_season(
+                        row["season"],
+                        row_number,
+                    ),
                     game_date=require_text(row["game_date"], "game_date", row_number),
                     team=require_text(row["team"], "team", row_number),
                     opponent=require_text(row["opponent"], "opponent", row_number),
@@ -146,6 +150,16 @@ def require_text(value: str | None, field_name: str, row_number: int) -> str:
     if not text:
         raise ValueError(f"Invalid {field_name} at row {row_number}: {value!r}")
     return text
+
+
+def require_canonical_season(value: str | None, row_number: int) -> str:
+    text = require_text(value, "season", row_number)
+    canonical = canonicalize_season_string(text)
+    if text != canonical:
+        raise ValueError(
+            f"Invalid season at row {row_number}: expected canonical season {canonical!r}, got {text!r}"
+        )
+    return canonical
 
 
 def parse_bool(value: str | None, field_name: str, row_number: int) -> bool:

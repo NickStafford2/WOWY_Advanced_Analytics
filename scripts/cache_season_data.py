@@ -16,6 +16,7 @@ from wowy.nba.ingest import (
     DEFAULT_WOWY_GAMES_DIR,
     write_team_season_games_csv,
 )
+from wowy.nba.seasons import canonicalize_season_string
 
 
 WOWY_HEADER = ["game_id", "season", "team", "margin", "players"]
@@ -159,6 +160,7 @@ def parse_consistency_failure(message: str) -> str | None:
 def main(argv: list[str] | None = None) -> int:
     parser = build_parser()
     args = parser.parse_args(argv)
+    season = canonicalize_season_string(args.season)
 
     team_codes = resolve_teams(args.teams)
     normalized_games_paths: list[Path] = []
@@ -167,17 +169,17 @@ def main(argv: list[str] | None = None) -> int:
 
     team_total = len(team_codes)
     for team_index, team_code in enumerate(team_codes, start=1):
-        wowy_csv_path = DEFAULT_WOWY_GAMES_DIR / f"{team_code}_{args.season}.csv"
+        wowy_csv_path = DEFAULT_WOWY_GAMES_DIR / f"{team_code}_{season}.csv"
         normalized_games_path = (
-            DEFAULT_NORMALIZED_GAMES_DIR / f"{team_code}_{args.season}.csv"
+            DEFAULT_NORMALIZED_GAMES_DIR / f"{team_code}_{season}.csv"
         )
         normalized_game_players_path = (
-            DEFAULT_NORMALIZED_GAME_PLAYERS_DIR / f"{team_code}_{args.season}.csv"
+            DEFAULT_NORMALIZED_GAME_PLAYERS_DIR / f"{team_code}_{season}.csv"
         )
         try:
             summary = write_team_season_games_csv(
                 team_abbreviation=team_code,
-                season=args.season,
+                season=season,
                 csv_path=wowy_csv_path,
                 normalized_games_csv_path=normalized_games_path,
                 normalized_game_players_csv_path=normalized_game_players_path,
@@ -198,12 +200,12 @@ def main(argv: list[str] | None = None) -> int:
                 team_index=team_index,
                 team_total=team_total,
                 team=team_code,
-                season=args.season,
+                season=season,
                 reason=reason,
             )
             sys.stdout.write("\n")
             sys.stderr.write(
-                f"Inconsistent cache for {team_code} {args.season}: {reason}\n"
+                f"Inconsistent cache for {team_code} {season}: {reason}\n"
             )
             sys.stderr.flush()
             return 1

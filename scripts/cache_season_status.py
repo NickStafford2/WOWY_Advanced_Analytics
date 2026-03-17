@@ -23,6 +23,7 @@ from wowy.data.normalized_io import (
     NORMALIZED_GAME_PLAYERS_HEADER,
     NORMALIZED_GAMES_HEADER,
 )
+from wowy.nba.seasons import canonicalize_season_string
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -355,11 +356,12 @@ def format_summary(rows: list[dict], season: str) -> str:
 def main(argv: list[str] | None = None) -> int:
     parser = build_parser()
     args = parser.parse_args(argv)
+    season = canonicalize_season_string(args.season)
 
     rows = [
         summarize_team_season(
             team=team,
-            season=args.season,
+            season=season,
             season_type=args.season_type,
             source_data_dir=args.source_data_dir,
             normalized_games_dir=args.normalized_games_dir,
@@ -368,7 +370,7 @@ def main(argv: list[str] | None = None) -> int:
         )
         for team in resolve_requested_teams(args.teams)
     ]
-    print(format_summary(rows, season=args.season))
+    print(format_summary(rows, season=season))
     return 0
 
 

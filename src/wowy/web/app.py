@@ -11,6 +11,7 @@ from wowy.nba.ingest import (
     DEFAULT_SOURCE_DATA_DIR,
     DEFAULT_WOWY_GAMES_DIR,
 )
+from wowy.nba.seasons import canonicalize_season_string
 from wowy.web.service import (
     WOWY_METRIC,
     build_scope_key,
@@ -140,12 +141,13 @@ def _build_metric_player_seasons_payload(
     filter_values = _parse_request_filters(request, include_top_n=False)
     season_type = request.args.get("season_type", "Regular Season")
     teams = request.args.getlist("team") or None
+    seasons = _parse_request_seasons(request)
     scope_key, _team_filter = build_scope_key(teams=teams, season_type=season_type)
     payload = build_metric_player_seasons_payload(
         metric,
         db_path=player_metrics_db_path,
         scope_key=scope_key,
-        seasons=request.args.getlist("season") or None,
+        seasons=seasons,
         min_average_minutes=filter_values["min_average_minutes"],
         min_total_minutes=filter_values["min_total_minutes"],
         min_sample_size=filter_values["min_sample_size"],
@@ -153,7 +155,7 @@ def _build_metric_player_seasons_payload(
     )
     payload["filters"] = _build_filters_payload(
         teams=teams,
-        seasons=request.args.getlist("season") or None,
+        seasons=seasons,
         season_type=season_type,
         min_games_with=request.args.get("min_games_with"),
         min_games_without=request.args.get("min_games_without"),
@@ -172,6 +174,7 @@ def _build_metric_span_chart_payload(
     filter_values = _parse_request_filters(request, include_top_n=True)
     season_type = request.args.get("season_type", "Regular Season")
     teams = request.args.getlist("team") or None
+    seasons = _parse_request_seasons(request)
     scope_key, _team_filter = build_scope_key(teams=teams, season_type=season_type)
     payload = build_metric_span_chart_payload(
         metric,
@@ -181,7 +184,7 @@ def _build_metric_span_chart_payload(
     )
     payload["filters"] = _build_filters_payload(
         teams=teams,
-        seasons=request.args.getlist("season") or None,
+        seasons=seasons,
         season_type=season_type,
         min_games_with=request.args.get("min_games_with"),
         min_games_without=request.args.get("min_games_without"),
@@ -200,13 +203,14 @@ def _build_wowy_cached_leaderboard_payload(
     filter_values = _parse_request_filters(request, include_top_n=True)
     season_type = request.args.get("season_type", "Regular Season")
     teams = request.args.getlist("team") or None
+    seasons = _parse_request_seasons(request)
     scope_key, _team_filter = build_scope_key(teams=teams, season_type=season_type)
     payload = build_cached_metric_leaderboard_payload(
         metric,
         db_path=player_metrics_db_path,
         scope_key=scope_key,
         top_n=filter_values["top_n"],
-        seasons=request.args.getlist("season") or None,
+        seasons=seasons,
         min_average_minutes=filter_values["min_average_minutes"],
         min_total_minutes=filter_values["min_total_minutes"],
         min_sample_size=filter_values["min_sample_size"],
@@ -214,7 +218,7 @@ def _build_wowy_cached_leaderboard_payload(
     )
     payload["filters"] = _build_filters_payload(
         teams=teams,
-        seasons=request.args.getlist("season") or None,
+        seasons=seasons,
         season_type=season_type,
         min_games_with=request.args.get("min_games_with"),
         min_games_without=request.args.get("min_games_without"),
@@ -237,7 +241,7 @@ def _build_wowy_custom_query_payload(
     filter_values = _parse_request_filters(request, include_top_n=True)
     season_type = request.args.get("season_type", "Regular Season")
     teams = request.args.getlist("team") or None
-    seasons = request.args.getlist("season") or None
+    seasons = _parse_request_seasons(request)
     payload = build_custom_wowy_leaderboard_payload(
         teams=teams,
         seasons=seasons,
@@ -302,6 +306,13 @@ def _parse_request_filters(
         "min_total_minutes": min_total_minutes,
         "top_n": top_n,
     }
+
+
+def _parse_request_seasons(request) -> list[str] | None:
+    raw_seasons = request.args.getlist("season")
+    if not raw_seasons:
+        return None
+    return [canonicalize_season_string(season) for season in raw_seasons]
 
 
 def _build_filters_payload(

@@ -9,6 +9,8 @@ from typing import Callable
 from nba_api.stats.endpoints import boxscoretraditionalv2, leaguegamefinder
 from requests import RequestException
 
+from wowy.nba.seasons import canonicalize_season_string
+
 DEFAULT_SOURCE_DATA_DIR = Path("data/source/nba")
 LEAGUE_GAMES_REQUEST_RETRIES = 3
 LEAGUE_GAMES_RETRY_BACKOFF_SECONDS = 2.0
@@ -27,6 +29,7 @@ def load_or_fetch_league_games_with_source(
     source_data_dir: Path,
     log: LogFn | None = print,
 ) -> tuple[dict, str]:
+    season = canonicalize_season_string(season)
     cache_path = league_games_cache_path(
         team_abbreviation=team_abbreviation,
         season=season,
@@ -140,6 +143,7 @@ def league_games_cache_path(
     season_type: str,
     source_data_dir: Path,
 ) -> Path:
+    season = canonicalize_season_string(season)
     season_type_slug = season_type.lower().replace(" ", "_")
     filename = f"{team_abbreviation}_{season}_{season_type_slug}_leaguegamefinder.json"
     return source_data_dir / "team_seasons" / filename

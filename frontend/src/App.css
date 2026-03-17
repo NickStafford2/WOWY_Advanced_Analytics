@@ -305,14 +305,9 @@
   color: #9b3d2c;
 }
 
-.chart-layout {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) 280px;
-  gap: 22px;
-  margin-top: 20px;
-}
 
 .chart-frame {
+  margin-top: 1em;
   overflow: auto;
   border-radius: 24px;
   background: linear-gradient(180deg, #fffdf8, #f7fbfb);
