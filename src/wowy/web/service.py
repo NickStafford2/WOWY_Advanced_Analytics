@@ -42,6 +42,7 @@ class MetricDefinition:
 
 WOWY_METRIC = "wowy"
 RAWR_METRIC = "rawr"
+DEFAULT_RAWR_RIDGE_ALPHA = 10.0
 
 
 def _build_wowy_rows(
@@ -57,6 +58,7 @@ def _build_wowy_rows(
     combined_rawr_games_csv: Path,
     combined_rawr_game_players_csv: Path,
     teams: list[str] | None,
+    rawr_ridge_alpha: float,
 ) -> list[PlayerSeasonMetricRow]:
     records = prepare_wowy_player_season_records(
         teams=teams,
@@ -111,6 +113,7 @@ def _build_rawr_rows(
     combined_rawr_games_csv: Path,
     combined_rawr_game_players_csv: Path,
     teams: list[str] | None,
+    rawr_ridge_alpha: float,
 ) -> list[PlayerSeasonMetricRow]:
     records = prepare_rawr_player_season_records(
         teams=teams,
@@ -123,7 +126,7 @@ def _build_rawr_rows(
         normalized_game_players_input_dir=normalized_game_players_input_dir,
         wowy_output_dir=wowy_output_dir,
         min_games=1,
-        ridge_alpha=1.0,
+        ridge_alpha=rawr_ridge_alpha,
         min_average_minutes=None,
         min_total_minutes=None,
     )
@@ -159,7 +162,7 @@ METRIC_DEFINITIONS = {
     RAWR_METRIC: MetricDefinition(
         metric=RAWR_METRIC,
         label="RAWR",
-        build_version="rawr-player-season-v1",
+        build_version="rawr-player-season-v2",
         build_rows=_build_rawr_rows,
     ),
 }
@@ -191,6 +194,7 @@ def refresh_metric_store(
     combined_wowy_csv: Path,
     combined_rawr_games_csv: Path = Path("data/combined/rawr/games.csv"),
     combined_rawr_game_players_csv: Path = Path("data/combined/rawr/game_players.csv"),
+    rawr_ridge_alpha: float = DEFAULT_RAWR_RIDGE_ALPHA,
     progress: RefreshProgressFn | None = None,
 ) -> None:
     definition = get_metric_definition(metric)
@@ -215,10 +219,15 @@ def refresh_metric_store(
         if progress is not None:
             progress(index, len(team_scopes), f"building {scope_label}")
         metadata = load_metric_store_metadata(db_path, metric, scope_key)
+        build_version = (
+            f"{definition.build_version}-alpha-{rawr_ridge_alpha:.4f}"
+            if metric == RAWR_METRIC
+            else definition.build_version
+        )
         if (
             metadata is not None
             and metadata.source_fingerprint == source_fingerprint
-            and metadata.build_version == definition.build_version
+            and metadata.build_version == build_version
         ):
             if progress is not None:
                 progress(index + 1, len(team_scopes), f"cached {scope_label}")
@@ -236,13 +245,14 @@ def refresh_metric_store(
             combined_rawr_games_csv=combined_rawr_games_csv,
             combined_rawr_game_players_csv=combined_rawr_game_players_csv,
             teams=teams,
+            rawr_ridge_alpha=rawr_ridge_alpha,
         )
         replace_metric_rows(
             db_path,
             metric=definition.metric,
             scope_key=scope_key,
             metric_label=definition.label,
-            build_version=definition.build_version,
+            build_version=build_version,
             source_fingerprint=source_fingerprint,
             rows=rows,
         )
@@ -455,6 +465,7 @@ def build_metric_default_filters_payload(
         return payload
     if metric == RAWR_METRIC:
         payload["min_games"] = 35
+        payload["ridge_alpha"] = DEFAULT_RAWR_RIDGE_ALPHA
         return payload
     raise ValueError(f"Unknown metric: {metric}")
 

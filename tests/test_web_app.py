@@ -207,6 +207,7 @@ def test_rawr_options_endpoint_returns_metric_specific_filters(
             "team": ["BOS"],
             "season_type": "Regular Season",
             "min_games": 35,
+            "ridge_alpha": 10.0,
             "min_average_minutes": 30.0,
             "min_total_minutes": 600.0,
             "top_n": 30,
@@ -238,6 +239,7 @@ def test_rawr_player_seasons_endpoint_accepts_metric_specific_filters(
         "/api/metrics/rawr/player-seasons",
         query_string={
             "min_games": "1",
+            "ridge_alpha": "2.5",
             "min_average_minutes": "0",
             "min_total_minutes": "0",
         },
@@ -252,6 +254,7 @@ def test_rawr_player_seasons_endpoint_accepts_metric_specific_filters(
         "season": None,
         "season_type": "Regular Season",
         "min_games": 1,
+        "ridge_alpha": 2.5,
         "min_average_minutes": 0.0,
         "min_total_minutes": 0.0,
         "top_n": 30,
@@ -319,6 +322,7 @@ def test_rawr_cached_leaderboard_endpoint_returns_cached_series(
         query_string={
             "top_n": "2",
             "min_games": "1",
+            "ridge_alpha": "7.5",
             "min_average_minutes": "0",
             "min_total_minutes": "0",
         },
@@ -366,6 +370,7 @@ def test_rawr_custom_query_endpoint_recalculates_requested_span(
             "season": ["2023-24"],
             "top_n": "3",
             "min_games": "1",
+            "ridge_alpha": "4.0",
             "min_average_minutes": "0",
             "min_total_minutes": "0",
         },
@@ -381,6 +386,7 @@ def test_rawr_custom_query_endpoint_recalculates_requested_span(
         "season": ["2023-24"],
         "season_type": "Regular Season",
         "min_games": 1,
+        "ridge_alpha": 4.0,
         "min_average_minutes": 0.0,
         "min_total_minutes": 0.0,
         "top_n": 3,
@@ -476,6 +482,7 @@ def test_rawr_custom_query_skips_seasons_without_qualifying_players(
             "season": ["2023-24", "2024-25"],
             "top_n": "3",
             "min_games": "2",
+            "ridge_alpha": "3.0",
             "min_average_minutes": "0",
             "min_total_minutes": "0",
         },
@@ -485,6 +492,7 @@ def test_rawr_custom_query_skips_seasons_without_qualifying_players(
     payload = response.get_json()
     assert payload["mode"] == "custom"
     assert payload["filters"]["team"] == ["BOS"]
+    assert payload["filters"]["ridge_alpha"] == 3.0
     assert payload["span"] == {
         "start_season": "2023-24",
         "end_season": "2023-24",

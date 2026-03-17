@@ -11,7 +11,12 @@ from wowy.nba.ingest import (
     DEFAULT_WOWY_GAMES_DIR,
 )
 from wowy.web.app import create_app
-from wowy.web.service import RAWR_METRIC, WOWY_METRIC, refresh_metric_store
+from wowy.web.service import (
+    DEFAULT_RAWR_RIDGE_ALPHA,
+    RAWR_METRIC,
+    WOWY_METRIC,
+    refresh_metric_store,
+)
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -52,6 +57,12 @@ def build_parser() -> argparse.ArgumentParser:
         "--season-type",
         default="Regular Season",
         help="NBA season type to build for the cached leaderboard store.",
+    )
+    parser.add_argument(
+        "--rawr-ridge-alpha",
+        type=float,
+        default=DEFAULT_RAWR_RIDGE_ALPHA,
+        help="Ridge alpha used when building cached RAWR web rows.",
     )
     parser.add_argument(
         "--source-data-dir",
@@ -122,6 +133,7 @@ def main(argv: list[str] | None = None) -> int:
                 combined_wowy_csv=args.combined_wowy_csv,
                 combined_rawr_games_csv=args.combined_rawr_games_csv,
                 combined_rawr_game_players_csv=args.combined_rawr_game_players_csv,
+                rawr_ridge_alpha=args.rawr_ridge_alpha,
             )
     app = create_app(
         source_data_dir=args.source_data_dir,

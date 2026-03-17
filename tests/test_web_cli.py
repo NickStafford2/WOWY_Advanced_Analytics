@@ -28,6 +28,7 @@ def test_refresh_cli_accepts_rawr_metric(monkeypatch, capsys):
     assert calls[0]["combined_rawr_game_players_csv"] == Path(
         "data/combined/rawr/game_players.csv"
     )
+    assert calls[0]["rawr_ridge_alpha"] == 10.0
     captured = capsys.readouterr()
     assert "refreshed rawr store" in captured.out
     assert "Web Store Refresh" in captured.err
@@ -69,6 +70,7 @@ def test_web_cli_refresh_store_accepts_multiple_metrics(monkeypatch, capsys):
         == Path("data/combined/rawr/game_players.csv")
         for call in refresh_calls
     )
+    assert all(call["rawr_ridge_alpha"] == 10.0 for call in refresh_calls)
     assert app_calls == [{"host": "127.0.0.1", "port": 5000, "debug": False}]
     output = capsys.readouterr().out
     assert "refreshing wowy web store" in output
@@ -94,6 +96,7 @@ def test_web_cli_refresh_store_defaults_to_all_frontend_metrics(monkeypatch, cap
 
     assert exit_code == 0
     assert [call["metric"] for call in refresh_calls] == ["wowy", "rawr"]
+    assert all(call["rawr_ridge_alpha"] == 10.0 for call in refresh_calls)
     assert app_calls == [{"host": "127.0.0.1", "port": 5000, "debug": False}]
     output = capsys.readouterr().out
     assert "refreshing wowy web store" in output

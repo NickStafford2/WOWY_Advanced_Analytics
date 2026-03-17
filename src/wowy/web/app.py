@@ -14,6 +14,7 @@ from wowy.nba.ingest import (
 )
 from wowy.nba.seasons import canonicalize_season_string
 from wowy.web.service import (
+    DEFAULT_RAWR_RIDGE_ALPHA,
     RAWR_METRIC,
     WOWY_METRIC,
     build_custom_rawr_leaderboard_payload,
@@ -187,6 +188,7 @@ def _build_metric_player_seasons_payload(
         if metric == WOWY_METRIC
         else request.args.get("min_games"),
         min_secondary_sample_size=request.args.get("min_games_without"),
+        ridge_alpha=request.args.get("ridge_alpha"),
         min_average_minutes=request.args.get("min_average_minutes"),
         min_total_minutes=request.args.get("min_total_minutes"),
     )
@@ -223,6 +225,7 @@ def _build_metric_span_chart_payload(
         if metric == WOWY_METRIC
         else request.args.get("min_games"),
         min_secondary_sample_size=request.args.get("min_games_without"),
+        ridge_alpha=request.args.get("ridge_alpha"),
         min_average_minutes=request.args.get("min_average_minutes"),
         min_total_minutes=request.args.get("min_total_minutes"),
         top_n=request.args.get("top_n"),
@@ -261,8 +264,11 @@ def _build_cached_metric_leaderboard_payload(
         teams=teams,
         seasons=seasons,
         season_type=season_type,
-        min_sample_size=request.args.get("min_games_with"),
+        min_sample_size=request.args.get("min_games_with")
+        if metric == WOWY_METRIC
+        else request.args.get("min_games"),
         min_secondary_sample_size=request.args.get("min_games_without"),
+        ridge_alpha=request.args.get("ridge_alpha"),
         min_average_minutes=request.args.get("min_average_minutes"),
         min_total_minutes=request.args.get("min_total_minutes"),
         top_n=request.args.get("top_n"),
@@ -319,7 +325,7 @@ def _build_metric_custom_query_payload(
             combined_games_csv=combined_rawr_games_csv,
             combined_game_players_csv=combined_rawr_game_players_csv,
             min_games=int(filter_values["min_sample_size"]),
-            ridge_alpha=1.0,
+            ridge_alpha=float(filter_values["ridge_alpha"]),
             min_average_minutes=float(filter_values["min_average_minutes"]),
             min_total_minutes=float(filter_values["min_total_minutes"]),
         )
@@ -334,6 +340,7 @@ def _build_metric_custom_query_payload(
         if metric == WOWY_METRIC
         else request.args.get("min_games"),
         min_secondary_sample_size=request.args.get("min_games_without"),
+        ridge_alpha=request.args.get("ridge_alpha"),
         min_average_minutes=request.args.get("min_average_minutes"),
         min_total_minutes=request.args.get("min_total_minutes"),
         top_n=request.args.get("top_n"),
@@ -377,9 +384,13 @@ def _parse_request_filters(
             default=35,
         )
         min_secondary_sample_size = None
+        ridge_alpha = _parse_optional_float(
+            request.args.get("ridge_alpha"),
+            default=DEFAULT_RAWR_RIDGE_ALPHA,
+        )
         validate_rawr_filters(
             min_sample_size,
-            ridge_alpha=0.0,
+            ridge_alpha=ridge_alpha,
             top_n=_parse_optional_int(request.args.get("top_n"), default=30)
             if include_top_n
             else None,
@@ -407,6 +418,7 @@ def _parse_request_filters(
     return {
         "min_sample_size": min_sample_size,
         "min_secondary_sample_size": min_secondary_sample_size,
+        "ridge_alpha": ridge_alpha if metric == RAWR_METRIC else None,
         "min_average_minutes": min_average_minutes,
         "min_total_minutes": min_total_minutes,
         "top_n": top_n,
@@ -428,6 +440,7 @@ def _build_filters_payload(
     season_type: str,
     min_sample_size: str | None,
     min_secondary_sample_size: str | None,
+    ridge_alpha: str | None,
     min_average_minutes: str | None,
     min_total_minutes: str | None,
     top_n: str | None = None,
@@ -465,6 +478,10 @@ def _build_filters_payload(
         payload["min_games"] = _parse_optional_int(
             min_sample_size,
             default=int(defaults["min_games"]),
+        )
+        payload["ridge_alpha"] = _parse_optional_float(
+            ridge_alpha,
+            default=float(defaults["ridge_alpha"]),
         )
         return payload
     raise ValueError(f"Unknown metric: {metric}")

@@ -57,6 +57,7 @@ type MetricFilters = {
   min_games_with?: number
   min_games_without?: number
   min_games?: number
+  ridge_alpha?: number
   min_average_minutes: number
   min_total_minutes: number
   top_n: number
@@ -130,6 +131,7 @@ type CustomFilters = {
   teams: string[]
   topN: number
   minGames: number
+  ridgeAlpha: number
   minGamesWith: number
   minGamesWithout: number
   minAverageMinutes: number
@@ -168,6 +170,7 @@ function App() {
     teams: [],
     topN: 12,
     minGames: 35,
+    ridgeAlpha: 10,
     minGamesWith: 15,
     minGamesWithout: 2,
     minAverageMinutes: 30,
@@ -244,6 +247,7 @@ function App() {
           : defaultEndSeason,
         topN: current.topN || payload.filters.top_n,
         minGames: payload.filters.min_games ?? current.minGames,
+        ridgeAlpha: payload.filters.ridge_alpha ?? current.ridgeAlpha,
         minGamesWith: payload.filters.min_games_with ?? current.minGamesWith,
         minGamesWithout: payload.filters.min_games_without ?? current.minGamesWithout,
         minAverageMinutes: payload.filters.min_average_minutes,
@@ -268,6 +272,9 @@ function App() {
       })
       if (effectiveFilters.min_games !== undefined) {
         params.set('min_games', String(effectiveFilters.min_games))
+      }
+      if (effectiveFilters.ridge_alpha !== undefined) {
+        params.set('ridge_alpha', String(effectiveFilters.ridge_alpha))
       }
       if (effectiveFilters.min_games_with !== undefined) {
         params.set('min_games_with', String(effectiveFilters.min_games_with))
@@ -306,6 +313,7 @@ function App() {
     })
     if (metric === 'rawr') {
       params.set('min_games', String(customFilters.minGames))
+      params.set('ridge_alpha', String(customFilters.ridgeAlpha))
     } else {
       params.set('min_games_with', String(customFilters.minGamesWith))
       params.set('min_games_without', String(customFilters.minGamesWithout))
@@ -541,6 +549,19 @@ function App() {
               }
             />
           </label>
+
+          {metric === 'rawr' ? (
+            <label>
+              <span>Ridge alpha</span>
+              <input
+                type="number"
+                min="0"
+                step="0.5"
+                value={customFilters.ridgeAlpha}
+                onChange={(event) => updateCustomNumber(setCustomFilters, 'ridgeAlpha', event)}
+              />
+            </label>
+          ) : null}
 
           {metric === 'wowy' ? (
             <label>
@@ -800,6 +821,7 @@ function defaultMetricFilters(metric: MetricId): MetricFilters {
       team: null,
       season_type: 'Regular Season',
       min_games: 35,
+      ridge_alpha: 10,
       min_average_minutes: 30,
       min_total_minutes: 600,
       top_n: 30,
@@ -886,7 +908,7 @@ function buildLoadingPhases(
         },
         {
           label: 'Fitting ridge',
-          detail: 'Running the game-level ridge regression and applying the minimum games threshold.',
+          detail: 'Running the game-level ridge regression with the selected alpha and applying the minimum games threshold.',
         },
         {
           label: 'Ranking span',
@@ -956,6 +978,7 @@ function updateCustomNumber(
     CustomFilters,
     | 'topN'
     | 'minGames'
+    | 'ridgeAlpha'
     | 'minGamesWith'
     | 'minGamesWithout'
     | 'minAverageMinutes'
