@@ -10,8 +10,9 @@ from wowy.apps.rawr.models import (
     RawrPlayerSeasonRecord,
     RawrResult,
 )
+from wowy.nba.models import NormalizedGamePlayerRecord, NormalizedGameRecord
 from wowy.data.player_metrics_db import DEFAULT_PLAYER_METRICS_DB_PATH
-from wowy.nba.prepare import prepare_normalized_scope_records, prepare_rawr_inputs
+from wowy.nba.prepare import prepare_normalized_scope_records
 from wowy.nba.team_seasons import resolve_team_seasons
 from wowy.data.normalized_io import (
     load_normalized_game_players_from_csv,
@@ -158,6 +159,43 @@ def run_rawr(
     show_progress: bool = False,
 ) -> str:
     """Fit the game-level RAWR model from normalized CSV inputs."""
+    games = load_normalized_games_from_csv(games_csv_path)
+    game_players = load_normalized_game_players_from_csv(game_players_csv_path)
+    return run_rawr_records(
+        games,
+        game_players,
+        min_games=min_games,
+        ridge_alpha=ridge_alpha,
+        shrinkage_mode=shrinkage_mode,
+        shrinkage_strength=shrinkage_strength,
+        shrinkage_minute_scale=shrinkage_minute_scale,
+        top_n=top_n,
+        teams=teams,
+        seasons=seasons,
+        player_minute_stats=player_minute_stats,
+        min_average_minutes=min_average_minutes,
+        min_total_minutes=min_total_minutes,
+        show_progress=show_progress,
+    )
+
+
+def run_rawr_records(
+    games: list[NormalizedGameRecord],
+    game_players: list[NormalizedGamePlayerRecord],
+    min_games: int,
+    ridge_alpha: float = 1.0,
+    shrinkage_mode: str = "uniform",
+    shrinkage_strength: float = 1.0,
+    shrinkage_minute_scale: float = 48.0,
+    top_n: int | None = None,
+    teams: list[str] | None = None,
+    seasons: list[str] | None = None,
+    player_minute_stats: dict[tuple[str, int], tuple[float, float]] | None = None,
+    min_average_minutes: float | None = None,
+    min_total_minutes: float | None = None,
+    show_progress: bool = False,
+) -> str:
+    """Fit the game-level RAWR model from preloaded normalized records."""
     validate_filters(
         min_games=min_games,
         ridge_alpha=ridge_alpha,
@@ -168,9 +206,6 @@ def run_rawr(
         min_average_minutes=min_average_minutes,
         min_total_minutes=min_total_minutes,
     )
-
-    games = load_normalized_games_from_csv(games_csv_path)
-    game_players = load_normalized_game_players_from_csv(game_players_csv_path)
     games, game_players = filter_rawr_scope(
         games,
         game_players,
@@ -408,11 +443,9 @@ def prepare_and_run_rawr(args) -> str:
     print(
         f"[1/3] preparing RAWR inputs for {format_scope(args.team, args.season)}"
     )
-    games_csv, game_players_csv = prepare_rawr_inputs(
+    games, game_players = prepare_normalized_scope_records(
         teams=args.team,
         seasons=args.season,
-        combined_games_csv=args.combined_games_csv,
-        combined_game_players_csv=args.combined_game_players_csv,
         season_type=args.season_type,
         source_data_dir=args.source_data_dir,
         normalized_games_input_dir=args.normalized_games_input_dir,
@@ -423,12 +456,15 @@ def prepare_and_run_rawr(args) -> str:
             "player_metrics_db_path",
             DEFAULT_PLAYER_METRICS_DB_PATH,
         ),
+        include_opponents_for_team_scope=True,
+        log=lambda *_args, **_kwargs: None,
     )
-    print(f"[2/3] loading RAWR data from {games_csv} and {game_players_csv}")
+    print(
+        "[2/3] loaded "
+        f"{len(games)} normalized game rows and {len(game_players)} player rows from cache"
+    )
     if args.tune_ridge:
         print("[3/4] tuning ridge alpha on a validation split")
-        games = load_normalized_games_from_csv(games_csv)
-        game_players = load_normalized_game_players_from_csv(game_players_csv)
         games, game_players = filter_rawr_scope(
             games,
             game_players,
@@ -452,9 +488,9 @@ def prepare_and_run_rawr(args) -> str:
         print("[4/4] fitting RAWR model")
     else:
         print("[3/3] fitting RAWR model")
-    return run_rawr(
-        games_csv,
-        game_players_csv,
+    return run_rawr_records(
+        games,
+        game_players,
         min_games=args.min_games,
         ridge_alpha=ridge_alpha,
         shrinkage_mode=args.shrinkage_mode,

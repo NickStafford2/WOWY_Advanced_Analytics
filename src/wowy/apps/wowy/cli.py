@@ -3,6 +3,7 @@ from __future__ import annotations
 import argparse
 from pathlib import Path
 
+from wowy.data.player_metrics_db import DEFAULT_PLAYER_METRICS_DB_PATH
 from wowy.nba.ingest import (
     DEFAULT_NORMALIZED_GAME_PLAYERS_DIR,
     DEFAULT_NORMALIZED_GAMES_DIR,
@@ -99,6 +100,12 @@ def build_parser() -> argparse.ArgumentParser:
         type=Path,
         default=None,
         help="Optional CSV path for one-row-per-player-per-season WOWY export",
+    )
+    parser.add_argument(
+        "--player-metrics-db-path",
+        type=Path,
+        default=DEFAULT_PLAYER_METRICS_DB_PATH,
+        help=argparse.SUPPRESS,
     )
     return parser
 

@@ -54,6 +54,8 @@ def test_main_runs_with_cached_scope_without_explicit_csv(
             str(tmp_path / "team_games"),
             "--combined-wowy-csv",
             str(tmp_path / "combined" / "games.csv"),
+            "--player-metrics-db-path",
+            str(tmp_path / "app" / "player_metrics.sqlite3"),
             "--source-data-dir",
             str(tmp_path / "source"),
             "--min-games-with",
@@ -72,6 +74,7 @@ def test_main_runs_with_cached_scope_without_explicit_csv(
     assert "WOWY results (Version 1)" in captured.out
     assert "avg_min" in captured.out
     assert "WOWY CLI" in captured.err
+    assert not (tmp_path / "combined" / "games.csv").exists()
 
 
 def test_main_filters_cached_scope_by_team_and_season(
@@ -135,6 +138,8 @@ def test_main_filters_cached_scope_by_team_and_season(
             str(tmp_path / "team_games"),
             "--combined-wowy-csv",
             str(tmp_path / "combined" / "games.csv"),
+            "--player-metrics-db-path",
+            str(tmp_path / "app" / "player_metrics.sqlite3"),
             "--source-data-dir",
             str(tmp_path / "source"),
             "--min-games-with",
@@ -154,6 +159,7 @@ def test_main_filters_cached_scope_by_team_and_season(
     assert "201" not in captured.out
     assert "avg_min" in captured.out
     assert "WOWY CLI" in captured.err
+    assert not (tmp_path / "combined" / "games.csv").exists()
 
 
 def test_run_wowy_returns_report_text(tmp_path: Path, write_games_csv):
@@ -307,6 +313,8 @@ def test_main_filters_cached_scope_by_minutes(
             str(tmp_path / "team_games"),
             "--combined-wowy-csv",
             str(tmp_path / "combined" / "games.csv"),
+            "--player-metrics-db-path",
+            str(tmp_path / "app" / "player_metrics.sqlite3"),
             "--source-data-dir",
             str(tmp_path / "source"),
             "--min-games-with",
@@ -404,6 +412,8 @@ def test_main_exports_player_season_csv(
             str(tmp_path / "team_games"),
             "--combined-wowy-csv",
             str(tmp_path / "combined" / "games.csv"),
+            "--player-metrics-db-path",
+            str(tmp_path / "app" / "player_metrics.sqlite3"),
             "--source-data-dir",
             str(tmp_path / "source"),
             "--min-games-with",

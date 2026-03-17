@@ -3,6 +3,7 @@ from __future__ import annotations
 import argparse
 from pathlib import Path
 
+from wowy.data.player_metrics_db import DEFAULT_PLAYER_METRICS_DB_PATH
 from wowy.nba.ingest import (
     DEFAULT_NORMALIZED_GAME_PLAYERS_DIR,
     DEFAULT_NORMALIZED_GAMES_DIR,
@@ -132,6 +133,12 @@ def build_parser() -> argparse.ArgumentParser:
         type=float,
         default=600,
         help="Minimum total minutes required to include a player in output",
+    )
+    parser.add_argument(
+        "--player-metrics-db-path",
+        type=Path,
+        default=DEFAULT_PLAYER_METRICS_DB_PATH,
+        help=argparse.SUPPRESS,
     )
     return parser
 

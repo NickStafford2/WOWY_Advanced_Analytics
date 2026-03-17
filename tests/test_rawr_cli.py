@@ -319,6 +319,8 @@ def test_main_runs_with_cached_scope_without_explicit_csvs(
             str(tmp_path / "combined" / "games.csv"),
             "--combined-game-players-csv",
             str(tmp_path / "combined" / "game_players.csv"),
+            "--player-metrics-db-path",
+            str(tmp_path / "app" / "player_metrics.sqlite3"),
             "--source-data-dir",
             str(tmp_path / "source"),
             "--min-games",
@@ -336,6 +338,8 @@ def test_main_runs_with_cached_scope_without_explicit_csvs(
     assert exit_code == 0
     assert "RAWR results (Game-level player model)" in captured.out
     assert "RAWR CLI" in captured.err
+    assert not (tmp_path / "combined" / "games.csv").exists()
+    assert not (tmp_path / "combined" / "game_players.csv").exists()
 
 
 def test_main_filters_cached_scope_by_team_and_season(
@@ -449,6 +453,8 @@ def test_main_filters_cached_scope_by_team_and_season(
             str(tmp_path / "combined" / "games.csv"),
             "--combined-game-players-csv",
             str(tmp_path / "combined" / "game_players.csv"),
+            "--player-metrics-db-path",
+            str(tmp_path / "app" / "player_metrics.sqlite3"),
             "--source-data-dir",
             str(tmp_path / "source"),
             "--min-games",
@@ -465,6 +471,8 @@ def test_main_filters_cached_scope_by_team_and_season(
     captured = capsys.readouterr()
     assert exit_code == 0
     assert "Player 101" in captured.out
+    assert not (tmp_path / "combined" / "games.csv").exists()
+    assert not (tmp_path / "combined" / "game_players.csv").exists()
 
 
 def test_rawr_cli_accepts_game_count_shrinkage_mode(monkeypatch):

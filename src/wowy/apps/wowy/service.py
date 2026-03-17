@@ -16,7 +16,6 @@ from wowy.nba.ingest import load_player_names_from_cache
 from wowy.nba.prepare import (
     prepare_normalized_scope_records,
     prepare_wowy_game_records,
-    prepare_wowy_inputs,
 )
 from wowy.progress import TerminalProgressBar, print_status_box
 from wowy.shared.filters import validate_top_n_and_minutes
@@ -96,6 +95,32 @@ def run_wowy(
     show_progress: bool = False,
 ) -> str:
     """Run WOWY from a derived `games.csv` input."""
+    games = load_games_from_csv(csv_path)
+    return run_wowy_records(
+        games,
+        min_games_with=min_games_with,
+        min_games_without=min_games_without,
+        player_names=player_names,
+        top_n=top_n,
+        player_minute_stats=player_minute_stats,
+        min_average_minutes=min_average_minutes,
+        min_total_minutes=min_total_minutes,
+        show_progress=show_progress,
+    )
+
+
+def run_wowy_records(
+    games: list[WowyGameRecord],
+    min_games_with: int,
+    min_games_without: int,
+    player_names: dict[int, str] | None = None,
+    top_n: int | None = None,
+    player_minute_stats: dict[int, tuple[float, float]] | None = None,
+    min_average_minutes: float | None = None,
+    min_total_minutes: float | None = None,
+    show_progress: bool = False,
+) -> str:
+    """Run WOWY from preloaded derived game records."""
     validate_filters(
         min_games_with,
         min_games_without,
@@ -103,7 +128,6 @@ def run_wowy(
         min_average_minutes=min_average_minutes,
         min_total_minutes=min_total_minutes,
     )
-    games = load_games_from_csv(csv_path)
     return build_wowy_report(
         games,
         min_games_with=min_games_with,
@@ -467,10 +491,9 @@ def prepare_and_run_wowy(
         ],
     )
     print(f"[1/3] preparing WOWY inputs for {format_scope(args.team, args.season)}")
-    csv_path, player_names = prepare_wowy_inputs(
+    games, player_names = prepare_wowy_game_records(
         teams=args.team,
         seasons=args.season,
-        combined_wowy_csv=args.combined_wowy_csv,
         season_type=args.season_type,
         source_data_dir=args.source_data_dir,
         normalized_games_input_dir=args.normalized_games_input_dir,
@@ -496,7 +519,7 @@ def prepare_and_run_wowy(
             DEFAULT_PLAYER_METRICS_DB_PATH,
         ),
     )
-    print(f"[2/3] running WOWY from {csv_path}")
+    print(f"[2/3] loaded {len(games)} WOWY game rows from cache")
     print("[3/3] computing WOWY results")
     if args.export_player_seasons is not None:
         records = prepare_wowy_player_season_records(
@@ -524,8 +547,8 @@ def prepare_and_run_wowy(
             f"exported {len(records)} player-season WOWY rows to "
             f"{args.export_player_seasons}"
         )
-    return run_wowy(
-        csv_path,
+    return run_wowy_records(
+        games,
         min_games_with=args.min_games_with,
         min_games_without=args.min_games_without,
         player_names=player_names,
