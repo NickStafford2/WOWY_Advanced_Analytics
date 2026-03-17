@@ -71,3 +71,28 @@ def test_web_cli_refresh_store_accepts_multiple_metrics(monkeypatch, capsys):
     output = capsys.readouterr().out
     assert "refreshing wowy web store" in output
     assert "refreshing rawr web store" in output
+
+
+def test_web_cli_refresh_store_defaults_to_all_frontend_metrics(monkeypatch, capsys):
+    refresh_calls: list[dict] = []
+    app_calls: list[dict] = []
+
+    monkeypatch.setattr(
+        "wowy.web.cli.refresh_metric_store",
+        lambda metric, **kwargs: refresh_calls.append({"metric": metric, **kwargs}),
+    )
+
+    class FakeApp:
+        def run(self, *, host: str, port: int, debug: bool) -> None:
+            app_calls.append({"host": host, "port": port, "debug": debug})
+
+    monkeypatch.setattr("wowy.web.cli.create_app", lambda **_kwargs: FakeApp())
+
+    exit_code = cli.main(["--refresh-store"])
+
+    assert exit_code == 0
+    assert [call["metric"] for call in refresh_calls] == ["wowy", "rawr"]
+    assert app_calls == [{"host": "127.0.0.1", "port": 5000, "debug": False}]
+    output = capsys.readouterr().out
+    assert "refreshing wowy web store" in output
+    assert "refreshing rawr web store" in output

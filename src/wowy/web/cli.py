@@ -45,7 +45,7 @@ def build_parser() -> argparse.ArgumentParser:
         choices=[WOWY_METRIC, RAWR_METRIC],
         help=(
             "Metric to refresh when used with --refresh-store. "
-            "Repeat to refresh multiple metrics. Defaults to wowy."
+            "Repeat to refresh multiple metrics. Defaults to refreshing both."
         ),
     )
     parser.add_argument(
@@ -108,7 +108,7 @@ def main(argv: list[str] | None = None) -> int:
     parser = build_parser()
     args = parser.parse_args(argv)
     if args.refresh_store:
-        refresh_metrics = args.refresh_metric or [WOWY_METRIC]
+        refresh_metrics = args.refresh_metric or [WOWY_METRIC, RAWR_METRIC]
         for metric in refresh_metrics:
             print(f"refreshing {metric} web store at {args.player_metrics_db_path}")
             refresh_metric_store(
