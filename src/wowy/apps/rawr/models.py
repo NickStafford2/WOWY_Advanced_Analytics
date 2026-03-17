@@ -16,6 +16,7 @@ class RawrObservation:
 
 @dataclass(frozen=True)
 class RawrPlayerEstimate:
+    season: str
     player_id: int
     player_name: str
     games: int
@@ -46,7 +47,7 @@ class RawrResult:
 
 @dataclass(frozen=True)
 class RawrModel:
-    player_ids: list[int]
+    player_keys: list[tuple[str, int]]
     team_seasons: list[str]
     coefficients: list[float]
 

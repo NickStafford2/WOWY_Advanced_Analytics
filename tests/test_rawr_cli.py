@@ -128,11 +128,11 @@ def test_run_rawr_applies_minute_filters(tmp_path: Path):
         min_games=1,
         ridge_alpha=1.0,
         player_minute_stats={
-            101: (30.0, 90.0),
-            102: (10.0, 30.0),
-            201: (48.0, 48.0),
-            202: (48.0, 48.0),
-            203: (48.0, 48.0),
+            ("2023-24", 101): (30.0, 90.0),
+            ("2023-24", 102): (10.0, 30.0),
+            ("2023-24", 201): (48.0, 48.0),
+            ("2023-24", 202): (48.0, 48.0),
+            ("2023-24", 203): (48.0, 48.0),
         },
         min_average_minutes=20.0,
         min_total_minutes=40.0,
@@ -140,6 +140,50 @@ def test_run_rawr_applies_minute_filters(tmp_path: Path):
 
     assert "Player 101" in report
     assert "Player 102" not in report
+
+
+def test_run_rawr_multi_season_output_separates_player_seasons(tmp_path: Path):
+    games_csv = tmp_path / "games.csv"
+    games_csv.write_text(
+        (
+            "game_id,season,game_date,team,opponent,is_home,margin,season_type,source\n"
+            "1,2022-23,2023-04-01,BOS,MIL,true,6,Regular Season,nba_api\n"
+            "1,2022-23,2023-04-01,MIL,BOS,false,-6,Regular Season,nba_api\n"
+            "2,2022-23,2023-04-03,BOS,NYK,true,5,Regular Season,nba_api\n"
+            "2,2022-23,2023-04-03,NYK,BOS,false,-5,Regular Season,nba_api\n"
+            "3,2023-24,2024-04-01,BOS,MIL,true,-6,Regular Season,nba_api\n"
+            "3,2023-24,2024-04-01,MIL,BOS,false,6,Regular Season,nba_api\n"
+            "4,2023-24,2024-04-03,BOS,NYK,true,-5,Regular Season,nba_api\n"
+            "4,2023-24,2024-04-03,NYK,BOS,false,5,Regular Season,nba_api\n"
+        ),
+        encoding="utf-8",
+    )
+    game_players_csv = tmp_path / "game_players.csv"
+    game_players_csv.write_text(
+        (
+            "game_id,team,player_id,player_name,appeared,minutes\n"
+            "1,BOS,101,Player 101,true,48\n"
+            "1,MIL,201,Player 201,true,48\n"
+            "2,BOS,101,Player 101,true,48\n"
+            "2,NYK,202,Player 202,true,48\n"
+            "3,BOS,101,Player 101,true,48\n"
+            "3,MIL,201,Player 201,true,48\n"
+            "4,BOS,101,Player 101,true,48\n"
+            "4,NYK,202,Player 202,true,48\n"
+        ),
+        encoding="utf-8",
+    )
+
+    report = run_rawr(
+        games_csv,
+        game_players_csv,
+        min_games=2,
+        ridge_alpha=1.0,
+    )
+
+    assert "2022-23" in report
+    assert "2023-24" in report
+    assert report.count("Player 101") == 2
 
 
 def test_run_rawr_team_scope_applies_minute_filters_after_fit(tmp_path: Path):

@@ -23,6 +23,7 @@ def format_rawr_results(
         )
 
     name_width = max(len("player"), *(len(estimate.player_name) for estimate in ranked))
+    season_width = max(len("season"), *(len(estimate.season) for estimate in ranked))
     player_id_width = max(
         len("player_id"),
         *(len(str(estimate.player_id)) for estimate in ranked),
@@ -43,18 +44,34 @@ def format_rawr_results(
             f"intercept={result.intercept:.4f} home_court={result.home_court_advantage:.4f}"
         ),
         "-"
-        * (name_width + player_id_width + avg_minutes_width + total_minutes_width + 28),
+        * (
+            season_width
+            + name_width
+            + player_id_width
+            + avg_minutes_width
+            + total_minutes_width
+            + 29
+        ),
         (
+            f"{'season':<{season_width}} "
             f"{'player':<{name_width}} {'player_id':<{player_id_width}} "
             f"{'games':>6} {'avg_min':>{avg_minutes_width}} "
             f"{'tot_min':>{total_minutes_width}} {'coef':>10}"
         ),
         "-"
-        * (name_width + player_id_width + avg_minutes_width + total_minutes_width + 28),
+        * (
+            season_width
+            + name_width
+            + player_id_width
+            + avg_minutes_width
+            + total_minutes_width
+            + 29
+        ),
     ]
 
     for estimate in ranked:
         lines.append(
+            f"{estimate.season:<{season_width}} "
             f"{estimate.player_name:<{name_width}} "
             f"{estimate.player_id:<{player_id_width}} "
             f"{estimate.games:>6} "

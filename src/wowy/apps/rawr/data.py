@@ -104,3 +104,13 @@ def count_player_games(observations: list[RawrObservation]) -> dict[int, int]:
         for player_id in observation.player_weights:
             games_by_player[player_id] += 1
     return dict(games_by_player)
+
+
+def count_player_season_games(
+    observations: list[RawrObservation],
+) -> dict[tuple[str, int], int]:
+    games_by_player_season: dict[tuple[str, int], int] = defaultdict(int)
+    for observation in observations:
+        for player_id in observation.player_weights:
+            games_by_player_season[(observation.season, player_id)] += 1
+    return dict(games_by_player_season)

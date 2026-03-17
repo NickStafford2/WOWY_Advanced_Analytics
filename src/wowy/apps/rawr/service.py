@@ -18,7 +18,7 @@ from wowy.data.normalized_io import (
 )
 from wowy.progress import TerminalProgressBar, print_status_box
 from wowy.shared.filters import validate_top_n_and_minutes
-from wowy.shared.minutes import build_player_minute_stats, passes_minute_filters
+from wowy.shared.minutes import passes_minute_filters
 from wowy.shared.scope import format_scope
 
 
@@ -42,20 +42,25 @@ def validate_filters(
 
 def attach_minute_stats_to_result(
     result: RawrResult,
-    player_minute_stats: dict[int, tuple[float, float]] | None,
+    player_minute_stats: dict[tuple[str, int], tuple[float, float]] | None,
 ) -> RawrResult:
     if player_minute_stats is None:
         return result
 
     estimates = [
         RawrPlayerEstimate(
+            season=estimate.season,
             player_id=estimate.player_id,
             player_name=estimate.player_name,
             games=estimate.games,
-            average_minutes=player_minute_stats.get(estimate.player_id, (None, None))[
-                0
-            ],
-            total_minutes=player_minute_stats.get(estimate.player_id, (None, None))[1],
+            average_minutes=player_minute_stats.get(
+                (estimate.season, estimate.player_id),
+                (None, None),
+            )[0],
+            total_minutes=player_minute_stats.get(
+                (estimate.season, estimate.player_id),
+                (None, None),
+            )[1],
             coefficient=estimate.coefficient,
         )
         for estimate in result.estimates
@@ -71,7 +76,7 @@ def attach_minute_stats_to_result(
 
 def filter_rawr_estimates_by_minutes(
     result: RawrResult,
-    player_minute_stats: dict[int, tuple[float, float]] | None,
+    player_minute_stats: dict[tuple[str, int], tuple[float, float]] | None,
     min_average_minutes: float | None,
     min_total_minutes: float | None,
 ) -> RawrResult:
@@ -84,7 +89,7 @@ def filter_rawr_estimates_by_minutes(
         estimate
         for estimate in result.estimates
         if passes_minute_filters(
-            player_minute_stats.get(estimate.player_id),
+            player_minute_stats.get((estimate.season, estimate.player_id)),
             min_average_minutes=min_average_minutes,
             min_total_minutes=min_total_minutes,
         )
@@ -134,7 +139,7 @@ def run_rawr(
     top_n: int | None = None,
     teams: list[str] | None = None,
     seasons: list[str] | None = None,
-    player_minute_stats: dict[int, tuple[float, float]] | None = None,
+    player_minute_stats: dict[tuple[str, int], tuple[float, float]] | None = None,
     min_average_minutes: float | None = None,
     min_total_minutes: float | None = None,
     show_progress: bool = False,
@@ -157,7 +162,7 @@ def run_rawr(
         seasons=seasons,
     )
     if player_minute_stats is None:
-        player_minute_stats = build_player_minute_stats(game_players)
+        player_minute_stats = build_player_season_minute_stats(games, game_players)
     observations, player_names = build_rawr_observations(games, game_players)
     progress_bar = None
     progress = None
@@ -219,6 +224,36 @@ def build_tuning_report(best_alpha: float, results) -> str:
     return "\n".join(lines)
 
 
+def build_player_season_minute_stats(
+    games,
+    game_players,
+) -> dict[tuple[str, int], tuple[float, float]]:
+    season_by_game_id = {
+        game.game_id: game.season
+        for game in games
+    }
+    totals: dict[tuple[str, int], float] = {}
+    counts: dict[tuple[str, int], int] = {}
+
+    for player in game_players:
+        season = season_by_game_id.get(player.game_id)
+        if (
+            season is None
+            or not player.appeared
+            or player.minutes is None
+            or player.minutes <= 0.0
+        ):
+            continue
+        key = (season, player.player_id)
+        totals[key] = totals.get(key, 0.0) + player.minutes
+        counts[key] = counts.get(key, 0) + 1
+
+    return {
+        key: (totals[key] / counts[key], totals[key])
+        for key in totals
+    }
+
+
 def prepare_rawr_player_season_records(
     *,
     teams: list[str] | None,
@@ -273,7 +308,7 @@ def prepare_rawr_player_season_records(
             if str(exc) == "No games matched the requested RAWR scope":
                 continue
             raise
-        player_minute_stats = build_player_minute_stats(game_players)
+        player_minute_stats = build_player_season_minute_stats(games, game_players)
         observations, player_names = build_rawr_observations(games, game_players)
         try:
             result = fit_player_rawr(

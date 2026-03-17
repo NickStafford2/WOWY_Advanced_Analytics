@@ -5,7 +5,7 @@ from typing import Callable
 
 import numpy as np
 
-from wowy.apps.rawr.data import count_player_games
+from wowy.apps.rawr.data import count_player_games, count_player_season_games
 from wowy.apps.rawr.models import (
     RawrModel,
     RawrObservation,
@@ -32,16 +32,18 @@ def fit_player_rawr(
     if not observations:
         raise ValueError("At least one RAWR observation is required")
 
-    games_by_player = count_player_games(observations)
-    included_players = sorted(
-        player_id for player_id, games in games_by_player.items() if games >= min_games
+    games_by_player_season = count_player_season_games(observations)
+    included_player_keys = sorted(
+        player_key
+        for player_key, games in games_by_player_season.items()
+        if games >= min_games
     )
-    if not included_players:
+    if not included_player_keys:
         raise ValueError("No players met the minimum games requirement")
 
     model = fit_regression_model(
         observations,
-        included_players,
+        included_player_keys,
         ridge_alpha=ridge_alpha,
         progress=progress,
     )
@@ -50,14 +52,15 @@ def fit_player_rawr(
 
     estimates = [
         RawrPlayerEstimate(
+            season=season,
             player_id=player_id,
             player_name=player_names.get(player_id, str(player_id)),
-            games=games_by_player[player_id],
+            games=games_by_player_season[(season, player_id)],
             average_minutes=None,
             total_minutes=None,
             coefficient=model.coefficients[index + 2],
         )
-        for index, player_id in enumerate(included_players)
+        for index, (season, player_id) in enumerate(included_player_keys)
     ]
 
     return RawrResult(
@@ -71,7 +74,7 @@ def fit_player_rawr(
 
 def fit_regression_model(
     observations: list[RawrObservation],
-    player_ids: list[int],
+    player_keys: list[tuple[str, int]],
     ridge_alpha: float = 1.0,
     progress: ProgressFn | None = None,
 ) -> RawrModel:
@@ -86,10 +89,12 @@ def fit_regression_model(
         }
     )
     player_offset = 2
-    team_effect_offset = player_offset + len(player_ids)
+    team_effect_offset = player_offset + len(player_keys)
     opponent_effect_offset = team_effect_offset + len(team_seasons)
     feature_count = opponent_effect_offset + len(team_seasons)
-    player_index = {player_id: index + 2 for index, player_id in enumerate(player_ids)}
+    player_index = {
+        player_key: index + 2 for index, player_key in enumerate(player_keys)
+    }
     team_effect_index = {
         team_season: team_effect_offset + index
         for index, team_season in enumerate(team_seasons)
@@ -116,6 +121,7 @@ def fit_regression_model(
                 player_index=player_index,
                 team_effect_index=team_effect_index,
                 opponent_effect_index=opponent_effect_index,
+                season=observation.season,
                 player_weights=observation.player_weights,
                 home_court_sign=1.0,
                 team_effect_key=home_team_season,
@@ -134,6 +140,7 @@ def fit_regression_model(
                 player_index=player_index,
                 team_effect_index=team_effect_index,
                 opponent_effect_index=opponent_effect_index,
+                season=observation.season,
                 player_weights={
                     player_id: -weight
                     for player_id, weight in observation.player_weights.items()
@@ -155,7 +162,7 @@ def fit_regression_model(
             progress(completed_steps, total_steps, "applying ridge penalty")
 
     return RawrModel(
-        player_ids=player_ids,
+        player_keys=player_keys,
         team_seasons=team_seasons,
         coefficients=solve_linear_system(
             gram,
@@ -174,16 +181,17 @@ def predict_margin(
     row = build_feature_row(
         feature_count=len(model.coefficients),
         player_index={
-            player_id: index + 2 for index, player_id in enumerate(model.player_ids)
+            player_key: index + 2 for index, player_key in enumerate(model.player_keys)
         },
         team_effect_index={
-            team_season: len(model.player_ids) + 2 + index
+            team_season: len(model.player_keys) + 2 + index
             for index, team_season in enumerate(model.team_seasons)
         },
         opponent_effect_index={
-            team_season: len(model.player_ids) + 2 + len(model.team_seasons) + index
+            team_season: len(model.player_keys) + 2 + len(model.team_seasons) + index
             for index, team_season in enumerate(model.team_seasons)
         },
+        season=observation.season,
         player_weights=observation.player_weights,
         home_court_sign=1.0,
         team_effect_key=team_season_key(observation.home_team, observation.season),
@@ -219,20 +227,24 @@ def tune_ridge_alpha(
 
     training = ordered_observations[:-validation_count]
     validation = ordered_observations[-validation_count:]
-    training_player_counts = count_player_games(training)
-    included_players = sorted(
-        player_id
-        for player_id, games in training_player_counts.items()
-        if games >= min_games and player_id in player_names
+    training_player_counts = count_player_season_games(training)
+    included_player_keys = sorted(
+        player_key
+        for player_key, games in training_player_counts.items()
+        if games >= min_games and player_key[1] in player_names
     )
-    if not included_players:
+    if not included_player_keys:
         raise ValueError(
             "No players met the minimum games requirement in training data"
         )
 
     results: list[RidgeTuningResult] = []
     for alpha in alphas:
-        model = fit_regression_model(training, included_players, ridge_alpha=alpha)
+        model = fit_regression_model(
+            training,
+            included_player_keys,
+            ridge_alpha=alpha,
+        )
         validation_mse = mean(
             (predict_margin(observation, model) - observation.margin) ** 2
             for observation in validation
@@ -245,9 +257,10 @@ def tune_ridge_alpha(
 
 def build_feature_row(
     feature_count: int,
-    player_index: dict[int, int],
+    player_index: dict[tuple[str, int], int],
     team_effect_index: dict[str, int],
     opponent_effect_index: dict[str, int],
+    season: str,
     player_weights: dict[int, float],
     home_court_sign: float,
     team_effect_key: str,
@@ -259,7 +272,7 @@ def build_feature_row(
     row[team_effect_index[team_effect_key]] = 1.0
     row[opponent_effect_index[opponent_effect_key]] = 1.0
     for player_id, weight in player_weights.items():
-        feature_index = player_index.get(player_id)
+        feature_index = player_index.get((season, player_id))
         if feature_index is not None:
             row[feature_index] = weight
     return row

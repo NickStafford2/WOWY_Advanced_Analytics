@@ -14,8 +14,8 @@ def test_format_rawr_results_contains_expected_text():
         intercept=0.0,
         home_court_advantage=2.5,
         estimates=[
-            RawrPlayerEstimate(101, "Player 101", 2, 31.5, 63.0, 2.0),
-            RawrPlayerEstimate(102, "Player 102", 2, 18.0, 36.0, -2.0),
+            RawrPlayerEstimate("2023-24", 101, "Player 101", 2, 31.5, 63.0, 2.0),
+            RawrPlayerEstimate("2023-24", 102, "Player 102", 2, 18.0, 36.0, -2.0),
         ],
     )
 
@@ -23,6 +23,8 @@ def test_format_rawr_results_contains_expected_text():
 
     assert "RAWR results (Game-level player model)" in output
     assert "observations=3 players=2 intercept=0.0000 home_court=2.5000" in output
+    assert "season" in output
+    assert "2023-24" in output
     assert "Player 101" in output
     assert "31.5" in output
     assert "63.0" in output

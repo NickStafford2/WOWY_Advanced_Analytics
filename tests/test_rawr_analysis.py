@@ -141,6 +141,68 @@ def test_fit_player_rawr_applies_min_games_filter():
     assert [estimate.player_id for estimate in result.estimates] == [101, 102, 201, 202]
 
 
+def test_fit_player_rawr_uses_separate_coefficients_per_player_season():
+    observations = [
+        RawrObservation(
+            "1",
+            "2022-23",
+            "2023-04-01",
+            "BOS",
+            "MIL",
+            6.0,
+            {101: 1.0, 201: -1.0},
+        ),
+        RawrObservation(
+            "2",
+            "2022-23",
+            "2023-04-03",
+            "BOS",
+            "NYK",
+            5.0,
+            {101: 1.0, 202: -1.0},
+        ),
+        RawrObservation(
+            "3",
+            "2023-24",
+            "2024-04-01",
+            "BOS",
+            "MIL",
+            -6.0,
+            {101: 1.0, 201: -1.0},
+        ),
+        RawrObservation(
+            "4",
+            "2023-24",
+            "2024-04-03",
+            "BOS",
+            "NYK",
+            -5.0,
+            {101: 1.0, 202: -1.0},
+        ),
+    ]
+
+    result = fit_player_rawr(
+        observations,
+        player_names={
+            101: "Player 101",
+            201: "Player 201",
+            202: "Player 202",
+        },
+        min_games=2,
+        ridge_alpha=1.0,
+    )
+
+    estimates = {
+        (estimate.season, estimate.player_id): estimate
+        for estimate in result.estimates
+    }
+
+    assert ("2022-23", 101) in estimates
+    assert ("2023-24", 101) in estimates
+    assert estimates[("2022-23", 101)].coefficient > 0.0
+    assert estimates[("2023-24", 101)].coefficient < 0.0
+
+
 def test_fit_player_rawr_rejects_singular_system_without_ridge():
     observations = [
         RawrObservation(
