@@ -275,12 +275,17 @@ def prepare_rawr_player_season_records(
             raise
         player_minute_stats = build_player_minute_stats(game_players)
         observations, player_names = build_rawr_observations(games, game_players)
-        result = fit_player_rawr(
-            observations,
-            player_names=player_names,
-            min_games=min_games,
-            ridge_alpha=ridge_alpha,
-        )
+        try:
+            result = fit_player_rawr(
+                observations,
+                player_names=player_names,
+                min_games=min_games,
+                ridge_alpha=ridge_alpha,
+            )
+        except ValueError as exc:
+            if str(exc) == "No players met the minimum games requirement":
+                continue
+            raise
         result = attach_minute_stats_to_result(result, player_minute_stats)
         result = filter_rawr_estimates_by_minutes(
             result,

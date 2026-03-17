@@ -129,6 +129,8 @@ def main(argv: list[str] | None = None) -> int:
         normalized_game_players_input_dir=args.normalized_game_players_input_dir,
         wowy_output_dir=args.wowy_output_dir,
         combined_wowy_csv=args.combined_wowy_csv,
+        combined_rawr_games_csv=args.combined_rawr_games_csv,
+        combined_rawr_game_players_csv=args.combined_rawr_game_players_csv,
         player_metrics_db_path=args.player_metrics_db_path,
     )
     app.run(host=args.host, port=args.port, debug=args.debug)

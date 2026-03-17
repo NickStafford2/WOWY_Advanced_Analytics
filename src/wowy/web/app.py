@@ -16,6 +16,7 @@ from wowy.nba.seasons import canonicalize_season_string
 from wowy.web.service import (
     RAWR_METRIC,
     WOWY_METRIC,
+    build_custom_rawr_leaderboard_payload,
     build_metric_default_filters_payload,
     build_scope_key,
     build_cached_metric_leaderboard_payload,
@@ -45,6 +46,8 @@ def create_app(
     normalized_game_players_input_dir: Path = DEFAULT_NORMALIZED_GAME_PLAYERS_DIR,
     wowy_output_dir: Path = DEFAULT_WOWY_GAMES_DIR,
     combined_wowy_csv: Path = Path("data/combined/wowy/games.csv"),
+    combined_rawr_games_csv: Path = Path("data/combined/rawr/games.csv"),
+    combined_rawr_game_players_csv: Path = Path("data/combined/rawr/game_players.csv"),
     player_metrics_db_path: Path = DEFAULT_PLAYER_METRICS_DB_PATH,
 ):
     from flask import Flask, jsonify, request
@@ -104,6 +107,25 @@ def create_app(
 
         return jsonify(payload)
 
+    @app.get("/api/metrics/<metric>/custom-query")
+    def get_metric_custom_query(metric: str):
+        try:
+            payload = _build_metric_custom_query_payload(
+                request,
+                metric=metric,
+                source_data_dir=source_data_dir,
+                normalized_games_input_dir=normalized_games_input_dir,
+                normalized_game_players_input_dir=normalized_game_players_input_dir,
+                wowy_output_dir=wowy_output_dir,
+                combined_wowy_csv=combined_wowy_csv,
+                combined_rawr_games_csv=combined_rawr_games_csv,
+                combined_rawr_game_players_csv=combined_rawr_game_players_csv,
+            )
+        except ValueError as exc:
+            return jsonify({"error": str(exc)}), 400
+
+        return jsonify(payload)
+
     @app.get("/api/wowy/player-seasons")
     def get_wowy_player_seasons():
         return get_metric_player_seasons(WOWY_METRIC)
@@ -122,19 +144,11 @@ def create_app(
 
     @app.get("/api/wowy/custom-query")
     def get_wowy_custom_query():
-        try:
-            payload = _build_wowy_custom_query_payload(
-                request,
-                source_data_dir=source_data_dir,
-                normalized_games_input_dir=normalized_games_input_dir,
-                normalized_game_players_input_dir=normalized_game_players_input_dir,
-                wowy_output_dir=wowy_output_dir,
-                combined_wowy_csv=combined_wowy_csv,
-            )
-        except ValueError as exc:
-            return jsonify({"error": str(exc)}), 400
+        return get_metric_custom_query(WOWY_METRIC)
 
-        return jsonify(payload)
+    @app.get("/api/rawr/custom-query")
+    def get_rawr_custom_query():
+        return get_metric_custom_query(RAWR_METRIC)
 
     return app
 
@@ -256,44 +270,69 @@ def _build_cached_metric_leaderboard_payload(
     return payload
 
 
-def _build_wowy_custom_query_payload(
+def _build_metric_custom_query_payload(
     request,
     *,
+    metric: str,
     source_data_dir: Path,
     normalized_games_input_dir: Path,
     normalized_game_players_input_dir: Path,
     wowy_output_dir: Path,
     combined_wowy_csv: Path,
+    combined_rawr_games_csv: Path,
+    combined_rawr_game_players_csv: Path,
 ) -> dict[str, Any]:
     filter_values = _parse_request_filters(
         request,
-        metric=WOWY_METRIC,
+        metric=metric,
         include_top_n=True,
     )
     season_type = request.args.get("season_type", "Regular Season")
     teams = request.args.getlist("team") or None
     seasons = _parse_request_seasons(request)
-    payload = build_custom_wowy_leaderboard_payload(
-        teams=teams,
-        seasons=seasons,
-        season_type=season_type,
-        top_n=filter_values["top_n"],
-        source_data_dir=source_data_dir,
-        normalized_games_input_dir=normalized_games_input_dir,
-        normalized_game_players_input_dir=normalized_game_players_input_dir,
-        wowy_output_dir=wowy_output_dir,
-        combined_wowy_csv=combined_wowy_csv,
-        min_games_with=int(filter_values["min_sample_size"]),
-        min_games_without=int(filter_values["min_secondary_sample_size"]),
-        min_average_minutes=float(filter_values["min_average_minutes"]),
-        min_total_minutes=float(filter_values["min_total_minutes"]),
-    )
+    if metric == WOWY_METRIC:
+        payload = build_custom_wowy_leaderboard_payload(
+            teams=teams,
+            seasons=seasons,
+            season_type=season_type,
+            top_n=filter_values["top_n"],
+            source_data_dir=source_data_dir,
+            normalized_games_input_dir=normalized_games_input_dir,
+            normalized_game_players_input_dir=normalized_game_players_input_dir,
+            wowy_output_dir=wowy_output_dir,
+            combined_wowy_csv=combined_wowy_csv,
+            min_games_with=int(filter_values["min_sample_size"]),
+            min_games_without=int(filter_values["min_secondary_sample_size"]),
+            min_average_minutes=float(filter_values["min_average_minutes"]),
+            min_total_minutes=float(filter_values["min_total_minutes"]),
+        )
+    elif metric == RAWR_METRIC:
+        payload = build_custom_rawr_leaderboard_payload(
+            teams=teams,
+            seasons=seasons,
+            season_type=season_type,
+            top_n=filter_values["top_n"],
+            source_data_dir=source_data_dir,
+            normalized_games_input_dir=normalized_games_input_dir,
+            normalized_game_players_input_dir=normalized_game_players_input_dir,
+            wowy_output_dir=wowy_output_dir,
+            combined_games_csv=combined_rawr_games_csv,
+            combined_game_players_csv=combined_rawr_game_players_csv,
+            min_games=int(filter_values["min_sample_size"]),
+            ridge_alpha=1.0,
+            min_average_minutes=float(filter_values["min_average_minutes"]),
+            min_total_minutes=float(filter_values["min_total_minutes"]),
+        )
+    else:
+        raise ValueError(f"Unknown metric: {metric}")
     payload["filters"] = _build_filters_payload(
-        metric=WOWY_METRIC,
+        metric=metric,
         teams=teams,
         seasons=seasons,
         season_type=season_type,
-        min_sample_size=request.args.get("min_games_with"),
+        min_sample_size=request.args.get("min_games_with")
+        if metric == WOWY_METRIC
+        else request.args.get("min_games"),
         min_secondary_sample_size=request.args.get("min_games_without"),
         min_average_minutes=request.args.get("min_average_minutes"),
         min_total_minutes=request.args.get("min_total_minutes"),

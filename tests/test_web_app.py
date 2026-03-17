@@ -338,6 +338,162 @@ def test_rawr_cached_leaderboard_endpoint_returns_cached_series(
     assert len(payload["series"]) == 2
 
 
+def test_rawr_custom_query_endpoint_recalculates_requested_span(
+    tmp_path: Path,
+    monkeypatch,
+):
+    normalized_games_dir, normalized_players_dir = _seed_rawr_cache_inputs(
+        tmp_path,
+        monkeypatch,
+    )
+
+    app = create_app(
+        source_data_dir=tmp_path / "source",
+        normalized_games_input_dir=normalized_games_dir,
+        normalized_game_players_input_dir=normalized_players_dir,
+        wowy_output_dir=tmp_path / "team_games",
+        combined_wowy_csv=tmp_path / "combined" / "wowy" / "games.csv",
+        combined_rawr_games_csv=tmp_path / "combined" / "rawr" / "games.csv",
+        combined_rawr_game_players_csv=tmp_path / "combined" / "rawr" / "game_players.csv",
+        player_metrics_db_path=tmp_path / "app" / "player_metrics.sqlite3",
+    )
+    client = app.test_client()
+
+    response = client.get(
+        "/api/metrics/rawr/custom-query",
+        query_string={
+            "team": "BOS",
+            "season": ["2023-24"],
+            "top_n": "3",
+            "min_games": "1",
+            "min_average_minutes": "0",
+            "min_total_minutes": "0",
+        },
+    )
+
+    assert response.status_code == 200
+    payload = response.get_json()
+    assert payload["metric"] == "rawr"
+    assert payload["metric_label"] == "RAWR"
+    assert payload["mode"] == "custom"
+    assert payload["filters"] == {
+        "team": ["BOS"],
+        "season": ["2023-24"],
+        "season_type": "Regular Season",
+        "min_games": 1,
+        "min_average_minutes": 0.0,
+        "min_total_minutes": 0.0,
+        "top_n": 3,
+    }
+    assert payload["span"] == {
+        "start_season": "2023-24",
+        "end_season": "2023-24",
+        "available_seasons": ["2023-24"],
+        "top_n": 3,
+    }
+    assert len(payload["table_rows"]) == 3
+    assert all(row["season_count"] == 1 for row in payload["table_rows"])
+    assert all(point["season"] == "2023-24" for row in payload["series"] for point in row["points"])
+
+
+def test_rawr_custom_query_endpoint_rejects_invalid_filters(tmp_path: Path):
+    app = create_app(
+        source_data_dir=tmp_path / "source",
+        normalized_games_input_dir=tmp_path / "normalized_games",
+        normalized_game_players_input_dir=tmp_path / "normalized_game_players",
+        wowy_output_dir=tmp_path / "team_games",
+        combined_wowy_csv=tmp_path / "combined" / "wowy" / "games.csv",
+        combined_rawr_games_csv=tmp_path / "combined" / "rawr" / "games.csv",
+        combined_rawr_game_players_csv=tmp_path / "combined" / "rawr" / "game_players.csv",
+        player_metrics_db_path=tmp_path / "app" / "player_metrics.sqlite3",
+    )
+    client = app.test_client()
+
+    response = client.get(
+        "/api/metrics/rawr/custom-query",
+        query_string={"min_games": "-1"},
+    )
+
+    assert response.status_code == 400
+    assert response.get_json() == {
+        "error": "Minimum games filter must be non-negative"
+    }
+
+
+def test_rawr_custom_query_skips_seasons_without_qualifying_players(
+    tmp_path: Path,
+    monkeypatch,
+):
+    normalized_games_dir, normalized_players_dir = _seed_rawr_cache_inputs(
+        tmp_path,
+        monkeypatch,
+    )
+    (normalized_games_dir / "BOS_2024-25.csv").write_text(
+        (
+            "game_id,season,game_date,team,opponent,is_home,margin,season_type,source\n"
+            "4,2024-25,2025-04-01,BOS,MIL,true,3,Regular Season,nba_api\n"
+        ),
+        encoding="utf-8",
+    )
+    (normalized_games_dir / "MIL_2024-25.csv").write_text(
+        (
+            "game_id,season,game_date,team,opponent,is_home,margin,season_type,source\n"
+            "4,2024-25,2025-04-01,MIL,BOS,false,-3,Regular Season,nba_api\n"
+        ),
+        encoding="utf-8",
+    )
+    (normalized_players_dir / "BOS_2024-25.csv").write_text(
+        (
+            "game_id,team,player_id,player_name,appeared,minutes\n"
+            "4,BOS,101,Player 101,true,36\n"
+        ),
+        encoding="utf-8",
+    )
+    (normalized_players_dir / "MIL_2024-25.csv").write_text(
+        (
+            "game_id,team,player_id,player_name,appeared,minutes\n"
+            "4,MIL,201,Player 201,true,36\n"
+        ),
+        encoding="utf-8",
+    )
+
+    app = create_app(
+        source_data_dir=tmp_path / "source",
+        normalized_games_input_dir=normalized_games_dir,
+        normalized_game_players_input_dir=normalized_players_dir,
+        wowy_output_dir=tmp_path / "team_games",
+        combined_wowy_csv=tmp_path / "combined" / "wowy" / "games.csv",
+        combined_rawr_games_csv=tmp_path / "combined" / "rawr" / "games.csv",
+        combined_rawr_game_players_csv=tmp_path / "combined" / "rawr" / "game_players.csv",
+        player_metrics_db_path=tmp_path / "app" / "player_metrics.sqlite3",
+    )
+    client = app.test_client()
+
+    response = client.get(
+        "/api/metrics/rawr/custom-query",
+        query_string={
+            "team": "BOS",
+            "season": ["2023-24", "2024-25"],
+            "top_n": "3",
+            "min_games": "2",
+            "min_average_minutes": "0",
+            "min_total_minutes": "0",
+        },
+    )
+
+    assert response.status_code == 200
+    payload = response.get_json()
+    assert payload["mode"] == "custom"
+    assert payload["filters"]["team"] == ["BOS"]
+    assert payload["span"] == {
+        "start_season": "2023-24",
+        "end_season": "2023-24",
+        "available_seasons": ["2023-24"],
+        "top_n": 3,
+    }
+    assert len(payload["table_rows"]) == 3
+
+
 def test_wowy_options_endpoint_returns_cached_teams_and_seasons(
     tmp_path: Path,
     monkeypatch,

@@ -6,6 +6,7 @@ from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any, Callable
 
+from wowy.apps.rawr.models import RawrPlayerSeasonRecord
 from wowy.apps.rawr.service import prepare_rawr_player_season_records
 from wowy.apps.wowy.models import WowyPlayerSeasonRecord
 from wowy.apps.wowy.service import prepare_wowy_player_season_records
@@ -369,6 +370,48 @@ def build_custom_wowy_leaderboard_payload(
     )
 
 
+def build_custom_rawr_leaderboard_payload(
+    *,
+    teams: list[str] | None,
+    seasons: list[str] | None,
+    season_type: str,
+    top_n: int,
+    source_data_dir: Path,
+    normalized_games_input_dir: Path,
+    normalized_game_players_input_dir: Path,
+    wowy_output_dir: Path,
+    combined_games_csv: Path,
+    combined_game_players_csv: Path,
+    min_games: int,
+    ridge_alpha: float,
+    min_average_minutes: float | None,
+    min_total_minutes: float | None,
+) -> dict[str, Any]:
+    records = prepare_rawr_player_season_records(
+        teams=teams,
+        seasons=seasons,
+        season_type=season_type,
+        combined_games_csv=combined_games_csv,
+        combined_game_players_csv=combined_game_players_csv,
+        source_data_dir=source_data_dir,
+        normalized_games_input_dir=normalized_games_input_dir,
+        normalized_game_players_input_dir=normalized_game_players_input_dir,
+        wowy_output_dir=wowy_output_dir,
+        min_games=min_games,
+        ridge_alpha=ridge_alpha,
+        min_average_minutes=min_average_minutes,
+        min_total_minutes=min_total_minutes,
+    )
+    return build_leaderboard_payload_from_rawr_records(
+        metric=RAWR_METRIC,
+        metric_label="RAWR",
+        records=records,
+        seasons=sorted({record.season for record in records}),
+        top_n=top_n,
+        mode="custom",
+    )
+
+
 def build_metric_options_payload(
     metric: str,
     *,
@@ -531,6 +574,40 @@ def build_leaderboard_payload_from_records(
             "games_without": record.games_without,
             "avg_margin_with": record.avg_margin_with,
             "avg_margin_without": record.avg_margin_without,
+            "average_minutes": record.average_minutes,
+            "total_minutes": record.total_minutes,
+        }
+        for record in records
+    ]
+    table_rows = build_ranked_table_rows(rows, seasons=seasons, top_n=top_n)
+    return {
+        "mode": mode,
+        "metric": metric,
+        "metric_label": metric_label,
+        "span": build_span_payload(seasons, top_n=top_n),
+        "table_rows": table_rows,
+        "series": build_series_from_table_rows(table_rows, seasons=seasons),
+    }
+
+
+def build_leaderboard_payload_from_rawr_records(
+    *,
+    metric: str,
+    metric_label: str,
+    records: list[RawrPlayerSeasonRecord],
+    seasons: list[str],
+    top_n: int,
+    mode: str,
+) -> dict[str, Any]:
+    rows = [
+        {
+            "season": record.season,
+            "player_id": record.player_id,
+            "player_name": record.player_name,
+            "value": record.coefficient,
+            "sample_size": record.games,
+            "secondary_sample_size": None,
+            "games": record.games,
             "average_minutes": record.average_minutes,
             "total_minutes": record.total_minutes,
         }

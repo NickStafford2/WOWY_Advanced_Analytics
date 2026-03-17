@@ -129,6 +129,7 @@ type CustomFilters = {
   endSeason: string
   teams: string[]
   topN: number
+  minGames: number
   minGamesWith: number
   minGamesWithout: number
   minAverageMinutes: number
@@ -166,6 +167,7 @@ function App() {
     endSeason: '',
     teams: [],
     topN: 12,
+    minGames: 35,
     minGamesWith: 15,
     minGamesWithout: 2,
     minAverageMinutes: 30,
@@ -177,7 +179,6 @@ function App() {
   const [loadingStartedAt, setLoadingStartedAt] = useState<number | null>(Date.now())
   const [loadingTick, setLoadingTick] = useState(0)
 
-  const supportsCustomQuery = metric === 'wowy'
   const chartModel = useMemo<ChartModel>(
     () => buildChartModel(leaderboard?.series ?? []),
     [leaderboard],
@@ -223,6 +224,8 @@ function App() {
     setLoadingStartedAt(Date.now())
     try {
       const payload = (await fetchJson(`/api/metrics/${nextMetric}/options`)) as MetricOptionsPayload
+      const defaultStartSeason = payload.available_seasons[0] || ''
+      const defaultEndSeason = payload.available_seasons[payload.available_seasons.length - 1] || ''
       setMetricLabel(payload.metric_label)
       setMetricFilters(payload.filters)
       setAvailableTeams(payload.available_teams)
@@ -231,19 +234,21 @@ function App() {
         ...current,
         topN: current.topN || payload.filters.top_n,
       }))
-      if (nextMetric === 'wowy') {
-        setCustomFilters((current) => ({
-          ...current,
-          startSeason: current.startSeason || payload.available_seasons[0] || '',
-          endSeason:
-            current.endSeason || payload.available_seasons[payload.available_seasons.length - 1] || '',
-          topN: current.topN || payload.filters.top_n,
-          minGamesWith: payload.filters.min_games_with ?? current.minGamesWith,
-          minGamesWithout: payload.filters.min_games_without ?? current.minGamesWithout,
-          minAverageMinutes: payload.filters.min_average_minutes,
-          minTotalMinutes: payload.filters.min_total_minutes,
-        }))
-      }
+      setCustomFilters((current) => ({
+        ...current,
+        startSeason: payload.available_seasons.includes(current.startSeason)
+          ? current.startSeason
+          : defaultStartSeason,
+        endSeason: payload.available_seasons.includes(current.endSeason)
+          ? current.endSeason
+          : defaultEndSeason,
+        topN: current.topN || payload.filters.top_n,
+        minGames: payload.filters.min_games ?? current.minGames,
+        minGamesWith: payload.filters.min_games_with ?? current.minGamesWith,
+        minGamesWithout: payload.filters.min_games_without ?? current.minGamesWithout,
+        minAverageMinutes: payload.filters.min_average_minutes,
+        minTotalMinutes: payload.filters.min_total_minutes,
+      }))
       return payload
     } finally {
       setIsBootstrapping(false)
@@ -291,19 +296,20 @@ function App() {
   )
 
   const runCustomQuery = useEffectEvent(async () => {
-    if (!supportsCustomQuery) {
-      return
-    }
     setIsLoading(true)
     setError('')
     setLoadingStartedAt(Date.now())
     const params = new URLSearchParams({
       top_n: String(customFilters.topN),
-      min_games_with: String(customFilters.minGamesWith),
-      min_games_without: String(customFilters.minGamesWithout),
       min_average_minutes: String(customFilters.minAverageMinutes),
       min_total_minutes: String(customFilters.minTotalMinutes),
     })
+    if (metric === 'rawr') {
+      params.set('min_games', String(customFilters.minGames))
+    } else {
+      params.set('min_games_with', String(customFilters.minGamesWith))
+      params.set('min_games_without', String(customFilters.minGamesWithout))
+    }
 
     for (const team of customFilters.teams) {
       params.append('team', team)
@@ -313,7 +319,9 @@ function App() {
     }
 
     try {
-      const payload = (await fetchJson(`/api/wowy/custom-query?${params.toString()}`)) as LeaderboardPayload
+      const payload = (await fetchJson(
+        `/api/metrics/${metric}/custom-query?${params.toString()}`,
+      )) as LeaderboardPayload
       setMetricLabel(payload.metric_label)
       setLeaderboard(payload)
     } catch (caughtError) {
@@ -326,12 +334,6 @@ function App() {
   })
 
   useEffect(() => {
-    if (!supportsCustomQuery && mode === 'custom') {
-      setMode('cached')
-    }
-  }, [mode, supportsCustomQuery])
-
-  useEffect(() => {
     void (async () => {
       const options = await loadOptions(metric)
       await loadCachedLeaderboard(metric, options.filters)
@@ -341,9 +343,10 @@ function App() {
   const seasonSummary = leaderboard?.span.available_seasons.length
     ? `${leaderboard.span.available_seasons[0]} to ${leaderboard.span.available_seasons.at(-1)}`
     : 'No seasons loaded'
-  const metricDescription = supportsCustomQuery
-    ? 'Cross-season on/off impact from with-and-without samples.'
-    : 'Game-level ridge model of player impact across the cached history.'
+  const metricDescription =
+    metric === 'wowy'
+      ? 'Cross-season on/off impact from with-and-without samples.'
+      : 'Game-level ridge model of player impact across the cached history.'
   const chartStatusLabel =
     mode === 'cached' ? `Loading cached ${metricLabel} leaders...` : `Running ${metricLabel} query...`
   const resultsTitle =
@@ -397,18 +400,13 @@ function App() {
             type="button"
             className={mode === 'custom' ? 'mode-tab active' : 'mode-tab'}
             onClick={() => setMode('custom')}
-            disabled={!supportsCustomQuery}
-            title={!supportsCustomQuery ? 'Custom query is available for WOWY only.' : undefined}
           >
             Custom query
           </button>
         </div>
-        {!supportsCustomQuery ? (
-          <p className="mode-note">RAWR currently supports cached leaderboard mode only.</p>
-        ) : null}
       </section>
 
-      {mode === 'cached' || !supportsCustomQuery ? (
+      {mode === 'cached' ? (
         <section className="control-panel">
           <label>
             <span>Team scope</span>
@@ -529,24 +527,32 @@ function App() {
           </label>
 
           <label>
-            <span>Min games with</span>
+            <span>{metric === 'rawr' ? 'Min games' : 'Min games with'}</span>
             <input
               type="number"
               min="0"
-              value={customFilters.minGamesWith}
-              onChange={(event) => updateCustomNumber(setCustomFilters, 'minGamesWith', event)}
+              value={metric === 'rawr' ? customFilters.minGames : customFilters.minGamesWith}
+              onChange={(event) =>
+                updateCustomNumber(
+                  setCustomFilters,
+                  metric === 'rawr' ? 'minGames' : 'minGamesWith',
+                  event,
+                )
+              }
             />
           </label>
 
-          <label>
-            <span>Min games without</span>
-            <input
-              type="number"
-              min="0"
-              value={customFilters.minGamesWithout}
-              onChange={(event) => updateCustomNumber(setCustomFilters, 'minGamesWithout', event)}
-            />
-          </label>
+          {metric === 'wowy' ? (
+            <label>
+              <span>Min games without</span>
+              <input
+                type="number"
+                min="0"
+                value={customFilters.minGamesWithout}
+                onChange={(event) => updateCustomNumber(setCustomFilters, 'minGamesWithout', event)}
+              />
+            </label>
+          ) : null}
 
           <label>
             <span>Min average minutes</span>
@@ -740,7 +746,7 @@ function App() {
                     <tr>
                       <th>Rank</th>
                       <th>Player</th>
-                      <th>{`Span Avg ${metricLabel}`}</th>
+                      <th>{`${metricLabel}`}</th>
                       <th>Seasons</th>
                       <th>Avg Min</th>
                       <th>Tot Min</th>
@@ -872,6 +878,22 @@ function buildLoadingPhases(
   }
 
   if (metric === 'rawr') {
+    if (mode === 'custom') {
+      return [
+        {
+          label: 'Gathering sample',
+          detail: 'Collecting the requested team and season slice from the normalized RAWR inputs.',
+        },
+        {
+          label: 'Fitting ridge',
+          detail: 'Running the game-level ridge regression and applying the minimum games threshold.',
+        },
+        {
+          label: 'Ranking span',
+          detail: 'Aggregating the player-season coefficients into the final span leaderboard and chart points.',
+        },
+      ]
+    }
     return [
       {
         label: 'Loading scope',
@@ -932,7 +954,12 @@ function updateCustomNumber(
   setCustomFilters: Dispatch<SetStateAction<CustomFilters>>,
   field: keyof Pick<
     CustomFilters,
-    'topN' | 'minGamesWith' | 'minGamesWithout' | 'minAverageMinutes' | 'minTotalMinutes'
+    | 'topN'
+    | 'minGames'
+    | 'minGamesWith'
+    | 'minGamesWithout'
+    | 'minAverageMinutes'
+    | 'minTotalMinutes'
   >,
   event: ChangeEvent<HTMLInputElement>,
 ) {
