@@ -314,9 +314,6 @@ def prepare_rawr_player_season_records(
     seasons: list[str] | None,
     season_type: str,
     source_data_dir: Path,
-    normalized_games_input_dir: Path,
-    normalized_game_players_input_dir: Path,
-    wowy_output_dir: Path,
     min_games: int,
     ridge_alpha: float,
     shrinkage_mode: str,
@@ -338,7 +335,6 @@ def prepare_rawr_player_season_records(
     team_seasons = resolve_team_seasons(
         teams,
         seasons,
-        normalized_games_input_dir,
         player_metrics_db_path=player_metrics_db_path,
         season_type=season_type,
     )
@@ -353,9 +349,6 @@ def prepare_rawr_player_season_records(
             seasons=[season],
             season_type=season_type,
             source_data_dir=source_data_dir,
-            normalized_games_input_dir=normalized_games_input_dir,
-            normalized_game_players_input_dir=normalized_game_players_input_dir,
-            wowy_output_dir=wowy_output_dir,
             player_metrics_db_path=player_metrics_db_path,
             include_opponents_for_team_scope=True,
             log=lambda *_args, **_kwargs: None,
@@ -446,9 +439,6 @@ def prepare_and_run_rawr(args) -> str:
         seasons=args.season,
         season_type=args.season_type,
         source_data_dir=args.source_data_dir,
-        normalized_games_input_dir=args.normalized_games_input_dir,
-        normalized_game_players_input_dir=args.normalized_game_players_input_dir,
-        wowy_output_dir=args.wowy_output_dir,
         player_metrics_db_path=getattr(
             args,
             "player_metrics_db_path",

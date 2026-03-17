@@ -8,13 +8,9 @@ from datetime import UTC, datetime
 from pathlib import Path
 
 from wowy.data.player_metrics_db import DEFAULT_PLAYER_METRICS_DB_PATH
-from wowy.data.normalized_io import (
-    load_normalized_game_players_from_csv,
-    load_normalized_games_from_csv,
-)
 from wowy.nba.models import NormalizedGamePlayerRecord, NormalizedGameRecord
 from wowy.nba.seasons import canonicalize_season_string
-from wowy.nba.team_seasons import TeamSeasonScope, list_cached_team_seasons
+from wowy.nba.team_seasons import TeamSeasonScope
 
 GAME_CACHE_BUILD_VERSION = "normalized-cache-v1"
 REGULAR_SEASON = "Regular Season"
@@ -393,81 +389,6 @@ def load_cache_load_row(
         games_row_count=row["games_row_count"],
         game_players_row_count=row["game_players_row_count"],
     )
-
-
-def import_team_season_csv_cache_into_db(
-    db_path: Path,
-    *,
-    team_season: TeamSeasonScope,
-    season_type: str,
-    normalized_games_path: Path,
-    normalized_game_players_path: Path,
-) -> bool:
-    source_snapshot = build_file_snapshot(normalized_games_path, normalized_game_players_path)
-    existing = load_cache_load_row(
-        db_path,
-        team=team_season.team,
-        season=team_season.season,
-        season_type=season_type,
-    )
-    if (
-        existing is not None
-        and existing.source_kind == "csv-cache"
-        and existing.source_snapshot == source_snapshot
-    ):
-        return False
-
-    games = [
-        game
-        for game in load_normalized_games_from_csv(normalized_games_path)
-        if game.team == team_season.team and game.season == team_season.season
-    ]
-    game_players = [
-        player
-        for player in load_normalized_game_players_from_csv(normalized_game_players_path)
-        if player.team == team_season.team
-    ]
-    replace_team_season_normalized_rows(
-        db_path,
-        team=team_season.team,
-        season=team_season.season,
-        season_type=season_type,
-        games=games,
-        game_players=game_players,
-        source_path=str(normalized_games_path),
-        source_snapshot=source_snapshot,
-        source_kind="csv-cache",
-    )
-    return True
-
-
-def migrate_regular_season_csv_cache_to_db(
-    db_path: Path,
-    *,
-    normalized_games_input_dir: Path,
-    normalized_game_players_input_dir: Path,
-    resolve_games_path,
-    resolve_game_players_path,
-) -> int:
-    # Migration assumption: every pre-existing normalized CSV cache in this repo is
-    # regular-season data only. No playoff data is inferred or backfilled here.
-    initialize_game_cache_db(db_path)
-    imported = 0
-    for team_season in list_cached_team_seasons(normalized_games_input_dir):
-        games_path = resolve_games_path(team_season, REGULAR_SEASON)
-        game_players_path = resolve_game_players_path(team_season, REGULAR_SEASON)
-        if games_path is None or game_players_path is None:
-            continue
-        if import_team_season_csv_cache_into_db(
-            db_path,
-            team_season=team_season,
-            season_type=REGULAR_SEASON,
-            normalized_games_path=games_path,
-            normalized_game_players_path=game_players_path,
-        ):
-            imported += 1
-    return imported
-
 
 def list_cached_team_seasons_from_db(
     db_path: Path,

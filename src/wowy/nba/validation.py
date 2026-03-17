@@ -1,23 +1,6 @@
 from __future__ import annotations
 
-from pathlib import Path
-
 from wowy.apps.wowy.derive import derive_wowy_games
-from wowy.data.normalized_io import (
-    load_normalized_game_players_from_csv,
-    load_normalized_games_from_csv,
-)
-from wowy.data.wowy_io import load_games_from_csv
-from wowy.nba.paths import (
-    normalized_game_players_path,
-    normalized_games_path,
-    resolve_existing_path,
-    wowy_games_path,
-)
-from wowy.nba.seasons import canonicalize_season_string
-from wowy.nba.team_seasons import TeamSeasonScope
-
-
 def validate_team_season_records(
     games,
     game_players,
@@ -51,62 +34,3 @@ def validate_team_season_records(
             return "wowy_data"
 
     return "ok"
-
-
-def validate_team_season_files(
-    normalized_games_path: Path,
-    normalized_game_players_path: Path,
-    wowy_path: Path,
-) -> str:
-    try:
-        games = load_normalized_games_from_csv(normalized_games_path)
-        game_players = load_normalized_game_players_from_csv(normalized_game_players_path)
-        wowy_games = load_games_from_csv(wowy_path)
-    except (OSError, ValueError):
-        return "corrupt"
-
-    return validate_team_season_records(games, game_players, wowy_games)
-
-
-def validate_team_season_consistency(
-    team: str,
-    season: str,
-    normalized_games_input_dir: Path,
-    normalized_game_players_input_dir: Path,
-    wowy_output_dir: Path,
-    season_type: str = "Regular Season",
-) -> str:
-    season = canonicalize_season_string(season)
-    team_season = TeamSeasonScope(team=team, season=season)
-    return validate_team_season_files(
-        normalized_games_path=resolve_existing_path(
-            team_season,
-            normalized_games_input_dir,
-            season_type,
-        )
-        or normalized_games_path(
-            team_season,
-            normalized_games_input_dir,
-            season_type,
-        ),
-        normalized_game_players_path=resolve_existing_path(
-            team_season,
-            normalized_game_players_input_dir,
-            season_type,
-        )
-        or normalized_game_players_path(
-            team_season,
-            normalized_game_players_input_dir,
-            season_type,
-        ),
-        wowy_path=resolve_existing_path(
-            team_season,
-            wowy_output_dir,
-            season_type,
-        )
-        or wowy_games_path(
-            team_season,
-            wowy_output_dir,
-            season_type,
-        ),
-    )

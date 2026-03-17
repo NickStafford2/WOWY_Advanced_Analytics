@@ -144,23 +144,16 @@ def run_wowy_records(
 def load_player_minute_stats(
     teams: list[str] | None,
     seasons: list[str] | None,
-    normalized_games_input_dir: Path,
-    normalized_game_players_input_dir: Path,
     season_type: str = "Regular Season",
     source_data_dir: Path | None = None,
-    wowy_output_dir: Path | None = None,
     player_metrics_db_path: Path = DEFAULT_PLAYER_METRICS_DB_PATH,
 ) -> dict[int, tuple[float, float]]:
-    """Build minute summaries from the DB-backed normalized cache with CSV fallback."""
+    """Build minute summaries from the DB-backed normalized cache."""
     _games, game_players = prepare_normalized_scope_records(
         teams=teams,
         seasons=seasons,
         season_type=season_type,
-        source_data_dir=source_data_dir
-        or Path("data/source/nba"),
-        normalized_games_input_dir=normalized_games_input_dir,
-        normalized_game_players_input_dir=normalized_game_players_input_dir,
-        wowy_output_dir=wowy_output_dir or Path("data/raw/nba/team_games"),
+        source_data_dir=source_data_dir or Path("data/source/nba"),
         player_metrics_db_path=player_metrics_db_path,
         include_opponents_for_team_scope=False,
         log=lambda *_args, **_kwargs: None,
@@ -171,11 +164,8 @@ def load_player_minute_stats(
 def load_player_season_minute_stats(
     teams: list[str] | None,
     seasons: list[str] | None,
-    normalized_games_input_dir: Path,
-    normalized_game_players_input_dir: Path,
     season_type: str = "Regular Season",
     source_data_dir: Path | None = None,
-    wowy_output_dir: Path | None = None,
     player_metrics_db_path: Path = DEFAULT_PLAYER_METRICS_DB_PATH,
 ) -> dict[tuple[str, int], tuple[float, float]]:
     totals: dict[tuple[str, int], float] = {}
@@ -186,9 +176,6 @@ def load_player_season_minute_stats(
         seasons=seasons,
         season_type=season_type,
         source_data_dir=source_data_dir or Path("data/source/nba"),
-        normalized_games_input_dir=normalized_games_input_dir,
-        normalized_game_players_input_dir=normalized_game_players_input_dir,
-        wowy_output_dir=wowy_output_dir or Path("data/raw/nba/team_games"),
         player_metrics_db_path=player_metrics_db_path,
         include_opponents_for_team_scope=False,
         log=lambda *_args, **_kwargs: None,
@@ -420,9 +407,6 @@ def prepare_wowy_player_season_records(
     seasons: list[str] | None,
     season_type: str,
     source_data_dir: Path,
-    normalized_games_input_dir: Path,
-    normalized_game_players_input_dir: Path,
-    wowy_output_dir: Path,
     min_games_with: int,
     min_games_without: int,
     player_metrics_db_path: Path = DEFAULT_PLAYER_METRICS_DB_PATH,
@@ -441,20 +425,14 @@ def prepare_wowy_player_season_records(
         seasons=seasons,
         season_type=season_type,
         source_data_dir=source_data_dir,
-        normalized_games_input_dir=normalized_games_input_dir,
-        normalized_game_players_input_dir=normalized_game_players_input_dir,
-        wowy_output_dir=wowy_output_dir,
         player_metrics_db_path=player_metrics_db_path,
         log=lambda *_args, **_kwargs: None,
     )
     player_season_minute_stats = load_player_season_minute_stats(
         teams=teams,
         seasons=seasons,
-        normalized_games_input_dir=normalized_games_input_dir,
-        normalized_game_players_input_dir=normalized_game_players_input_dir,
         season_type=season_type,
         source_data_dir=source_data_dir,
-        wowy_output_dir=wowy_output_dir,
         player_metrics_db_path=player_metrics_db_path,
     )
     return build_wowy_player_season_records(
@@ -495,9 +473,6 @@ def prepare_and_run_wowy(
         seasons=args.season,
         season_type=args.season_type,
         source_data_dir=args.source_data_dir,
-        normalized_games_input_dir=args.normalized_games_input_dir,
-        normalized_game_players_input_dir=args.normalized_game_players_input_dir,
-        wowy_output_dir=args.wowy_output_dir,
         player_metrics_db_path=getattr(
             args,
             "player_metrics_db_path",
@@ -507,11 +482,8 @@ def prepare_and_run_wowy(
     player_minute_stats = load_player_minute_stats(
         teams=args.team,
         seasons=args.season,
-        normalized_games_input_dir=args.normalized_games_input_dir,
-        normalized_game_players_input_dir=args.normalized_game_players_input_dir,
         season_type=args.season_type,
         source_data_dir=args.source_data_dir,
-        wowy_output_dir=args.wowy_output_dir,
         player_metrics_db_path=getattr(
             args,
             "player_metrics_db_path",
@@ -526,9 +498,6 @@ def prepare_and_run_wowy(
             seasons=args.season,
             season_type=args.season_type,
             source_data_dir=args.source_data_dir,
-            normalized_games_input_dir=args.normalized_games_input_dir,
-            normalized_game_players_input_dir=args.normalized_game_players_input_dir,
-            wowy_output_dir=args.wowy_output_dir,
             player_metrics_db_path=getattr(
                 args,
                 "player_metrics_db_path",

@@ -6,7 +6,7 @@ The project currently has two analysis paths.
 
 Input:
 
-- derived `games.csv`
+- derived WOWY game records in the app database
 - one row per game from one team's perspective
 
 Score:
@@ -25,8 +25,8 @@ Notes:
 
 Input:
 
-- normalized games
-- normalized game-player rows
+- normalized games in SQLite
+- normalized game-player rows in SQLite
 
 Model:
 

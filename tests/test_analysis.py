@@ -2,6 +2,10 @@ from __future__ import annotations
 
 from pathlib import Path
 
+from wowy.data.normalized_io import (
+    load_normalized_game_players_from_csv,
+    load_normalized_games_from_csv,
+)
 from wowy.data.game_cache_db import replace_team_season_normalized_rows
 from wowy.apps.wowy.service import (
     available_wowy_seasons,
@@ -17,6 +21,28 @@ from wowy.apps.wowy.models import (
     WowyPlayerStats,
 )
 from wowy.nba.models import NormalizedGamePlayerRecord, NormalizedGameRecord
+from wowy.nba.team_seasons import parse_team_season_filename
+
+
+def _seed_db_from_normalized_csv_dirs(
+    db_path: Path,
+    normalized_games_dir: Path,
+    normalized_players_dir: Path,
+) -> None:
+    for games_csv_path in sorted(normalized_games_dir.glob("*.csv")):
+        team_season = parse_team_season_filename(games_csv_path)
+        players_csv_path = normalized_players_dir / games_csv_path.name
+        replace_team_season_normalized_rows(
+            db_path,
+            team=team_season.team,
+            season=team_season.season,
+            season_type="Regular Season",
+            games=load_normalized_games_from_csv(games_csv_path),
+            game_players=load_normalized_game_players_from_csv(players_csv_path),
+            source_path=str(games_csv_path),
+            source_snapshot="test-seed",
+            source_kind="test",
+        )
 
 
 def test_compute_wowy_basic():
@@ -188,16 +214,15 @@ def test_prepare_wowy_player_season_records_builds_web_ready_rows_from_cache(
         "wowy.nba.prepare.load_player_names_from_cache",
         lambda _: {101: "Player 101", 102: "Player 102", 103: "Player 103"},
     )
+    db_path = tmp_path / "app" / "player_metrics.sqlite3"
+    _seed_db_from_normalized_csv_dirs(db_path, normalized_games_dir, normalized_players_dir)
 
     records = prepare_wowy_player_season_records(
         teams=["BOS"],
         seasons=None,
         season_type="Regular Season",
         source_data_dir=tmp_path / "source",
-        normalized_games_input_dir=normalized_games_dir,
-        normalized_game_players_input_dir=normalized_players_dir,
-        wowy_output_dir=tmp_path / "team_games",
-        player_metrics_db_path=tmp_path / "app" / "player_metrics.sqlite3",
+        player_metrics_db_path=db_path,
         min_games_with=1,
         min_games_without=1,
         min_average_minutes=0.0,
@@ -289,9 +314,6 @@ def test_prepare_wowy_player_season_records_uses_db_without_normalized_csv_dirs(
         seasons=None,
         season_type="Regular Season",
         source_data_dir=tmp_path / "source",
-        normalized_games_input_dir=tmp_path / "missing-normalized-games",
-        normalized_game_players_input_dir=tmp_path / "missing-normalized-game-players",
-        wowy_output_dir=tmp_path / "missing-team-games",
         player_metrics_db_path=db_path,
         min_games_with=1,
         min_games_without=1,

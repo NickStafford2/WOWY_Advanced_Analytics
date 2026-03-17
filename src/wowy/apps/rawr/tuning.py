@@ -13,10 +13,7 @@ from wowy.apps.wowy.models import WowyPlayerSeasonRecord
 from wowy.apps.wowy.service import prepare_wowy_player_season_records
 from wowy.data.player_metrics_db import DEFAULT_PLAYER_METRICS_DB_PATH
 from wowy.nba.ingest import (
-    DEFAULT_NORMALIZED_GAME_PLAYERS_DIR,
-    DEFAULT_NORMALIZED_GAMES_DIR,
     DEFAULT_SOURCE_DATA_DIR,
-    DEFAULT_WOWY_GAMES_DIR,
 )
 from wowy.progress import TerminalProgressBar, print_status_box
 
@@ -139,24 +136,6 @@ def build_parser() -> argparse.ArgumentParser:
         "--source-data-dir",
         type=Path,
         default=DEFAULT_SOURCE_DATA_DIR,
-        help=argparse.SUPPRESS,
-    )
-    parser.add_argument(
-        "--normalized-games-input-dir",
-        type=Path,
-        default=DEFAULT_NORMALIZED_GAMES_DIR,
-        help=argparse.SUPPRESS,
-    )
-    parser.add_argument(
-        "--normalized-game-players-input-dir",
-        type=Path,
-        default=DEFAULT_NORMALIZED_GAME_PLAYERS_DIR,
-        help=argparse.SUPPRESS,
-    )
-    parser.add_argument(
-        "--wowy-output-dir",
-        type=Path,
-        default=DEFAULT_WOWY_GAMES_DIR,
         help=argparse.SUPPRESS,
     )
     return parser
@@ -345,9 +324,6 @@ def evaluate_configs(args) -> list[ComparisonResult]:
         seasons=[args.holdout_season],
         season_type=args.season_type,
         source_data_dir=args.source_data_dir,
-        normalized_games_input_dir=args.normalized_games_input_dir,
-        normalized_game_players_input_dir=args.normalized_game_players_input_dir,
-        wowy_output_dir=args.wowy_output_dir,
         player_metrics_db_path=getattr(
             args,
             "player_metrics_db_path",
@@ -367,9 +343,6 @@ def evaluate_configs(args) -> list[ComparisonResult]:
         seasons=args.train_season,
         season_type=args.season_type,
         source_data_dir=args.source_data_dir,
-        normalized_games_input_dir=args.normalized_games_input_dir,
-        normalized_game_players_input_dir=args.normalized_game_players_input_dir,
-        wowy_output_dir=args.wowy_output_dir,
         player_metrics_db_path=getattr(
             args,
             "player_metrics_db_path",
@@ -421,9 +394,6 @@ def evaluate_configs(args) -> list[ComparisonResult]:
                 seasons=args.train_season,
                 season_type=args.season_type,
                 source_data_dir=args.source_data_dir,
-                normalized_games_input_dir=args.normalized_games_input_dir,
-                normalized_game_players_input_dir=args.normalized_game_players_input_dir,
-                wowy_output_dir=args.wowy_output_dir,
                 player_metrics_db_path=getattr(
                     args,
                     "player_metrics_db_path",

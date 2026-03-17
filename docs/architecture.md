@@ -12,12 +12,12 @@ If you add a new user-facing analysis tool, it should usually get its own `apps/
 ## `nba/`
 
 NBA-specific ingestion, cache management, file path conventions, and team-season scope logic live under `src/wowy/nba/`.
-This layer is responsible for getting source data into the local normalized cache and preparing derived files needed by the analysis apps.
+This layer is responsible for getting source data into the local SQLite cache used by the analysis apps.
 
 ## `data/`
 
-CSV loading, writing, and combine utilities live under `src/wowy/data/`.
-This layer should stay focused on file formats and I/O mechanics rather than analysis rules.
+Database access plus any remaining explicit file-format helpers live under `src/wowy/data/`.
+This layer should stay focused on storage and I/O mechanics rather than analysis rules.
 
 ## `shared/`
 
@@ -29,5 +29,5 @@ Use this for logic that is not specific to one analysis path, such as common fil
 
 - Put model-specific logic in `apps/`
 - Put NBA cache and preparation logic in `nba/`
-- Put file I/O and CSV combination logic in `data/`
+- Put database and file I/O mechanics in `data/`
 - Put reusable cross-app helpers in `shared/`

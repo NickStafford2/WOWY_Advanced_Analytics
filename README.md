@@ -4,10 +4,10 @@ Python project for experimenting with historical basketball impact metrics. Desi
 
 ## Overview
 
-The repository currently has two analysis paths built on game-level NBA data:
+The repository currently has two analysis paths built on game-level NBA data stored in SQLite:
 
-- WOWY baseline on derived `games.csv`
-- RAWR on normalized game and player rows
+- WOWY baseline on derived game records loaded from the app database
+- RAWR on normalized game and player rows loaded from the app database
 
 The current web app goal is player comparison over the full cached history.
 The primary WOWY web ranking is the strongest multi-season WOWY profile across that full history, with team filters used only to restrict the underlying game sample when requested.
@@ -78,7 +78,7 @@ poetry run rawr --season 2024-25 --team BOS --tune-ridge
 poetry run wowy --season 2020-21 --season 2021-22 --season 2022-23 --season 2023-24 --season 2024-25 --export-player-seasons data/combined/wowy/player_seasons.csv
 ```
 
-Both CLIs rebuild stale derived WOWY files automatically. If you request a specific scope with `--season` and optionally `--team`, missing team-season data is intended to be fetched automatically.
+Both CLIs read cached team-season data from `data/app/player_metrics.sqlite3`. If you request a specific scope with `--season` and optionally `--team`, missing team-season data is fetched into the database automatically.
 
 TODO: `--team` without `--season` still depends on already-cached seasons. Align that with the intended eager-fetch behavior.
 
@@ -96,17 +96,7 @@ Fetch many seasons:
 poetry run python scripts/cache_all_seasons.py --start-year 2024 --first-year 2022
 ```
 
-Report cache status for one season:
-
-```bash
-poetry run python scripts/cache_season_status.py 2024-25 --teams BOS NYK
-```
-
-Rebuild combined RAWR inputs from normalized files:
-
-```bash
-poetry run python -m wowy.data.combine_cli
-```
+Runtime analysis and the web app do not depend on `data/normalized`, `data/raw`, or `data/combined`. The only live project data stores are the source cache under `data/source` and the SQLite app store under `data/app`.
 
 ## Output notes
 

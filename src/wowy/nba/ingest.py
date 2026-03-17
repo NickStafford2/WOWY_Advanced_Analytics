@@ -23,18 +23,10 @@ from wowy.nba.normalize import (
     result_set_to_data_frame,
 )
 from wowy.nba.team_seasons import TeamSeasonScope
-from wowy.nba.validation import validate_team_season_files
 from wowy.nba.validation import validate_team_season_records
 from wowy.nba.seasons import canonicalize_season_string
-from wowy.data.normalized_io import (
-    write_normalized_game_players_csv,
-    write_normalized_games_csv,
-)
 
 
-DEFAULT_NORMALIZED_GAMES_DIR = Path("data/normalized/nba/games")
-DEFAULT_NORMALIZED_GAME_PLAYERS_DIR = Path("data/normalized/nba/game_players")
-DEFAULT_WOWY_GAMES_DIR = Path("data/raw/nba/team_games")
 ProgressFn = Callable[[dict], None]
 
 TEAM_ABBREVIATION_ALIASES = {
@@ -198,40 +190,9 @@ def build_team_season_artifacts(
     )
     return TeamSeasonBuildResult(artifacts=artifacts, summary=summary)
 
-
-def write_team_season_normalized_csvs(
-    team_abbreviation: str,
-    season: str,
-    games_csv_path: Path | str,
-    game_players_csv_path: Path | str,
-    season_type: str = "Regular Season",
-    source_data_dir: Path = DEFAULT_SOURCE_DATA_DIR,
-    log: Callable[[str], None] | None = print,
-    progress: ProgressFn | None = None,
-) -> tuple[list[NormalizedGameRecord], list[NormalizedGamePlayerRecord]]:
-    season = canonicalize_season_string(season)
-    result = build_team_season_artifacts(
-        team_abbreviation=team_abbreviation,
-        season=season,
-        season_type=season_type,
-        source_data_dir=source_data_dir,
-        log=log,
-        progress=progress,
-    )
-    write_normalized_games_csv(games_csv_path, result.artifacts.normalized_games)
-    write_normalized_game_players_csv(
-        game_players_csv_path,
-        result.artifacts.normalized_game_players,
-    )
-    return result.artifacts.normalized_games, result.artifacts.normalized_game_players
-
-
 def write_team_season_games_csv(
     team_abbreviation: str,
     season: str,
-    csv_path: Path | str | None = None,
-    normalized_games_csv_path: Path | str | None = None,
-    normalized_game_players_csv_path: Path | str | None = None,
     season_type: str = "Regular Season",
     source_data_dir: Path = DEFAULT_SOURCE_DATA_DIR,
     player_metrics_db_path: Path = DEFAULT_PLAYER_METRICS_DB_PATH,
@@ -240,9 +201,8 @@ def write_team_season_games_csv(
 ) -> TeamSeasonRunSummary:
     season = canonicalize_season_string(season)
     normalized_games_source_path = (
-        str(Path(normalized_games_csv_path))
-        if normalized_games_csv_path is not None
-        else f"sqlite://normalized_games/{team_abbreviation.upper()}_{season}_{season_type_slug(season_type)}"
+        f"sqlite://normalized_games/"
+        f"{team_abbreviation.upper()}_{season}_{season_type_slug(season_type)}"
     )
     result = build_team_season_artifacts(
         team_abbreviation=team_abbreviation,

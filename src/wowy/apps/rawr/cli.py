@@ -4,12 +4,7 @@ import argparse
 from pathlib import Path
 
 from wowy.data.player_metrics_db import DEFAULT_PLAYER_METRICS_DB_PATH
-from wowy.nba.ingest import (
-    DEFAULT_NORMALIZED_GAME_PLAYERS_DIR,
-    DEFAULT_NORMALIZED_GAMES_DIR,
-    DEFAULT_SOURCE_DATA_DIR,
-    DEFAULT_WOWY_GAMES_DIR,
-)
+from wowy.nba.ingest import DEFAULT_SOURCE_DATA_DIR
 from wowy.apps.rawr.service import prepare_and_run_rawr
 
 
@@ -38,24 +33,6 @@ def build_parser() -> argparse.ArgumentParser:
         "--source-data-dir",
         type=Path,
         default=DEFAULT_SOURCE_DATA_DIR,
-        help=argparse.SUPPRESS,
-    )
-    parser.add_argument(
-        "--normalized-games-input-dir",
-        type=Path,
-        default=DEFAULT_NORMALIZED_GAMES_DIR,
-        help=argparse.SUPPRESS,
-    )
-    parser.add_argument(
-        "--normalized-game-players-input-dir",
-        type=Path,
-        default=DEFAULT_NORMALIZED_GAME_PLAYERS_DIR,
-        help=argparse.SUPPRESS,
-    )
-    parser.add_argument(
-        "--wowy-output-dir",
-        type=Path,
-        default=DEFAULT_WOWY_GAMES_DIR,
         help=argparse.SUPPRESS,
     )
     parser.add_argument(

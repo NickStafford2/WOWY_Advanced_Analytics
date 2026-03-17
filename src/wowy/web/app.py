@@ -6,12 +6,7 @@ from typing import Any
 from wowy.apps.rawr.service import validate_filters as validate_rawr_filters
 from wowy.apps.wowy.service import validate_filters as validate_wowy_filters
 from wowy.data.player_metrics_db import DEFAULT_PLAYER_METRICS_DB_PATH
-from wowy.nba.ingest import (
-    DEFAULT_NORMALIZED_GAME_PLAYERS_DIR,
-    DEFAULT_NORMALIZED_GAMES_DIR,
-    DEFAULT_SOURCE_DATA_DIR,
-    DEFAULT_WOWY_GAMES_DIR,
-)
+from wowy.nba.ingest import DEFAULT_SOURCE_DATA_DIR
 from wowy.nba.seasons import canonicalize_season_string
 from wowy.web.service import (
     DEFAULT_RAWR_RIDGE_ALPHA,
@@ -43,9 +38,6 @@ def _parse_optional_float(raw_value: str | None, default: float) -> float:
 def create_app(
     *,
     source_data_dir: Path = DEFAULT_SOURCE_DATA_DIR,
-    normalized_games_input_dir: Path = DEFAULT_NORMALIZED_GAMES_DIR,
-    normalized_game_players_input_dir: Path = DEFAULT_NORMALIZED_GAME_PLAYERS_DIR,
-    wowy_output_dir: Path = DEFAULT_WOWY_GAMES_DIR,
     player_metrics_db_path: Path = DEFAULT_PLAYER_METRICS_DB_PATH,
 ):
     from flask import Flask, jsonify, request
@@ -112,9 +104,6 @@ def create_app(
                 request,
                 metric=metric,
                 source_data_dir=source_data_dir,
-                normalized_games_input_dir=normalized_games_input_dir,
-                normalized_game_players_input_dir=normalized_game_players_input_dir,
-                wowy_output_dir=wowy_output_dir,
                 player_metrics_db_path=player_metrics_db_path,
             )
         except ValueError as exc:
@@ -276,9 +265,6 @@ def _build_metric_custom_query_payload(
     *,
     metric: str,
     source_data_dir: Path,
-    normalized_games_input_dir: Path,
-    normalized_game_players_input_dir: Path,
-    wowy_output_dir: Path,
     player_metrics_db_path: Path,
 ) -> dict[str, Any]:
     filter_values = _parse_request_filters(
@@ -296,9 +282,6 @@ def _build_metric_custom_query_payload(
             season_type=season_type,
             top_n=filter_values["top_n"],
             source_data_dir=source_data_dir,
-            normalized_games_input_dir=normalized_games_input_dir,
-            normalized_game_players_input_dir=normalized_game_players_input_dir,
-            wowy_output_dir=wowy_output_dir,
             player_metrics_db_path=player_metrics_db_path,
             min_games_with=int(filter_values["min_sample_size"]),
             min_games_without=int(filter_values["min_secondary_sample_size"]),
@@ -312,9 +295,6 @@ def _build_metric_custom_query_payload(
             season_type=season_type,
             top_n=filter_values["top_n"],
             source_data_dir=source_data_dir,
-            normalized_games_input_dir=normalized_games_input_dir,
-            normalized_game_players_input_dir=normalized_game_players_input_dir,
-            wowy_output_dir=wowy_output_dir,
             player_metrics_db_path=player_metrics_db_path,
             min_games=int(filter_values["min_sample_size"]),
             ridge_alpha=float(filter_values["ridge_alpha"]),

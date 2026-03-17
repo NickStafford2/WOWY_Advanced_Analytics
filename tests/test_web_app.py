@@ -2,35 +2,66 @@ from __future__ import annotations
 
 from pathlib import Path
 
+from wowy.data.game_cache_db import replace_team_season_normalized_rows
+from wowy.data.normalized_io import (
+    load_normalized_game_players_from_csv,
+    load_normalized_games_from_csv,
+)
 from wowy.data.player_metrics_db import load_metric_rows
+from wowy.nba.team_seasons import parse_team_season_filename
 from wowy.web.app import create_app
 from wowy.web.service import build_scope_key, refresh_metric_store
 
 
+def _seed_db_from_normalized_csv_dirs(
+    db_path: Path,
+    normalized_games_dir: Path,
+    normalized_players_dir: Path,
+) -> None:
+    for games_csv_path in sorted(normalized_games_dir.glob("*.csv")):
+        team_season = parse_team_season_filename(games_csv_path)
+        players_csv_path = normalized_players_dir / games_csv_path.name
+        replace_team_season_normalized_rows(
+            db_path,
+            team=team_season.team,
+            season=team_season.season,
+            season_type="Regular Season",
+            games=load_normalized_games_from_csv(games_csv_path),
+            game_players=load_normalized_game_players_from_csv(players_csv_path),
+            source_path=str(games_csv_path),
+            source_snapshot="test-seed",
+            source_kind="test",
+        )
+
+
 def _refresh_wowy_store(tmp_path: Path) -> Path:
     player_metrics_db_path = tmp_path / "app" / "player_metrics.sqlite3"
+    _seed_db_from_normalized_csv_dirs(
+        player_metrics_db_path,
+        tmp_path / "normalized_games",
+        tmp_path / "normalized_game_players",
+    )
     refresh_metric_store(
         "wowy",
         season_type="Regular Season",
         db_path=player_metrics_db_path,
         source_data_dir=tmp_path / "source",
-        normalized_games_input_dir=tmp_path / "normalized_games",
-        normalized_game_players_input_dir=tmp_path / "normalized_game_players",
-        wowy_output_dir=tmp_path / "team_games",
     )
     return player_metrics_db_path
 
 
 def _refresh_rawr_store(tmp_path: Path) -> Path:
     player_metrics_db_path = tmp_path / "app" / "player_metrics.sqlite3"
+    _seed_db_from_normalized_csv_dirs(
+        player_metrics_db_path,
+        tmp_path / "normalized_games",
+        tmp_path / "normalized_game_players",
+    )
     refresh_metric_store(
         "rawr",
         season_type="Regular Season",
         db_path=player_metrics_db_path,
         source_data_dir=tmp_path / "source",
-        normalized_games_input_dir=tmp_path / "normalized_games",
-        normalized_game_players_input_dir=tmp_path / "normalized_game_players",
-        wowy_output_dir=tmp_path / "team_games",
     )
     return player_metrics_db_path
 
@@ -183,9 +214,6 @@ def test_rawr_options_endpoint_returns_metric_specific_filters(
 
     app = create_app(
         source_data_dir=tmp_path / "source",
-        normalized_games_input_dir=normalized_games_dir,
-        normalized_game_players_input_dir=normalized_players_dir,
-        wowy_output_dir=tmp_path / "team_games",
         player_metrics_db_path=player_metrics_db_path,
     )
     client = app.test_client()
@@ -222,9 +250,6 @@ def test_rawr_player_seasons_endpoint_accepts_metric_specific_filters(
 
     app = create_app(
         source_data_dir=tmp_path / "source",
-        normalized_games_input_dir=normalized_games_dir,
-        normalized_game_players_input_dir=normalized_players_dir,
-        wowy_output_dir=tmp_path / "team_games",
         player_metrics_db_path=player_metrics_db_path,
     )
     client = app.test_client()
@@ -272,9 +297,6 @@ def test_rawr_player_seasons_endpoint_rejects_invalid_filters(
 ):
     app = create_app(
         source_data_dir=tmp_path / "source",
-        normalized_games_input_dir=tmp_path / "normalized_games",
-        normalized_game_players_input_dir=tmp_path / "normalized_game_players",
-        wowy_output_dir=tmp_path / "team_games",
         player_metrics_db_path=tmp_path / "app" / "player_metrics.sqlite3",
     )
     client = app.test_client()
@@ -302,9 +324,6 @@ def test_rawr_cached_leaderboard_endpoint_returns_cached_series(
 
     app = create_app(
         source_data_dir=tmp_path / "source",
-        normalized_games_input_dir=normalized_games_dir,
-        normalized_game_players_input_dir=normalized_players_dir,
-        wowy_output_dir=tmp_path / "team_games",
         player_metrics_db_path=player_metrics_db_path,
     )
     client = app.test_client()
@@ -338,16 +357,18 @@ def test_rawr_custom_query_endpoint_recalculates_requested_span(
     tmp_path: Path,
     monkeypatch,
 ):
-    normalized_games_dir, normalized_players_dir = _seed_rawr_cache_inputs(
+    _seed_rawr_cache_inputs(
         tmp_path,
         monkeypatch,
+    )
+    _seed_db_from_normalized_csv_dirs(
+        tmp_path / "app" / "player_metrics.sqlite3",
+        tmp_path / "normalized_games",
+        tmp_path / "normalized_game_players",
     )
 
     app = create_app(
         source_data_dir=tmp_path / "source",
-        normalized_games_input_dir=normalized_games_dir,
-        normalized_game_players_input_dir=normalized_players_dir,
-        wowy_output_dir=tmp_path / "team_games",
         player_metrics_db_path=tmp_path / "app" / "player_metrics.sqlite3",
     )
     client = app.test_client()
@@ -394,9 +415,6 @@ def test_rawr_custom_query_endpoint_recalculates_requested_span(
 def test_rawr_custom_query_endpoint_rejects_invalid_filters(tmp_path: Path):
     app = create_app(
         source_data_dir=tmp_path / "source",
-        normalized_games_input_dir=tmp_path / "normalized_games",
-        normalized_game_players_input_dir=tmp_path / "normalized_game_players",
-        wowy_output_dir=tmp_path / "team_games",
         player_metrics_db_path=tmp_path / "app" / "player_metrics.sqlite3",
     )
     client = app.test_client()
@@ -448,12 +466,14 @@ def test_rawr_custom_query_skips_seasons_without_qualifying_players(
         ),
         encoding="utf-8",
     )
+    _seed_db_from_normalized_csv_dirs(
+        tmp_path / "app" / "player_metrics.sqlite3",
+        normalized_games_dir,
+        normalized_players_dir,
+    )
 
     app = create_app(
         source_data_dir=tmp_path / "source",
-        normalized_games_input_dir=normalized_games_dir,
-        normalized_game_players_input_dir=normalized_players_dir,
-        wowy_output_dir=tmp_path / "team_games",
         player_metrics_db_path=tmp_path / "app" / "player_metrics.sqlite3",
     )
     client = app.test_client()
@@ -543,9 +563,6 @@ def test_wowy_options_endpoint_returns_cached_teams_and_seasons(
 
     app = create_app(
         source_data_dir=tmp_path / "source",
-        normalized_games_input_dir=normalized_games_dir,
-        normalized_game_players_input_dir=normalized_players_dir,
-        wowy_output_dir=tmp_path / "team_games",
         player_metrics_db_path=player_metrics_db_path,
     )
     client = app.test_client()
@@ -606,9 +623,6 @@ def test_wowy_player_seasons_endpoint_returns_rows_from_cache(
 
     app = create_app(
         source_data_dir=tmp_path / "source",
-        normalized_games_input_dir=normalized_games_dir,
-        normalized_game_players_input_dir=normalized_players_dir,
-        wowy_output_dir=tmp_path / "team_games",
         player_metrics_db_path=player_metrics_db_path,
     )
     client = app.test_client()
@@ -677,9 +691,6 @@ def test_wowy_player_seasons_endpoint_returns_bad_request_for_invalid_filters(
 ):
     app = create_app(
         source_data_dir=tmp_path / "source",
-        normalized_games_input_dir=tmp_path / "normalized_games",
-        normalized_game_players_input_dir=tmp_path / "normalized_game_players",
-        wowy_output_dir=tmp_path / "team_games",
         player_metrics_db_path=tmp_path / "app" / "player_metrics.sqlite3",
     )
     client = app.test_client()
@@ -698,9 +709,6 @@ def test_wowy_player_seasons_endpoint_returns_bad_request_for_invalid_filters(
 def test_wowy_options_endpoint_requires_prebuilt_store(tmp_path: Path):
     app = create_app(
         source_data_dir=tmp_path / "source",
-        normalized_games_input_dir=tmp_path / "normalized_games",
-        normalized_game_players_input_dir=tmp_path / "normalized_game_players",
-        wowy_output_dir=tmp_path / "team_games",
         player_metrics_db_path=tmp_path / "app" / "player_metrics.sqlite3",
     )
     client = app.test_client()
@@ -768,9 +776,6 @@ def test_wowy_span_chart_endpoint_returns_series_for_selected_span(
 
     app = create_app(
         source_data_dir=tmp_path / "source",
-        normalized_games_input_dir=normalized_games_dir,
-        normalized_game_players_input_dir=normalized_players_dir,
-        wowy_output_dir=tmp_path / "team_games",
         player_metrics_db_path=player_metrics_db_path,
     )
     client = app.test_client()
@@ -875,9 +880,6 @@ def test_wowy_cached_leaderboard_endpoint_returns_server_ranked_rows(
 
     app = create_app(
         source_data_dir=tmp_path / "source",
-        normalized_games_input_dir=normalized_games_dir,
-        normalized_game_players_input_dir=normalized_players_dir,
-        wowy_output_dir=tmp_path / "team_games",
         player_metrics_db_path=player_metrics_db_path,
     )
     client = app.test_client()
@@ -962,12 +964,14 @@ def test_wowy_custom_query_endpoint_recalculates_requested_span(
         "wowy.nba.prepare.load_player_names_from_cache",
         lambda _: {101: "Player 101", 102: "Player 102", 103: "Player 103"},
     )
+    _seed_db_from_normalized_csv_dirs(
+        tmp_path / "app" / "player_metrics.sqlite3",
+        normalized_games_dir,
+        normalized_players_dir,
+    )
 
     app = create_app(
         source_data_dir=tmp_path / "source",
-        normalized_games_input_dir=normalized_games_dir,
-        normalized_game_players_input_dir=normalized_players_dir,
-        wowy_output_dir=tmp_path / "team_games",
         player_metrics_db_path=tmp_path / "app" / "player_metrics.sqlite3",
     )
     client = app.test_client()

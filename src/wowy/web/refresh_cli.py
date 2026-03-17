@@ -4,12 +4,7 @@ import argparse
 from pathlib import Path
 
 from wowy.data.player_metrics_db import DEFAULT_PLAYER_METRICS_DB_PATH
-from wowy.nba.ingest import (
-    DEFAULT_NORMALIZED_GAME_PLAYERS_DIR,
-    DEFAULT_NORMALIZED_GAMES_DIR,
-    DEFAULT_SOURCE_DATA_DIR,
-    DEFAULT_WOWY_GAMES_DIR,
-)
+from wowy.nba.ingest import DEFAULT_SOURCE_DATA_DIR
 from wowy.progress import TerminalProgressBar, print_status_box
 from wowy.web.service import (
     DEFAULT_RAWR_RIDGE_ALPHA,
@@ -47,24 +42,6 @@ def build_parser() -> argparse.ArgumentParser:
         help=argparse.SUPPRESS,
     )
     parser.add_argument(
-        "--normalized-games-input-dir",
-        type=Path,
-        default=DEFAULT_NORMALIZED_GAMES_DIR,
-        help=argparse.SUPPRESS,
-    )
-    parser.add_argument(
-        "--normalized-game-players-input-dir",
-        type=Path,
-        default=DEFAULT_NORMALIZED_GAME_PLAYERS_DIR,
-        help=argparse.SUPPRESS,
-    )
-    parser.add_argument(
-        "--wowy-output-dir",
-        type=Path,
-        default=DEFAULT_WOWY_GAMES_DIR,
-        help=argparse.SUPPRESS,
-    )
-    parser.add_argument(
         "--player-metrics-db-path",
         type=Path,
         default=DEFAULT_PLAYER_METRICS_DB_PATH,
@@ -92,9 +69,6 @@ def main(argv: list[str] | None = None) -> int:
         season_type=args.season_type,
         db_path=args.player_metrics_db_path,
         source_data_dir=args.source_data_dir,
-        normalized_games_input_dir=args.normalized_games_input_dir,
-        normalized_game_players_input_dir=args.normalized_game_players_input_dir,
-        wowy_output_dir=args.wowy_output_dir,
         rawr_ridge_alpha=args.rawr_ridge_alpha,
         progress=lambda current, total, detail: _update_progress(
             progress_bar,

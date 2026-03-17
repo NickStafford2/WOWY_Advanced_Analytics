@@ -8,7 +8,6 @@ from wowy.apps.rawr.models import RawrPlayerSeasonRecord
 from wowy.apps.rawr.service import prepare_rawr_player_season_records
 from wowy.apps.wowy.models import WowyPlayerSeasonRecord
 from wowy.apps.wowy.service import prepare_wowy_player_season_records
-from wowy.nba.cache_migration import migrate_normalized_regular_season_cache_to_db
 from wowy.data.game_cache_db import build_normalized_cache_fingerprint
 from wowy.data.player_metrics_db import (
     DEFAULT_PLAYER_METRICS_DB_PATH,
@@ -54,9 +53,6 @@ def _build_wowy_rows(
     team_filter: str,
     season_type: str,
     source_data_dir: Path,
-    normalized_games_input_dir: Path,
-    normalized_game_players_input_dir: Path,
-    wowy_output_dir: Path,
     db_path: Path,
     teams: list[str] | None,
     rawr_ridge_alpha: float,
@@ -66,9 +62,6 @@ def _build_wowy_rows(
         seasons=None,
         season_type=season_type,
         source_data_dir=source_data_dir,
-        normalized_games_input_dir=normalized_games_input_dir,
-        normalized_game_players_input_dir=normalized_game_players_input_dir,
-        wowy_output_dir=wowy_output_dir,
         player_metrics_db_path=db_path,
         min_games_with=0,
         min_games_without=0,
@@ -107,9 +100,6 @@ def _build_rawr_rows(
     team_filter: str,
     season_type: str,
     source_data_dir: Path,
-    normalized_games_input_dir: Path,
-    normalized_game_players_input_dir: Path,
-    wowy_output_dir: Path,
     db_path: Path,
     teams: list[str] | None,
     rawr_ridge_alpha: float,
@@ -119,9 +109,6 @@ def _build_rawr_rows(
         seasons=None,
         season_type=season_type,
         source_data_dir=source_data_dir,
-        normalized_games_input_dir=normalized_games_input_dir,
-        normalized_game_players_input_dir=normalized_game_players_input_dir,
-        wowy_output_dir=wowy_output_dir,
         player_metrics_db_path=db_path,
         min_games=1,
         ridge_alpha=rawr_ridge_alpha,
@@ -189,26 +176,15 @@ def refresh_metric_store(
     season_type: str,
     db_path: Path = DEFAULT_PLAYER_METRICS_DB_PATH,
     source_data_dir: Path,
-    normalized_games_input_dir: Path,
-    normalized_game_players_input_dir: Path,
-    wowy_output_dir: Path,
     rawr_ridge_alpha: float = DEFAULT_RAWR_RIDGE_ALPHA,
     progress: RefreshProgressFn | None = None,
 ) -> None:
     definition = get_metric_definition(metric)
-    if season_type == "Regular Season":
-        migrate_normalized_regular_season_cache_to_db(
-            normalized_games_input_dir=normalized_games_input_dir,
-            normalized_game_players_input_dir=normalized_game_players_input_dir,
-            wowy_output_dir=wowy_output_dir,
-            player_metrics_db_path=db_path,
-        )
     source_fingerprint = build_normalized_cache_fingerprint(
         db_path,
         season_type=season_type,
     )
     cached_team_seasons = list_cached_team_seasons(
-        normalized_games_input_dir,
         player_metrics_db_path=db_path,
         season_type=season_type,
     )
@@ -247,9 +223,6 @@ def refresh_metric_store(
             team_filter=team_filter,
             season_type=season_type,
             source_data_dir=source_data_dir,
-            normalized_games_input_dir=normalized_games_input_dir,
-            normalized_game_players_input_dir=normalized_game_players_input_dir,
-            wowy_output_dir=wowy_output_dir,
             db_path=db_path,
             teams=teams,
             rawr_ridge_alpha=rawr_ridge_alpha,
@@ -354,9 +327,6 @@ def build_custom_wowy_leaderboard_payload(
     season_type: str,
     top_n: int,
     source_data_dir: Path,
-    normalized_games_input_dir: Path,
-    normalized_game_players_input_dir: Path,
-    wowy_output_dir: Path,
     player_metrics_db_path: Path = DEFAULT_PLAYER_METRICS_DB_PATH,
     min_games_with: int,
     min_games_without: int,
@@ -368,9 +338,6 @@ def build_custom_wowy_leaderboard_payload(
         seasons=seasons,
         season_type=season_type,
         source_data_dir=source_data_dir,
-        normalized_games_input_dir=normalized_games_input_dir,
-        normalized_game_players_input_dir=normalized_game_players_input_dir,
-        wowy_output_dir=wowy_output_dir,
         player_metrics_db_path=player_metrics_db_path,
         min_games_with=min_games_with,
         min_games_without=min_games_without,
@@ -394,9 +361,6 @@ def build_custom_rawr_leaderboard_payload(
     season_type: str,
     top_n: int,
     source_data_dir: Path,
-    normalized_games_input_dir: Path,
-    normalized_game_players_input_dir: Path,
-    wowy_output_dir: Path,
     player_metrics_db_path: Path = DEFAULT_PLAYER_METRICS_DB_PATH,
     min_games: int,
     ridge_alpha: float,
@@ -408,9 +372,6 @@ def build_custom_rawr_leaderboard_payload(
         seasons=seasons,
         season_type=season_type,
         source_data_dir=source_data_dir,
-        normalized_games_input_dir=normalized_games_input_dir,
-        normalized_game_players_input_dir=normalized_game_players_input_dir,
-        wowy_output_dir=wowy_output_dir,
         player_metrics_db_path=player_metrics_db_path,
         min_games=min_games,
         ridge_alpha=ridge_alpha,

@@ -104,9 +104,6 @@ def test_evaluate_configs_compares_wowy_and_rawr(monkeypatch):
         min_total_minutes=600.0,
         top_n=2,
         source_data_dir=None,
-        normalized_games_input_dir=None,
-        normalized_game_players_input_dir=None,
-        wowy_output_dir=None,
     )
 
     results = evaluate_configs(args)
