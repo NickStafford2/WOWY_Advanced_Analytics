@@ -2,14 +2,105 @@
   font-family: "Avenir Next", "Segoe UI", sans-serif;
   line-height: 1.5;
   font-weight: 400;
-  color: #1f2a33;
-  background:
+  color: var(--text-primary);
+  background: var(--app-background);
+  color-scheme: light;
+  --text-primary: #1f2a33;
+  --text-secondary: #445464;
+  --text-muted: #5d6f7c;
+  --text-soft: #6a7986;
+  --text-faint: #687886;
+  --text-inverse: #fffdf6;
+  --accent-warm: #8d5a2b;
+  --accent-gradient: linear-gradient(135deg, #264653, #2a9d8f);
+  --accent-gradient-strong: linear-gradient(135deg, rgba(38, 70, 83, 0.98), rgba(42, 157, 143, 0.96));
+  --app-background:
     radial-gradient(circle at top, rgba(244, 162, 97, 0.14), transparent 28%),
     linear-gradient(180deg, #fff8ef, #f3f8f8 48%, #f7f3ea);
+  --panel-background: rgba(255, 255, 255, 0.95);
+  --panel-muted-background: rgba(250, 250, 247, 0.92);
+  --panel-soft-background: rgba(255, 253, 248, 0.88);
+  --panel-card-background: rgba(255, 255, 255, 0.6);
+  --hero-background:
+    radial-gradient(circle at top left, rgba(232, 111, 81, 0.18), transparent 35%),
+    radial-gradient(circle at right, rgba(42, 157, 143, 0.18), transparent 32%),
+    linear-gradient(135deg, rgba(255, 248, 239, 0.94), rgba(248, 252, 250, 0.98));
+  --glass-background: rgba(255, 255, 255, 0.74);
+  --input-background: rgba(255, 255, 255, 0.92);
+  --chip-background: rgba(255, 255, 255, 0.88);
+  --panel-border: rgba(50, 63, 79, 0.14);
+  --panel-border-soft: rgba(52, 62, 74, 0.08);
+  --control-border: rgba(51, 63, 78, 0.18);
+  --accent-border: rgba(38, 70, 83, 0.28);
+  --panel-shadow: 0 18px 48px rgba(25, 36, 48, 0.08);
+  --table-background: linear-gradient(180deg, #fffdf8, #f7fbfb);
+  --table-head-background: #f6f2e8;
+  --table-alt-row: rgba(238, 245, 244, 0.55);
+  --meta-background: #eff5f4;
+  --meta-text: #3f5866;
+  --status-background: #f4f1e9;
+  --status-text: #594e3c;
+  --status-error-background: #fce8e3;
+  --status-error-text: #9b3d2c;
+  --status-loading-background: linear-gradient(135deg, rgba(244, 241, 233, 0.96), rgba(238, 245, 244, 0.96));
+  --status-phase-background: rgba(255, 255, 255, 0.68);
+  --status-phase-background-active: rgba(255, 255, 255, 0.9);
+  --status-track: rgba(38, 70, 83, 0.12);
+  --grid-line: rgba(48, 60, 74, 0.12);
+  --chart-frame-background: linear-gradient(180deg, #fffdf8, #f7fbfb);
+  --legend-background: linear-gradient(180deg, #faf6ee, #f6fbfa);
+  --focus-outline: rgba(42, 157, 143, 0.24);
   font-synthesis: none;
   text-rendering: optimizeLegibility;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+}
+
+:root[data-theme='dark'] {
+  color-scheme: dark;
+  --text-primary: #e8f0f1;
+  --text-secondary: #ced9dd;
+  --text-muted: #a8b8bf;
+  --text-soft: #92a5ad;
+  --text-faint: #8aa0aa;
+  --text-inverse: #f4f8f7;
+  --accent-warm: #f0b36e;
+  --app-background:
+    radial-gradient(circle at top, rgba(231, 111, 81, 0.14), transparent 28%),
+    linear-gradient(180deg, #0d151b, #101d24 48%, #122129);
+  --panel-background: rgba(18, 29, 36, 0.94);
+  --panel-muted-background: rgba(19, 31, 39, 0.92);
+  --panel-soft-background: rgba(20, 33, 41, 0.9);
+  --panel-card-background: rgba(28, 43, 52, 0.72);
+  --hero-background:
+    radial-gradient(circle at top left, rgba(231, 111, 81, 0.22), transparent 35%),
+    radial-gradient(circle at right, rgba(42, 157, 143, 0.18), transparent 32%),
+    linear-gradient(135deg, rgba(18, 29, 36, 0.96), rgba(16, 39, 44, 0.98));
+  --glass-background: rgba(18, 29, 36, 0.78);
+  --input-background: rgba(13, 22, 28, 0.94);
+  --chip-background: rgba(19, 31, 39, 0.94);
+  --panel-border: rgba(119, 146, 158, 0.18);
+  --panel-border-soft: rgba(133, 159, 172, 0.14);
+  --control-border: rgba(131, 157, 169, 0.22);
+  --accent-border: rgba(72, 166, 154, 0.42);
+  --panel-shadow: 0 22px 56px rgba(0, 0, 0, 0.34);
+  --table-background: linear-gradient(180deg, #132027, #0f1a20);
+  --table-head-background: #1a2b34;
+  --table-alt-row: rgba(32, 51, 61, 0.55);
+  --meta-background: #16303a;
+  --meta-text: #bed0d6;
+  --status-background: #1e2c34;
+  --status-text: #d6d9c9;
+  --status-error-background: #412425;
+  --status-error-text: #f2beb6;
+  --status-loading-background: linear-gradient(135deg, rgba(23, 38, 46, 0.96), rgba(17, 31, 39, 0.96));
+  --status-phase-background: rgba(20, 34, 42, 0.82);
+  --status-phase-background-active: rgba(28, 45, 54, 0.96);
+  --status-track: rgba(92, 124, 137, 0.24);
+  --grid-line: rgba(139, 163, 174, 0.16);
+  --chart-frame-background: linear-gradient(180deg, #132027, #0f1a20);
+  --legend-background: linear-gradient(180deg, #132027, #102028);
+  --focus-outline: rgba(75, 179, 165, 0.32);
 }
 
 * {
@@ -24,6 +115,8 @@ body,
 
 body {
   margin: 0;
+  color: var(--text-primary);
+  background: var(--app-background);
 }
 
 button,
@@ -35,6 +128,6 @@ select {
 button:focus-visible,
 input:focus-visible,
 select:focus-visible {
-  outline: 3px solid rgba(42, 157, 143, 0.24);
+  outline: 3px solid var(--focus-outline);
   outline-offset: 2px;
 }

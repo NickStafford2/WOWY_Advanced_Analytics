@@ -9,9 +9,11 @@ import type { ResultsTableRow } from './components/ResultsTable'
 import './App.css'
 
 const LOADING_PANEL_DELAY_MS = 250
+const THEME_STORAGE_KEY = 'wowy-theme'
 
 type AppMode = 'cached' | 'custom'
 type MetricId = 'wowy' | 'wowy_shrunk' | 'rawr'
+type ThemeMode = 'light' | 'dark'
 
 type MetricFilters = {
   team: string[] | null
@@ -77,6 +79,7 @@ type LoadingPanelModel = {
 function App() {
   const headerRef = useRef<HTMLElement | null>(null)
   const [headerHeight, setHeaderHeight] = useState(0)
+  const [theme, setTheme] = useState<ThemeMode>(resolveInitialTheme)
   const [metric, setMetric] = useState<MetricId>('wowy')
   const [mode, setMode] = useState<AppMode>('cached')
   const [metricLabel, setMetricLabel] = useState('WOWY')
@@ -170,6 +173,11 @@ function App() {
     resizeObserver.observe(headerElement)
     return () => resizeObserver.disconnect()
   }, [])
+
+  useEffect(() => {
+    document.documentElement.dataset.theme = theme
+    window.localStorage.setItem(THEME_STORAGE_KEY, theme)
+  }, [theme])
 
   const loadOptions = useEffectEvent(async (nextMetric: MetricId) => {
     setIsBootstrapping(true)
@@ -331,8 +339,7 @@ function App() {
               {metricDescription}
             </p>
           </div>
-          <div className='metric-container'>
-
+          <div className="metric-container">
             <div className="metric-select">
               <div className="mode-toggle" role="tablist" aria-label="Metric selector">
                 <button
@@ -358,7 +365,7 @@ function App() {
                 </button>
               </div>
             </div>
-            <div className='metric-select' >
+            <div className="metric-select">
               <div className="mode-toggle" role="tablist" aria-label="Query mode">
                 <button
                   type="button"
@@ -376,7 +383,15 @@ function App() {
                 </button>
               </div>
             </div>
-
+            <div className="theme-toggle-row">
+              <button
+                type="button"
+                className="theme-toggle-button"
+                onClick={() => setTheme((current) => (current === 'light' ? 'dark' : 'light'))}
+              >
+                {theme === 'light' ? 'Dark mode' : 'Light mode'}
+              </button>
+            </div>
           </div>
         </div>
       </section>
@@ -716,3 +731,11 @@ async function fetchJson(url: string): Promise<unknown> {
 }
 
 export default App
+
+function resolveInitialTheme(): ThemeMode {
+  const storedTheme = window.localStorage.getItem(THEME_STORAGE_KEY)
+  if (storedTheme === 'light' || storedTheme === 'dark') {
+    return storedTheme
+  }
+  return window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light'
+}
