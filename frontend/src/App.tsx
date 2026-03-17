@@ -383,7 +383,7 @@ function App() {
                   className={mode === 'custom' ? 'mode-tab active' : 'mode-tab'}
                   onClick={() => setMode('custom')}
                 >
-                  Custom query
+                  Customize Query
                 </button>
               </div>
             </div>
