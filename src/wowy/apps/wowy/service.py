@@ -423,7 +423,6 @@ def prepare_wowy_player_season_records(
     normalized_games_input_dir: Path,
     normalized_game_players_input_dir: Path,
     wowy_output_dir: Path,
-    combined_wowy_csv: Path,
     min_games_with: int,
     min_games_without: int,
     player_metrics_db_path: Path = DEFAULT_PLAYER_METRICS_DB_PATH,
@@ -530,7 +529,6 @@ def prepare_and_run_wowy(
             normalized_games_input_dir=args.normalized_games_input_dir,
             normalized_game_players_input_dir=args.normalized_game_players_input_dir,
             wowy_output_dir=args.wowy_output_dir,
-            combined_wowy_csv=args.combined_wowy_csv,
             player_metrics_db_path=getattr(
                 args,
                 "player_metrics_db_path",

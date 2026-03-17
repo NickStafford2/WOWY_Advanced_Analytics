@@ -72,12 +72,6 @@ def build_parser() -> argparse.ArgumentParser:
         help=argparse.SUPPRESS,
     )
     parser.add_argument(
-        "--combined-wowy-csv",
-        type=Path,
-        default=Path("data/combined/wowy/games.csv"),
-        help=argparse.SUPPRESS,
-    )
-    parser.add_argument(
         "--top-n",
         type=int,
         default=40,

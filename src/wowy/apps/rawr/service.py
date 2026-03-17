@@ -313,8 +313,6 @@ def prepare_rawr_player_season_records(
     teams: list[str] | None,
     seasons: list[str] | None,
     season_type: str,
-    combined_games_csv: Path,
-    combined_game_players_csv: Path,
     source_data_dir: Path,
     normalized_games_input_dir: Path,
     normalized_game_players_input_dir: Path,

@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import hashlib
 import shutil
 import sqlite3
 from dataclasses import dataclass
@@ -491,6 +492,47 @@ def list_cached_team_seasons_from_db(
         TeamSeasonScope(team=row["team"], season=row["season"])
         for row in rows
     ]
+
+
+def build_normalized_cache_fingerprint(
+    db_path: Path,
+    *,
+    season_type: str | None = None,
+) -> str:
+    initialize_game_cache_db(db_path)
+    query = """
+        SELECT
+            team,
+            season,
+            season_type,
+            source_path,
+            source_snapshot,
+            source_kind,
+            build_version,
+            games_row_count,
+            game_players_row_count
+        FROM normalized_cache_loads
+    """
+    params: list[object] = []
+    if season_type is not None:
+        query += " WHERE season_type = ?"
+        params.append(season_type)
+    query += " ORDER BY season_type, season, team"
+
+    digest = hashlib.sha256()
+    with _connect(db_path) as connection:
+        rows = connection.execute(query, params).fetchall()
+    for row in rows:
+        digest.update(row["team"].encode("utf-8"))
+        digest.update(row["season"].encode("utf-8"))
+        digest.update(row["season_type"].encode("utf-8"))
+        digest.update(row["source_path"].encode("utf-8"))
+        digest.update(row["source_snapshot"].encode("utf-8"))
+        digest.update(row["source_kind"].encode("utf-8"))
+        digest.update(row["build_version"].encode("utf-8"))
+        digest.update(str(row["games_row_count"]).encode("utf-8"))
+        digest.update(str(row["game_players_row_count"]).encode("utf-8"))
+    return digest.hexdigest()
 
 
 def ensure_explicit_regular_season_copy(

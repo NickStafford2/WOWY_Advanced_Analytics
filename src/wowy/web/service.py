@@ -1,6 +1,4 @@
 from __future__ import annotations
-
-import hashlib
 from dataclasses import dataclass
 from datetime import UTC, datetime
 from pathlib import Path
@@ -11,6 +9,7 @@ from wowy.apps.rawr.service import prepare_rawr_player_season_records
 from wowy.apps.wowy.models import WowyPlayerSeasonRecord
 from wowy.apps.wowy.service import prepare_wowy_player_season_records
 from wowy.nba.cache_migration import migrate_normalized_regular_season_cache_to_db
+from wowy.data.game_cache_db import build_normalized_cache_fingerprint
 from wowy.data.player_metrics_db import (
     DEFAULT_PLAYER_METRICS_DB_PATH,
     MetricFullSpanPointRow,
@@ -58,9 +57,6 @@ def _build_wowy_rows(
     normalized_games_input_dir: Path,
     normalized_game_players_input_dir: Path,
     wowy_output_dir: Path,
-    combined_wowy_csv: Path,
-    combined_rawr_games_csv: Path,
-    combined_rawr_game_players_csv: Path,
     db_path: Path,
     teams: list[str] | None,
     rawr_ridge_alpha: float,
@@ -73,7 +69,6 @@ def _build_wowy_rows(
         normalized_games_input_dir=normalized_games_input_dir,
         normalized_game_players_input_dir=normalized_game_players_input_dir,
         wowy_output_dir=wowy_output_dir,
-        combined_wowy_csv=combined_wowy_csv,
         player_metrics_db_path=db_path,
         min_games_with=0,
         min_games_without=0,
@@ -115,9 +110,6 @@ def _build_rawr_rows(
     normalized_games_input_dir: Path,
     normalized_game_players_input_dir: Path,
     wowy_output_dir: Path,
-    combined_wowy_csv: Path,
-    combined_rawr_games_csv: Path,
-    combined_rawr_game_players_csv: Path,
     db_path: Path,
     teams: list[str] | None,
     rawr_ridge_alpha: float,
@@ -126,8 +118,6 @@ def _build_rawr_rows(
         teams=teams,
         seasons=None,
         season_type=season_type,
-        combined_games_csv=combined_rawr_games_csv,
-        combined_game_players_csv=combined_rawr_game_players_csv,
         source_data_dir=source_data_dir,
         normalized_games_input_dir=normalized_games_input_dir,
         normalized_game_players_input_dir=normalized_game_players_input_dir,
@@ -202,9 +192,6 @@ def refresh_metric_store(
     normalized_games_input_dir: Path,
     normalized_game_players_input_dir: Path,
     wowy_output_dir: Path,
-    combined_wowy_csv: Path,
-    combined_rawr_games_csv: Path = Path("data/combined/rawr/games.csv"),
-    combined_rawr_game_players_csv: Path = Path("data/combined/rawr/game_players.csv"),
     rawr_ridge_alpha: float = DEFAULT_RAWR_RIDGE_ALPHA,
     progress: RefreshProgressFn | None = None,
 ) -> None:
@@ -216,9 +203,9 @@ def refresh_metric_store(
             wowy_output_dir=wowy_output_dir,
             player_metrics_db_path=db_path,
         )
-    source_fingerprint = build_cache_fingerprint(
-        normalized_games_input_dir,
-        normalized_game_players_input_dir,
+    source_fingerprint = build_normalized_cache_fingerprint(
+        db_path,
+        season_type=season_type,
     )
     cached_team_seasons = list_cached_team_seasons(
         normalized_games_input_dir,
@@ -263,9 +250,6 @@ def refresh_metric_store(
             normalized_games_input_dir=normalized_games_input_dir,
             normalized_game_players_input_dir=normalized_game_players_input_dir,
             wowy_output_dir=wowy_output_dir,
-            combined_wowy_csv=combined_wowy_csv,
-            combined_rawr_games_csv=combined_rawr_games_csv,
-            combined_rawr_game_players_csv=combined_rawr_game_players_csv,
             db_path=db_path,
             teams=teams,
             rawr_ridge_alpha=rawr_ridge_alpha,
@@ -373,7 +357,6 @@ def build_custom_wowy_leaderboard_payload(
     normalized_games_input_dir: Path,
     normalized_game_players_input_dir: Path,
     wowy_output_dir: Path,
-    combined_wowy_csv: Path,
     player_metrics_db_path: Path = DEFAULT_PLAYER_METRICS_DB_PATH,
     min_games_with: int,
     min_games_without: int,
@@ -388,7 +371,6 @@ def build_custom_wowy_leaderboard_payload(
         normalized_games_input_dir=normalized_games_input_dir,
         normalized_game_players_input_dir=normalized_game_players_input_dir,
         wowy_output_dir=wowy_output_dir,
-        combined_wowy_csv=combined_wowy_csv,
         player_metrics_db_path=player_metrics_db_path,
         min_games_with=min_games_with,
         min_games_without=min_games_without,
@@ -415,8 +397,6 @@ def build_custom_rawr_leaderboard_payload(
     normalized_games_input_dir: Path,
     normalized_game_players_input_dir: Path,
     wowy_output_dir: Path,
-    combined_games_csv: Path,
-    combined_game_players_csv: Path,
     player_metrics_db_path: Path = DEFAULT_PLAYER_METRICS_DB_PATH,
     min_games: int,
     ridge_alpha: float,
@@ -427,8 +407,6 @@ def build_custom_rawr_leaderboard_payload(
         teams=teams,
         seasons=seasons,
         season_type=season_type,
-        combined_games_csv=combined_games_csv,
-        combined_game_players_csv=combined_game_players_csv,
         source_data_dir=source_data_dir,
         normalized_games_input_dir=normalized_games_input_dir,
         normalized_game_players_input_dir=normalized_game_players_input_dir,
@@ -901,16 +879,3 @@ def get_metric_definition(metric: str) -> MetricDefinition:
         return METRIC_DEFINITIONS[metric]
     except KeyError as exc:
         raise ValueError(f"Unknown metric: {metric}") from exc
-
-
-def build_cache_fingerprint(*directories: Path) -> str:
-    digest = hashlib.sha256()
-    for directory in directories:
-        csv_paths = sorted(directory.glob("*.csv"))
-        digest.update(str(directory).encode("utf-8"))
-        for csv_path in csv_paths:
-            stat = csv_path.stat()
-            digest.update(csv_path.name.encode("utf-8"))
-            digest.update(str(stat.st_size).encode("utf-8"))
-            digest.update(str(stat.st_mtime_ns).encode("utf-8"))
-    return digest.hexdigest()

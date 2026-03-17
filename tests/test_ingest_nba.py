@@ -13,8 +13,11 @@ from wowy.nba.ingest import (
     load_player_names_from_cache,
     write_team_season_games_csv,
 )
-from wowy.data.wowy_io import load_games_from_csv
 from wowy.nba.normalize import parse_minutes_to_float, played_in_game
+from wowy.data.game_cache_db import (
+    load_normalized_game_players_from_db,
+    load_normalized_games_from_db,
+)
 from wowy.data.normalized_io import (
     load_normalized_game_players_from_csv,
     load_normalized_games_from_csv,
@@ -114,40 +117,40 @@ def test_write_team_season_games_csv_writes_normalized_and_derived_outputs(
         FakeBoxScoreTraditionalV2,
     )
 
-    csv_path = tmp_path / "games.csv"
-    normalized_games_csv = tmp_path / "normalized" / "games.csv"
-    normalized_game_players_csv = tmp_path / "normalized" / "game_players.csv"
+    db_path = tmp_path / "app" / "player_metrics.sqlite3"
     write_team_season_games_csv(
         "BOS",
         "2023-24",
-        csv_path,
-        normalized_games_csv_path=normalized_games_csv,
-        normalized_game_players_csv_path=normalized_game_players_csv,
         source_data_dir=source_data_dir,
+        player_metrics_db_path=db_path,
     )
 
-    games = load_games_from_csv(csv_path)
-    normalized_games = load_normalized_games_from_csv(normalized_games_csv)
-    normalized_game_players = load_normalized_game_players_from_csv(
-        normalized_game_players_csv
+    normalized_games = load_normalized_games_from_db(
+        db_path,
+        season_type="Regular Season",
+        teams=["BOS"],
+        seasons=["2023-24"],
+    )
+    normalized_game_players = load_normalized_game_players_from_db(
+        db_path,
+        season_type="Regular Season",
+        teams=["BOS"],
+        seasons=["2023-24"],
     )
 
-    assert games == [
-        WowyGameRecord("0001", "2023-24", "BOS", 12.0, {1628369, 1627759}),
-        WowyGameRecord("0002", "2023-24", "BOS", -5.0, {1628369, 1628401}),
-    ]
+    assert [game.margin for game in normalized_games] == [12.0, -5.0]
     assert [game.game_date for game in normalized_games] == ["2024-04-01", "2024-04-03"]
     assert [game.opponent for game in normalized_games] == ["LAL", "LAL"]
     assert [game.is_home for game in normalized_games] == [True, False]
     assert [player.player_id for player in normalized_game_players] == [
-        1628369,
-        1627759,
         999999,
+        1627759,
+        1628369,
         1628369,
         1628401,
     ]
-    assert normalized_game_players[0].minutes == 35.2
-    assert normalized_game_players[2].appeared is False
+    assert normalized_game_players[2].minutes == 35.2
+    assert normalized_game_players[0].appeared is False
 
     team_season_cache = (
         source_data_dir
@@ -246,21 +249,22 @@ def test_write_team_season_games_csv_skips_empty_box_scores(
         FakeBoxScoreTraditionalV2,
     )
 
-    csv_path = tmp_path / "games.csv"
+    db_path = tmp_path / "app" / "player_metrics.sqlite3"
     write_team_season_games_csv(
         "ATL",
         "2023-24",
-        csv_path,
-        normalized_games_csv_path=tmp_path / "normalized" / "games.csv",
-        normalized_game_players_csv_path=tmp_path / "normalized" / "game_players.csv",
         source_data_dir=source_data_dir,
+        player_metrics_db_path=db_path,
     )
 
-    games = load_games_from_csv(csv_path)
+    games = load_normalized_games_from_db(
+        db_path,
+        season_type="Regular Season",
+        teams=["ATL"],
+        seasons=["2023-24"],
+    )
 
-    assert games == [
-        WowyGameRecord("0002", "2023-24", "ATL", -5.0, {101, 102}),
-    ]
+    assert [(game.game_id, game.margin) for game in games] == [("0002", -5.0)]
 
 
 def test_build_team_season_artifacts_returns_normalized_and_derived_outputs(
@@ -514,23 +518,17 @@ def test_write_team_season_games_csv_resumes_from_cached_partial_source_data(
     )
     monkeypatch.setattr("wowy.nba.cache.time.sleep", lambda _: None)
 
-    csv_path = tmp_path / "games.csv"
-    normalized_games_csv = tmp_path / "normalized" / "games.csv"
-    normalized_game_players_csv = tmp_path / "normalized" / "game_players.csv"
+    db_path = tmp_path / "app" / "player_metrics.sqlite3"
 
     with pytest.raises(RequestException):
         write_team_season_games_csv(
             "ATL",
             "2023-24",
-            csv_path,
-            normalized_games_csv_path=normalized_games_csv,
-            normalized_game_players_csv_path=normalized_game_players_csv,
             source_data_dir=source_data_dir,
+            player_metrics_db_path=db_path,
         )
 
     assert boxscore_calls == ["0001", "0002", "0002", "0002"]
-    assert not csv_path.exists()
-    assert not normalized_games_csv.exists()
     assert (source_data_dir / "boxscores/0001_boxscoretraditionalv2.json").exists()
 
     class RecoveryBoxScoreTraditionalV2:
@@ -568,13 +566,16 @@ def test_write_team_season_games_csv_resumes_from_cached_partial_source_data(
     summary = write_team_season_games_csv(
         "ATL",
         "2023-24",
-        csv_path,
-        normalized_games_csv_path=normalized_games_csv,
-        normalized_game_players_csv_path=normalized_game_players_csv,
         source_data_dir=source_data_dir,
+        player_metrics_db_path=db_path,
     )
 
-    games = load_games_from_csv(csv_path)
+    games = load_normalized_games_from_db(
+        db_path,
+        season_type="Regular Season",
+        teams=["ATL"],
+        seasons=["2023-24"],
+    )
 
     assert boxscore_calls == ["0001", "0002", "0002", "0002", "recovery:0002"]
     assert summary.league_games_source == "cached"
@@ -582,10 +583,7 @@ def test_write_team_season_games_csv_resumes_from_cached_partial_source_data(
     assert summary.cached_box_scores == 1
     assert summary.processed_games == 2
     assert summary.skipped_games == 0
-    assert games == [
-        WowyGameRecord("0001", "2023-24", "ATL", 7.0, {101, 102}),
-        WowyGameRecord("0002", "2023-24", "ATL", -5.0, {201, 202}),
-    ]
+    assert [(game.game_id, game.margin) for game in games] == [("0001", 7.0), ("0002", -5.0)]
 
 
 def test_write_team_season_games_csv_raises_on_inconsistent_outputs(
@@ -648,18 +646,16 @@ def test_write_team_season_games_csv_raises_on_inconsistent_outputs(
         FakeBoxScoreTraditionalV2,
     )
     monkeypatch.setattr(
-        "wowy.nba.ingest.validate_team_season_files",
-        lambda **kwargs: "wowy_data",
+        "wowy.nba.ingest.validate_team_season_records",
+        lambda *args: "wowy_data",
     )
 
     with pytest.raises(ValueError, match="Inconsistent team-season cache"):
         write_team_season_games_csv(
             "BOS",
             "2023-24",
-            tmp_path / "games.csv",
-            normalized_games_csv_path=tmp_path / "normalized" / "games.csv",
-            normalized_game_players_csv_path=tmp_path / "normalized" / "game_players.csv",
             source_data_dir=source_data_dir,
+            player_metrics_db_path=tmp_path / "app" / "player_metrics.sqlite3",
         )
 
 

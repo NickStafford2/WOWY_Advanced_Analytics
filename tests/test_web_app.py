@@ -17,7 +17,6 @@ def _refresh_wowy_store(tmp_path: Path) -> Path:
         normalized_games_input_dir=tmp_path / "normalized_games",
         normalized_game_players_input_dir=tmp_path / "normalized_game_players",
         wowy_output_dir=tmp_path / "team_games",
-        combined_wowy_csv=tmp_path / "combined" / "games.csv",
     )
     return player_metrics_db_path
 
@@ -32,9 +31,6 @@ def _refresh_rawr_store(tmp_path: Path) -> Path:
         normalized_games_input_dir=tmp_path / "normalized_games",
         normalized_game_players_input_dir=tmp_path / "normalized_game_players",
         wowy_output_dir=tmp_path / "team_games",
-        combined_wowy_csv=tmp_path / "combined" / "wowy" / "games.csv",
-        combined_rawr_games_csv=tmp_path / "combined" / "rawr" / "games.csv",
-        combined_rawr_game_players_csv=tmp_path / "combined" / "rawr" / "game_players.csv",
     )
     return player_metrics_db_path
 
@@ -190,7 +186,6 @@ def test_rawr_options_endpoint_returns_metric_specific_filters(
         normalized_games_input_dir=normalized_games_dir,
         normalized_game_players_input_dir=normalized_players_dir,
         wowy_output_dir=tmp_path / "team_games",
-        combined_wowy_csv=tmp_path / "combined" / "games.csv",
         player_metrics_db_path=player_metrics_db_path,
     )
     client = app.test_client()
@@ -230,7 +225,6 @@ def test_rawr_player_seasons_endpoint_accepts_metric_specific_filters(
         normalized_games_input_dir=normalized_games_dir,
         normalized_game_players_input_dir=normalized_players_dir,
         wowy_output_dir=tmp_path / "team_games",
-        combined_wowy_csv=tmp_path / "combined" / "games.csv",
         player_metrics_db_path=player_metrics_db_path,
     )
     client = app.test_client()
@@ -281,7 +275,6 @@ def test_rawr_player_seasons_endpoint_rejects_invalid_filters(
         normalized_games_input_dir=tmp_path / "normalized_games",
         normalized_game_players_input_dir=tmp_path / "normalized_game_players",
         wowy_output_dir=tmp_path / "team_games",
-        combined_wowy_csv=tmp_path / "combined" / "games.csv",
         player_metrics_db_path=tmp_path / "app" / "player_metrics.sqlite3",
     )
     client = app.test_client()
@@ -312,7 +305,6 @@ def test_rawr_cached_leaderboard_endpoint_returns_cached_series(
         normalized_games_input_dir=normalized_games_dir,
         normalized_game_players_input_dir=normalized_players_dir,
         wowy_output_dir=tmp_path / "team_games",
-        combined_wowy_csv=tmp_path / "combined" / "games.csv",
         player_metrics_db_path=player_metrics_db_path,
     )
     client = app.test_client()
@@ -356,9 +348,6 @@ def test_rawr_custom_query_endpoint_recalculates_requested_span(
         normalized_games_input_dir=normalized_games_dir,
         normalized_game_players_input_dir=normalized_players_dir,
         wowy_output_dir=tmp_path / "team_games",
-        combined_wowy_csv=tmp_path / "combined" / "wowy" / "games.csv",
-        combined_rawr_games_csv=tmp_path / "combined" / "rawr" / "games.csv",
-        combined_rawr_game_players_csv=tmp_path / "combined" / "rawr" / "game_players.csv",
         player_metrics_db_path=tmp_path / "app" / "player_metrics.sqlite3",
     )
     client = app.test_client()
@@ -408,9 +397,6 @@ def test_rawr_custom_query_endpoint_rejects_invalid_filters(tmp_path: Path):
         normalized_games_input_dir=tmp_path / "normalized_games",
         normalized_game_players_input_dir=tmp_path / "normalized_game_players",
         wowy_output_dir=tmp_path / "team_games",
-        combined_wowy_csv=tmp_path / "combined" / "wowy" / "games.csv",
-        combined_rawr_games_csv=tmp_path / "combined" / "rawr" / "games.csv",
-        combined_rawr_game_players_csv=tmp_path / "combined" / "rawr" / "game_players.csv",
         player_metrics_db_path=tmp_path / "app" / "player_metrics.sqlite3",
     )
     client = app.test_client()
@@ -468,9 +454,6 @@ def test_rawr_custom_query_skips_seasons_without_qualifying_players(
         normalized_games_input_dir=normalized_games_dir,
         normalized_game_players_input_dir=normalized_players_dir,
         wowy_output_dir=tmp_path / "team_games",
-        combined_wowy_csv=tmp_path / "combined" / "wowy" / "games.csv",
-        combined_rawr_games_csv=tmp_path / "combined" / "rawr" / "games.csv",
-        combined_rawr_game_players_csv=tmp_path / "combined" / "rawr" / "game_players.csv",
         player_metrics_db_path=tmp_path / "app" / "player_metrics.sqlite3",
     )
     client = app.test_client()
@@ -563,7 +546,6 @@ def test_wowy_options_endpoint_returns_cached_teams_and_seasons(
         normalized_games_input_dir=normalized_games_dir,
         normalized_game_players_input_dir=normalized_players_dir,
         wowy_output_dir=tmp_path / "team_games",
-        combined_wowy_csv=tmp_path / "combined" / "games.csv",
         player_metrics_db_path=player_metrics_db_path,
     )
     client = app.test_client()
@@ -627,7 +609,6 @@ def test_wowy_player_seasons_endpoint_returns_rows_from_cache(
         normalized_games_input_dir=normalized_games_dir,
         normalized_game_players_input_dir=normalized_players_dir,
         wowy_output_dir=tmp_path / "team_games",
-        combined_wowy_csv=tmp_path / "combined" / "games.csv",
         player_metrics_db_path=player_metrics_db_path,
     )
     client = app.test_client()
@@ -699,7 +680,6 @@ def test_wowy_player_seasons_endpoint_returns_bad_request_for_invalid_filters(
         normalized_games_input_dir=tmp_path / "normalized_games",
         normalized_game_players_input_dir=tmp_path / "normalized_game_players",
         wowy_output_dir=tmp_path / "team_games",
-        combined_wowy_csv=tmp_path / "combined" / "games.csv",
         player_metrics_db_path=tmp_path / "app" / "player_metrics.sqlite3",
     )
     client = app.test_client()
@@ -721,7 +701,6 @@ def test_wowy_options_endpoint_requires_prebuilt_store(tmp_path: Path):
         normalized_games_input_dir=tmp_path / "normalized_games",
         normalized_game_players_input_dir=tmp_path / "normalized_game_players",
         wowy_output_dir=tmp_path / "team_games",
-        combined_wowy_csv=tmp_path / "combined" / "games.csv",
         player_metrics_db_path=tmp_path / "app" / "player_metrics.sqlite3",
     )
     client = app.test_client()
@@ -792,7 +771,6 @@ def test_wowy_span_chart_endpoint_returns_series_for_selected_span(
         normalized_games_input_dir=normalized_games_dir,
         normalized_game_players_input_dir=normalized_players_dir,
         wowy_output_dir=tmp_path / "team_games",
-        combined_wowy_csv=tmp_path / "combined" / "games.csv",
         player_metrics_db_path=player_metrics_db_path,
     )
     client = app.test_client()
@@ -900,7 +878,6 @@ def test_wowy_cached_leaderboard_endpoint_returns_server_ranked_rows(
         normalized_games_input_dir=normalized_games_dir,
         normalized_game_players_input_dir=normalized_players_dir,
         wowy_output_dir=tmp_path / "team_games",
-        combined_wowy_csv=tmp_path / "combined" / "games.csv",
         player_metrics_db_path=player_metrics_db_path,
     )
     client = app.test_client()
@@ -991,7 +968,6 @@ def test_wowy_custom_query_endpoint_recalculates_requested_span(
         normalized_games_input_dir=normalized_games_dir,
         normalized_game_players_input_dir=normalized_players_dir,
         wowy_output_dir=tmp_path / "team_games",
-        combined_wowy_csv=tmp_path / "combined" / "games.csv",
         player_metrics_db_path=tmp_path / "app" / "player_metrics.sqlite3",
     )
     client = app.test_client()

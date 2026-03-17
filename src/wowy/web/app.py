@@ -46,9 +46,6 @@ def create_app(
     normalized_games_input_dir: Path = DEFAULT_NORMALIZED_GAMES_DIR,
     normalized_game_players_input_dir: Path = DEFAULT_NORMALIZED_GAME_PLAYERS_DIR,
     wowy_output_dir: Path = DEFAULT_WOWY_GAMES_DIR,
-    combined_wowy_csv: Path = Path("data/combined/wowy/games.csv"),
-    combined_rawr_games_csv: Path = Path("data/combined/rawr/games.csv"),
-    combined_rawr_game_players_csv: Path = Path("data/combined/rawr/game_players.csv"),
     player_metrics_db_path: Path = DEFAULT_PLAYER_METRICS_DB_PATH,
 ):
     from flask import Flask, jsonify, request
@@ -118,9 +115,6 @@ def create_app(
                 normalized_games_input_dir=normalized_games_input_dir,
                 normalized_game_players_input_dir=normalized_game_players_input_dir,
                 wowy_output_dir=wowy_output_dir,
-                combined_wowy_csv=combined_wowy_csv,
-                combined_rawr_games_csv=combined_rawr_games_csv,
-                combined_rawr_game_players_csv=combined_rawr_game_players_csv,
                 player_metrics_db_path=player_metrics_db_path,
             )
         except ValueError as exc:
@@ -285,9 +279,6 @@ def _build_metric_custom_query_payload(
     normalized_games_input_dir: Path,
     normalized_game_players_input_dir: Path,
     wowy_output_dir: Path,
-    combined_wowy_csv: Path,
-    combined_rawr_games_csv: Path,
-    combined_rawr_game_players_csv: Path,
     player_metrics_db_path: Path,
 ) -> dict[str, Any]:
     filter_values = _parse_request_filters(
@@ -308,7 +299,6 @@ def _build_metric_custom_query_payload(
             normalized_games_input_dir=normalized_games_input_dir,
             normalized_game_players_input_dir=normalized_game_players_input_dir,
             wowy_output_dir=wowy_output_dir,
-            combined_wowy_csv=combined_wowy_csv,
             player_metrics_db_path=player_metrics_db_path,
             min_games_with=int(filter_values["min_sample_size"]),
             min_games_without=int(filter_values["min_secondary_sample_size"]),
@@ -325,8 +315,6 @@ def _build_metric_custom_query_payload(
             normalized_games_input_dir=normalized_games_input_dir,
             normalized_game_players_input_dir=normalized_game_players_input_dir,
             wowy_output_dir=wowy_output_dir,
-            combined_games_csv=combined_rawr_games_csv,
-            combined_game_players_csv=combined_rawr_game_players_csv,
             player_metrics_db_path=player_metrics_db_path,
             min_games=int(filter_values["min_sample_size"]),
             ridge_alpha=float(filter_values["ridge_alpha"]),

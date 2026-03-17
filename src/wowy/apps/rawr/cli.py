@@ -59,18 +59,6 @@ def build_parser() -> argparse.ArgumentParser:
         help=argparse.SUPPRESS,
     )
     parser.add_argument(
-        "--combined-games-csv",
-        type=Path,
-        default=Path("data/combined/rawr/games.csv"),
-        help=argparse.SUPPRESS,
-    )
-    parser.add_argument(
-        "--combined-game-players-csv",
-        type=Path,
-        default=Path("data/combined/rawr/game_players.csv"),
-        help=argparse.SUPPRESS,
-    )
-    parser.add_argument(
         "--min-games",
         type=int,
         default=35,

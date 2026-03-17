@@ -65,24 +65,6 @@ def build_parser() -> argparse.ArgumentParser:
         help=argparse.SUPPRESS,
     )
     parser.add_argument(
-        "--combined-wowy-csv",
-        type=Path,
-        default=Path("data/combined/wowy/games.csv"),
-        help=argparse.SUPPRESS,
-    )
-    parser.add_argument(
-        "--combined-rawr-games-csv",
-        type=Path,
-        default=Path("data/combined/rawr/games.csv"),
-        help=argparse.SUPPRESS,
-    )
-    parser.add_argument(
-        "--combined-rawr-game-players-csv",
-        type=Path,
-        default=Path("data/combined/rawr/game_players.csv"),
-        help=argparse.SUPPRESS,
-    )
-    parser.add_argument(
         "--player-metrics-db-path",
         type=Path,
         default=DEFAULT_PLAYER_METRICS_DB_PATH,
@@ -113,9 +95,6 @@ def main(argv: list[str] | None = None) -> int:
         normalized_games_input_dir=args.normalized_games_input_dir,
         normalized_game_players_input_dir=args.normalized_game_players_input_dir,
         wowy_output_dir=args.wowy_output_dir,
-        combined_wowy_csv=args.combined_wowy_csv,
-        combined_rawr_games_csv=args.combined_rawr_games_csv,
-        combined_rawr_game_players_csv=args.combined_rawr_game_players_csv,
         rawr_ridge_alpha=args.rawr_ridge_alpha,
         progress=lambda current, total, detail: _update_progress(
             progress_bar,

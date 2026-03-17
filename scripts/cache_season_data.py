@@ -1,31 +1,25 @@
 from __future__ import annotations
 
 import argparse
-import csv
 import sys
 from pathlib import Path
 
 from nba_api.stats.static import teams as nba_teams
 
-from wowy.atomic_io import atomic_text_writer
-from wowy.data.combine import combine_normalized_files
 from wowy.nba.ingest import (
     DEFAULT_NORMALIZED_GAME_PLAYERS_DIR,
     DEFAULT_NORMALIZED_GAMES_DIR,
     DEFAULT_SOURCE_DATA_DIR,
-    DEFAULT_WOWY_GAMES_DIR,
     write_team_season_games_csv,
 )
 from wowy.nba.paths import (
     normalized_game_players_path,
     normalized_games_path,
-    wowy_games_path,
 )
 from wowy.nba.seasons import canonicalize_season_string
 from wowy.nba.team_seasons import TeamSeasonScope
 
 
-WOWY_HEADER = ["game_id", "season", "team", "margin", "players"]
 _LAST_STATUS_LINE_LENGTH = 0
 
 
@@ -51,25 +45,13 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument(
         "--skip-combine",
         action="store_true",
-        help="Only fetch team-season files and skip combined outputs.",
+        help=argparse.SUPPRESS,
     )
     parser.add_argument(
-        "--combined-wowy-csv",
+        "--player-metrics-db-path",
         type=Path,
-        default=Path("data/combined/wowy/games.csv"),
-        help="Combined WOWY games CSV path",
-    )
-    parser.add_argument(
-        "--combined-rawr-games-csv",
-        type=Path,
-        default=Path("data/combined/rawr/games.csv"),
-        help="Combined normalized games CSV path",
-    )
-    parser.add_argument(
-        "--combined-rawr-game-players-csv",
-        type=Path,
-        default=Path("data/combined/rawr/game_players.csv"),
-        help="Combined normalized game-player CSV path",
+        default=Path("data/app/player_metrics.sqlite3"),
+        help="SQLite cache path for normalized team-season rows.",
     )
     return parser
 
@@ -78,23 +60,6 @@ def resolve_teams(team_codes: list[str] | None) -> list[str]:
     if team_codes:
         return [team_code.upper() for team_code in team_codes]
     return sorted(team["abbreviation"] for team in nba_teams.get_teams())
-
-
-def combine_wowy_csvs(input_paths: list[Path], output_path: Path) -> None:
-    with atomic_text_writer(output_path, newline="") as output_file:
-        writer = csv.writer(output_file)
-        writer.writerow(WOWY_HEADER)
-
-        for input_path in input_paths:
-            with open(input_path, "r", encoding="utf-8", newline="") as input_file:
-                reader = csv.reader(input_file)
-                header = next(reader, None)
-                if header != WOWY_HEADER:
-                    raise ValueError(
-                        f"Unexpected WOWY CSV header in {input_path}: {header!r}"
-                    )
-                for row in reader:
-                    writer.writerow(row)
 
 
 def render_progress_line(
@@ -169,18 +134,9 @@ def main(argv: list[str] | None = None) -> int:
     season = canonicalize_season_string(args.season)
 
     team_codes = resolve_teams(args.teams)
-    normalized_games_paths: list[Path] = []
-    normalized_game_players_paths: list[Path] = []
-    wowy_csv_paths: list[Path] = []
-
     team_total = len(team_codes)
     for team_index, team_code in enumerate(team_codes, start=1):
         team_season = TeamSeasonScope(team=team_code, season=season)
-        wowy_csv_path = wowy_games_path(
-            team_season,
-            DEFAULT_WOWY_GAMES_DIR,
-            args.season_type,
-        )
         normalized_games_csv_path = normalized_games_path(
             team_season,
             DEFAULT_NORMALIZED_GAMES_DIR,
@@ -195,11 +151,11 @@ def main(argv: list[str] | None = None) -> int:
             summary = write_team_season_games_csv(
                 team_abbreviation=team_code,
                 season=season,
-                csv_path=wowy_csv_path,
                 normalized_games_csv_path=normalized_games_csv_path,
                 normalized_game_players_csv_path=normalized_game_players_csv_path,
                 season_type=args.season_type,
                 source_data_dir=DEFAULT_SOURCE_DATA_DIR,
+                player_metrics_db_path=args.player_metrics_db_path,
                 log=quiet_log,
                 progress=lambda payload, team_index=team_index: render_progress_line(
                     team_index,
@@ -226,20 +182,6 @@ def main(argv: list[str] | None = None) -> int:
             return 1
         render_team_complete_line(team_index, team_total, summary)
         sys.stdout.write("\n")
-        normalized_games_paths.append(normalized_games_csv_path)
-        normalized_game_players_paths.append(normalized_game_players_csv_path)
-        wowy_csv_paths.append(wowy_csv_path)
-
-    if args.skip_combine:
-        return 0
-
-    combine_normalized_files(
-        games_input_paths=normalized_games_paths,
-        game_players_input_paths=normalized_game_players_paths,
-        games_output_path=args.combined_rawr_games_csv,
-        game_players_output_path=args.combined_rawr_game_players_csv,
-    )
-    combine_wowy_csvs(wowy_csv_paths, args.combined_wowy_csv)
     return 0
 
 

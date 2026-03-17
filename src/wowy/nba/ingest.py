@@ -5,9 +5,8 @@ from typing import Callable
 
 from nba_api.stats.static import teams
 
-from wowy.apps.wowy.derive import derive_wowy_games, write_wowy_games_csv
+from wowy.apps.wowy.derive import derive_wowy_games
 from wowy.data.game_cache_db import (
-    ensure_explicit_regular_season_copy,
     replace_team_season_normalized_rows,
 )
 from wowy.data.player_metrics_db import DEFAULT_PLAYER_METRICS_DB_PATH
@@ -25,12 +24,12 @@ from wowy.nba.normalize import (
 )
 from wowy.nba.team_seasons import TeamSeasonScope
 from wowy.nba.validation import validate_team_season_files
+from wowy.nba.validation import validate_team_season_records
 from wowy.nba.seasons import canonicalize_season_string
 from wowy.data.normalized_io import (
     write_normalized_game_players_csv,
     write_normalized_games_csv,
 )
-from wowy.nba.paths import legacy_regular_season_filename
 
 
 DEFAULT_NORMALIZED_GAMES_DIR = Path("data/normalized/nba/games")
@@ -230,7 +229,7 @@ def write_team_season_normalized_csvs(
 def write_team_season_games_csv(
     team_abbreviation: str,
     season: str,
-    csv_path: Path | str,
+    csv_path: Path | str | None = None,
     normalized_games_csv_path: Path | str | None = None,
     normalized_game_players_csv_path: Path | str | None = None,
     season_type: str = "Regular Season",
@@ -240,21 +239,11 @@ def write_team_season_games_csv(
     progress: ProgressFn | None = None,
 ) -> TeamSeasonRunSummary:
     season = canonicalize_season_string(season)
-    filename = (
-        f"{team_abbreviation.upper()}_{season}.csv"
-        if season_type == "Regular Season"
-        else f"{team_abbreviation.upper()}_{season}_{season_type_slug(season_type)}.csv"
+    normalized_games_source_path = (
+        str(Path(normalized_games_csv_path))
+        if normalized_games_csv_path is not None
+        else f"sqlite://normalized_games/{team_abbreviation.upper()}_{season}_{season_type_slug(season_type)}"
     )
-    normalized_games_path = Path(
-        normalized_games_csv_path
-        or DEFAULT_NORMALIZED_GAMES_DIR / filename
-    )
-    normalized_game_players_path = Path(
-        normalized_game_players_csv_path
-        or DEFAULT_NORMALIZED_GAME_PLAYERS_DIR / filename
-    )
-    wowy_path = Path(csv_path)
-
     result = build_team_season_artifacts(
         team_abbreviation=team_abbreviation,
         season=season,
@@ -263,12 +252,6 @@ def write_team_season_games_csv(
         log=log,
         progress=progress,
     )
-    write_normalized_games_csv(normalized_games_path, result.artifacts.normalized_games)
-    write_normalized_game_players_csv(
-        normalized_game_players_path,
-        result.artifacts.normalized_game_players,
-    )
-    write_wowy_games_csv(wowy_path, result.artifacts.wowy_games)
     replace_team_season_normalized_rows(
         player_metrics_db_path,
         team=team_abbreviation.upper(),
@@ -276,30 +259,14 @@ def write_team_season_games_csv(
         season_type=season_type,
         games=result.artifacts.normalized_games,
         game_players=result.artifacts.normalized_game_players,
-        source_path=str(normalized_games_path),
+        source_path=normalized_games_source_path,
         source_snapshot="ingest-build",
         source_kind="nba-api",
     )
-    if season_type == "Regular Season":
-        legacy_filename = legacy_regular_season_filename(
-            TeamSeasonScope(team=team_abbreviation.upper(), season=season)
-        )
-        ensure_explicit_regular_season_copy(
-            normalized_games_path,
-            normalized_games_path.with_name(legacy_filename),
-        )
-        ensure_explicit_regular_season_copy(
-            normalized_game_players_path,
-            normalized_game_players_path.with_name(legacy_filename),
-        )
-        ensure_explicit_regular_season_copy(
-            wowy_path,
-            wowy_path.with_name(legacy_filename),
-        )
-    consistency = validate_team_season_files(
-        normalized_games_path=normalized_games_path,
-        normalized_game_players_path=normalized_game_players_path,
-        wowy_path=wowy_path,
+    consistency = validate_team_season_records(
+        result.artifacts.normalized_games,
+        result.artifacts.normalized_game_players,
+        result.artifacts.wowy_games,
     )
     if consistency != "ok":
         raise ValueError(
