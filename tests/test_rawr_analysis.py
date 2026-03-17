@@ -2,7 +2,11 @@ from __future__ import annotations
 
 import pytest
 
-from wowy.apps.rawr.analysis import fit_player_rawr, tune_ridge_alpha
+from wowy.apps.rawr.analysis import (
+    build_player_penalties,
+    fit_player_rawr,
+    tune_ridge_alpha,
+)
 from wowy.apps.rawr.models import RawrObservation
 
 
@@ -201,6 +205,62 @@ def test_fit_player_rawr_uses_separate_coefficients_per_player_season():
     assert ("2023-24", 101) in estimates
     assert estimates[("2022-23", 101)].coefficient > 0.0
     assert estimates[("2023-24", 101)].coefficient < 0.0
+
+
+def test_build_player_penalties_supports_game_count_shrinkage():
+    observations = [
+        RawrObservation(
+            "1",
+            "2023-24",
+            "2024-04-01",
+            "BOS",
+            "MIL",
+            2.0,
+            {101: 1.0, 201: -1.0},
+        ),
+        RawrObservation(
+            "2",
+            "2023-24",
+            "2024-04-03",
+            "BOS",
+            "NYK",
+            -2.0,
+            {101: 1.0, 202: -1.0},
+        ),
+    ]
+
+    penalties = build_player_penalties(
+        observations=observations,
+        player_keys=[("2023-24", 101), ("2023-24", 201)],
+        ridge_alpha=10.0,
+        shrinkage_mode="game-count",
+        shrinkage_strength=1.0,
+    )
+
+    assert penalties[("2023-24", 101)] == pytest.approx(5.0)
+    assert penalties[("2023-24", 201)] == pytest.approx(10.0)
+
+
+def test_fit_player_rawr_rejects_invalid_shrinkage_mode():
+    observations = [
+        RawrObservation(
+            "1",
+            "2023-24",
+            "2024-04-01",
+            "BOS",
+            "MIL",
+            2.0,
+            {101: 1.0, 201: -1.0},
+        ),
+    ]
+
+    with pytest.raises(ValueError, match="Shrinkage mode"):
+        fit_player_rawr(
+            observations,
+            player_names={101: "Player 101", 201: "Player 201"},
+            ridge_alpha=1.0,
+            shrinkage_mode="bad-mode",
+        )
 
 
 def test_fit_player_rawr_rejects_singular_system_without_ridge():

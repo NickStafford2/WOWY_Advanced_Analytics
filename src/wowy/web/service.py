@@ -43,6 +43,8 @@ class MetricDefinition:
 WOWY_METRIC = "wowy"
 RAWR_METRIC = "rawr"
 DEFAULT_RAWR_RIDGE_ALPHA = 10.0
+DEFAULT_RAWR_SHRINKAGE_MODE = "uniform"
+DEFAULT_RAWR_SHRINKAGE_STRENGTH = 1.0
 
 
 def _build_wowy_rows(
@@ -127,6 +129,8 @@ def _build_rawr_rows(
         wowy_output_dir=wowy_output_dir,
         min_games=1,
         ridge_alpha=rawr_ridge_alpha,
+        shrinkage_mode=DEFAULT_RAWR_SHRINKAGE_MODE,
+        shrinkage_strength=DEFAULT_RAWR_SHRINKAGE_STRENGTH,
         min_average_minutes=None,
         min_total_minutes=None,
     )
@@ -409,6 +413,8 @@ def build_custom_rawr_leaderboard_payload(
         wowy_output_dir=wowy_output_dir,
         min_games=min_games,
         ridge_alpha=ridge_alpha,
+        shrinkage_mode=DEFAULT_RAWR_SHRINKAGE_MODE,
+        shrinkage_strength=DEFAULT_RAWR_SHRINKAGE_STRENGTH,
         min_average_minutes=min_average_minutes,
         min_total_minutes=min_total_minutes,
     )

@@ -25,6 +25,8 @@ from wowy.shared.scope import format_scope
 def validate_filters(
     min_games: int,
     ridge_alpha: float,
+    shrinkage_mode: str = "uniform",
+    shrinkage_strength: float = 1.0,
     top_n: int | None = None,
     min_average_minutes: float | None = None,
     min_total_minutes: float | None = None,
@@ -33,6 +35,10 @@ def validate_filters(
         raise ValueError("Minimum games filter must be non-negative")
     if ridge_alpha < 0:
         raise ValueError("Ridge alpha must be non-negative")
+    if shrinkage_mode not in {"uniform", "game-count"}:
+        raise ValueError("Shrinkage mode must be 'uniform' or 'game-count'")
+    if shrinkage_strength < 0:
+        raise ValueError("Shrinkage strength must be non-negative")
     validate_top_n_and_minutes(
         top_n=top_n,
         min_average_minutes=min_average_minutes,
@@ -136,6 +142,8 @@ def run_rawr(
     game_players_csv_path: Path | str,
     min_games: int,
     ridge_alpha: float = 1.0,
+    shrinkage_mode: str = "uniform",
+    shrinkage_strength: float = 1.0,
     top_n: int | None = None,
     teams: list[str] | None = None,
     seasons: list[str] | None = None,
@@ -148,6 +156,8 @@ def run_rawr(
     validate_filters(
         min_games=min_games,
         ridge_alpha=ridge_alpha,
+        shrinkage_mode=shrinkage_mode,
+        shrinkage_strength=shrinkage_strength,
         top_n=top_n,
         min_average_minutes=min_average_minutes,
         min_total_minutes=min_total_minutes,
@@ -186,6 +196,8 @@ def run_rawr(
         player_names=player_names,
         min_games=min_games,
         ridge_alpha=ridge_alpha,
+        shrinkage_mode=shrinkage_mode,
+        shrinkage_strength=shrinkage_strength,
         progress=progress,
     )
     if progress_bar is not None:
@@ -267,12 +279,16 @@ def prepare_rawr_player_season_records(
     wowy_output_dir: Path,
     min_games: int,
     ridge_alpha: float,
+    shrinkage_mode: str,
+    shrinkage_strength: float,
     min_average_minutes: float | None,
     min_total_minutes: float | None,
 ) -> list[RawrPlayerSeasonRecord]:
     validate_filters(
         min_games=min_games,
         ridge_alpha=ridge_alpha,
+        shrinkage_mode=shrinkage_mode,
+        shrinkage_strength=shrinkage_strength,
         min_average_minutes=min_average_minutes,
         min_total_minutes=min_total_minutes,
     )
@@ -316,6 +332,8 @@ def prepare_rawr_player_season_records(
                 player_names=player_names,
                 min_games=min_games,
                 ridge_alpha=ridge_alpha,
+                shrinkage_mode=shrinkage_mode,
+                shrinkage_strength=shrinkage_strength,
             )
         except ValueError as exc:
             if str(exc) == "No players met the minimum games requirement":
@@ -353,6 +371,8 @@ def prepare_and_run_rawr(args) -> str:
     validate_filters(
         min_games=args.min_games,
         ridge_alpha=args.ridge_alpha,
+        shrinkage_mode=args.shrinkage_mode,
+        shrinkage_strength=args.shrinkage_strength,
         top_n=args.top_n,
         min_average_minutes=args.min_average_minutes,
         min_total_minutes=args.min_total_minutes,
@@ -401,6 +421,8 @@ def prepare_and_run_rawr(args) -> str:
             alphas=parse_ridge_grid(args.ridge_grid),
             min_games=args.min_games,
             validation_fraction=args.validation_fraction,
+            shrinkage_mode=args.shrinkage_mode,
+            shrinkage_strength=args.shrinkage_strength,
         )
         ridge_alpha = tuning_summary.best_alpha
         print(build_tuning_report(tuning_summary.best_alpha, tuning_summary.results))
@@ -413,6 +435,8 @@ def prepare_and_run_rawr(args) -> str:
         game_players_csv,
         min_games=args.min_games,
         ridge_alpha=ridge_alpha,
+        shrinkage_mode=args.shrinkage_mode,
+        shrinkage_strength=args.shrinkage_strength,
         top_n=args.top_n,
         teams=args.team,
         seasons=args.season,

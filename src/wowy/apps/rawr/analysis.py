@@ -5,7 +5,7 @@ from typing import Callable
 
 import numpy as np
 
-from wowy.apps.rawr.data import count_player_games, count_player_season_games
+from wowy.apps.rawr.data import count_player_season_games
 from wowy.apps.rawr.models import (
     RawrModel,
     RawrObservation,
@@ -16,6 +16,7 @@ from wowy.apps.rawr.models import (
 )
 
 ProgressFn = Callable[[int, int, str | None], None]
+ShrinkageMode = str
 
 
 def fit_player_rawr(
@@ -23,12 +24,15 @@ def fit_player_rawr(
     player_names: dict[int, str],
     min_games: int = 1,
     ridge_alpha: float = 1.0,
+    shrinkage_mode: ShrinkageMode = "uniform",
+    shrinkage_strength: float = 1.0,
     progress: ProgressFn | None = None,
 ) -> RawrResult:
     if min_games < 0:
         raise ValueError("Minimum games filter must be non-negative")
     if ridge_alpha < 0:
         raise ValueError("Ridge alpha must be non-negative")
+    validate_shrinkage_settings(shrinkage_mode, shrinkage_strength)
     if not observations:
         raise ValueError("At least one RAWR observation is required")
 
@@ -45,6 +49,8 @@ def fit_player_rawr(
         observations,
         included_player_keys,
         ridge_alpha=ridge_alpha,
+        shrinkage_mode=shrinkage_mode,
+        shrinkage_strength=shrinkage_strength,
         progress=progress,
     )
     intercept = model.coefficients[0]
@@ -76,8 +82,11 @@ def fit_regression_model(
     observations: list[RawrObservation],
     player_keys: list[tuple[str, int]],
     ridge_alpha: float = 1.0,
+    shrinkage_mode: ShrinkageMode = "uniform",
+    shrinkage_strength: float = 1.0,
     progress: ProgressFn | None = None,
 ) -> RawrModel:
+    validate_shrinkage_settings(shrinkage_mode, shrinkage_strength)
     team_seasons = sorted(
         {
             team_season_key(observation.home_team, observation.season)
@@ -103,6 +112,13 @@ def fit_regression_model(
         team_season: opponent_effect_offset + index
         for index, team_season in enumerate(team_seasons)
     }
+    player_penalties = build_player_penalties(
+        observations=observations,
+        player_keys=player_keys,
+        ridge_alpha=ridge_alpha,
+        shrinkage_mode=shrinkage_mode,
+        shrinkage_strength=shrinkage_strength,
+    )
 
     gram = np.zeros((feature_count, feature_count), dtype=float)
     target = np.zeros(feature_count, dtype=float)
@@ -155,7 +171,13 @@ def fit_regression_model(
         if progress is not None:
             progress(completed_steps, total_steps, "building gram matrix")
 
-    for diagonal_index in range(2, feature_count):
+    for player_key, diagonal_index in player_index.items():
+        gram[diagonal_index][diagonal_index] += player_penalties[player_key]
+        completed_steps += 1
+        if progress is not None:
+            progress(completed_steps, total_steps, "applying ridge penalty")
+
+    for diagonal_index in range(team_effect_offset, feature_count):
         gram[diagonal_index][diagonal_index] += ridge_alpha
         completed_steps += 1
         if progress is not None:
@@ -209,6 +231,8 @@ def tune_ridge_alpha(
     alphas: list[float],
     min_games: int = 1,
     validation_fraction: float = 0.2,
+    shrinkage_mode: ShrinkageMode = "uniform",
+    shrinkage_strength: float = 1.0,
 ) -> RidgeTuningSummary:
     if not observations:
         raise ValueError("At least one RAWR observation is required")
@@ -216,6 +240,7 @@ def tune_ridge_alpha(
         raise ValueError("At least one ridge alpha is required")
     if not 0.0 < validation_fraction < 0.5:
         raise ValueError("Validation fraction must be between 0 and 0.5")
+    validate_shrinkage_settings(shrinkage_mode, shrinkage_strength)
 
     ordered_observations = sorted(
         observations,
@@ -244,6 +269,8 @@ def tune_ridge_alpha(
             training,
             included_player_keys,
             ridge_alpha=alpha,
+            shrinkage_mode=shrinkage_mode,
+            shrinkage_strength=shrinkage_strength,
         )
         validation_mse = mean(
             (predict_margin(observation, model) - observation.margin) ** 2
@@ -276,6 +303,35 @@ def build_feature_row(
         if feature_index is not None:
             row[feature_index] = weight
     return row
+
+
+def validate_shrinkage_settings(
+    shrinkage_mode: ShrinkageMode,
+    shrinkage_strength: float,
+) -> None:
+    if shrinkage_mode not in {"uniform", "game-count"}:
+        raise ValueError("Shrinkage mode must be 'uniform' or 'game-count'")
+    if shrinkage_strength < 0:
+        raise ValueError("Shrinkage strength must be non-negative")
+
+
+def build_player_penalties(
+    *,
+    observations: list[RawrObservation],
+    player_keys: list[tuple[str, int]],
+    ridge_alpha: float,
+    shrinkage_mode: ShrinkageMode,
+    shrinkage_strength: float,
+) -> dict[tuple[str, int], float]:
+    if shrinkage_mode == "uniform":
+        return {player_key: ridge_alpha for player_key in player_keys}
+
+    games_by_player_season = count_player_season_games(observations)
+    penalties: dict[tuple[str, int], float] = {}
+    for player_key in player_keys:
+        games = games_by_player_season[player_key]
+        penalties[player_key] = ridge_alpha / (games**shrinkage_strength)
+    return penalties
 
 
 def accumulate_row(

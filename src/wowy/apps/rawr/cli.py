@@ -82,6 +82,18 @@ def build_parser() -> argparse.ArgumentParser:
         help="Ridge regularization strength for player coefficients",
     )
     parser.add_argument(
+        "--shrinkage-mode",
+        choices=["uniform", "game-count"],
+        default="uniform",
+        help="Player-coefficient shrinkage mode",
+    )
+    parser.add_argument(
+        "--shrinkage-strength",
+        type=float,
+        default=1.0,
+        help="Exponent for game-count-aware player shrinkage",
+    )
+    parser.add_argument(
         "--top-n",
         type=int,
         default=40,
