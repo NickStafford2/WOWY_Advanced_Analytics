@@ -395,7 +395,7 @@ function App() {
       <div className="page-content">
         {mode === 'custom' ? (
           <section className="query-panel">
-            <div className="query-card query-card--span-2">
+            <div className="query-card query-card--span-2 query-card--scope">
               <div className="query-card-header">
                 <p className="panel-label">Scope</p>
               </div>
@@ -453,7 +453,7 @@ function App() {
               </div>
             </div>
 
-            <fieldset className="query-card query-card--span-2 query-multi">
+            <fieldset className="query-card query-card--span-2 query-card--teams query-multi">
               <legend>Teams</legend>
               <button
                 type="button"
@@ -482,7 +482,7 @@ function App() {
               <small>Leave all unchecked to query all teams in the selected span.</small>
             </fieldset>
 
-            <div className="query-card query-card--span-2">
+            <div className="query-card query-card--span-2 query-card--filters">
               <div className="query-card-header">
                 <p className="panel-label">{isRawrMetric ? 'Model filters' : 'Query filters'}</p>
                 <p className="query-section-note">
@@ -559,9 +559,7 @@ function App() {
                   />
                 </label>
               </div>
-            </div>
-
-            <div className="query-actions">
+              <div className="query-actions">
               <button
                 type="button"
                 className="run-button query-run"
@@ -575,6 +573,7 @@ function App() {
               >
                 {isLoading ? 'Running...' : 'Run query'}
               </button>
+              </div>
             </div>
           </section>
         ) : null}

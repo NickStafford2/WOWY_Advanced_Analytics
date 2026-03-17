@@ -329,9 +329,35 @@
 }
 
 .query-actions {
-  grid-column: 1 / -1;
   display: flex;
   justify-content: flex-end;
+  margin-top: 10px;
+}
+
+@media (min-width: 1180px) {
+  .query-panel {
+    grid-template-columns: minmax(220px, 1.05fr) minmax(320px, 1.2fr) minmax(360px, 1.35fr);
+    align-items: start;
+  }
+
+  .query-card--scope,
+  .query-card--filters,
+  .query-card--teams {
+    grid-column: span 1;
+    height: 100%;
+  }
+
+  .query-card--scope {
+    order: 1;
+  }
+
+  .query-card--filters {
+    order: 2;
+  }
+
+  .query-card--teams {
+    order: 3;
+  }
 }
 
 .run-button {
