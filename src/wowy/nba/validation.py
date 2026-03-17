@@ -8,7 +8,14 @@ from wowy.data.normalized_io import (
     load_normalized_games_from_csv,
 )
 from wowy.data.wowy_io import load_games_from_csv
+from wowy.nba.paths import (
+    normalized_game_players_path,
+    normalized_games_path,
+    resolve_existing_path,
+    wowy_games_path,
+)
 from wowy.nba.seasons import canonicalize_season_string
+from wowy.nba.team_seasons import TeamSeasonScope
 
 
 def validate_team_season_files(
@@ -59,12 +66,39 @@ def validate_team_season_consistency(
     normalized_games_input_dir: Path,
     normalized_game_players_input_dir: Path,
     wowy_output_dir: Path,
+    season_type: str = "Regular Season",
 ) -> str:
     season = canonicalize_season_string(season)
+    team_season = TeamSeasonScope(team=team, season=season)
     return validate_team_season_files(
-        normalized_games_path=normalized_games_input_dir / f"{team}_{season}.csv",
-        normalized_game_players_path=(
-            normalized_game_players_input_dir / f"{team}_{season}.csv"
+        normalized_games_path=resolve_existing_path(
+            team_season,
+            normalized_games_input_dir,
+            season_type,
+        )
+        or normalized_games_path(
+            team_season,
+            normalized_games_input_dir,
+            season_type,
         ),
-        wowy_path=wowy_output_dir / f"{team}_{season}.csv",
+        normalized_game_players_path=resolve_existing_path(
+            team_season,
+            normalized_game_players_input_dir,
+            season_type,
+        )
+        or normalized_game_players_path(
+            team_season,
+            normalized_game_players_input_dir,
+            season_type,
+        ),
+        wowy_path=resolve_existing_path(
+            team_season,
+            wowy_output_dir,
+            season_type,
+        )
+        or wowy_games_path(
+            team_season,
+            wowy_output_dir,
+            season_type,
+        ),
     )

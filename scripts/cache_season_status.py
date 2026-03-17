@@ -9,6 +9,12 @@ from pathlib import Path
 from nba_api.stats.static import teams as nba_teams
 
 from wowy.nba.cache_sync import wowy_cache_is_current
+from wowy.nba.paths import (
+    normalized_game_players_path,
+    normalized_games_path,
+    resolve_existing_path,
+    wowy_games_path,
+)
 from wowy.nba.team_seasons import TeamSeasonScope
 from wowy.nba.validation import validate_team_season_consistency
 from wowy.apps.wowy.derive import WOWY_HEADER
@@ -190,22 +196,40 @@ def summarize_wowy_cache(
     normalized_games_dir: Path,
     normalized_game_players_dir: Path,
     wowy_dir: Path,
+    season_type: str,
 ) -> tuple[str, int]:
-    wowy_path = wowy_dir / f"{team_season.team}_{team_season.season}.csv"
-    normalized_games_path = normalized_games_dir / f"{team_season.team}_{team_season.season}.csv"
-    normalized_game_players_path = (
-        normalized_game_players_dir / f"{team_season.team}_{team_season.season}.csv"
+    wowy_path = resolve_existing_path(team_season, wowy_dir, season_type) or wowy_games_path(
+        team_season,
+        wowy_dir,
+        season_type,
+    )
+    normalized_games_csv_path = resolve_existing_path(
+        team_season,
+        normalized_games_dir,
+        season_type,
+    ) or normalized_games_path(team_season, normalized_games_dir, season_type)
+    normalized_game_players_csv_path = resolve_existing_path(
+        team_season,
+        normalized_game_players_dir,
+        season_type,
+    ) or normalized_game_players_path(
+        team_season,
+        normalized_game_players_dir,
+        season_type,
     )
 
     status, row_count = classify_csv(wowy_path, WOWY_HEADER)
     if status != "ok":
         return status, row_count
-    if not normalized_games_path.exists() or not normalized_game_players_path.exists():
+    if (
+        not normalized_games_csv_path.exists()
+        or not normalized_game_players_csv_path.exists()
+    ):
         return "orphaned", row_count
     if not wowy_cache_is_current(
         wowy_path=wowy_path,
-        normalized_games_path=normalized_games_path,
-        normalized_game_players_path=normalized_game_players_path,
+        normalized_games_path=normalized_games_csv_path,
+        normalized_game_players_path=normalized_game_players_csv_path,
     ):
         return "stale", row_count
     return "current", row_count
@@ -228,11 +252,17 @@ def summarize_team_season(
         source_data_dir=source_data_dir,
     )
     normalized_games_status, normalized_games_rows = classify_csv(
-        normalized_games_dir / f"{team}_{season}.csv",
+        resolve_existing_path(team_season, normalized_games_dir, season_type)
+        or normalized_games_path(team_season, normalized_games_dir, season_type),
         NORMALIZED_GAMES_HEADER,
     )
     normalized_players_status, normalized_players_rows = classify_csv(
-        normalized_game_players_dir / f"{team}_{season}.csv",
+        resolve_existing_path(team_season, normalized_game_players_dir, season_type)
+        or normalized_game_players_path(
+            team_season,
+            normalized_game_players_dir,
+            season_type,
+        ),
         NORMALIZED_GAME_PLAYERS_HEADER,
     )
     wowy_status, wowy_rows = summarize_wowy_cache(
@@ -240,6 +270,7 @@ def summarize_team_season(
         normalized_games_dir=normalized_games_dir,
         normalized_game_players_dir=normalized_game_players_dir,
         wowy_dir=wowy_dir,
+        season_type=season_type,
     )
     return {
         "team": team,
@@ -269,6 +300,7 @@ def summarize_team_season(
                 normalized_games_input_dir=normalized_games_dir,
                 normalized_game_players_input_dir=normalized_game_players_dir,
                 wowy_output_dir=wowy_dir,
+                season_type=season_type,
             )
             if normalized_games_status == "ok"
             and normalized_players_status == "ok"

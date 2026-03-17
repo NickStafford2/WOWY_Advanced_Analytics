@@ -121,6 +121,7 @@ def create_app(
                 combined_wowy_csv=combined_wowy_csv,
                 combined_rawr_games_csv=combined_rawr_games_csv,
                 combined_rawr_game_players_csv=combined_rawr_game_players_csv,
+                player_metrics_db_path=player_metrics_db_path,
             )
         except ValueError as exc:
             return jsonify({"error": str(exc)}), 400
@@ -287,6 +288,7 @@ def _build_metric_custom_query_payload(
     combined_wowy_csv: Path,
     combined_rawr_games_csv: Path,
     combined_rawr_game_players_csv: Path,
+    player_metrics_db_path: Path,
 ) -> dict[str, Any]:
     filter_values = _parse_request_filters(
         request,
@@ -307,6 +309,7 @@ def _build_metric_custom_query_payload(
             normalized_game_players_input_dir=normalized_game_players_input_dir,
             wowy_output_dir=wowy_output_dir,
             combined_wowy_csv=combined_wowy_csv,
+            player_metrics_db_path=player_metrics_db_path,
             min_games_with=int(filter_values["min_sample_size"]),
             min_games_without=int(filter_values["min_secondary_sample_size"]),
             min_average_minutes=float(filter_values["min_average_minutes"]),
@@ -324,6 +327,7 @@ def _build_metric_custom_query_payload(
             wowy_output_dir=wowy_output_dir,
             combined_games_csv=combined_rawr_games_csv,
             combined_game_players_csv=combined_rawr_game_players_csv,
+            player_metrics_db_path=player_metrics_db_path,
             min_games=int(filter_values["min_sample_size"]),
             ridge_alpha=float(filter_values["ridge_alpha"]),
             min_average_minutes=float(filter_values["min_average_minutes"]),

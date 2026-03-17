@@ -16,7 +16,13 @@ from wowy.nba.ingest import (
     DEFAULT_WOWY_GAMES_DIR,
     write_team_season_games_csv,
 )
+from wowy.nba.paths import (
+    normalized_game_players_path,
+    normalized_games_path,
+    wowy_games_path,
+)
 from wowy.nba.seasons import canonicalize_season_string
+from wowy.nba.team_seasons import TeamSeasonScope
 
 
 WOWY_HEADER = ["game_id", "season", "team", "margin", "players"]
@@ -169,20 +175,29 @@ def main(argv: list[str] | None = None) -> int:
 
     team_total = len(team_codes)
     for team_index, team_code in enumerate(team_codes, start=1):
-        wowy_csv_path = DEFAULT_WOWY_GAMES_DIR / f"{team_code}_{season}.csv"
-        normalized_games_path = (
-            DEFAULT_NORMALIZED_GAMES_DIR / f"{team_code}_{season}.csv"
+        team_season = TeamSeasonScope(team=team_code, season=season)
+        wowy_csv_path = wowy_games_path(
+            team_season,
+            DEFAULT_WOWY_GAMES_DIR,
+            args.season_type,
         )
-        normalized_game_players_path = (
-            DEFAULT_NORMALIZED_GAME_PLAYERS_DIR / f"{team_code}_{season}.csv"
+        normalized_games_csv_path = normalized_games_path(
+            team_season,
+            DEFAULT_NORMALIZED_GAMES_DIR,
+            args.season_type,
+        )
+        normalized_game_players_csv_path = normalized_game_players_path(
+            team_season,
+            DEFAULT_NORMALIZED_GAME_PLAYERS_DIR,
+            args.season_type,
         )
         try:
             summary = write_team_season_games_csv(
                 team_abbreviation=team_code,
                 season=season,
                 csv_path=wowy_csv_path,
-                normalized_games_csv_path=normalized_games_path,
-                normalized_game_players_csv_path=normalized_game_players_path,
+                normalized_games_csv_path=normalized_games_csv_path,
+                normalized_game_players_csv_path=normalized_game_players_csv_path,
                 season_type=args.season_type,
                 source_data_dir=DEFAULT_SOURCE_DATA_DIR,
                 log=quiet_log,
@@ -211,8 +226,8 @@ def main(argv: list[str] | None = None) -> int:
             return 1
         render_team_complete_line(team_index, team_total, summary)
         sys.stdout.write("\n")
-        normalized_games_paths.append(normalized_games_path)
-        normalized_game_players_paths.append(normalized_game_players_path)
+        normalized_games_paths.append(normalized_games_csv_path)
+        normalized_game_players_paths.append(normalized_game_players_csv_path)
         wowy_csv_paths.append(wowy_csv_path)
 
     if args.skip_combine:

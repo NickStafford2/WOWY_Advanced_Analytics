@@ -10,7 +10,8 @@ from wowy.apps.rawr.models import (
     RawrPlayerSeasonRecord,
     RawrResult,
 )
-from wowy.nba.prepare import prepare_rawr_inputs
+from wowy.data.player_metrics_db import DEFAULT_PLAYER_METRICS_DB_PATH
+from wowy.nba.prepare import prepare_normalized_scope_records, prepare_rawr_inputs
 from wowy.nba.team_seasons import resolve_team_seasons
 from wowy.data.normalized_io import (
     load_normalized_game_players_from_csv,
@@ -288,8 +289,9 @@ def prepare_rawr_player_season_records(
     shrinkage_mode: str,
     shrinkage_strength: float,
     shrinkage_minute_scale: float,
-    min_average_minutes: float | None,
-    min_total_minutes: float | None,
+    min_average_minutes: float | None = None,
+    min_total_minutes: float | None = None,
+    player_metrics_db_path: Path = DEFAULT_PLAYER_METRICS_DB_PATH,
 ) -> list[RawrPlayerSeasonRecord]:
     validate_filters(
         min_games=min_games,
@@ -300,27 +302,31 @@ def prepare_rawr_player_season_records(
         min_average_minutes=min_average_minutes,
         min_total_minutes=min_total_minutes,
     )
-    team_seasons = resolve_team_seasons(teams, seasons, normalized_games_input_dir)
+    team_seasons = resolve_team_seasons(
+        teams,
+        seasons,
+        normalized_games_input_dir,
+        player_metrics_db_path=player_metrics_db_path,
+        season_type=season_type,
+    )
     teams_by_season: dict[str, list[str]] = {}
     for team_season in team_seasons:
         teams_by_season.setdefault(team_season.season, []).append(team_season.team)
     records: list[RawrPlayerSeasonRecord] = []
 
     for season in sorted(teams_by_season):
-        games_csv, game_players_csv = prepare_rawr_inputs(
+        games, game_players = prepare_normalized_scope_records(
             teams=sorted(set(teams_by_season[season])),
             seasons=[season],
-            combined_games_csv=combined_games_csv,
-            combined_game_players_csv=combined_game_players_csv,
             season_type=season_type,
             source_data_dir=source_data_dir,
             normalized_games_input_dir=normalized_games_input_dir,
             normalized_game_players_input_dir=normalized_game_players_input_dir,
             wowy_output_dir=wowy_output_dir,
+            player_metrics_db_path=player_metrics_db_path,
+            include_opponents_for_team_scope=True,
             log=lambda *_args, **_kwargs: None,
         )
-        games = load_normalized_games_from_csv(games_csv)
-        game_players = load_normalized_game_players_from_csv(game_players_csv)
         try:
             games, game_players = filter_rawr_scope(
                 games,
@@ -412,6 +418,11 @@ def prepare_and_run_rawr(args) -> str:
         normalized_games_input_dir=args.normalized_games_input_dir,
         normalized_game_players_input_dir=args.normalized_game_players_input_dir,
         wowy_output_dir=args.wowy_output_dir,
+        player_metrics_db_path=getattr(
+            args,
+            "player_metrics_db_path",
+            DEFAULT_PLAYER_METRICS_DB_PATH,
+        ),
     )
     print(f"[2/3] loading RAWR data from {games_csv} and {game_players_csv}")
     if args.tune_ridge:

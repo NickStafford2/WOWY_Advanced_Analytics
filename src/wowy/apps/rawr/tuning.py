@@ -11,6 +11,7 @@ from wowy.apps.rawr.models import RawrPlayerSeasonRecord
 from wowy.apps.rawr.service import prepare_rawr_player_season_records
 from wowy.apps.wowy.models import WowyPlayerSeasonRecord
 from wowy.apps.wowy.service import prepare_wowy_player_season_records
+from wowy.data.player_metrics_db import DEFAULT_PLAYER_METRICS_DB_PATH
 from wowy.nba.ingest import (
     DEFAULT_NORMALIZED_GAME_PLAYERS_DIR,
     DEFAULT_NORMALIZED_GAMES_DIR,
@@ -366,6 +367,11 @@ def evaluate_configs(args) -> list[ComparisonResult]:
         normalized_game_players_input_dir=args.normalized_game_players_input_dir,
         wowy_output_dir=args.wowy_output_dir,
         combined_wowy_csv=args.combined_wowy_csv,
+        player_metrics_db_path=getattr(
+            args,
+            "player_metrics_db_path",
+            DEFAULT_PLAYER_METRICS_DB_PATH,
+        ),
         min_games_with=args.holdout_min_games_with,
         min_games_without=args.holdout_min_games_without,
         min_average_minutes=args.min_average_minutes,
@@ -384,6 +390,11 @@ def evaluate_configs(args) -> list[ComparisonResult]:
         normalized_game_players_input_dir=args.normalized_game_players_input_dir,
         wowy_output_dir=args.wowy_output_dir,
         combined_wowy_csv=args.combined_wowy_csv,
+        player_metrics_db_path=getattr(
+            args,
+            "player_metrics_db_path",
+            DEFAULT_PLAYER_METRICS_DB_PATH,
+        ),
         min_games_with=args.holdout_min_games_with,
         min_games_without=args.holdout_min_games_without,
         min_average_minutes=args.min_average_minutes,
@@ -435,6 +446,11 @@ def evaluate_configs(args) -> list[ComparisonResult]:
                 normalized_games_input_dir=args.normalized_games_input_dir,
                 normalized_game_players_input_dir=args.normalized_game_players_input_dir,
                 wowy_output_dir=args.wowy_output_dir,
+                player_metrics_db_path=getattr(
+                    args,
+                    "player_metrics_db_path",
+                    DEFAULT_PLAYER_METRICS_DB_PATH,
+                ),
                 min_games=args.rawr_min_games,
                 ridge_alpha=ridge_alpha,
                 shrinkage_mode=shrinkage_mode,

@@ -8,6 +8,10 @@ from pathlib import Path
 from typing import Callable
 
 from wowy.atomic_io import atomic_text_writer
+from wowy.data.game_cache_db import (
+    ensure_explicit_regular_season_copy,
+    migrate_regular_season_csv_cache_to_db,
+)
 from wowy.data.player_metrics_db import DEFAULT_PLAYER_METRICS_DB_PATH
 from wowy.nba.ingest import (
     DEFAULT_NORMALIZED_GAME_PLAYERS_DIR,
@@ -15,7 +19,14 @@ from wowy.nba.ingest import (
     DEFAULT_SOURCE_DATA_DIR,
     DEFAULT_WOWY_GAMES_DIR,
 )
+from wowy.nba.paths import (
+    normalized_game_players_path,
+    normalized_games_path,
+    resolve_existing_path,
+    wowy_games_path,
+)
 from wowy.nba.seasons import canonicalize_season_string, season_sort_key
+from wowy.nba.team_seasons import list_cached_team_seasons
 
 
 LogFn = Callable[[str], None]
@@ -26,6 +37,12 @@ class CacheSeasonMigrationSummary:
     renamed_files: int = 0
     rewritten_files: int = 0
     updated_db_rows: int = 0
+
+
+@dataclass(frozen=True)
+class NormalizedCacheDbMigrationSummary:
+    explicit_regular_season_copies: int = 0
+    imported_team_seasons: int = 0
 
 
 def normalize_cache_season_keys(
@@ -93,6 +110,64 @@ def normalize_cache_season_keys(
     )
 
 
+def migrate_normalized_regular_season_cache_to_db(
+    *,
+    normalized_games_input_dir: Path = DEFAULT_NORMALIZED_GAMES_DIR,
+    normalized_game_players_input_dir: Path = DEFAULT_NORMALIZED_GAME_PLAYERS_DIR,
+    wowy_output_dir: Path = DEFAULT_WOWY_GAMES_DIR,
+    player_metrics_db_path: Path = DEFAULT_PLAYER_METRICS_DB_PATH,
+) -> NormalizedCacheDbMigrationSummary:
+    explicit_copies = 0
+    for team_season in list_cached_team_seasons(normalized_games_input_dir):
+        explicit_copies += _ensure_explicit_copy(
+            resolve_existing_path(
+                team_season,
+                normalized_games_input_dir,
+                "Regular Season",
+            ),
+            normalized_games_path(team_season, normalized_games_input_dir),
+        )
+        explicit_copies += _ensure_explicit_copy(
+            resolve_existing_path(
+                team_season,
+                normalized_game_players_input_dir,
+                "Regular Season",
+            ),
+            normalized_game_players_path(
+                team_season,
+                normalized_game_players_input_dir,
+            ),
+        )
+        explicit_copies += _ensure_explicit_copy(
+            resolve_existing_path(
+                team_season,
+                wowy_output_dir,
+                "Regular Season",
+            ),
+            wowy_games_path(team_season, wowy_output_dir),
+        )
+
+    imported_team_seasons = migrate_regular_season_csv_cache_to_db(
+        player_metrics_db_path,
+        normalized_games_input_dir=normalized_games_input_dir,
+        normalized_game_players_input_dir=normalized_game_players_input_dir,
+        resolve_games_path=lambda team_season, season_type: resolve_existing_path(
+            team_season,
+            normalized_games_input_dir,
+            season_type,
+        ),
+        resolve_game_players_path=lambda team_season, season_type: resolve_existing_path(
+            team_season,
+            normalized_game_players_input_dir,
+            season_type,
+        ),
+    )
+    return NormalizedCacheDbMigrationSummary(
+        explicit_regular_season_copies=explicit_copies,
+        imported_team_seasons=imported_team_seasons,
+    )
+
+
 def normalize_team_season_json_cache(
     directory: Path,
     *,
@@ -113,6 +188,12 @@ def normalize_team_season_json_cache(
         if log is not None:
             log(f"rename {path.name} -> {target_name}")
     return renamed_files, 0
+
+
+def _ensure_explicit_copy(source_path: Path | None, target_path: Path) -> int:
+    if source_path is None:
+        return 0
+    return 1 if ensure_explicit_regular_season_copy(source_path, target_path) else 0
 
 
 def normalize_team_season_csv_cache(

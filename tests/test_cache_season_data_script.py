@@ -92,3 +92,54 @@ def test_main_reports_consistency_failure_cleanly(capsys, monkeypatch) -> None:
     assert exit_code == 1
     assert "[ 1/1] ATL 2022-23 failed consistency=wowy_data" in captured.out
     assert "Inconsistent cache for ATL 2022-23: wowy_data" in captured.err
+
+
+def test_main_uses_season_type_specific_paths_for_playoffs(
+    monkeypatch,
+    tmp_path: Path,
+) -> None:
+    monkeypatch.setattr(MODULE, "resolve_teams", lambda team_codes: ["ATL"])
+    monkeypatch.setattr(MODULE, "combine_normalized_files", lambda **kwargs: None)
+    monkeypatch.setattr(MODULE, "combine_wowy_csvs", lambda *args, **kwargs: None)
+    monkeypatch.setattr(MODULE, "DEFAULT_WOWY_GAMES_DIR", tmp_path / "wowy")
+    monkeypatch.setattr(MODULE, "DEFAULT_NORMALIZED_GAMES_DIR", tmp_path / "games")
+    monkeypatch.setattr(
+        MODULE,
+        "DEFAULT_NORMALIZED_GAME_PLAYERS_DIR",
+        tmp_path / "game_players",
+    )
+
+    captured_paths: dict[str, Path] = {}
+
+    def fake_write_team_season_games_csv(**kwargs):
+        captured_paths["csv_path"] = kwargs["csv_path"]
+        captured_paths["normalized_games_csv_path"] = kwargs["normalized_games_csv_path"]
+        captured_paths["normalized_game_players_csv_path"] = kwargs[
+            "normalized_game_players_csv_path"
+        ]
+        return TeamSeasonRunSummary(
+            team="ATL",
+            season="2022-23",
+            season_type="Playoffs",
+            league_games_source="cached",
+            total_games=6,
+            processed_games=6,
+            skipped_games=0,
+            fetched_box_scores=0,
+            cached_box_scores=6,
+        )
+
+    monkeypatch.setattr(MODULE, "write_team_season_games_csv", fake_write_team_season_games_csv)
+
+    exit_code = MODULE.main(["2022-23", "--season-type", "Playoffs", "--skip-combine"])
+
+    assert exit_code == 0
+    assert captured_paths["csv_path"].name == "ATL_2022-23_playoffs.csv"
+    assert (
+        captured_paths["normalized_games_csv_path"].name
+        == "ATL_2022-23_playoffs.csv"
+    )
+    assert (
+        captured_paths["normalized_game_players_csv_path"].name
+        == "ATL_2022-23_playoffs.csv"
+    )

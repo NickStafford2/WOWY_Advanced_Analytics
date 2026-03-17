@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
+from wowy.data.game_cache_db import replace_team_season_normalized_rows
 from wowy.apps.wowy.service import (
     available_wowy_seasons,
     build_wowy_span_chart_rows,
@@ -15,6 +16,7 @@ from wowy.apps.wowy.models import (
     WowyPlayerSeasonRecord,
     WowyPlayerStats,
 )
+from wowy.nba.models import NormalizedGamePlayerRecord, NormalizedGameRecord
 
 
 def test_compute_wowy_basic():
@@ -196,6 +198,7 @@ def test_prepare_wowy_player_season_records_builds_web_ready_rows_from_cache(
         normalized_game_players_input_dir=normalized_players_dir,
         wowy_output_dir=tmp_path / "team_games",
         combined_wowy_csv=tmp_path / "combined" / "games.csv",
+        player_metrics_db_path=tmp_path / "app" / "player_metrics.sqlite3",
         min_games_with=1,
         min_games_without=1,
         min_average_minutes=0.0,
@@ -225,6 +228,84 @@ def test_prepare_wowy_player_season_records_builds_web_ready_rows_from_cache(
         "average_minutes": 34.0,
         "total_minutes": 68.0,
     }
+
+
+def test_prepare_wowy_player_season_records_uses_db_without_normalized_csv_dirs(
+    tmp_path: Path,
+):
+    db_path = tmp_path / "app" / "player_metrics.sqlite3"
+    replace_team_season_normalized_rows(
+        db_path,
+        team="BOS",
+        season="2022-23",
+        season_type="Regular Season",
+        games=[
+            NormalizedGameRecord(
+                "1",
+                "2022-23",
+                "2023-04-01",
+                "BOS",
+                "MIL",
+                True,
+                10.0,
+                "Regular Season",
+                "nba_api",
+            ),
+            NormalizedGameRecord(
+                "2",
+                "2022-23",
+                "2023-04-03",
+                "BOS",
+                "NYK",
+                False,
+                -5.0,
+                "Regular Season",
+                "nba_api",
+            ),
+            NormalizedGameRecord(
+                "3",
+                "2022-23",
+                "2023-04-05",
+                "BOS",
+                "LAL",
+                True,
+                4.0,
+                "Regular Season",
+                "nba_api",
+            ),
+        ],
+        game_players=[
+            NormalizedGamePlayerRecord("1", "BOS", 101, "Player 101", True, 34.0),
+            NormalizedGamePlayerRecord("1", "BOS", 102, "Player 102", True, 31.0),
+            NormalizedGamePlayerRecord("2", "BOS", 102, "Player 102", True, 31.0),
+            NormalizedGamePlayerRecord("3", "BOS", 101, "Player 101", True, 34.0),
+        ],
+        source_path="db-only",
+        source_snapshot="db-only",
+        source_kind="test",
+    )
+
+    records = prepare_wowy_player_season_records(
+        teams=["BOS"],
+        seasons=None,
+        season_type="Regular Season",
+        source_data_dir=tmp_path / "source",
+        normalized_games_input_dir=tmp_path / "missing-normalized-games",
+        normalized_game_players_input_dir=tmp_path / "missing-normalized-game-players",
+        wowy_output_dir=tmp_path / "missing-team-games",
+        combined_wowy_csv=tmp_path / "combined" / "games.csv",
+        player_metrics_db_path=db_path,
+        min_games_with=1,
+        min_games_without=1,
+        min_average_minutes=0.0,
+        min_total_minutes=0.0,
+        load_player_names_fn=lambda _: {101: "Player 101", 102: "Player 102"},
+    )
+
+    assert [(record.season, record.player_id) for record in records] == [
+        ("2022-23", 101),
+        ("2022-23", 102),
+    ]
 
 
 def test_build_wowy_span_chart_rows_ranks_players_across_selected_seasons():

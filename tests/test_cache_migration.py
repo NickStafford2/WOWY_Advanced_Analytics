@@ -3,7 +3,10 @@ from __future__ import annotations
 import sqlite3
 from pathlib import Path
 
-from wowy.nba.cache_migration import normalize_cache_season_keys
+from wowy.nba.cache_migration import (
+    migrate_normalized_regular_season_cache_to_db,
+    normalize_cache_season_keys,
+)
 
 
 def test_normalize_cache_season_keys_rewrites_files_and_db(tmp_path: Path):
@@ -210,4 +213,80 @@ def test_normalize_cache_season_keys_rewrites_files_and_db(tmp_path: Path):
         connection.execute("SELECT season FROM player_season_metrics").fetchone()[0]
         == "2014-15"
     )
+    connection.close()
+
+
+def test_migrate_normalized_regular_season_cache_to_db_copies_explicit_names_and_imports(
+    tmp_path: Path,
+):
+    normalized_games_dir = tmp_path / "normalized" / "games"
+    normalized_game_players_dir = tmp_path / "normalized" / "game_players"
+    wowy_output_dir = tmp_path / "raw" / "team_games"
+    db_path = tmp_path / "app" / "player_metrics.sqlite3"
+
+    normalized_games_dir.mkdir(parents=True)
+    normalized_game_players_dir.mkdir(parents=True)
+    wowy_output_dir.mkdir(parents=True)
+
+    (normalized_games_dir / "BOS_2023-24.csv").write_text(
+        (
+            "game_id,season,game_date,team,opponent,is_home,margin,season_type,source\n"
+            "0001,2023-24,2024-04-01,BOS,MIL,true,5,Regular Season,nba_api\n"
+        ),
+        encoding="utf-8",
+    )
+    (normalized_game_players_dir / "BOS_2023-24.csv").write_text(
+        (
+            "game_id,team,player_id,player_name,appeared,minutes\n"
+            "0001,BOS,101,Player 101,true,36.0\n"
+        ),
+        encoding="utf-8",
+    )
+    (wowy_output_dir / "BOS_2023-24.csv").write_text(
+        "game_id,season,team,margin,players\n0001,2023-24,BOS,5,101\n",
+        encoding="utf-8",
+    )
+
+    summary = migrate_normalized_regular_season_cache_to_db(
+        normalized_games_input_dir=normalized_games_dir,
+        normalized_game_players_input_dir=normalized_game_players_dir,
+        wowy_output_dir=wowy_output_dir,
+        player_metrics_db_path=db_path,
+    )
+
+    assert summary.explicit_regular_season_copies == 3
+    assert summary.imported_team_seasons == 1
+    assert (normalized_games_dir / "BOS_2023-24_regular_season.csv").exists()
+    assert (
+        normalized_game_players_dir / "BOS_2023-24_regular_season.csv"
+    ).exists()
+    assert (wowy_output_dir / "BOS_2023-24_regular_season.csv").exists()
+
+    connection = sqlite3.connect(db_path)
+    assert (
+        connection.execute(
+            """
+            SELECT COUNT(*) FROM normalized_games
+            WHERE team = 'BOS' AND season = '2023-24' AND season_type = 'Regular Season'
+            """
+        ).fetchone()[0]
+        == 1
+    )
+    assert (
+        connection.execute(
+            """
+            SELECT COUNT(*) FROM normalized_game_players
+            WHERE team = 'BOS' AND season = '2023-24' AND season_type = 'Regular Season'
+            """
+        ).fetchone()[0]
+        == 1
+    )
+    load_row = connection.execute(
+        """
+        SELECT source_kind, games_row_count, game_players_row_count
+        FROM normalized_cache_loads
+        WHERE team = 'BOS' AND season = '2023-24' AND season_type = 'Regular Season'
+        """
+    ).fetchone()
+    assert load_row == ("csv-cache", 1, 1)
     connection.close()

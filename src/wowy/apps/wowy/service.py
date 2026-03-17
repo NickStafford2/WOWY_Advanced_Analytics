@@ -10,12 +10,14 @@ from wowy.apps.wowy.models import (
     WowyPlayerSeasonRecord,
     WowyPlayerStats,
 )
-from wowy.data.normalized_io import load_normalized_game_players_from_csv
 from wowy.data.wowy_io import load_games_from_csv, write_player_season_records_csv
+from wowy.data.player_metrics_db import DEFAULT_PLAYER_METRICS_DB_PATH
 from wowy.nba.ingest import load_player_names_from_cache
-from wowy.nba.paths import normalized_game_players_path
-from wowy.nba.prepare import prepare_wowy_inputs
-from wowy.nba.team_seasons import resolve_team_seasons
+from wowy.nba.prepare import (
+    prepare_normalized_scope_records,
+    prepare_wowy_game_records,
+    prepare_wowy_inputs,
+)
 from wowy.progress import TerminalProgressBar, print_status_box
 from wowy.shared.filters import validate_top_n_and_minutes
 from wowy.shared.minutes import build_player_minute_stats, passes_minute_filters
@@ -120,18 +122,25 @@ def load_player_minute_stats(
     seasons: list[str] | None,
     normalized_games_input_dir: Path,
     normalized_game_players_input_dir: Path,
+    season_type: str = "Regular Season",
+    source_data_dir: Path | None = None,
+    wowy_output_dir: Path | None = None,
+    player_metrics_db_path: Path = DEFAULT_PLAYER_METRICS_DB_PATH,
 ) -> dict[int, tuple[float, float]]:
-    """Build minute summaries from normalized cache files for WOWY output filtering."""
-    game_players = []
-    for team_season in resolve_team_seasons(teams, seasons, normalized_games_input_dir):
-        game_players.extend(
-            load_normalized_game_players_from_csv(
-                normalized_game_players_path(
-                    team_season,
-                    normalized_game_players_input_dir,
-                )
-            )
-        )
+    """Build minute summaries from the DB-backed normalized cache with CSV fallback."""
+    _games, game_players = prepare_normalized_scope_records(
+        teams=teams,
+        seasons=seasons,
+        season_type=season_type,
+        source_data_dir=source_data_dir
+        or Path("data/source/nba"),
+        normalized_games_input_dir=normalized_games_input_dir,
+        normalized_game_players_input_dir=normalized_game_players_input_dir,
+        wowy_output_dir=wowy_output_dir or Path("data/raw/nba/team_games"),
+        player_metrics_db_path=player_metrics_db_path,
+        include_opponents_for_team_scope=False,
+        log=lambda *_args, **_kwargs: None,
+    )
     return build_player_minute_stats(game_players)
 
 
@@ -140,22 +149,34 @@ def load_player_season_minute_stats(
     seasons: list[str] | None,
     normalized_games_input_dir: Path,
     normalized_game_players_input_dir: Path,
+    season_type: str = "Regular Season",
+    source_data_dir: Path | None = None,
+    wowy_output_dir: Path | None = None,
+    player_metrics_db_path: Path = DEFAULT_PLAYER_METRICS_DB_PATH,
 ) -> dict[tuple[str, int], tuple[float, float]]:
     totals: dict[tuple[str, int], float] = {}
     counts: dict[tuple[str, int], int] = {}
 
-    for team_season in resolve_team_seasons(teams, seasons, normalized_games_input_dir):
-        for player in load_normalized_game_players_from_csv(
-            normalized_game_players_path(
-                team_season,
-                normalized_game_players_input_dir,
-            )
-        ):
-            if not player.appeared or player.minutes is None or player.minutes <= 0.0:
-                continue
-            key = (team_season.season, player.player_id)
-            totals[key] = totals.get(key, 0.0) + player.minutes
-            counts[key] = counts.get(key, 0) + 1
+    games, game_players = prepare_normalized_scope_records(
+        teams=teams,
+        seasons=seasons,
+        season_type=season_type,
+        source_data_dir=source_data_dir or Path("data/source/nba"),
+        normalized_games_input_dir=normalized_games_input_dir,
+        normalized_game_players_input_dir=normalized_game_players_input_dir,
+        wowy_output_dir=wowy_output_dir or Path("data/raw/nba/team_games"),
+        player_metrics_db_path=player_metrics_db_path,
+        include_opponents_for_team_scope=False,
+        log=lambda *_args, **_kwargs: None,
+    )
+    seasons_by_game_id = {game.game_id: game.season for game in games}
+    for player in game_players:
+        season = seasons_by_game_id.get(player.game_id)
+        if season is None or not player.appeared or player.minutes is None or player.minutes <= 0.0:
+            continue
+        key = (season, player.player_id)
+        totals[key] = totals.get(key, 0.0) + player.minutes
+        counts[key] = counts.get(key, 0) + 1
 
     return {
         key: (totals[key] / counts[key], totals[key])
@@ -381,6 +402,7 @@ def prepare_wowy_player_season_records(
     combined_wowy_csv: Path,
     min_games_with: int,
     min_games_without: int,
+    player_metrics_db_path: Path = DEFAULT_PLAYER_METRICS_DB_PATH,
     min_average_minutes: float | None = None,
     min_total_minutes: float | None = None,
     load_player_names_fn: LoadPlayerNamesFn = load_player_names_from_cache,
@@ -391,24 +413,29 @@ def prepare_wowy_player_season_records(
         min_average_minutes=min_average_minutes,
         min_total_minutes=min_total_minutes,
     )
-    csv_path, player_names = prepare_wowy_inputs(
+    games, player_names = prepare_wowy_game_records(
         teams=teams,
         seasons=seasons,
-        combined_wowy_csv=combined_wowy_csv,
         season_type=season_type,
         source_data_dir=source_data_dir,
         normalized_games_input_dir=normalized_games_input_dir,
         normalized_game_players_input_dir=normalized_game_players_input_dir,
         wowy_output_dir=wowy_output_dir,
+        player_metrics_db_path=player_metrics_db_path,
+        log=lambda *_args, **_kwargs: None,
     )
     player_season_minute_stats = load_player_season_minute_stats(
         teams=teams,
         seasons=seasons,
         normalized_games_input_dir=normalized_games_input_dir,
         normalized_game_players_input_dir=normalized_game_players_input_dir,
+        season_type=season_type,
+        source_data_dir=source_data_dir,
+        wowy_output_dir=wowy_output_dir,
+        player_metrics_db_path=player_metrics_db_path,
     )
     return build_wowy_player_season_records(
-        load_games_from_csv(csv_path),
+        games,
         min_games_with=min_games_with,
         min_games_without=min_games_without,
         player_names=player_names,
@@ -449,12 +476,25 @@ def prepare_and_run_wowy(
         normalized_games_input_dir=args.normalized_games_input_dir,
         normalized_game_players_input_dir=args.normalized_game_players_input_dir,
         wowy_output_dir=args.wowy_output_dir,
+        player_metrics_db_path=getattr(
+            args,
+            "player_metrics_db_path",
+            DEFAULT_PLAYER_METRICS_DB_PATH,
+        ),
     )
     player_minute_stats = load_player_minute_stats(
         teams=args.team,
         seasons=args.season,
         normalized_games_input_dir=args.normalized_games_input_dir,
         normalized_game_players_input_dir=args.normalized_game_players_input_dir,
+        season_type=args.season_type,
+        source_data_dir=args.source_data_dir,
+        wowy_output_dir=args.wowy_output_dir,
+        player_metrics_db_path=getattr(
+            args,
+            "player_metrics_db_path",
+            DEFAULT_PLAYER_METRICS_DB_PATH,
+        ),
     )
     print(f"[2/3] running WOWY from {csv_path}")
     print("[3/3] computing WOWY results")
@@ -468,6 +508,11 @@ def prepare_and_run_wowy(
             normalized_game_players_input_dir=args.normalized_game_players_input_dir,
             wowy_output_dir=args.wowy_output_dir,
             combined_wowy_csv=args.combined_wowy_csv,
+            player_metrics_db_path=getattr(
+                args,
+                "player_metrics_db_path",
+                DEFAULT_PLAYER_METRICS_DB_PATH,
+            ),
             min_games_with=args.min_games_with,
             min_games_without=args.min_games_without,
             min_average_minutes=args.min_average_minutes,
