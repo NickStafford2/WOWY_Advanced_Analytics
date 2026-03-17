@@ -491,6 +491,33 @@ def test_rawr_cli_accepts_game_count_shrinkage_mode(monkeypatch):
     assert captured_args[0].shrinkage_strength == 0.5
 
 
+def test_rawr_cli_accepts_minute_shrinkage_mode(monkeypatch):
+    captured_args: list[object] = []
+
+    monkeypatch.setattr(
+        "wowy.apps.rawr.cli.prepare_and_run_rawr",
+        lambda args: captured_args.append(args) or "ok",
+    )
+
+    exit_code = main(
+        [
+            "--season",
+            "2023-24",
+            "--shrinkage-mode",
+            "minutes",
+            "--shrinkage-strength",
+            "0.5",
+            "--shrinkage-minute-scale",
+            "24",
+        ]
+    )
+
+    assert exit_code == 0
+    assert captured_args[0].shrinkage_mode == "minutes"
+    assert captured_args[0].shrinkage_strength == 0.5
+    assert captured_args[0].shrinkage_minute_scale == 24.0
+
+
 def test_main_rejects_negative_filters():
     with pytest.raises(ValueError, match="non-negative"):
         main(["--min-games", "-1"])

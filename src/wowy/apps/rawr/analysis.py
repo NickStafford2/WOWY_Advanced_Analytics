@@ -26,13 +26,18 @@ def fit_player_rawr(
     ridge_alpha: float = 1.0,
     shrinkage_mode: ShrinkageMode = "uniform",
     shrinkage_strength: float = 1.0,
+    shrinkage_minute_scale: float = 48.0,
     progress: ProgressFn | None = None,
 ) -> RawrResult:
     if min_games < 0:
         raise ValueError("Minimum games filter must be non-negative")
     if ridge_alpha < 0:
         raise ValueError("Ridge alpha must be non-negative")
-    validate_shrinkage_settings(shrinkage_mode, shrinkage_strength)
+    validate_shrinkage_settings(
+        shrinkage_mode,
+        shrinkage_strength,
+        shrinkage_minute_scale,
+    )
     if not observations:
         raise ValueError("At least one RAWR observation is required")
 
@@ -51,6 +56,7 @@ def fit_player_rawr(
         ridge_alpha=ridge_alpha,
         shrinkage_mode=shrinkage_mode,
         shrinkage_strength=shrinkage_strength,
+        shrinkage_minute_scale=shrinkage_minute_scale,
         progress=progress,
     )
     intercept = model.coefficients[0]
@@ -84,9 +90,14 @@ def fit_regression_model(
     ridge_alpha: float = 1.0,
     shrinkage_mode: ShrinkageMode = "uniform",
     shrinkage_strength: float = 1.0,
+    shrinkage_minute_scale: float = 48.0,
     progress: ProgressFn | None = None,
 ) -> RawrModel:
-    validate_shrinkage_settings(shrinkage_mode, shrinkage_strength)
+    validate_shrinkage_settings(
+        shrinkage_mode,
+        shrinkage_strength,
+        shrinkage_minute_scale,
+    )
     team_seasons = sorted(
         {
             team_season_key(observation.home_team, observation.season)
@@ -118,6 +129,7 @@ def fit_regression_model(
         ridge_alpha=ridge_alpha,
         shrinkage_mode=shrinkage_mode,
         shrinkage_strength=shrinkage_strength,
+        shrinkage_minute_scale=shrinkage_minute_scale,
     )
 
     gram = np.zeros((feature_count, feature_count), dtype=float)
@@ -233,6 +245,7 @@ def tune_ridge_alpha(
     validation_fraction: float = 0.2,
     shrinkage_mode: ShrinkageMode = "uniform",
     shrinkage_strength: float = 1.0,
+    shrinkage_minute_scale: float = 48.0,
 ) -> RidgeTuningSummary:
     if not observations:
         raise ValueError("At least one RAWR observation is required")
@@ -240,7 +253,11 @@ def tune_ridge_alpha(
         raise ValueError("At least one ridge alpha is required")
     if not 0.0 < validation_fraction < 0.5:
         raise ValueError("Validation fraction must be between 0 and 0.5")
-    validate_shrinkage_settings(shrinkage_mode, shrinkage_strength)
+    validate_shrinkage_settings(
+        shrinkage_mode,
+        shrinkage_strength,
+        shrinkage_minute_scale,
+    )
 
     ordered_observations = sorted(
         observations,
@@ -271,6 +288,7 @@ def tune_ridge_alpha(
             ridge_alpha=alpha,
             shrinkage_mode=shrinkage_mode,
             shrinkage_strength=shrinkage_strength,
+            shrinkage_minute_scale=shrinkage_minute_scale,
         )
         validation_mse = mean(
             (predict_margin(observation, model) - observation.margin) ** 2
@@ -308,11 +326,14 @@ def build_feature_row(
 def validate_shrinkage_settings(
     shrinkage_mode: ShrinkageMode,
     shrinkage_strength: float,
+    shrinkage_minute_scale: float,
 ) -> None:
-    if shrinkage_mode not in {"uniform", "game-count"}:
-        raise ValueError("Shrinkage mode must be 'uniform' or 'game-count'")
+    if shrinkage_mode not in {"uniform", "game-count", "minutes"}:
+        raise ValueError("Shrinkage mode must be 'uniform', 'game-count', or 'minutes'")
     if shrinkage_strength < 0:
         raise ValueError("Shrinkage strength must be non-negative")
+    if shrinkage_minute_scale <= 0:
+        raise ValueError("Shrinkage minute scale must be positive")
 
 
 def build_player_penalties(
@@ -322,16 +343,44 @@ def build_player_penalties(
     ridge_alpha: float,
     shrinkage_mode: ShrinkageMode,
     shrinkage_strength: float,
+    shrinkage_minute_scale: float = 48.0,
 ) -> dict[tuple[str, int], float]:
     if shrinkage_mode == "uniform":
         return {player_key: ridge_alpha for player_key in player_keys}
 
-    games_by_player_season = count_player_season_games(observations)
+    if shrinkage_mode == "game-count":
+        games_by_player_season = count_player_season_games(observations)
+        penalties: dict[tuple[str, int], float] = {}
+        for player_key in player_keys:
+            games = games_by_player_season[player_key]
+            penalties[player_key] = ridge_alpha / (games**shrinkage_strength)
+        return penalties
+
+    minutes_by_player_season = count_player_season_minutes(observations)
     penalties: dict[tuple[str, int], float] = {}
     for player_key in player_keys:
-        games = games_by_player_season[player_key]
-        penalties[player_key] = ridge_alpha / (games**shrinkage_strength)
+        if player_key not in minutes_by_player_season:
+            raise ValueError(
+                "Minute-aware shrinkage requires player minute totals for every included player-season"
+            )
+        scaled_minutes = minutes_by_player_season[player_key] / shrinkage_minute_scale
+        penalties[player_key] = ridge_alpha / (scaled_minutes**shrinkage_strength)
     return penalties
+
+
+def count_player_season_minutes(
+    observations: list[RawrObservation],
+) -> dict[tuple[str, int], float]:
+    minutes_by_player_season: dict[tuple[str, int], float] = {}
+    for observation in observations:
+        if observation.player_minutes is None:
+            continue
+        for player_id, minutes in observation.player_minutes.items():
+            key = (observation.season, player_id)
+            minutes_by_player_season[key] = (
+                minutes_by_player_season.get(key, 0.0) + minutes
+            )
+    return minutes_by_player_season
 
 
 def accumulate_row(

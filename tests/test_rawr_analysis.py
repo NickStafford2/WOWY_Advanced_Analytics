@@ -4,6 +4,7 @@ import pytest
 
 from wowy.apps.rawr.analysis import (
     build_player_penalties,
+    count_player_season_minutes,
     fit_player_rawr,
     tune_ridge_alpha,
 )
@@ -241,6 +242,75 @@ def test_build_player_penalties_supports_game_count_shrinkage():
     assert penalties[("2023-24", 201)] == pytest.approx(10.0)
 
 
+def test_count_player_season_minutes_aggregates_minutes():
+    observations = [
+        RawrObservation(
+            "1",
+            "2023-24",
+            "2024-04-01",
+            "BOS",
+            "MIL",
+            2.0,
+            {101: 1.0, 201: -1.0},
+            {101: 30.0, 201: 40.0},
+        ),
+        RawrObservation(
+            "2",
+            "2023-24",
+            "2024-04-03",
+            "BOS",
+            "NYK",
+            -2.0,
+            {101: 1.0, 202: -1.0},
+            {101: 10.0, 202: 48.0},
+        ),
+    ]
+
+    assert count_player_season_minutes(observations) == {
+        ("2023-24", 101): 40.0,
+        ("2023-24", 201): 40.0,
+        ("2023-24", 202): 48.0,
+    }
+
+
+def test_build_player_penalties_supports_minute_shrinkage():
+    observations = [
+        RawrObservation(
+            "1",
+            "2023-24",
+            "2024-04-01",
+            "BOS",
+            "MIL",
+            2.0,
+            {101: 1.0, 201: -1.0},
+            {101: 5.0, 201: 40.0},
+        ),
+        RawrObservation(
+            "2",
+            "2023-24",
+            "2024-04-03",
+            "BOS",
+            "NYK",
+            -2.0,
+            {101: 1.0, 202: -1.0},
+            {101: 5.0, 202: 35.0},
+        ),
+    ]
+
+    penalties = build_player_penalties(
+        observations=observations,
+        player_keys=[("2023-24", 101), ("2023-24", 201)],
+        ridge_alpha=10.0,
+        shrinkage_mode="minutes",
+        shrinkage_strength=1.0,
+        shrinkage_minute_scale=48.0,
+    )
+
+    assert penalties[("2023-24", 101)] == pytest.approx(48.0)
+    assert penalties[("2023-24", 201)] == pytest.approx(12.0)
+    assert penalties[("2023-24", 101)] > penalties[("2023-24", 201)]
+
+
 def test_fit_player_rawr_rejects_invalid_shrinkage_mode():
     observations = [
         RawrObservation(
@@ -260,6 +330,28 @@ def test_fit_player_rawr_rejects_invalid_shrinkage_mode():
             player_names={101: "Player 101", 201: "Player 201"},
             ridge_alpha=1.0,
             shrinkage_mode="bad-mode",
+        )
+
+
+def test_fit_player_rawr_rejects_non_positive_minute_scale():
+    observations = [
+        RawrObservation(
+            "1",
+            "2023-24",
+            "2024-04-01",
+            "BOS",
+            "MIL",
+            2.0,
+            {101: 1.0, 201: -1.0},
+        ),
+    ]
+
+    with pytest.raises(ValueError, match="minute scale"):
+        fit_player_rawr(
+            observations,
+            player_names={101: "Player 101", 201: "Player 201"},
+            ridge_alpha=1.0,
+            shrinkage_minute_scale=0.0,
         )
 
 

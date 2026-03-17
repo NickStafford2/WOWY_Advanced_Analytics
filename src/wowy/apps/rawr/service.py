@@ -27,6 +27,7 @@ def validate_filters(
     ridge_alpha: float,
     shrinkage_mode: str = "uniform",
     shrinkage_strength: float = 1.0,
+    shrinkage_minute_scale: float = 48.0,
     top_n: int | None = None,
     min_average_minutes: float | None = None,
     min_total_minutes: float | None = None,
@@ -35,10 +36,12 @@ def validate_filters(
         raise ValueError("Minimum games filter must be non-negative")
     if ridge_alpha < 0:
         raise ValueError("Ridge alpha must be non-negative")
-    if shrinkage_mode not in {"uniform", "game-count"}:
-        raise ValueError("Shrinkage mode must be 'uniform' or 'game-count'")
+    if shrinkage_mode not in {"uniform", "game-count", "minutes"}:
+        raise ValueError("Shrinkage mode must be 'uniform', 'game-count', or 'minutes'")
     if shrinkage_strength < 0:
         raise ValueError("Shrinkage strength must be non-negative")
+    if shrinkage_minute_scale <= 0:
+        raise ValueError("Shrinkage minute scale must be positive")
     validate_top_n_and_minutes(
         top_n=top_n,
         min_average_minutes=min_average_minutes,
@@ -144,6 +147,7 @@ def run_rawr(
     ridge_alpha: float = 1.0,
     shrinkage_mode: str = "uniform",
     shrinkage_strength: float = 1.0,
+    shrinkage_minute_scale: float = 48.0,
     top_n: int | None = None,
     teams: list[str] | None = None,
     seasons: list[str] | None = None,
@@ -158,6 +162,7 @@ def run_rawr(
         ridge_alpha=ridge_alpha,
         shrinkage_mode=shrinkage_mode,
         shrinkage_strength=shrinkage_strength,
+        shrinkage_minute_scale=shrinkage_minute_scale,
         top_n=top_n,
         min_average_minutes=min_average_minutes,
         min_total_minutes=min_total_minutes,
@@ -198,6 +203,7 @@ def run_rawr(
         ridge_alpha=ridge_alpha,
         shrinkage_mode=shrinkage_mode,
         shrinkage_strength=shrinkage_strength,
+        shrinkage_minute_scale=shrinkage_minute_scale,
         progress=progress,
     )
     if progress_bar is not None:
@@ -281,6 +287,7 @@ def prepare_rawr_player_season_records(
     ridge_alpha: float,
     shrinkage_mode: str,
     shrinkage_strength: float,
+    shrinkage_minute_scale: float,
     min_average_minutes: float | None,
     min_total_minutes: float | None,
 ) -> list[RawrPlayerSeasonRecord]:
@@ -289,6 +296,7 @@ def prepare_rawr_player_season_records(
         ridge_alpha=ridge_alpha,
         shrinkage_mode=shrinkage_mode,
         shrinkage_strength=shrinkage_strength,
+        shrinkage_minute_scale=shrinkage_minute_scale,
         min_average_minutes=min_average_minutes,
         min_total_minutes=min_total_minutes,
     )
@@ -334,6 +342,7 @@ def prepare_rawr_player_season_records(
                 ridge_alpha=ridge_alpha,
                 shrinkage_mode=shrinkage_mode,
                 shrinkage_strength=shrinkage_strength,
+                shrinkage_minute_scale=shrinkage_minute_scale,
             )
         except ValueError as exc:
             if str(exc) == "No players met the minimum games requirement":
@@ -373,6 +382,7 @@ def prepare_and_run_rawr(args) -> str:
         ridge_alpha=args.ridge_alpha,
         shrinkage_mode=args.shrinkage_mode,
         shrinkage_strength=args.shrinkage_strength,
+        shrinkage_minute_scale=args.shrinkage_minute_scale,
         top_n=args.top_n,
         min_average_minutes=args.min_average_minutes,
         min_total_minutes=args.min_total_minutes,
@@ -423,6 +433,7 @@ def prepare_and_run_rawr(args) -> str:
             validation_fraction=args.validation_fraction,
             shrinkage_mode=args.shrinkage_mode,
             shrinkage_strength=args.shrinkage_strength,
+            shrinkage_minute_scale=args.shrinkage_minute_scale,
         )
         ridge_alpha = tuning_summary.best_alpha
         print(build_tuning_report(tuning_summary.best_alpha, tuning_summary.results))
@@ -437,6 +448,7 @@ def prepare_and_run_rawr(args) -> str:
         ridge_alpha=ridge_alpha,
         shrinkage_mode=args.shrinkage_mode,
         shrinkage_strength=args.shrinkage_strength,
+        shrinkage_minute_scale=args.shrinkage_minute_scale,
         top_n=args.top_n,
         teams=args.team,
         seasons=args.season,

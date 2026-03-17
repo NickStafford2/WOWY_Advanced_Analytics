@@ -83,7 +83,7 @@ def build_parser() -> argparse.ArgumentParser:
     )
     parser.add_argument(
         "--shrinkage-mode",
-        choices=["uniform", "game-count"],
+        choices=["uniform", "game-count", "minutes"],
         default="uniform",
         help="Player-coefficient shrinkage mode",
     )
@@ -92,6 +92,12 @@ def build_parser() -> argparse.ArgumentParser:
         type=float,
         default=1.0,
         help="Exponent for game-count-aware player shrinkage",
+    )
+    parser.add_argument(
+        "--shrinkage-minute-scale",
+        type=float,
+        default=48.0,
+        help="Minute exposure treated as one unit for minute-aware shrinkage",
     )
     parser.add_argument(
         "--top-n",

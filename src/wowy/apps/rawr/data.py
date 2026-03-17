@@ -81,6 +81,7 @@ def build_rawr_observations(
                 away_team=away_game.team,
                 margin=home_game.margin,
                 player_weights=player_weights,
+                player_minutes=home_player_minutes | away_player_minutes,
             )
         )
 
