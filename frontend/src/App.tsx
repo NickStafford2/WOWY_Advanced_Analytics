@@ -710,98 +710,98 @@ function App() {
         ) : null}
         {!error && !isLoading && leaderboard && leaderboard.table_rows.length > 0 ? (
           <>
-            <div className="chart-frame">
-              <svg
-                className="wowy-chart"
-                viewBox={`0 0 ${CHART_WIDTH} ${CHART_HEIGHT}`}
-                role="img"
-                aria-label={`${metricLabel} line chart by season`}
-              >
-                {chartModel.gridLines.map((line) => (
-                  <g key={line.value}>
-                    <line
-                      x1={CHART_PADDING.left}
-                      x2={CHART_WIDTH - CHART_PADDING.right}
-                      y1={line.y}
-                      y2={line.y}
-                      className="grid-line"
-                    />
-                    <text x={18} y={line.y + 4} className="axis-label">
-                      {line.value.toFixed(1)}
-                    </text>
-                  </g>
-                ))}
-
-                {chartModel.xTicks.map((tick) => (
-                  <g key={tick.season}>
-                    <line
-                      x1={tick.x}
-                      x2={tick.x}
-                      y1={CHART_PADDING.top}
-                      y2={CHART_HEIGHT - CHART_PADDING.bottom}
-                      className="grid-line grid-line-vertical"
-                    />
-                    <text
-                      x={tick.x}
-                      y={CHART_HEIGHT - 16}
-                      textAnchor="middle"
-                      className="axis-label"
-                    >
-                      {tick.season}
-                    </text>
-                  </g>
-                ))}
-
-                {chartModel.series.map((series, index) => (
-                  <g key={series.player_id}>
-                    {series.segments.map((segment, segmentIndex) => (
-                      <polyline
-                        key={`${series.player_id}-${segmentIndex}`}
-                        points={segment}
-                        fill="none"
-                        stroke={SERIES_COLORS[index % SERIES_COLORS.length]}
-                        strokeWidth="3"
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
+            <div className="chart-layout">
+              <div className="chart-frame">
+                <svg
+                  className="wowy-chart"
+                  viewBox={`0 0 ${CHART_WIDTH} ${CHART_HEIGHT}`}
+                  role="img"
+                  aria-label={`${metricLabel} line chart by season`}
+                >
+                  {chartModel.gridLines.map((line) => (
+                    <g key={line.value}>
+                      <line
+                        x1={CHART_PADDING.left}
+                        x2={CHART_WIDTH - CHART_PADDING.right}
+                        y1={line.y}
+                        y2={line.y}
+                        className="grid-line"
                       />
-                    ))}
-                    {series.points.map((point) => (
-                      <g key={`${series.player_id}-${point.season}`}>
-                        <circle
-                          cx={point.x}
-                          cy={point.y}
-                          r="4.5"
-                          fill={SERIES_COLORS[index % SERIES_COLORS.length]}
+                      <text x={18} y={line.y + 4} className="axis-label">
+                        {line.value.toFixed(1)}
+                      </text>
+                    </g>
+                  ))}
+
+                  {chartModel.xTicks.map((tick) => (
+                    <g key={tick.season}>
+                      <line
+                        x1={tick.x}
+                        x2={tick.x}
+                        y1={CHART_PADDING.top}
+                        y2={CHART_HEIGHT - CHART_PADDING.bottom}
+                        className="grid-line grid-line-vertical"
+                      />
+                      <text
+                        x={tick.x}
+                        y={CHART_HEIGHT - 16}
+                        textAnchor="middle"
+                        className="axis-label"
+                      >
+                        {tick.season}
+                      </text>
+                    </g>
+                  ))}
+
+                  {chartModel.series.map((series, index) => (
+                    <g key={series.player_id}>
+                      {series.segments.map((segment, segmentIndex) => (
+                        <polyline
+                          key={`${series.player_id}-${segmentIndex}`}
+                          points={segment}
+                          fill="none"
+                          stroke={SERIES_COLORS[index % SERIES_COLORS.length]}
+                          strokeWidth="3"
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
                         />
-                        <title>
-                          {series.player_name} {point.season}: {point.value.toFixed(2)}
-                        </title>
-                      </g>
-                    ))}
-                  </g>
-                ))}
-              </svg>
+                      ))}
+                      {series.points.map((point) => (
+                        <g key={`${series.player_id}-${point.season}`}>
+                          <circle
+                            cx={point.x}
+                            cy={point.y}
+                            r="4.5"
+                            fill={SERIES_COLORS[index % SERIES_COLORS.length]}
+                          />
+                          <title>
+                            {series.player_name} {point.season}: {point.value.toFixed(2)}
+                          </title>
+                        </g>
+                      ))}
+                    </g>
+                  ))}
+                </svg>
+              </div>
+              <aside className="legend-panel" aria-label="Chart legend">
+                <p className="panel-label">Legend</p>
+                <ul className="legend-list">
+                  {chartModel.series.map((series, index) => (
+                    <li key={`legend-${series.player_id}`}>
+                      <span
+                        className="legend-swatch"
+                        style={{ backgroundColor: SERIES_COLORS[index % SERIES_COLORS.length] }}
+                        aria-hidden="true"
+                      />
+                      <div>
+                        <strong>{series.player_name}</strong>
+                        <small>{formatNumber(series.span_average_value, 2)}</small>
+                      </div>
+                    </li>
+                  ))}
+                </ul>
+              </aside>
             </div>
-            <aside className="legend-panel" aria-label="Chart legend">
-              <p className="panel-label">Legend</p>
-              <ul className="legend-list">
-                {chartModel.series.map((series, index) => (
-                  <li key={`legend-${series.player_id}`}>
-                    <span
-                      className="legend-swatch"
-                      style={{ backgroundColor: SERIES_COLORS[index % SERIES_COLORS.length] }}
-                      aria-hidden="true"
-                    />
-                    <div>
-                      <strong>{series.player_name}</strong>
-                      <small>
-                        Rank #{index + 1} · {metricLabel} {formatNumber(series.span_average_value, 2)}
-                      </small>
-                    </div>
-                  </li>
-                ))}
-              </ul>
-            </aside>
 
             <div className="results-table-panel">
               <div className="table-header">
