@@ -326,6 +326,8 @@ function App() {
     mode === 'cached'
       ? `Top ${leaderboard?.span.top_n ?? cachedFilters.topN} cached ${metricLabel} leaders`
       : `Top ${leaderboard?.span.top_n ?? customFilters.topN} players for this custom ${metricLabel} query`
+  const allTeamsSelected =
+    availableTeams.length > 0 && customFilters.teams.length === availableTeams.length
   const pageShellStyle = {
     '--header-offset': `${headerHeight}px`,
   } as CSSProperties
@@ -433,22 +435,34 @@ function App() {
               </select>
             </label>
 
-            <label className="query-multi">
-              <span>Teams</span>
-              <select
-                multiple
-                value={customFilters.teams}
-                onChange={handleCustomTeamsChange(setCustomFilters)}
-                disabled={isBootstrapping || isLoading}
+            <fieldset className="query-multi">
+              <legend>Teams</legend>
+              <button
+                type="button"
+                className={allTeamsSelected ? 'team-toggle-button is-selected' : 'team-toggle-button'}
+                onClick={() => toggleAllCustomTeams(setCustomFilters, availableTeams)}
+                disabled={isBootstrapping || isLoading || availableTeams.length === 0}
               >
-                {availableTeams.map((team) => (
-                  <option key={team} value={team}>
-                    {team}
-                  </option>
-                ))}
-              </select>
-              <small>Leave empty to query all teams in the selected span.</small>
-            </label>
+                All
+              </button>
+              <div className="query-team-grid">
+                {availableTeams.map((team) => {
+                  const isSelected = customFilters.teams.includes(team)
+                  return (
+                    <label key={team} className={isSelected ? 'team-chip is-selected' : 'team-chip'}>
+                      <input
+                        type="checkbox"
+                        checked={isSelected}
+                        onChange={() => toggleCustomTeam(setCustomFilters, team)}
+                        disabled={isBootstrapping || isLoading}
+                      />
+                      <span>{team}</span>
+                    </label>
+                  )
+                })}
+              </div>
+              <small>Leave all unchecked to query all teams in the selected span.</small>
+            </fieldset>
 
             <label>
               <span>Top players</span>
@@ -800,11 +814,27 @@ function buildLoadingPhases(
   ]
 }
 
-function handleCustomTeamsChange(setCustomFilters: Dispatch<SetStateAction<CustomFilters>>) {
-  return (event: ChangeEvent<HTMLSelectElement>) => {
-    const teams = [...event.target.selectedOptions].map((option) => option.value)
-    setCustomFilters((current) => ({ ...current, teams }))
-  }
+function toggleCustomTeam(
+  setCustomFilters: Dispatch<SetStateAction<CustomFilters>>,
+  team: string,
+) {
+  setCustomFilters((current) => ({
+    ...current,
+    teams: current.teams.includes(team)
+      ? current.teams.filter((currentTeam) => currentTeam !== team)
+      : [...current.teams, team],
+  }))
+}
+
+function toggleAllCustomTeams(
+  setCustomFilters: Dispatch<SetStateAction<CustomFilters>>,
+  availableTeams: string[],
+) {
+  setCustomFilters((current) => ({
+    ...current,
+    teams:
+      current.teams.length === availableTeams.length ? [] : [...availableTeams],
+  }))
 }
 
 function updateCustomNumber(

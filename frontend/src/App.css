@@ -215,17 +215,91 @@
   background: rgba(255, 255, 255, 0.92);
 }
 
-.query-panel select[multiple] {
-  min-height: 164px;
-  padding: 12px 14px;
-}
-
 .query-multi {
   grid-column: span 2;
+  margin: 0;
+  padding: 0;
+  border: none;
+  min-width: 0;
+}
+
+.query-multi legend {
+  margin-bottom: 8px;
+  padding: 0;
+  font-size: 0.92rem;
+  color: #445464;
+}
+
+.team-toggle-button {
+  min-height: 34px;
+  margin-bottom: 8px;
+  padding: 0 10px;
+  border: 1px solid rgba(51, 63, 78, 0.18);
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.92);
+  color: #445464;
+  font: inherit;
+  font-size: 0.82rem;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.team-toggle-button.is-selected {
+  border-color: rgba(38, 70, 83, 0.28);
+  background: linear-gradient(135deg, rgba(38, 70, 83, 0.98), rgba(42, 157, 143, 0.96));
+  color: #fffdf6;
+}
+
+.team-toggle-button:disabled {
+  cursor: not-allowed;
+  opacity: 0.55;
 }
 
 .query-multi small {
+  display: block;
+  margin-top: 8px;
+  font-size: 0.8rem;
   color: #6a7986;
+}
+
+.query-team-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(48px, 1fr));
+  gap: 6px;
+}
+
+.team-chip {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 32px;
+  border: 1px solid rgba(51, 63, 78, 0.18);
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.88);
+  color: #445464;
+  cursor: pointer;
+  transition:
+    border-color 120ms ease,
+    background-color 120ms ease,
+    color 120ms ease;
+}
+
+.team-chip input {
+  position: absolute;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.team-chip span {
+  font-size: 0.76rem;
+  font-weight: 700;
+  letter-spacing: 0.03em;
+}
+
+.team-chip.is-selected {
+  border-color: rgba(38, 70, 83, 0.28);
+  background: linear-gradient(135deg, rgba(38, 70, 83, 0.98), rgba(42, 157, 143, 0.96));
+  color: #fffdf6;
 }
 
 .control-output {
