@@ -67,11 +67,6 @@
   gap: .7em;
 }
 
-.theme-toggle-row {
-  display: flex;
-  justify-content: flex-end;
-}
-
 .theme-toggle-button {
   min-height: 38px;
   padding: 0 14px;
@@ -83,6 +78,23 @@
   font-size: 0.84rem;
   font-weight: 700;
   cursor: pointer;
+}
+
+.page-footer {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 16px;
+  margin-top: 18px;
+  padding: 14px 18px 4px;
+  color: var(--text-soft);
+}
+
+.footer-name {
+  font-size: 0.92rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
 }
 
 .metric-select {

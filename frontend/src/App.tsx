@@ -383,15 +383,6 @@ function App() {
                 </button>
               </div>
             </div>
-            <div className="theme-toggle-row">
-              <button
-                type="button"
-                className="theme-toggle-button"
-                onClick={() => setTheme((current) => (current === 'light' ? 'dark' : 'light'))}
-              >
-                {theme === 'light' ? 'Dark mode' : 'Light mode'}
-              </button>
-            </div>
           </div>
         </div>
       </section>
@@ -495,6 +486,17 @@ function App() {
             </>
           ) : null}
         </section>
+
+        <footer className="page-footer">
+          <span className="footer-name">Nicholas Stafford</span>
+          <button
+            type="button"
+            className="theme-toggle-button"
+            onClick={() => setTheme((current) => (current === 'light' ? 'dark' : 'light'))}
+          >
+            {theme === 'dark' ? 'Light mode' : 'Dark mode'}
+          </button>
+        </footer>
       </div>
     </main>
   )
@@ -737,5 +739,5 @@ function resolveInitialTheme(): ThemeMode {
   if (storedTheme === 'light' || storedTheme === 'dark') {
     return storedTheme
   }
-  return window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light'
+  return 'dark'
 }
