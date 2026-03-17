@@ -7,7 +7,7 @@ Python project for experimenting with historical basketball impact metrics. Desi
 The repository currently has two analysis paths built on game-level NBA data:
 
 - WOWY baseline on derived `games.csv`
-- ridge regression on normalized game and player rows
+- RAWR on normalized game and player rows
 
 The current web app goal is player comparison over the full cached history.
 The primary WOWY web ranking is the strongest multi-season WOWY profile across that full history, with team filters used only to restrict the underlying game sample when requested.
@@ -17,7 +17,7 @@ WOWY is a simple presence model:
 
 `wowy_score = average margin when player played - average margin when player did not play`
 
-Regression is a separate game-level model with:
+RAWR, short for Real Adjusted WOWY Regression, is a separate game-level model with:
 
 - intercept
 - home-court term
@@ -41,7 +41,7 @@ Run WOWY:
 poetry run wowy
 ```
 
-Run regression:
+Run RAWR:
 
 ```bash
 poetry run regression
@@ -102,7 +102,7 @@ Report cache status for one season:
 poetry run python scripts/cache_season_status.py 2024-25 --teams BOS NYK
 ```
 
-Rebuild combined regression inputs from normalized files:
+Rebuild combined RAWR inputs from normalized files:
 
 ```bash
 poetry run python -m wowy.data.combine_cli
@@ -118,7 +118,7 @@ For the web app, treat the primary WOWY ranking differently from a pooled all-ga
 - Supporting web columns: minutes, with/without samples, average margins, and other context
 - Non-goal: replacing the main leaderboard with noisy pooled with/without rankings that push role players with tiny samples above long-term stars
 
-Regression output includes observation count, fitted player count, intercept, home-court estimate, and ranked player coefficients.
+RAWR output includes observation count, fitted player count, intercept, home-court estimate, and ranked player coefficients.
 
 Player-season WOWY export:
 
@@ -129,7 +129,7 @@ Player-season WOWY export:
 
 WOWY is a baseline, not an adjusted impact metric.
 
-Regression is more adjusted than WOWY, but it is still a coarse game-level model rather than a possession-level RAPM implementation.
+The RAWR rating is more adjusted than WOWY, but it is still a coarse game-level model rather than a possession-level RAPM implementation.
 
 More detail:
 

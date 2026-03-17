@@ -1,6 +1,6 @@
 # Ideas
 
-Suggestions for improving regression accuracy while staying at the game level and avoiding play-by-play data.
+Suggestions for improving RAWR accuracy while staying at the game level and avoiding play-by-play data.
 
 ## Highest-value upgrades
 

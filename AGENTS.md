@@ -36,7 +36,7 @@
 - Prefer a narrow first version over a broad app. One page, one chart, and a small controls panel is enough.
 - Keep the current data/cache pipeline and reuse it. Do not replace the existing CLI/data preparation path unless there is a clear reason.
 - The next recommended implementation order is:
-- 1. Add reusable structured player-season outputs for WOWY and regression instead of terminal-only table formatting.
+- 1. Add reusable structured player-season outputs for WOWY and RAWR instead of terminal-only table formatting.
 - 2. Add span ranking logic that selects the top N players across a chosen season range.
 - 3. Add a minimal Flask backend that returns chart-ready rows for a metric and season span.
 - 4. Add a minimal React frontend that lets the user pick a span and metric and renders an interactive line chart.
@@ -46,5 +46,5 @@
 - Flask should return structured JSON, not terminal-formatted report strings.
 - React should handle controls, loading state, errors, and chart rendering.
 - Prefer reusing existing pure Python service logic from the analytics layer in Flask routes.
-- For the first web version, support WOWY first and then add regression after the end-to-end flow is working.
+- For the first web version, support WOWY first and then add RAWR after the end-to-end flow is working.
 - If there is ambiguity about ranking semantics, prefer the ranking that surfaces the strongest cross-season WOWY player histories rather than noisy role-player outliers from tiny with/without samples.

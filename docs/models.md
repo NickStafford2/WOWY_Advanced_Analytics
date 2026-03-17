@@ -21,7 +21,7 @@ Notes:
 - can use minutes for output filtering when running from cache-managed normalized inputs
 - should be treated as a simple baseline
 
-## Regression
+## RAWR
 
 Input:
 
@@ -38,6 +38,7 @@ Model:
 
 Notes:
 
+- RAWR stands for Real Adjusted WOWY Regression
 - player features are minute-weighted
 - `min-games` is a pre-fit inclusion rule
 - minute thresholds are output filters

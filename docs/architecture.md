@@ -7,7 +7,7 @@ The repository is organized around a small set of responsibilities.
 Application-specific analysis flows live under `src/wowy/apps/`.
 
 - `apps/wowy/` contains the baseline WOWY analysis, formatting, and CLI entrypoint
-- `apps/regression/` contains the regression-specific data shaping, model fitting, formatting, and CLI entrypoint
+- `apps/regression/` contains the RAWR-specific data shaping, model fitting, formatting, and CLI entrypoint
 
 If you add a new user-facing analysis tool, it should usually get its own `apps/<tool_name>/` package.
 
