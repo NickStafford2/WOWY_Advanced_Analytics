@@ -291,6 +291,7 @@ def test_main_runs_with_cached_scope_without_explicit_csvs(
     captured = capsys.readouterr()
     assert exit_code == 0
     assert "RAWR results (Game-level player model)" in captured.out
+    assert "RAWR CLI" in captured.err
 
 
 def test_main_filters_cached_scope_by_team_and_season(
@@ -422,6 +423,7 @@ def test_main_filters_cached_scope_by_team_and_season(
     assert "Player 101" in captured.out
     assert "Player 301" not in captured.out
     assert "Player 302" not in captured.out
+    assert "RAWR CLI" in captured.err
 
 
 def test_main_rejects_negative_filters():

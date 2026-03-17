@@ -71,6 +71,7 @@ def test_main_runs_with_cached_scope_without_explicit_csv(
     assert exit_code == 0
     assert "WOWY results (Version 1)" in captured.out
     assert "avg_min" in captured.out
+    assert "WOWY CLI" in captured.err
 
 
 def test_main_filters_cached_scope_by_team_and_season(
@@ -152,6 +153,7 @@ def test_main_filters_cached_scope_by_team_and_season(
     assert "101" in captured.out or "102" in captured.out
     assert "201" not in captured.out
     assert "avg_min" in captured.out
+    assert "WOWY CLI" in captured.err
 
 
 def test_run_wowy_returns_report_text(tmp_path: Path, write_games_csv):

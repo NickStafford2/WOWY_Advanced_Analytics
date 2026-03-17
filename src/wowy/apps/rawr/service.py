@@ -16,7 +16,7 @@ from wowy.data.normalized_io import (
     load_normalized_game_players_from_csv,
     load_normalized_games_from_csv,
 )
-from wowy.progress import TerminalProgressBar
+from wowy.progress import TerminalProgressBar, print_status_box
 from wowy.shared.filters import validate_top_n_and_minutes
 from wowy.shared.minutes import build_player_minute_stats, passes_minute_filters
 from wowy.shared.scope import format_scope
@@ -313,6 +313,17 @@ def prepare_and_run_rawr(args) -> str:
         min_total_minutes=args.min_total_minutes,
     )
     ridge_alpha = args.ridge_alpha
+    print_status_box(
+        "RAWR CLI",
+        [
+            f"Scope: {format_scope(args.team, args.season)}",
+            "Preparing normalized game inputs, then fitting the ridge"
+            " regression with team-season controls and minute-weighted player"
+            " features.",
+            "The progress bar below tracks matrix construction and linear-system"
+            " solving for the requested sample.",
+        ],
+    )
     print(
         f"[1/3] preparing RAWR inputs for {format_scope(args.team, args.season)}"
     )

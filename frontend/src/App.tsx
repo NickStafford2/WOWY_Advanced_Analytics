@@ -135,6 +135,20 @@ type CustomFilters = {
   minTotalMinutes: number
 }
 
+type LoadingPhase = {
+  label: string
+  detail: string
+}
+
+type LoadingPanelModel = {
+  title: string
+  summary: string
+  progressLabel: string
+  progressPercent: number
+  phases: LoadingPhase[]
+  activePhaseIndex: number
+}
+
 function App() {
   const [metric, setMetric] = useState<MetricId>('wowy')
   const [mode, setMode] = useState<AppMode>('cached')
@@ -160,16 +174,53 @@ function App() {
   const [isBootstrapping, setIsBootstrapping] = useState(true)
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState('')
+  const [loadingStartedAt, setLoadingStartedAt] = useState<number | null>(Date.now())
+  const [loadingTick, setLoadingTick] = useState(0)
 
   const supportsCustomQuery = metric === 'wowy'
   const chartModel = useMemo<ChartModel>(
     () => buildChartModel(leaderboard?.series ?? []),
     [leaderboard],
   )
+  const loadingPanel = useMemo<LoadingPanelModel | null>(() => {
+    if (!isBootstrapping && !isLoading) {
+      return null
+    }
+    const elapsedMs = loadingStartedAt === null ? 0 : Math.max(Date.now() - loadingStartedAt, 0)
+    return buildLoadingPanelModel({
+      metric,
+      metricLabel,
+      mode,
+      isBootstrapping,
+      elapsedMs,
+    })
+  }, [isBootstrapping, isLoading, loadingStartedAt, loadingTick, metric, metricLabel, mode])
+
+  useEffect(() => {
+    if (!isBootstrapping && !isLoading) {
+      setLoadingStartedAt(null)
+      return
+    }
+    if (loadingStartedAt !== null) {
+      return
+    }
+    setLoadingStartedAt(Date.now())
+  }, [isBootstrapping, isLoading, loadingStartedAt])
+
+  useEffect(() => {
+    if (!isBootstrapping && !isLoading) {
+      return
+    }
+    const intervalId = window.setInterval(() => {
+      setLoadingTick((current) => current + 1)
+    }, 180)
+    return () => window.clearInterval(intervalId)
+  }, [isBootstrapping, isLoading])
 
   const loadOptions = useEffectEvent(async (nextMetric: MetricId) => {
     setIsBootstrapping(true)
     setError('')
+    setLoadingStartedAt(Date.now())
     try {
       const payload = (await fetchJson(`/api/metrics/${nextMetric}/options`)) as MetricOptionsPayload
       setMetricLabel(payload.metric_label)
@@ -203,6 +254,7 @@ function App() {
     async (nextMetric: MetricId, filtersOverride?: MetricFilters) => {
       setIsLoading(true)
       setError('')
+      setLoadingStartedAt(Date.now())
       const effectiveFilters = filtersOverride ?? metricFilters
       const params = new URLSearchParams({
         top_n: String(cachedFilters.topN),
@@ -244,6 +296,7 @@ function App() {
     }
     setIsLoading(true)
     setError('')
+    setLoadingStartedAt(Date.now())
     const params = new URLSearchParams({
       top_n: String(customFilters.topN),
       min_games_with: String(customFilters.minGamesWith),
@@ -556,7 +609,48 @@ function App() {
         </div>
 
         {error ? <p className="status error">{error}</p> : null}
-        {!error && (isBootstrapping || isLoading) ? <p className="status">{chartStatusLabel}</p> : null}
+        {!error && loadingPanel ? (
+          <section className="status status-loading" aria-live="polite">
+            <div className="status-progress-header">
+              <div>
+                <p className="panel-label">Live status</p>
+                <h3>{loadingPanel.title}</h3>
+              </div>
+              <strong>{loadingPanel.progressPercent}%</strong>
+            </div>
+            <p className="status-summary">{loadingPanel.summary}</p>
+            <div
+              className="status-progress-track"
+              role="progressbar"
+              aria-valuemin={0}
+              aria-valuemax={100}
+              aria-valuenow={loadingPanel.progressPercent}
+              aria-label={loadingPanel.progressLabel}
+            >
+              <div
+                className="status-progress-fill"
+                style={{ width: `${loadingPanel.progressPercent}%` }}
+              />
+            </div>
+            <p className="status-progress-label">{loadingPanel.progressLabel}</p>
+            <div className="status-phase-list">
+              {loadingPanel.phases.map((phase, index) => (
+                <article
+                  key={phase.label}
+                  className={
+                    index === loadingPanel.activePhaseIndex ? 'status-phase active' : 'status-phase'
+                  }
+                >
+                  <strong>{phase.label}</strong>
+                  <p>{phase.detail}</p>
+                </article>
+              ))}
+            </div>
+          </section>
+        ) : null}
+        {!error && !loadingPanel && (isBootstrapping || isLoading) ? (
+          <p className="status">{chartStatusLabel}</p>
+        ) : null}
         {!error && !isLoading && !leaderboard ? (
           <p className="status">No leaderboard data loaded yet.</p>
         ) : null}
@@ -719,6 +813,117 @@ function defaultMetricFilters(metric: MetricId): MetricFilters {
     min_total_minutes: 600,
     top_n: 30,
   }
+}
+
+function buildLoadingPanelModel({
+  metric,
+  metricLabel,
+  mode,
+  isBootstrapping,
+  elapsedMs,
+}: {
+  metric: MetricId
+  metricLabel: string
+  mode: AppMode
+  isBootstrapping: boolean
+  elapsedMs: number
+}): LoadingPanelModel {
+  const phases = buildLoadingPhases(metric, mode, isBootstrapping)
+  const cappedProgress = isBootstrapping
+    ? Math.min(72, 14 + Math.floor(elapsedMs / 180))
+    : Math.min(92, 22 + Math.floor(elapsedMs / 220))
+  const activePhaseIndex = Math.min(
+    phases.length - 1,
+    Math.floor((cappedProgress / 100) * phases.length),
+  )
+  const title = isBootstrapping
+    ? `Opening ${metricLabel} data pipeline`
+    : mode === 'custom'
+      ? `Running ${metricLabel} custom query`
+      : `Refreshing cached ${metricLabel} leaderboard`
+
+  return {
+    title,
+    summary:
+      phases[activePhaseIndex]?.detail ??
+      `Loading ${metricLabel} data from the backend and rebuilding the chart payload.`,
+    progressLabel: `${cappedProgress}% complete`,
+    progressPercent: cappedProgress,
+    phases,
+    activePhaseIndex,
+  }
+}
+
+function buildLoadingPhases(
+  metric: MetricId,
+  mode: AppMode,
+  isBootstrapping: boolean,
+): LoadingPhase[] {
+  if (isBootstrapping) {
+    return [
+      {
+        label: 'Inspecting scope',
+        detail: `Checking which cached teams and seasons are available for ${metric.toUpperCase()}.`,
+      },
+      {
+        label: 'Reading defaults',
+        detail: 'Loading the recommended filters so the first render matches the current metric store.',
+      },
+      {
+        label: 'Preparing board',
+        detail: 'Requesting the first leaderboard payload and translating it into chart-ready series.',
+      },
+    ]
+  }
+
+  if (metric === 'rawr') {
+    return [
+      {
+        label: 'Loading scope',
+        detail: 'Reading the prebuilt RAWR regression store for the selected team scope and season type.',
+      },
+      {
+        label: 'Filtering rows',
+        detail: 'Applying the minimum games and minute thresholds before ranking the remaining player seasons.',
+      },
+      {
+        label: 'Rendering chart',
+        detail: 'Rebuilding the multi-season series and ranked table for the frontend.',
+      },
+    ]
+  }
+
+  if (mode === 'custom') {
+    return [
+      {
+        label: 'Gathering sample',
+        detail: 'Collecting the requested team and season slice from the cached WOWY inputs.',
+      },
+      {
+        label: 'Running WOWY',
+        detail: 'Computing with/without impact for each player across the selected game sample.',
+      },
+      {
+        label: 'Ranking span',
+        detail: 'Aggregating the player-season results into the final span leaderboard and chart points.',
+      },
+    ]
+  }
+
+  return [
+    {
+      label: 'Loading cache',
+      detail: 'Reading cached WOWY player-season rows for the selected scope.',
+    },
+    {
+      label: 'Applying filters',
+      detail: 'Filtering by minutes and sample sizes before ranking the strongest multi-season profiles.',
+    },
+    {
+      label: 'Rendering board',
+      detail: 'Building the chart series and leaderboard table for the current span.',
+    },
+  ]
 }
 
 function handleCustomTeamsChange(setCustomFilters: Dispatch<SetStateAction<CustomFilters>>) {

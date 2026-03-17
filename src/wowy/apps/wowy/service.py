@@ -16,7 +16,7 @@ from wowy.nba.ingest import load_player_names_from_cache
 from wowy.nba.paths import normalized_game_players_path
 from wowy.nba.prepare import prepare_wowy_inputs
 from wowy.nba.team_seasons import resolve_team_seasons
-from wowy.progress import TerminalProgressBar
+from wowy.progress import TerminalProgressBar, print_status_box
 from wowy.shared.filters import validate_top_n_and_minutes
 from wowy.shared.minutes import build_player_minute_stats, passes_minute_filters
 from wowy.shared.scope import format_scope
@@ -429,6 +429,15 @@ def prepare_and_run_wowy(
         top_n=args.top_n,
         min_average_minutes=args.min_average_minutes,
         min_total_minutes=args.min_total_minutes,
+    )
+    print_status_box(
+        "WOWY CLI",
+        [
+            f"Scope: {format_scope(args.team, args.season)}",
+            "Preparing cached game rows, rebuilding minute summaries, and then"
+            " computing with/without player impact across the requested sample.",
+            "The progress bar below tracks the player-by-player WOWY pass.",
+        ],
     )
     print(f"[1/3] preparing WOWY inputs for {format_scope(args.team, args.season)}")
     csv_path, player_names = prepare_wowy_inputs(

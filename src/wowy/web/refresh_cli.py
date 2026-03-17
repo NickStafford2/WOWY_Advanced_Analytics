@@ -10,7 +10,7 @@ from wowy.nba.ingest import (
     DEFAULT_SOURCE_DATA_DIR,
     DEFAULT_WOWY_GAMES_DIR,
 )
-from wowy.progress import TerminalProgressBar
+from wowy.progress import TerminalProgressBar, print_status_box
 from wowy.web.service import RAWR_METRIC, WOWY_METRIC, refresh_metric_store
 
 
@@ -83,6 +83,16 @@ def build_parser() -> argparse.ArgumentParser:
 def main(argv: list[str] | None = None) -> int:
     parser = build_parser()
     args = parser.parse_args(argv)
+    print_status_box(
+        "Web Store Refresh",
+        [
+            f"Metric: {args.metric}",
+            "Refreshing cached player-season rows and full-span leaderboard"
+            " slices used by the Flask and React web app.",
+            "The progress bar below tracks each built team scope in the SQLite"
+            " metric store.",
+        ],
+    )
     progress_bar = TerminalProgressBar("Refresh", total=1)
     refresh_metric_store(
         args.metric,
@@ -116,3 +126,7 @@ def _update_progress(
 ) -> None:
     progress_bar.total = max(total, 1)
     progress_bar.update(current, detail=detail)
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())

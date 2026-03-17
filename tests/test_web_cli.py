@@ -28,7 +28,9 @@ def test_refresh_cli_accepts_rawr_metric(monkeypatch, capsys):
     assert calls[0]["combined_rawr_game_players_csv"] == Path(
         "data/combined/rawr/game_players.csv"
     )
-    assert "refreshed rawr store" in capsys.readouterr().out
+    captured = capsys.readouterr()
+    assert "refreshed rawr store" in captured.out
+    assert "Web Store Refresh" in captured.err
 
 
 def test_web_cli_refresh_store_accepts_multiple_metrics(monkeypatch, capsys):
