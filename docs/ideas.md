@@ -27,13 +27,6 @@ Suggestions for improving RAWR accuracy while staying at the game level and avoi
 - Keep improving context controls.
   Team-season and opponent team-season effects are already useful; future extensions should preserve that structure.
 
-## Suggested implementation order
-
-1. Player-season coefficients.
-2. Time decay across seasons.
-3. Better tuning workflow for ridge and inclusion rules.
-4. Sample-size-aware shrinkage.
-5. Bootstrap and rolling-window stability analysis.
 
 ## Key principle
 
