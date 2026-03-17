@@ -18,18 +18,11 @@ from wowy.nba.seasons import canonicalize_season_string
 from wowy.nba.team_seasons import TeamSeasonScope
 
 
-def validate_team_season_files(
-    normalized_games_path: Path,
-    normalized_game_players_path: Path,
-    wowy_path: Path,
+def validate_team_season_records(
+    games,
+    game_players,
+    wowy_games,
 ) -> str:
-    try:
-        games = load_normalized_games_from_csv(normalized_games_path)
-        game_players = load_normalized_game_players_from_csv(normalized_game_players_path)
-        wowy_games = load_games_from_csv(wowy_path)
-    except (OSError, ValueError):
-        return "corrupt"
-
     game_keys = [(game.game_id, game.team) for game in games]
     if len(set(game_keys)) != len(game_keys):
         return "dup_games"
@@ -58,6 +51,21 @@ def validate_team_season_files(
             return "wowy_data"
 
     return "ok"
+
+
+def validate_team_season_files(
+    normalized_games_path: Path,
+    normalized_game_players_path: Path,
+    wowy_path: Path,
+) -> str:
+    try:
+        games = load_normalized_games_from_csv(normalized_games_path)
+        game_players = load_normalized_game_players_from_csv(normalized_game_players_path)
+        wowy_games = load_games_from_csv(wowy_path)
+    except (OSError, ValueError):
+        return "corrupt"
+
+    return validate_team_season_records(games, game_players, wowy_games)
 
 
 def validate_team_season_consistency(

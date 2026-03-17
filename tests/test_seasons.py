@@ -38,7 +38,10 @@ def test_list_cached_team_seasons_deduplicates_regular_and_playoff_files(
     (tmp_path / "BOS_2014-15.csv").write_text("", encoding="utf-8")
     (tmp_path / "BOS_2014-15_playoffs.csv").write_text("", encoding="utf-8")
 
-    assert list_cached_team_seasons(tmp_path) == [
+    assert list_cached_team_seasons(
+        tmp_path,
+        player_metrics_db_path=tmp_path / "app" / "player_metrics.sqlite3",
+    ) == [
         parse_team_season_filename(Path("BOS_2014-15.csv"))
     ]
 
@@ -85,6 +88,54 @@ def test_list_cached_team_seasons_falls_back_to_db_when_csv_cache_is_missing(
         player_metrics_db_path=db_path,
         season_type="Regular Season",
     ) == [parse_team_season_filename(Path("BOS_2014-15.csv"))]
+
+
+def test_list_cached_team_seasons_merges_csv_and_db_cache_sources(
+    tmp_path: Path,
+):
+    (tmp_path / "BOS_2014-15.csv").write_text("", encoding="utf-8")
+    db_path = tmp_path / "app" / "player_metrics.sqlite3"
+    replace_team_season_normalized_rows(
+        db_path,
+        team="LAL",
+        season="2015-16",
+        season_type="Regular Season",
+        games=[
+            NormalizedGameRecord(
+                game_id="1",
+                season="2015-16",
+                game_date="2016-04-01",
+                team="LAL",
+                opponent="BOS",
+                is_home=True,
+                margin=2.0,
+                season_type="Regular Season",
+                source="nba_api",
+            )
+        ],
+        game_players=[
+            NormalizedGamePlayerRecord(
+                game_id="1",
+                team="LAL",
+                player_id=24,
+                player_name="Player 24",
+                appeared=True,
+                minutes=36.0,
+            )
+        ],
+        source_path="db-only",
+        source_snapshot="db-only",
+        source_kind="test",
+    )
+
+    assert list_cached_team_seasons(
+        tmp_path,
+        player_metrics_db_path=db_path,
+        season_type="Regular Season",
+    ) == [
+        parse_team_season_filename(Path("BOS_2014-15.csv")),
+        parse_team_season_filename(Path("LAL_2015-16.csv")),
+    ]
 
 
 def test_load_normalized_games_from_csv_rejects_noncanonical_season_value(

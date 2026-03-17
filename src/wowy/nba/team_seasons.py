@@ -42,14 +42,15 @@ def list_cached_team_seasons(
         parse_team_season_filename(path)
         for path in normalized_games_input_dir.glob("*.csv")
     }
-    if csv_team_seasons:
-        return sorted(csv_team_seasons)
     from wowy.data.game_cache_db import list_cached_team_seasons_from_db
 
-    return list_cached_team_seasons_from_db(
-        player_metrics_db_path,
-        season_type=season_type,
+    db_team_seasons = set(
+        list_cached_team_seasons_from_db(
+            player_metrics_db_path,
+            season_type=season_type,
+        )
     )
+    return sorted(csv_team_seasons | db_team_seasons)
 
 
 def resolve_team_seasons(

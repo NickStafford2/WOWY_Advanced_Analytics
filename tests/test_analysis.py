@@ -10,6 +10,8 @@ from wowy.apps.wowy.service import (
     prepare_wowy_player_season_records,
     serialize_wowy_player_season_records,
 )
+from wowy.data.wowy_io import load_games_from_csv
+from wowy.nba.cache_sync import ensure_team_season_data
 from wowy.apps.wowy.analysis import compute_wowy, filter_results
 from wowy.apps.wowy.models import (
     WowyGameRecord,
@@ -17,6 +19,7 @@ from wowy.apps.wowy.models import (
     WowyPlayerStats,
 )
 from wowy.nba.models import NormalizedGamePlayerRecord, NormalizedGameRecord
+from wowy.nba.team_seasons import TeamSeasonScope
 
 
 def test_compute_wowy_basic():
@@ -343,4 +346,69 @@ def test_build_wowy_span_chart_rows_ranks_players_across_selected_seasons():
                 {"season": "2023-24", "value": 6.5},
             ],
         },
+    ]
+
+
+def test_ensure_team_season_data_rebuilds_wowy_from_db_without_normalized_csvs(
+    tmp_path: Path,
+    monkeypatch,
+):
+    db_path = tmp_path / "app" / "player_metrics.sqlite3"
+    replace_team_season_normalized_rows(
+        db_path,
+        team="BOS",
+        season="2023-24",
+        season_type="Regular Season",
+        games=[
+            NormalizedGameRecord(
+                "1",
+                "2023-24",
+                "2024-04-01",
+                "BOS",
+                "MIL",
+                True,
+                10.0,
+                "Regular Season",
+                "nba_api",
+            ),
+            NormalizedGameRecord(
+                "2",
+                "2023-24",
+                "2024-04-03",
+                "BOS",
+                "NYK",
+                False,
+                -4.0,
+                "Regular Season",
+                "nba_api",
+            ),
+        ],
+        game_players=[
+            NormalizedGamePlayerRecord("1", "BOS", 101, "Player 101", True, 34.0),
+            NormalizedGamePlayerRecord("1", "BOS", 102, "Player 102", True, 31.0),
+            NormalizedGamePlayerRecord("2", "BOS", 101, "Player 101", True, 35.0),
+            NormalizedGamePlayerRecord("2", "BOS", 103, "Player 103", True, 30.0),
+        ],
+        source_path="db-only",
+        source_snapshot="db-only",
+        source_kind="test",
+    )
+    monkeypatch.setattr(
+        "wowy.nba.cache_sync.write_team_season_games_csv",
+        lambda **_kwargs: (_ for _ in ()).throw(AssertionError("unexpected fetch")),
+    )
+
+    wowy_output_dir = tmp_path / "team_games"
+    ensure_team_season_data(
+        TeamSeasonScope(team="BOS", season="2023-24"),
+        normalized_games_input_dir=tmp_path / "missing-normalized-games",
+        normalized_game_players_input_dir=tmp_path / "missing-normalized-game-players",
+        wowy_output_dir=wowy_output_dir,
+        player_metrics_db_path=db_path,
+        log=lambda *_args, **_kwargs: None,
+    )
+
+    assert load_games_from_csv(wowy_output_dir / "BOS_2023-24_regular_season.csv") == [
+        WowyGameRecord("1", "2023-24", "BOS", 10.0, {101, 102}),
+        WowyGameRecord("2", "2023-24", "BOS", -4.0, {101, 103}),
     ]
