@@ -385,16 +385,35 @@ def build_metric_options_payload(
         "metric_label": catalog_row.metric_label,
         "available_teams": catalog_row.available_teams,
         "available_seasons": catalog_row.available_seasons,
-        "filters": {
-            "team": sorted({team.upper() for team in teams or []}) or None,
-            "season_type": catalog_row.season_type,
-            "min_games_with": 15,
-            "min_games_without": 2,
-            "min_average_minutes": 30.0,
-            "min_total_minutes": 600.0,
-            "top_n": 30,
-        },
+        "filters": build_metric_default_filters_payload(
+            metric,
+            teams=sorted({team.upper() for team in teams or []}) or None,
+            season_type=catalog_row.season_type,
+        ),
     }
+
+
+def build_metric_default_filters_payload(
+    metric: str,
+    *,
+    teams: list[str] | None,
+    season_type: str,
+) -> dict[str, Any]:
+    payload = {
+        "team": teams,
+        "season_type": season_type,
+        "min_average_minutes": 30.0,
+        "min_total_minutes": 600.0,
+        "top_n": 30,
+    }
+    if metric == WOWY_METRIC:
+        payload["min_games_with"] = 15
+        payload["min_games_without"] = 2
+        return payload
+    if metric == RAWR_METRIC:
+        payload["min_games"] = 35
+        return payload
+    raise ValueError(f"Unknown metric: {metric}")
 
 
 def build_metric_span_chart_payload(

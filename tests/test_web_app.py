@@ -39,10 +39,10 @@ def _refresh_rawr_store(tmp_path: Path) -> Path:
     return player_metrics_db_path
 
 
-def test_refresh_metric_store_builds_rawr_player_season_rows(
+def _seed_rawr_cache_inputs(
     tmp_path: Path,
     monkeypatch,
-):
+) -> tuple[Path, Path]:
     normalized_games_dir = tmp_path / "normalized_games"
     normalized_games_dir.mkdir()
     (normalized_games_dir / "BOS_2023-24.csv").write_text(
@@ -113,6 +113,14 @@ def test_refresh_metric_store_builds_rawr_player_season_rows(
         "wowy.nba.prepare.ensure_team_season_data",
         lambda **_kwargs: None,
     )
+    return normalized_games_dir, normalized_players_dir
+
+
+def test_refresh_metric_store_builds_rawr_player_season_rows(
+    tmp_path: Path,
+    monkeypatch,
+):
+    _seed_rawr_cache_inputs(tmp_path, monkeypatch)
 
     player_metrics_db_path = _refresh_rawr_store(tmp_path)
     scope_key, _team_filter = build_scope_key(
@@ -136,6 +144,125 @@ def test_refresh_metric_store_builds_rawr_player_season_rows(
     assert all(row.season == "2023-24" for row in rows)
     assert all(row.sample_size and row.sample_size >= 1 for row in rows)
     assert all(row.details == {"games": row.sample_size} for row in rows)
+
+
+def test_rawr_options_endpoint_returns_metric_specific_filters(
+    tmp_path: Path,
+    monkeypatch,
+):
+    normalized_games_dir, normalized_players_dir = _seed_rawr_cache_inputs(
+        tmp_path,
+        monkeypatch,
+    )
+    player_metrics_db_path = _refresh_rawr_store(tmp_path)
+
+    app = create_app(
+        source_data_dir=tmp_path / "source",
+        normalized_games_input_dir=normalized_games_dir,
+        normalized_game_players_input_dir=normalized_players_dir,
+        wowy_output_dir=tmp_path / "team_games",
+        combined_wowy_csv=tmp_path / "combined" / "games.csv",
+        player_metrics_db_path=player_metrics_db_path,
+    )
+    client = app.test_client()
+
+    response = client.get("/api/metrics/rawr/options", query_string={"team": "BOS"})
+
+    assert response.status_code == 200
+    assert response.get_json() == {
+        "metric": "rawr",
+        "metric_label": "RAWR",
+        "available_teams": ["BOS", "LAL", "MIL", "NYK"],
+        "available_seasons": ["2023-24"],
+        "filters": {
+            "team": ["BOS"],
+            "season_type": "Regular Season",
+            "min_games": 35,
+            "min_average_minutes": 30.0,
+            "min_total_minutes": 600.0,
+            "top_n": 30,
+        },
+    }
+
+
+def test_rawr_player_seasons_endpoint_accepts_metric_specific_filters(
+    tmp_path: Path,
+    monkeypatch,
+):
+    normalized_games_dir, normalized_players_dir = _seed_rawr_cache_inputs(
+        tmp_path,
+        monkeypatch,
+    )
+    player_metrics_db_path = _refresh_rawr_store(tmp_path)
+
+    app = create_app(
+        source_data_dir=tmp_path / "source",
+        normalized_games_input_dir=normalized_games_dir,
+        normalized_game_players_input_dir=normalized_players_dir,
+        wowy_output_dir=tmp_path / "team_games",
+        combined_wowy_csv=tmp_path / "combined" / "games.csv",
+        player_metrics_db_path=player_metrics_db_path,
+    )
+    client = app.test_client()
+
+    response = client.get(
+        "/api/metrics/rawr/player-seasons",
+        query_string={
+            "min_games": "1",
+            "min_average_minutes": "0",
+            "min_total_minutes": "0",
+        },
+    )
+
+    assert response.status_code == 200
+    payload = response.get_json()
+    assert payload["metric"] == "rawr"
+    assert payload["metric_label"] == "RAWR"
+    assert payload["filters"] == {
+        "team": None,
+        "season": None,
+        "season_type": "Regular Season",
+        "min_games": 1,
+        "min_average_minutes": 0.0,
+        "min_total_minutes": 0.0,
+        "top_n": 30,
+    }
+    assert {row["player_name"] for row in payload["rows"]} == {
+        "Player 101",
+        "Player 102",
+        "Player 201",
+        "Player 202",
+    }
+    assert all(row["season"] == "2023-24" for row in payload["rows"])
+    assert all(row["sample_size"] == 2 for row in payload["rows"])
+    assert all(row["secondary_sample_size"] is None for row in payload["rows"])
+    assert all(row["games"] == 2 for row in payload["rows"])
+    assert all(row["average_minutes"] == 36.0 for row in payload["rows"])
+    assert all(row["total_minutes"] == 72.0 for row in payload["rows"])
+
+
+def test_rawr_player_seasons_endpoint_rejects_invalid_filters(
+    tmp_path: Path,
+):
+    app = create_app(
+        source_data_dir=tmp_path / "source",
+        normalized_games_input_dir=tmp_path / "normalized_games",
+        normalized_game_players_input_dir=tmp_path / "normalized_game_players",
+        wowy_output_dir=tmp_path / "team_games",
+        combined_wowy_csv=tmp_path / "combined" / "games.csv",
+        player_metrics_db_path=tmp_path / "app" / "player_metrics.sqlite3",
+    )
+    client = app.test_client()
+
+    response = client.get(
+        "/api/metrics/rawr/player-seasons",
+        query_string={"min_games": "-1"},
+    )
+
+    assert response.status_code == 400
+    assert response.get_json() == {
+        "error": "Minimum games filter must be non-negative"
+    }
 
 
 def test_wowy_options_endpoint_returns_cached_teams_and_seasons(

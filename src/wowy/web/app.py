@@ -3,7 +3,8 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Any
 
-from wowy.apps.wowy.service import validate_filters
+from wowy.apps.rawr.service import validate_filters as validate_rawr_filters
+from wowy.apps.wowy.service import validate_filters as validate_wowy_filters
 from wowy.data.player_metrics_db import DEFAULT_PLAYER_METRICS_DB_PATH
 from wowy.nba.ingest import (
     DEFAULT_NORMALIZED_GAME_PLAYERS_DIR,
@@ -13,7 +14,9 @@ from wowy.nba.ingest import (
 )
 from wowy.nba.seasons import canonicalize_season_string
 from wowy.web.service import (
+    RAWR_METRIC,
     WOWY_METRIC,
+    build_metric_default_filters_payload,
     build_scope_key,
     build_cached_metric_leaderboard_payload,
     build_custom_wowy_leaderboard_payload,
@@ -138,7 +141,11 @@ def _build_metric_player_seasons_payload(
     metric: str,
     player_metrics_db_path: Path,
 ) -> dict[str, Any]:
-    filter_values = _parse_request_filters(request, include_top_n=False)
+    filter_values = _parse_request_filters(
+        request,
+        metric=metric,
+        include_top_n=False,
+    )
     season_type = request.args.get("season_type", "Regular Season")
     teams = request.args.getlist("team") or None
     seasons = _parse_request_seasons(request)
@@ -154,11 +161,14 @@ def _build_metric_player_seasons_payload(
         min_secondary_sample_size=filter_values["min_secondary_sample_size"],
     )
     payload["filters"] = _build_filters_payload(
+        metric=metric,
         teams=teams,
         seasons=seasons,
         season_type=season_type,
-        min_games_with=request.args.get("min_games_with"),
-        min_games_without=request.args.get("min_games_without"),
+        min_sample_size=request.args.get("min_games_with")
+        if metric == WOWY_METRIC
+        else request.args.get("min_games"),
+        min_secondary_sample_size=request.args.get("min_games_without"),
         min_average_minutes=request.args.get("min_average_minutes"),
         min_total_minutes=request.args.get("min_total_minutes"),
     )
@@ -171,7 +181,11 @@ def _build_metric_span_chart_payload(
     metric: str,
     player_metrics_db_path: Path,
 ) -> dict[str, Any]:
-    filter_values = _parse_request_filters(request, include_top_n=True)
+    filter_values = _parse_request_filters(
+        request,
+        metric=metric,
+        include_top_n=True,
+    )
     season_type = request.args.get("season_type", "Regular Season")
     teams = request.args.getlist("team") or None
     seasons = _parse_request_seasons(request)
@@ -183,13 +197,17 @@ def _build_metric_span_chart_payload(
         top_n=filter_values["top_n"],
     )
     payload["filters"] = _build_filters_payload(
+        metric=metric,
         teams=teams,
         seasons=seasons,
         season_type=season_type,
-        min_games_with=request.args.get("min_games_with"),
-        min_games_without=request.args.get("min_games_without"),
+        min_sample_size=request.args.get("min_games_with")
+        if metric == WOWY_METRIC
+        else request.args.get("min_games"),
+        min_secondary_sample_size=request.args.get("min_games_without"),
         min_average_minutes=request.args.get("min_average_minutes"),
         min_total_minutes=request.args.get("min_total_minutes"),
+        top_n=request.args.get("top_n"),
     )
     return payload
 
@@ -200,7 +218,11 @@ def _build_wowy_cached_leaderboard_payload(
     metric: str,
     player_metrics_db_path: Path,
 ) -> dict[str, Any]:
-    filter_values = _parse_request_filters(request, include_top_n=True)
+    filter_values = _parse_request_filters(
+        request,
+        metric=metric,
+        include_top_n=True,
+    )
     season_type = request.args.get("season_type", "Regular Season")
     teams = request.args.getlist("team") or None
     seasons = _parse_request_seasons(request)
@@ -217,11 +239,12 @@ def _build_wowy_cached_leaderboard_payload(
         min_secondary_sample_size=filter_values["min_secondary_sample_size"],
     )
     payload["filters"] = _build_filters_payload(
+        metric=metric,
         teams=teams,
         seasons=seasons,
         season_type=season_type,
-        min_games_with=request.args.get("min_games_with"),
-        min_games_without=request.args.get("min_games_without"),
+        min_sample_size=request.args.get("min_games_with"),
+        min_secondary_sample_size=request.args.get("min_games_without"),
         min_average_minutes=request.args.get("min_average_minutes"),
         min_total_minutes=request.args.get("min_total_minutes"),
         top_n=request.args.get("top_n"),
@@ -238,7 +261,11 @@ def _build_wowy_custom_query_payload(
     wowy_output_dir: Path,
     combined_wowy_csv: Path,
 ) -> dict[str, Any]:
-    filter_values = _parse_request_filters(request, include_top_n=True)
+    filter_values = _parse_request_filters(
+        request,
+        metric=WOWY_METRIC,
+        include_top_n=True,
+    )
     season_type = request.args.get("season_type", "Regular Season")
     teams = request.args.getlist("team") or None
     seasons = _parse_request_seasons(request)
@@ -258,11 +285,12 @@ def _build_wowy_custom_query_payload(
         min_total_minutes=float(filter_values["min_total_minutes"]),
     )
     payload["filters"] = _build_filters_payload(
+        metric=WOWY_METRIC,
         teams=teams,
         seasons=seasons,
         season_type=season_type,
-        min_games_with=request.args.get("min_games_with"),
-        min_games_without=request.args.get("min_games_without"),
+        min_sample_size=request.args.get("min_games_with"),
+        min_secondary_sample_size=request.args.get("min_games_without"),
         min_average_minutes=request.args.get("min_average_minutes"),
         min_total_minutes=request.args.get("min_total_minutes"),
         top_n=request.args.get("top_n"),
@@ -273,16 +301,57 @@ def _build_wowy_custom_query_payload(
 def _parse_request_filters(
     request,
     *,
+    metric: str,
     include_top_n: bool,
 ) -> dict[str, int | float]:
-    min_games_with = _parse_optional_int(
-        request.args.get("min_games_with"),
-        default=15,
-    )
-    min_games_without = _parse_optional_int(
-        request.args.get("min_games_without"),
-        default=2,
-    )
+    if metric == WOWY_METRIC:
+        min_sample_size = _parse_optional_int(
+            request.args.get("min_games_with"),
+            default=15,
+        )
+        min_secondary_sample_size = _parse_optional_int(
+            request.args.get("min_games_without"),
+            default=2,
+        )
+        validate_wowy_filters(
+            min_sample_size,
+            min_secondary_sample_size,
+            top_n=_parse_optional_int(request.args.get("top_n"), default=30)
+            if include_top_n
+            else None,
+            min_average_minutes=_parse_optional_float(
+                request.args.get("min_average_minutes"),
+                default=30.0,
+            ),
+            min_total_minutes=_parse_optional_float(
+                request.args.get("min_total_minutes"),
+                default=600.0,
+            ),
+        )
+    elif metric == RAWR_METRIC:
+        min_sample_size = _parse_optional_int(
+            request.args.get("min_games"),
+            default=35,
+        )
+        min_secondary_sample_size = None
+        validate_rawr_filters(
+            min_sample_size,
+            ridge_alpha=0.0,
+            top_n=_parse_optional_int(request.args.get("top_n"), default=30)
+            if include_top_n
+            else None,
+            min_average_minutes=_parse_optional_float(
+                request.args.get("min_average_minutes"),
+                default=30.0,
+            ),
+            min_total_minutes=_parse_optional_float(
+                request.args.get("min_total_minutes"),
+                default=600.0,
+            ),
+        )
+    else:
+        raise ValueError(f"Unknown metric: {metric}")
+
     min_average_minutes = _parse_optional_float(
         request.args.get("min_average_minutes"),
         default=30.0,
@@ -292,16 +361,9 @@ def _parse_request_filters(
         default=600.0,
     )
     top_n = _parse_optional_int(request.args.get("top_n"), default=30)
-    validate_filters(
-        min_games_with,
-        min_games_without,
-        top_n=top_n if include_top_n else None,
-        min_average_minutes=min_average_minutes,
-        min_total_minutes=min_total_minutes,
-    )
     return {
-        "min_sample_size": min_games_with,
-        "min_secondary_sample_size": min_games_without,
+        "min_sample_size": min_sample_size,
+        "min_secondary_sample_size": min_secondary_sample_size,
         "min_average_minutes": min_average_minutes,
         "min_total_minutes": min_total_minutes,
         "top_n": top_n,
@@ -317,21 +379,25 @@ def _parse_request_seasons(request) -> list[str] | None:
 
 def _build_filters_payload(
     *,
+    metric: str,
     teams: list[str] | None,
     seasons: list[str] | None,
     season_type: str,
-    min_games_with: str | None,
-    min_games_without: str | None,
+    min_sample_size: str | None,
+    min_secondary_sample_size: str | None,
     min_average_minutes: str | None,
     min_total_minutes: str | None,
     top_n: str | None = None,
 ) -> dict[str, Any]:
-    return {
+    defaults = build_metric_default_filters_payload(
+        metric,
+        teams=teams,
+        season_type=season_type,
+    )
+    payload = {
         "team": teams,
         "season": seasons,
         "season_type": season_type,
-        "min_games_with": _parse_optional_int(min_games_with, default=15),
-        "min_games_without": _parse_optional_int(min_games_without, default=2),
         "min_average_minutes": _parse_optional_float(
             min_average_minutes,
             default=30.0,
@@ -342,3 +408,20 @@ def _build_filters_payload(
         ),
         "top_n": _parse_optional_int(top_n, default=30),
     }
+    if metric == WOWY_METRIC:
+        payload["min_games_with"] = _parse_optional_int(
+            min_sample_size,
+            default=int(defaults["min_games_with"]),
+        )
+        payload["min_games_without"] = _parse_optional_int(
+            min_secondary_sample_size,
+            default=int(defaults["min_games_without"]),
+        )
+        return payload
+    if metric == RAWR_METRIC:
+        payload["min_games"] = _parse_optional_int(
+            min_sample_size,
+            default=int(defaults["min_games"]),
+        )
+        return payload
+    raise ValueError(f"Unknown metric: {metric}")
