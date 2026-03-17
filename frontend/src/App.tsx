@@ -2,26 +2,14 @@ import { useEffect, useEffectEvent, useMemo, useState } from 'react'
 import type { ChangeEvent, Dispatch, SetStateAction } from 'react'
 import { LeaderboardChart } from './components/LeaderboardChart'
 import type { SpanSeries } from './components/LeaderboardChart'
+import { ResultsTable } from './components/ResultsTable'
+import type { ResultsTableRow } from './components/ResultsTable'
 import './App.css'
 
 const LOADING_PANEL_DELAY_MS = 250
 
 type AppMode = 'cached' | 'custom'
 type MetricId = 'wowy' | 'wowy_shrunk' | 'rawr'
-
-type TableRow = {
-  rank: number
-  player_id: number
-  player_name: string
-  span_average_value: number
-  average_minutes: number | null
-  total_minutes: number
-  games_with: number
-  games_without: number
-  avg_margin_with: number | null
-  avg_margin_without: number | null
-  season_count: number
-}
 
 type MetricFilters = {
   team: string[] | null
@@ -46,7 +34,7 @@ type LeaderboardPayload = {
     available_seasons: string[]
     top_n: number
   }
-  table_rows: TableRow[]
+  table_rows: ResultsTableRow[]
   series: SpanSeries[]
   filters: MetricFilters
   available_teams?: string[]
@@ -331,52 +319,53 @@ function App() {
               {metricDescription}
             </p>
           </div>
-          <div className="metric-select">
-            <div className="mode-toggle" role="tablist" aria-label="Metric selector">
-              <button
-                type="button"
-                className={metric === 'rawr' ? 'mode-tab active' : 'mode-tab'}
-                onClick={() => setMetric('rawr')}
-              >
-                RAWR
-              </button>
-              <button
-                type="button"
-                className={metric === 'wowy_shrunk' ? 'mode-tab active' : 'mode-tab'}
-                onClick={() => setMetric('wowy_shrunk')}
-              >
-                WOWY Shrinkage
-              </button>
-              <button
-                type="button"
-                className={metric === 'wowy' ? 'mode-tab active' : 'mode-tab'}
-                onClick={() => setMetric('wowy')}
-              >
-                WOWY
-              </button>
+          <div className='metric-container'>
+
+            <div className="metric-select">
+              <div className="mode-toggle" role="tablist" aria-label="Metric selector">
+                <button
+                  type="button"
+                  className={metric === 'rawr' ? 'mode-tab active' : 'mode-tab'}
+                  onClick={() => setMetric('rawr')}
+                >
+                  RAWR
+                </button>
+                <button
+                  type="button"
+                  className={metric === 'wowy_shrunk' ? 'mode-tab active' : 'mode-tab'}
+                  onClick={() => setMetric('wowy_shrunk')}
+                >
+                  WOWY Shrinkage
+                </button>
+                <button
+                  type="button"
+                  className={metric === 'wowy' ? 'mode-tab active' : 'mode-tab'}
+                  onClick={() => setMetric('wowy')}
+                >
+                  WOWY
+                </button>
+              </div>
             </div>
+            <div className='metric-select' >
+              <div className="mode-toggle" role="tablist" aria-label="Query mode">
+                <button
+                  type="button"
+                  className={mode === 'cached' ? 'mode-tab active' : 'mode-tab'}
+                  onClick={() => setMode('cached')}
+                >
+                  All Time Leaders
+                </button>
+                <button
+                  type="button"
+                  className={mode === 'custom' ? 'mode-tab active' : 'mode-tab'}
+                  onClick={() => setMode('custom')}
+                >
+                  Custom query
+                </button>
+              </div>
+            </div>
+
           </div>
-        </div>
-      </section>
-
-
-
-      <section className="mode-panel">
-        <div className="mode-toggle" role="tablist" aria-label="Query mode">
-          <button
-            type="button"
-            className={mode === 'cached' ? 'mode-tab active' : 'mode-tab'}
-            onClick={() => setMode('cached')}
-          >
-            All Time Leaders
-          </button>
-          <button
-            type="button"
-            className={mode === 'custom' ? 'mode-tab active' : 'mode-tab'}
-            onClick={() => setMode('custom')}
-          >
-            Custom query
-          </button>
         </div>
       </section>
 
@@ -666,61 +655,12 @@ function App() {
         {!error && !isLoading && leaderboard && leaderboard.table_rows.length > 0 ? (
           <>
             <LeaderboardChart metricLabel={metricLabel} series={leaderboard.series} />
-
-            <div className="results-table-panel">
-              <div className="table-header">
-                <div>
-                  <p className="panel-label">Ranked table</p>
-                  <h3>{resultsTitle}</h3>
-                </div>
-              </div>
-              <div className="results-table-frame">
-                <table className="results-table">
-                  <thead>
-                    <tr>
-                      <th>Rank</th>
-                      <th>Player</th>
-                      <th>{`${metricLabel}`}</th>
-                      <th>Seasons</th>
-                      <th>Avg Min</th>
-                      <th>Tot Min</th>
-                      {isWowyStyleMetric ? (
-                        <>
-                          <th>With</th>
-                          <th>Without</th>
-                          <th>Avg With</th>
-                          <th>Avg Without</th>
-                        </>
-                      ) : (
-                        <th>Games</th>
-                      )}
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {leaderboard.table_rows.map((row) => (
-                      <tr key={row.player_id}>
-                        <td>{row.rank}</td>
-                        <td>{row.player_name}</td>
-                        <td>{formatNumber(row.span_average_value, 2)}</td>
-                        <td>{row.season_count}</td>
-                        <td>{formatNumber(row.average_minutes, 1)}</td>
-                        <td>{formatNumber(row.total_minutes, 1)}</td>
-                        {isWowyStyleMetric ? (
-                          <>
-                            <td>{row.games_with}</td>
-                            <td>{row.games_without}</td>
-                            <td>{formatNumber(row.avg_margin_with, 2)}</td>
-                            <td>{formatNumber(row.avg_margin_without, 2)}</td>
-                          </>
-                        ) : (
-                          <td>{row.games_with}</td>
-                        )}
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            </div>
+            <ResultsTable
+              metricLabel={metricLabel}
+              resultsTitle={resultsTitle}
+              rows={leaderboard.table_rows}
+              isWowyStyleMetric={isWowyStyleMetric}
+            />
           </>
         ) : null}
       </section>
@@ -949,13 +889,6 @@ async function fetchJson(url: string): Promise<unknown> {
     throw new Error(errorPayload.error ?? `Request failed (${response.status})`)
   }
   return payload
-}
-
-function formatNumber(value: number | null, decimals: number): string {
-  if (value === null) {
-    return '-'
-  }
-  return value.toFixed(decimals)
 }
 
 export default App

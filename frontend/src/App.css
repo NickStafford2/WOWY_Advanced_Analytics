@@ -54,8 +54,14 @@
   color: #4b5a68;
 }
 
+.metric-container {
+  display: flex;
+  flex-direction: column;
+}
+
 .metric-select {
   height: 100%;
+  flex-direction: row;
 }
 
 .hero-note {
