@@ -303,7 +303,7 @@ function App() {
       <section className="hero-panel">
         <div className="hero-copy">
           <div>
-            <h1>{metricLabel} leaderboard lab</h1>
+            <h1>{metricLabel} Leaderboard Lab</h1>
             <p className="lede">
               {supportsCustomQuery
                 ? 'Switch between the cached WOWY board and a live cross-season recompute over a chosen team and season span.'
