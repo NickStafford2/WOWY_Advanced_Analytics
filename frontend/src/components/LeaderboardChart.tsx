@@ -37,6 +37,7 @@ type ChartGridLine = {
 }
 
 type ChartTick = {
+  label: string
   season: string
   x: number
 }
@@ -107,7 +108,7 @@ export function LeaderboardChart({ metricLabel, series }: LeaderboardChartProps)
                 textAnchor="middle"
                 className="axis-label"
               >
-                {tick.season}
+                {tick.label}
               </text>
             </g>
           ))}
@@ -224,7 +225,11 @@ function buildChartModel(series: SpanSeries[]): ChartModel {
 
   return {
     gridLines: buildGridLines(yMin, yMax, yForScore),
-    xTicks: seasons.map((season, index) => ({ season, x: xForSeason(index) })),
+    xTicks: seasons.map((season, index) => ({
+      season,
+      label: startYearLabel(season),
+      x: xForSeason(index),
+    })),
     series: series.map<ChartSeries>((entry) => {
       const points: ChartPoint[] = entry.points
         .filter((point): point is ChartPointBase => point.value !== null)
@@ -276,6 +281,11 @@ function toSegments(points: ChartPoint[]): string[] {
 
 function uniqueSeasons(series: SpanSeries[]): string[] {
   return [...new Set(series.flatMap((entry) => entry.points.map((point) => point.season)))]
+}
+
+function startYearLabel(season: string): string {
+  const [startYear] = season.split('-', 1)
+  return startYear || season
 }
 
 function formatNumber(value: number | null, decimals: number): string {

@@ -1,7 +1,11 @@
 .page-shell {
   width: min(1240px, calc(100vw - 32px));
   margin: 0 auto;
-  padding: 32px 0 48px;
+  padding: 0 0 48px;
+}
+
+.page-content {
+  padding-top: calc(var(--header-offset, 0px) + 18px);
 }
 
 .hero-panel,
@@ -15,6 +19,12 @@
 }
 
 .hero-panel {
+  position: fixed;
+  top: 0;
+  left: 50%;
+  z-index: 20;
+  width: min(1240px, calc(100vw - 32px));
+  transform: translateX(-50%);
   padding: 28px 32px 34px;
   background:
     radial-gradient(circle at top left, rgba(232, 111, 81, 0.18), transparent 35%),

@@ -1,5 +1,5 @@
-import { useEffect, useEffectEvent, useMemo, useState } from 'react'
-import type { ChangeEvent, Dispatch, SetStateAction } from 'react'
+import { useEffect, useEffectEvent, useMemo, useRef, useState } from 'react'
+import type { ChangeEvent, CSSProperties, Dispatch, SetStateAction } from 'react'
 import { LeaderboardChart } from './components/LeaderboardChart'
 import type { SpanSeries } from './components/LeaderboardChart'
 import { ResultsTable } from './components/ResultsTable'
@@ -86,6 +86,8 @@ type LoadingPanelModel = {
 }
 
 function App() {
+  const headerRef = useRef<HTMLElement | null>(null)
+  const [headerHeight, setHeaderHeight] = useState(0)
   const [metric, setMetric] = useState<MetricId>('wowy')
   const [mode, setMode] = useState<AppMode>('cached')
   const [metricLabel, setMetricLabel] = useState('WOWY')
@@ -163,6 +165,22 @@ function App() {
     }, 180)
     return () => window.clearInterval(intervalId)
   }, [isBootstrapping, isLoading, showLoadingPanel])
+
+  useEffect(() => {
+    const headerElement = headerRef.current
+    if (headerElement === null) {
+      return
+    }
+
+    const updateHeaderHeight = () => {
+      setHeaderHeight(headerElement.getBoundingClientRect().height)
+    }
+
+    updateHeaderHeight()
+    const resizeObserver = new ResizeObserver(updateHeaderHeight)
+    resizeObserver.observe(headerElement)
+    return () => resizeObserver.disconnect()
+  }, [])
 
   const loadOptions = useEffectEvent(async (nextMetric: MetricId) => {
     setIsBootstrapping(true)
@@ -308,10 +326,13 @@ function App() {
     mode === 'cached'
       ? `Top ${leaderboard?.span.top_n ?? cachedFilters.topN} cached ${metricLabel} leaders`
       : `Top ${leaderboard?.span.top_n ?? customFilters.topN} players for this custom ${metricLabel} query`
+  const pageShellStyle = {
+    '--header-offset': `${headerHeight}px`,
+  } as CSSProperties
 
   return (
-    <main className="page-shell">
-      <section className="hero-panel">
+    <main className="page-shell" style={pageShellStyle}>
+      <section ref={headerRef} className="hero-panel">
         <div className="hero-copy">
           <div>
             <h1>{metricLabel}</h1>
@@ -369,8 +390,9 @@ function App() {
         </div>
       </section>
 
-      {mode === 'cached' ? (
-        <section className="control-panel">
+      <div className="page-content">
+        {mode === 'cached' ? (
+          <section className="control-panel">
           <label>
             <span>Team scope</span>
             <select
@@ -418,9 +440,9 @@ function App() {
           >
             {isLoading ? 'Loading...' : 'Refresh leaders'}
           </button>
-        </section>
-      ) : (
-        <section className="query-panel">
+          </section>
+        ) : (
+          <section className="query-panel">
           <label>
             <span>Start season</span>
             <select
@@ -585,10 +607,10 @@ function App() {
           >
             {isLoading ? 'Running...' : 'Run query'}
           </button>
-        </section>
-      )}
+          </section>
+        )}
 
-      <section className="chart-panel">
+        <section className="chart-panel">
         <div className="chart-header">
           <div>
             <p className="panel-label">{mode === 'cached' ? 'Cached board' : 'Custom run'}</p>
@@ -663,7 +685,8 @@ function App() {
             />
           </>
         ) : null}
-      </section>
+        </section>
+      </div>
     </main>
   )
 }
