@@ -8,7 +8,7 @@ from nba_api.stats.static import teams as nba_teams
 
 from wowy.nba.ingest import (
     DEFAULT_SOURCE_DATA_DIR,
-    write_team_season_games_csv,
+    cache_team_season_data,
 )
 from wowy.nba.seasons import canonicalize_season_string
 from wowy.nba.team_seasons import TeamSeasonScope
@@ -132,7 +132,7 @@ def main(argv: list[str] | None = None) -> int:
     for team_index, team_code in enumerate(team_codes, start=1):
         team_season = TeamSeasonScope(team=team_code, season=season)
         try:
-            summary = write_team_season_games_csv(
+            summary = cache_team_season_data(
                 team_abbreviation=team_code,
                 season=season,
                 season_type=args.season_type,

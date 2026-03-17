@@ -2,13 +2,13 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from wowy.data.game_cache_db import replace_team_season_normalized_rows
-from wowy.data.normalized_io import (
+from tests.support import (
     load_normalized_game_players_from_csv,
     load_normalized_games_from_csv,
+    parse_team_season_filename,
 )
+from wowy.data.game_cache_db import replace_team_season_normalized_rows
 from wowy.data.player_metrics_db import load_metric_rows
-from wowy.nba.team_seasons import parse_team_season_filename
 from wowy.web.app import create_app
 from wowy.web.service import build_scope_key, refresh_metric_store
 

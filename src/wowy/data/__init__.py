@@ -1,1 +1,1 @@
-"""Data-layer helpers for reading, writing, and combining project files."""
+"""Data-layer helpers for database access and explicit export I/O."""

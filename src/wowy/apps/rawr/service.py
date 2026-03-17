@@ -14,10 +14,6 @@ from wowy.nba.models import NormalizedGamePlayerRecord, NormalizedGameRecord
 from wowy.data.player_metrics_db import DEFAULT_PLAYER_METRICS_DB_PATH
 from wowy.nba.prepare import prepare_normalized_scope_records
 from wowy.nba.team_seasons import resolve_team_seasons
-from wowy.data.normalized_io import (
-    load_normalized_game_players_from_csv,
-    load_normalized_games_from_csv,
-)
 from wowy.progress import TerminalProgressBar, print_status_box
 from wowy.shared.filters import validate_top_n_and_minutes
 from wowy.shared.minutes import passes_minute_filters
@@ -140,43 +136,6 @@ def filter_rawr_scope(
         player for player in game_players if player.game_id in selected_game_ids
     ]
     return filtered_games, filtered_game_players
-
-
-def run_rawr(
-    games_csv_path: Path | str,
-    game_players_csv_path: Path | str,
-    min_games: int,
-    ridge_alpha: float = 1.0,
-    shrinkage_mode: str = "uniform",
-    shrinkage_strength: float = 1.0,
-    shrinkage_minute_scale: float = 48.0,
-    top_n: int | None = None,
-    teams: list[str] | None = None,
-    seasons: list[str] | None = None,
-    player_minute_stats: dict[tuple[str, int], tuple[float, float]] | None = None,
-    min_average_minutes: float | None = None,
-    min_total_minutes: float | None = None,
-    show_progress: bool = False,
-) -> str:
-    """Fit the game-level RAWR model from normalized CSV inputs."""
-    games = load_normalized_games_from_csv(games_csv_path)
-    game_players = load_normalized_game_players_from_csv(game_players_csv_path)
-    return run_rawr_records(
-        games,
-        game_players,
-        min_games=min_games,
-        ridge_alpha=ridge_alpha,
-        shrinkage_mode=shrinkage_mode,
-        shrinkage_strength=shrinkage_strength,
-        shrinkage_minute_scale=shrinkage_minute_scale,
-        top_n=top_n,
-        teams=teams,
-        seasons=seasons,
-        player_minute_stats=player_minute_stats,
-        min_average_minutes=min_average_minutes,
-        min_total_minutes=min_total_minutes,
-        show_progress=show_progress,
-    )
 
 
 def run_rawr_records(

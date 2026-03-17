@@ -8,25 +8,21 @@ from requests import RequestException
 
 from wowy.nba.ingest import (
     build_team_season_artifacts,
+    cache_team_season_data,
     extract_is_home,
     extract_opponent,
     load_player_names_from_cache,
-    write_team_season_games_csv,
 )
 from wowy.nba.normalize import parse_minutes_to_float, played_in_game
 from wowy.data.game_cache_db import (
     load_normalized_game_players_from_db,
     load_normalized_games_from_db,
 )
-from wowy.data.normalized_io import (
-    load_normalized_game_players_from_csv,
-    load_normalized_games_from_csv,
-)
 from wowy.apps.wowy.models import WowyGameRecord
 from wowy.nba.models import NormalizedGamePlayerRecord, NormalizedGameRecord
 
 
-def test_write_team_season_games_csv_writes_normalized_and_derived_outputs(
+def test_cache_team_season_data_writes_normalized_outputs(
     tmp_path: Path,
     monkeypatch,
 ):
@@ -118,7 +114,7 @@ def test_write_team_season_games_csv_writes_normalized_and_derived_outputs(
     )
 
     db_path = tmp_path / "app" / "player_metrics.sqlite3"
-    write_team_season_games_csv(
+    cache_team_season_data(
         "BOS",
         "2023-24",
         source_data_dir=source_data_dir,
@@ -167,7 +163,7 @@ def test_write_team_season_games_csv_writes_normalized_and_derived_outputs(
     assert player_names[1628401] == "Derrick White"
 
 
-def test_write_team_season_games_csv_skips_empty_box_scores(
+def test_cache_team_season_data_skips_empty_box_scores(
     tmp_path: Path,
     monkeypatch,
 ):
@@ -250,7 +246,7 @@ def test_write_team_season_games_csv_skips_empty_box_scores(
     )
 
     db_path = tmp_path / "app" / "player_metrics.sqlite3"
-    write_team_season_games_csv(
+    cache_team_season_data(
         "ATL",
         "2023-24",
         source_data_dir=source_data_dir,
@@ -450,7 +446,7 @@ def test_build_team_season_artifacts_supports_historical_team_aliases(
     assert result.artifacts.normalized_games[0].team == "NJN"
 
 
-def test_write_team_season_games_csv_resumes_from_cached_partial_source_data(
+def test_cache_team_season_data_resumes_from_cached_partial_source_data(
     tmp_path: Path,
     monkeypatch,
 ):
@@ -521,7 +517,7 @@ def test_write_team_season_games_csv_resumes_from_cached_partial_source_data(
     db_path = tmp_path / "app" / "player_metrics.sqlite3"
 
     with pytest.raises(RequestException):
-        write_team_season_games_csv(
+        cache_team_season_data(
             "ATL",
             "2023-24",
             source_data_dir=source_data_dir,
@@ -563,7 +559,7 @@ def test_write_team_season_games_csv_resumes_from_cached_partial_source_data(
         RecoveryBoxScoreTraditionalV2,
     )
 
-    summary = write_team_season_games_csv(
+    summary = cache_team_season_data(
         "ATL",
         "2023-24",
         source_data_dir=source_data_dir,
@@ -586,7 +582,7 @@ def test_write_team_season_games_csv_resumes_from_cached_partial_source_data(
     assert [(game.game_id, game.margin) for game in games] == [("0001", 7.0), ("0002", -5.0)]
 
 
-def test_write_team_season_games_csv_raises_on_inconsistent_outputs(
+def test_cache_team_season_data_raises_on_inconsistent_outputs(
     tmp_path: Path,
     monkeypatch,
 ):
@@ -651,7 +647,7 @@ def test_write_team_season_games_csv_raises_on_inconsistent_outputs(
     )
 
     with pytest.raises(ValueError, match="Inconsistent team-season cache"):
-        write_team_season_games_csv(
+        cache_team_season_data(
             "BOS",
             "2023-24",
             source_data_dir=source_data_dir,

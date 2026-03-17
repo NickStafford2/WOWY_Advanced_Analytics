@@ -15,50 +15,21 @@ class TeamSeasonScope:
     season: str
 
 
-def parse_team_season_filename(path: Path) -> TeamSeasonScope:
-    parts = path.stem.split("_")
-    if len(parts) < 2 or not parts[0] or not parts[1]:
-        raise ValueError(
-            f"Unexpected team-season filename {path.name!r}. Expected TEAM_SEASON.csv."
-        )
-    team, season = parts[0], parts[1]
-    canonical_season = canonicalize_season_string(season)
-    if season != canonical_season:
-        raise ValueError(
-            f"Non-canonical season key in filename {path.name!r}. Expected {canonical_season!r}."
-        )
-    return TeamSeasonScope(team=team.upper(), season=canonical_season)
-
-
 def list_cached_team_seasons(
-    normalized_games_input_dir: Path | None = None,
-    *,
     player_metrics_db_path: Path = DEFAULT_PLAYER_METRICS_DB_PATH,
     season_type: str | None = None,
 ) -> list[TeamSeasonScope]:
     from wowy.data.game_cache_db import list_cached_team_seasons_from_db
 
-    csv_team_seasons = (
-        {
-            parse_team_season_filename(path)
-            for path in normalized_games_input_dir.glob("*.csv")
-        }
-        if normalized_games_input_dir is not None
-        else set()
+    return list_cached_team_seasons_from_db(
+        player_metrics_db_path,
+        season_type=season_type,
     )
-    db_team_seasons = set(
-        list_cached_team_seasons_from_db(
-            player_metrics_db_path,
-            season_type=season_type,
-        )
-    )
-    return sorted(csv_team_seasons | db_team_seasons)
 
 
 def resolve_team_seasons(
     teams: list[str] | None,
     seasons: list[str] | None,
-    normalized_games_input_dir: Path | None = None,
     *,
     player_metrics_db_path: Path = DEFAULT_PLAYER_METRICS_DB_PATH,
     season_type: str | None = None,
@@ -70,7 +41,6 @@ def resolve_team_seasons(
         else None
     )
     cached_team_seasons = list_cached_team_seasons(
-        normalized_games_input_dir,
         player_metrics_db_path=player_metrics_db_path,
         season_type=season_type,
     )

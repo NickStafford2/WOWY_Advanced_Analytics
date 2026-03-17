@@ -1,15 +1,9 @@
 from __future__ import annotations
 
-import csv
 from collections import defaultdict
-from pathlib import Path
 
-from wowy.atomic_io import atomic_text_writer
 from wowy.apps.wowy.models import WowyGameRecord
 from wowy.nba.models import NormalizedGamePlayerRecord, NormalizedGameRecord
-
-
-WOWY_HEADER = ["game_id", "season", "team", "margin", "players"]
 
 
 def derive_wowy_games(
@@ -42,23 +36,3 @@ def derive_wowy_games(
         )
 
     return derived_games
-
-
-def write_wowy_games_csv(
-    csv_path: Path | str,
-    games: list[WowyGameRecord],
-) -> None:
-    csv_path = Path(csv_path)
-    with atomic_text_writer(csv_path, newline="") as f:
-        writer = csv.DictWriter(f, fieldnames=WOWY_HEADER)
-        writer.writeheader()
-        for game in games:
-            writer.writerow(
-                {
-                    "game_id": game.game_id,
-                    "season": game.season,
-                    "team": game.team,
-                    "margin": game.margin,
-                    "players": ";".join(str(player) for player in sorted(game.players)),
-                }
-            )

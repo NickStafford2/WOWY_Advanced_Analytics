@@ -190,7 +190,7 @@ def build_team_season_artifacts(
     )
     return TeamSeasonBuildResult(artifacts=artifacts, summary=summary)
 
-def write_team_season_games_csv(
+def cache_team_season_data(
     team_abbreviation: str,
     season: str,
     season_type: str = "Regular Season",

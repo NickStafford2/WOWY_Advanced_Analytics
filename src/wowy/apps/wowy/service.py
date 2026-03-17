@@ -10,7 +10,7 @@ from wowy.apps.wowy.models import (
     WowyPlayerSeasonRecord,
     WowyPlayerStats,
 )
-from wowy.data.wowy_io import load_games_from_csv, write_player_season_records_csv
+from wowy.data.wowy_io import write_player_season_records_csv
 from wowy.data.player_metrics_db import DEFAULT_PLAYER_METRICS_DB_PATH
 from wowy.nba.ingest import load_player_names_from_cache
 from wowy.nba.prepare import (
@@ -80,32 +80,6 @@ def build_wowy_report(
         filtered_results,
         player_names=player_names,
         top_n=top_n,
-    )
-
-
-def run_wowy(
-    csv_path: Path | str,
-    min_games_with: int,
-    min_games_without: int,
-    player_names: dict[int, str] | None = None,
-    top_n: int | None = None,
-    player_minute_stats: dict[int, tuple[float, float]] | None = None,
-    min_average_minutes: float | None = None,
-    min_total_minutes: float | None = None,
-    show_progress: bool = False,
-) -> str:
-    """Run WOWY from a derived `games.csv` input."""
-    games = load_games_from_csv(csv_path)
-    return run_wowy_records(
-        games,
-        min_games_with=min_games_with,
-        min_games_without=min_games_without,
-        player_names=player_names,
-        top_n=top_n,
-        player_minute_stats=player_minute_stats,
-        min_average_minutes=min_average_minutes,
-        min_total_minutes=min_total_minutes,
-        show_progress=show_progress,
     )
 
 
