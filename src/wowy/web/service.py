@@ -6,6 +6,7 @@ from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any, Callable
 
+from wowy.apps.rawr.service import prepare_rawr_player_season_records
 from wowy.apps.wowy.models import WowyPlayerSeasonRecord
 from wowy.apps.wowy.service import prepare_wowy_player_season_records
 from wowy.data.player_metrics_db import (
@@ -39,6 +40,7 @@ class MetricDefinition:
 
 
 WOWY_METRIC = "wowy"
+RAWR_METRIC = "rawr"
 
 
 def _build_wowy_rows(
@@ -51,6 +53,8 @@ def _build_wowy_rows(
     normalized_game_players_input_dir: Path,
     wowy_output_dir: Path,
     combined_wowy_csv: Path,
+    combined_rawr_games_csv: Path,
+    combined_rawr_game_players_csv: Path,
     teams: list[str] | None,
 ) -> list[PlayerSeasonMetricRow]:
     records = prepare_wowy_player_season_records(
@@ -93,13 +97,70 @@ def _build_wowy_rows(
     ]
 
 
+def _build_rawr_rows(
+    *,
+    scope_key: str,
+    team_filter: str,
+    season_type: str,
+    source_data_dir: Path,
+    normalized_games_input_dir: Path,
+    normalized_game_players_input_dir: Path,
+    wowy_output_dir: Path,
+    combined_wowy_csv: Path,
+    combined_rawr_games_csv: Path,
+    combined_rawr_game_players_csv: Path,
+    teams: list[str] | None,
+) -> list[PlayerSeasonMetricRow]:
+    records = prepare_rawr_player_season_records(
+        teams=teams,
+        seasons=None,
+        season_type=season_type,
+        combined_games_csv=combined_rawr_games_csv,
+        combined_game_players_csv=combined_rawr_game_players_csv,
+        source_data_dir=source_data_dir,
+        normalized_games_input_dir=normalized_games_input_dir,
+        normalized_game_players_input_dir=normalized_game_players_input_dir,
+        wowy_output_dir=wowy_output_dir,
+        min_games=1,
+        ridge_alpha=1.0,
+        min_average_minutes=None,
+        min_total_minutes=None,
+    )
+    return [
+        PlayerSeasonMetricRow(
+            metric=RAWR_METRIC,
+            metric_label="RAWR",
+            scope_key=scope_key,
+            team_filter=team_filter,
+            season_type=season_type,
+            season=record.season,
+            player_id=record.player_id,
+            player_name=record.player_name,
+            value=record.coefficient,
+            sample_size=record.games,
+            average_minutes=record.average_minutes,
+            total_minutes=record.total_minutes,
+            details={
+                "games": record.games,
+            },
+        )
+        for record in records
+    ]
+
+
 METRIC_DEFINITIONS = {
     WOWY_METRIC: MetricDefinition(
         metric=WOWY_METRIC,
         label="WOWY",
         build_version="wowy-player-season-v3",
         build_rows=_build_wowy_rows,
-    )
+    ),
+    RAWR_METRIC: MetricDefinition(
+        metric=RAWR_METRIC,
+        label="RAWR",
+        build_version="rawr-player-season-v1",
+        build_rows=_build_rawr_rows,
+    ),
 }
 
 
@@ -127,6 +188,8 @@ def refresh_metric_store(
     normalized_game_players_input_dir: Path,
     wowy_output_dir: Path,
     combined_wowy_csv: Path,
+    combined_rawr_games_csv: Path = Path("data/combined/rawr/games.csv"),
+    combined_rawr_game_players_csv: Path = Path("data/combined/rawr/game_players.csv"),
     progress: RefreshProgressFn | None = None,
 ) -> None:
     definition = get_metric_definition(metric)
@@ -169,6 +232,8 @@ def refresh_metric_store(
             normalized_game_players_input_dir=normalized_game_players_input_dir,
             wowy_output_dir=wowy_output_dir,
             combined_wowy_csv=combined_wowy_csv,
+            combined_rawr_games_csv=combined_rawr_games_csv,
+            combined_rawr_game_players_csv=combined_rawr_game_players_csv,
             teams=teams,
         )
         replace_metric_rows(

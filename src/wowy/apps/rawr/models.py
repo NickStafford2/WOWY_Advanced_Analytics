@@ -25,6 +25,17 @@ class RawrPlayerEstimate:
 
 
 @dataclass(frozen=True)
+class RawrPlayerSeasonRecord:
+    season: str
+    player_id: int
+    player_name: str
+    games: int
+    average_minutes: float | None
+    total_minutes: float | None
+    coefficient: float
+
+
+@dataclass(frozen=True)
 class RawrResult:
     observations: int
     players: int

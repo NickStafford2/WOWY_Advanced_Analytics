@@ -2,8 +2,9 @@ from __future__ import annotations
 
 from pathlib import Path
 
+from wowy.data.player_metrics_db import load_metric_rows
 from wowy.web.app import create_app
-from wowy.web.service import refresh_metric_store
+from wowy.web.service import build_scope_key, refresh_metric_store
 
 
 def _refresh_wowy_store(tmp_path: Path) -> Path:
@@ -19,6 +20,122 @@ def _refresh_wowy_store(tmp_path: Path) -> Path:
         combined_wowy_csv=tmp_path / "combined" / "games.csv",
     )
     return player_metrics_db_path
+
+
+def _refresh_rawr_store(tmp_path: Path) -> Path:
+    player_metrics_db_path = tmp_path / "app" / "player_metrics.sqlite3"
+    refresh_metric_store(
+        "rawr",
+        season_type="Regular Season",
+        db_path=player_metrics_db_path,
+        source_data_dir=tmp_path / "source",
+        normalized_games_input_dir=tmp_path / "normalized_games",
+        normalized_game_players_input_dir=tmp_path / "normalized_game_players",
+        wowy_output_dir=tmp_path / "team_games",
+        combined_wowy_csv=tmp_path / "combined" / "wowy" / "games.csv",
+        combined_rawr_games_csv=tmp_path / "combined" / "rawr" / "games.csv",
+        combined_rawr_game_players_csv=tmp_path / "combined" / "rawr" / "game_players.csv",
+    )
+    return player_metrics_db_path
+
+
+def test_refresh_metric_store_builds_rawr_player_season_rows(
+    tmp_path: Path,
+    monkeypatch,
+):
+    normalized_games_dir = tmp_path / "normalized_games"
+    normalized_games_dir.mkdir()
+    (normalized_games_dir / "BOS_2023-24.csv").write_text(
+        (
+            "game_id,season,game_date,team,opponent,is_home,margin,season_type,source\n"
+            "1,2023-24,2024-04-01,BOS,MIL,true,2,Regular Season,nba_api\n"
+            "2,2023-24,2024-04-03,BOS,NYK,false,-2,Regular Season,nba_api\n"
+            "3,2023-24,2024-04-05,BOS,LAL,true,0,Regular Season,nba_api\n"
+        ),
+        encoding="utf-8",
+    )
+    (normalized_games_dir / "MIL_2023-24.csv").write_text(
+        (
+            "game_id,season,game_date,team,opponent,is_home,margin,season_type,source\n"
+            "1,2023-24,2024-04-01,MIL,BOS,false,-2,Regular Season,nba_api\n"
+        ),
+        encoding="utf-8",
+    )
+    (normalized_games_dir / "NYK_2023-24.csv").write_text(
+        (
+            "game_id,season,game_date,team,opponent,is_home,margin,season_type,source\n"
+            "2,2023-24,2024-04-03,NYK,BOS,true,2,Regular Season,nba_api\n"
+        ),
+        encoding="utf-8",
+    )
+    (normalized_games_dir / "LAL_2023-24.csv").write_text(
+        (
+            "game_id,season,game_date,team,opponent,is_home,margin,season_type,source\n"
+            "3,2023-24,2024-04-05,LAL,BOS,false,0,Regular Season,nba_api\n"
+        ),
+        encoding="utf-8",
+    )
+    normalized_players_dir = tmp_path / "normalized_game_players"
+    normalized_players_dir.mkdir()
+    (normalized_players_dir / "BOS_2023-24.csv").write_text(
+        (
+            "game_id,team,player_id,player_name,appeared,minutes\n"
+            "1,BOS,101,Player 101,true,48\n"
+            "2,BOS,102,Player 102,true,48\n"
+            "3,BOS,101,Player 101,true,24\n"
+            "3,BOS,102,Player 102,true,24\n"
+        ),
+        encoding="utf-8",
+    )
+    (normalized_players_dir / "MIL_2023-24.csv").write_text(
+        (
+            "game_id,team,player_id,player_name,appeared,minutes\n"
+            "1,MIL,201,Player 201,true,48\n"
+        ),
+        encoding="utf-8",
+    )
+    (normalized_players_dir / "NYK_2023-24.csv").write_text(
+        (
+            "game_id,team,player_id,player_name,appeared,minutes\n"
+            "2,NYK,202,Player 202,true,48\n"
+        ),
+        encoding="utf-8",
+    )
+    (normalized_players_dir / "LAL_2023-24.csv").write_text(
+        (
+            "game_id,team,player_id,player_name,appeared,minutes\n"
+            "3,LAL,201,Player 201,true,24\n"
+            "3,LAL,202,Player 202,true,24\n"
+        ),
+        encoding="utf-8",
+    )
+    monkeypatch.setattr(
+        "wowy.nba.prepare.ensure_team_season_data",
+        lambda **_kwargs: None,
+    )
+
+    player_metrics_db_path = _refresh_rawr_store(tmp_path)
+    scope_key, _team_filter = build_scope_key(
+        teams=None,
+        season_type="Regular Season",
+    )
+    rows = load_metric_rows(
+        player_metrics_db_path,
+        metric="rawr",
+        scope_key=scope_key,
+        min_sample_size=1,
+    )
+
+    assert {row.player_name for row in rows} == {
+        "Player 101",
+        "Player 102",
+        "Player 201",
+        "Player 202",
+    }
+    assert all(row.metric_label == "RAWR" for row in rows)
+    assert all(row.season == "2023-24" for row in rows)
+    assert all(row.sample_size and row.sample_size >= 1 for row in rows)
+    assert all(row.details == {"games": row.sample_size} for row in rows)
 
 
 def test_wowy_options_endpoint_returns_cached_teams_and_seasons(

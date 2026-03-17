@@ -5,8 +5,13 @@ from pathlib import Path
 from wowy.apps.rawr.analysis import fit_player_rawr, tune_ridge_alpha
 from wowy.apps.rawr.data import build_rawr_observations, count_player_games
 from wowy.apps.rawr.formatting import format_rawr_results
-from wowy.apps.rawr.models import RawrPlayerEstimate, RawrResult
+from wowy.apps.rawr.models import (
+    RawrPlayerEstimate,
+    RawrPlayerSeasonRecord,
+    RawrResult,
+)
 from wowy.nba.prepare import prepare_rawr_inputs
+from wowy.nba.team_seasons import resolve_team_seasons
 from wowy.data.normalized_io import (
     load_normalized_game_players_from_csv,
     load_normalized_games_from_csv,
@@ -212,6 +217,90 @@ def build_tuning_report(best_alpha: float, results) -> str:
         marker = " *" if result.alpha == best_alpha else ""
         lines.append(f"{result.alpha:>10.4f} {result.validation_mse:>16.4f}{marker}")
     return "\n".join(lines)
+
+
+def prepare_rawr_player_season_records(
+    *,
+    teams: list[str] | None,
+    seasons: list[str] | None,
+    season_type: str,
+    combined_games_csv: Path,
+    combined_game_players_csv: Path,
+    source_data_dir: Path,
+    normalized_games_input_dir: Path,
+    normalized_game_players_input_dir: Path,
+    wowy_output_dir: Path,
+    min_games: int,
+    ridge_alpha: float,
+    min_average_minutes: float | None,
+    min_total_minutes: float | None,
+) -> list[RawrPlayerSeasonRecord]:
+    validate_filters(
+        min_games=min_games,
+        ridge_alpha=ridge_alpha,
+        min_average_minutes=min_average_minutes,
+        min_total_minutes=min_total_minutes,
+    )
+    team_seasons = resolve_team_seasons(teams, seasons, normalized_games_input_dir)
+    teams_by_season: dict[str, list[str]] = {}
+    for team_season in team_seasons:
+        teams_by_season.setdefault(team_season.season, []).append(team_season.team)
+    records: list[RawrPlayerSeasonRecord] = []
+
+    for season in sorted(teams_by_season):
+        games_csv, game_players_csv = prepare_rawr_inputs(
+            teams=sorted(set(teams_by_season[season])),
+            seasons=[season],
+            combined_games_csv=combined_games_csv,
+            combined_game_players_csv=combined_game_players_csv,
+            season_type=season_type,
+            source_data_dir=source_data_dir,
+            normalized_games_input_dir=normalized_games_input_dir,
+            normalized_game_players_input_dir=normalized_game_players_input_dir,
+            wowy_output_dir=wowy_output_dir,
+            log=lambda *_args, **_kwargs: None,
+        )
+        games = load_normalized_games_from_csv(games_csv)
+        game_players = load_normalized_game_players_from_csv(game_players_csv)
+        games, game_players = filter_rawr_scope(
+            games,
+            game_players,
+            teams=sorted(set(teams_by_season[season])),
+            seasons=[season],
+        )
+        player_minute_stats = build_player_minute_stats(game_players)
+        observations, player_names = build_rawr_observations(games, game_players)
+        result = fit_player_rawr(
+            observations,
+            player_names=player_names,
+            min_games=min_games,
+            ridge_alpha=ridge_alpha,
+        )
+        result = attach_minute_stats_to_result(result, player_minute_stats)
+        result = filter_rawr_estimates_by_minutes(
+            result,
+            player_minute_stats=player_minute_stats,
+            min_average_minutes=min_average_minutes,
+            min_total_minutes=min_total_minutes,
+        )
+        for estimate in result.estimates:
+            records.append(
+                RawrPlayerSeasonRecord(
+                    season=season,
+                    player_id=estimate.player_id,
+                    player_name=estimate.player_name,
+                    games=estimate.games,
+                    average_minutes=estimate.average_minutes,
+                    total_minutes=estimate.total_minutes,
+                    coefficient=estimate.coefficient,
+                )
+            )
+
+    records.sort(
+        key=lambda record: (record.season, record.coefficient, record.player_name),
+        reverse=True,
+    )
+    return records
 
 
 def prepare_and_run_rawr(args) -> str:
