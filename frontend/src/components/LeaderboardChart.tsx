@@ -32,6 +32,7 @@ export type SpanSeries = {
 }
 
 type ChartGridLine = {
+  isZero: boolean
   value: number
   y: number
 }
@@ -85,10 +86,10 @@ export function LeaderboardChart({ metricLabel, series }: LeaderboardChartProps)
                 x2={CHART_WIDTH - CHART_PADDING.right}
                 y1={line.y}
                 y2={line.y}
-                className="grid-line"
+                className={line.isZero ? 'grid-line zero-line' : 'grid-line'}
               />
               <text x={18} y={line.y + 4} className="axis-label">
-                {line.value.toFixed(1)}
+                {line.value}
               </text>
             </g>
           ))}
@@ -209,9 +210,7 @@ function buildChartModel(series: SpanSeries[]): ChartModel {
 
   const minScore = Math.min(...scoredPoints.map((point) => point.value))
   const maxScore = Math.max(...scoredPoints.map((point) => point.value))
-  const spread = maxScore - minScore || 1
-  const yMin = minScore - spread * 0.15
-  const yMax = maxScore + spread * 0.15
+  const yAxis = buildNiceYAxis(minScore, maxScore)
   const chartInnerWidth = CHART_WIDTH - CHART_PADDING.left - CHART_PADDING.right
   const chartInnerHeight = CHART_HEIGHT - CHART_PADDING.top - CHART_PADDING.bottom
   const seasonIndex = new Map(seasons.map((season, index) => [season, index]))
@@ -221,10 +220,14 @@ function buildChartModel(series: SpanSeries[]): ChartModel {
     (seasons.length === 1 ? chartInnerWidth / 2 : (index / (seasons.length - 1)) * chartInnerWidth)
 
   const yForScore = (score: number) =>
-    CHART_PADDING.top + ((yMax - score) / (yMax - yMin || 1)) * chartInnerHeight
+    CHART_PADDING.top + ((yAxis.max - score) / (yAxis.max - yAxis.min || 1)) * chartInnerHeight
 
   return {
-    gridLines: buildGridLines(yMin, yMax, yForScore),
+    gridLines: yAxis.ticks.map((value) => ({
+      value,
+      y: yForScore(value),
+      isZero: value === 0,
+    })),
     xTicks: seasons.map((season, index) => ({
       season,
       label: startYearLabel(season),
@@ -259,16 +262,45 @@ type ChartPointBase = {
   value: number
 }
 
-function buildGridLines(
-  yMin: number,
-  yMax: number,
-  yForScore: (score: number) => number,
-): ChartGridLine[] {
-  const steps = 5
-  return Array.from({ length: steps + 1 }, (_, index) => {
-    const value = yMin + ((yMax - yMin) / steps) * index
-    return { value, y: yForScore(value) }
-  })
+function buildNiceYAxis(minScore: number, maxScore: number): {
+  min: number
+  max: number
+  ticks: number[]
+} {
+  const paddedMin = Math.min(minScore, 0)
+  const paddedMax = Math.max(maxScore, 0)
+  const rawRange = paddedMax - paddedMin
+  const step = Math.max(1, niceIntegerStep(rawRange <= 0 ? 1 : rawRange / 5))
+  const min = Math.floor(paddedMin / step) * step
+  const max = Math.ceil(paddedMax / step) * step
+  const ticks: number[] = []
+
+  for (let value = min; value <= max; value += step) {
+    ticks.push(value)
+  }
+
+  if (!ticks.includes(0)) {
+    ticks.push(0)
+    ticks.sort((left, right) => left - right)
+  }
+
+  return { min, max, ticks }
+}
+
+function niceIntegerStep(value: number): number {
+  const magnitude = 10 ** Math.floor(Math.log10(value))
+  const normalized = value / magnitude
+
+  if (normalized <= 1) {
+    return magnitude
+  }
+  if (normalized <= 2) {
+    return 2 * magnitude
+  }
+  if (normalized <= 5) {
+    return 5 * magnitude
+  }
+  return 10 * magnitude
 }
 
 function toSegments(points: ChartPoint[]): string[] {

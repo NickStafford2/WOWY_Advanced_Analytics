@@ -195,22 +195,26 @@ function App() {
         ...current,
         topN: current.topN || payload.filters.top_n,
       }))
-      setCustomFilters((current) => ({
-        ...current,
-        startSeason: payload.available_seasons.includes(current.startSeason)
-          ? current.startSeason
-          : defaultStartSeason,
-        endSeason: payload.available_seasons.includes(current.endSeason)
-          ? current.endSeason
-          : defaultEndSeason,
-        topN: current.topN || payload.filters.top_n,
-        minGames: payload.filters.min_games ?? current.minGames,
-        ridgeAlpha: payload.filters.ridge_alpha ?? current.ridgeAlpha,
-        minGamesWith: payload.filters.min_games_with ?? current.minGamesWith,
-        minGamesWithout: payload.filters.min_games_without ?? current.minGamesWithout,
-        minAverageMinutes: payload.filters.min_average_minutes,
-        minTotalMinutes: payload.filters.min_total_minutes,
-      }))
+      setCustomFilters((current) => {
+        const nextTeams = current.teams.filter((team) => payload.available_teams.includes(team))
+        return {
+          ...current,
+          startSeason: payload.available_seasons.includes(current.startSeason)
+            ? current.startSeason
+            : defaultStartSeason,
+          endSeason: payload.available_seasons.includes(current.endSeason)
+            ? current.endSeason
+            : defaultEndSeason,
+          teams: nextTeams.length > 0 ? nextTeams : [...payload.available_teams],
+          topN: current.topN || payload.filters.top_n,
+          minGames: payload.filters.min_games ?? current.minGames,
+          ridgeAlpha: payload.filters.ridge_alpha ?? current.ridgeAlpha,
+          minGamesWith: payload.filters.min_games_with ?? current.minGamesWith,
+          minGamesWithout: payload.filters.min_games_without ?? current.minGamesWithout,
+          minAverageMinutes: payload.filters.min_average_minutes,
+          minTotalMinutes: payload.filters.min_total_minutes,
+        }
+      })
       return payload
     } finally {
       setIsBootstrapping(false)
@@ -679,8 +683,7 @@ function toggleAllCustomTeams(
 ) {
   setCustomFilters((current) => ({
     ...current,
-    teams:
-      current.teams.length === availableTeams.length ? [] : [...availableTeams],
+    teams: current.teams.length === availableTeams.length ? [] : [...availableTeams],
   }))
 }
 

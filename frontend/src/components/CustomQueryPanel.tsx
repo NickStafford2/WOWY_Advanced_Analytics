@@ -53,6 +53,8 @@ export function CustomQueryPanel({
   onNumberChange,
   onRunQuery,
 }: CustomQueryPanelProps) {
+  const hasSelectedTeams = customFilters.teams.length > 0
+
   return (
     <section className="query-panel">
       <div className="query-card query-card--span-2 query-card--scope">
@@ -176,12 +178,19 @@ export function CustomQueryPanel({
             className="run-button query-run"
             onClick={onRunQuery}
             disabled={
-              isBootstrapping || isLoading || !customFilters.startSeason || !customFilters.endSeason
+              isBootstrapping ||
+              isLoading ||
+              !customFilters.startSeason ||
+              !customFilters.endSeason ||
+              !hasSelectedTeams
             }
           >
             {isLoading ? 'Running...' : 'Run query'}
           </button>
         </div>
+        {!hasSelectedTeams ? (
+          <p className="query-section-note">Select at least one team to run a custom query.</p>
+        ) : null}
       </div>
 
       <fieldset className="query-card query-card--span-2 query-card--teams query-multi">
@@ -210,7 +219,6 @@ export function CustomQueryPanel({
             )
           })}
         </div>
-        <small>Leave all unchecked to query all teams in the selected span.</small>
       </fieldset>
     </section>
   )

@@ -640,6 +640,11 @@
   stroke-width: 1;
 }
 
+.zero-line {
+  stroke: #2a9d8f;
+  stroke-width: 1.4;
+}
+
 @media (max-width: 980px) {
   .hero-copy,
   .chart-header {
