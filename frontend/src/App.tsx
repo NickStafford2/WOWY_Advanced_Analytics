@@ -624,7 +624,6 @@ function App() {
                     <tr>
                       <th>Rank</th>
                       <th>Player</th>
-                      <th>Player ID</th>
                       <th>Span Avg WOWY</th>
                       <th>Seasons</th>
                       <th>Avg Min</th>
@@ -640,7 +639,6 @@ function App() {
                       <tr key={row.player_id}>
                         <td>{row.rank}</td>
                         <td>{row.player_name}</td>
-                        <td>{row.player_id}</td>
                         <td>{formatNumber(row.span_average_value, 2)}</td>
                         <td>{row.season_count}</td>
                         <td>{formatNumber(row.average_minutes, 1)}</td>
