@@ -782,6 +782,26 @@ function App() {
                 ))}
               </svg>
             </div>
+            <aside className="legend-panel" aria-label="Chart legend">
+              <p className="panel-label">Legend</p>
+              <ul className="legend-list">
+                {chartModel.series.map((series, index) => (
+                  <li key={`legend-${series.player_id}`}>
+                    <span
+                      className="legend-swatch"
+                      style={{ backgroundColor: SERIES_COLORS[index % SERIES_COLORS.length] }}
+                      aria-hidden="true"
+                    />
+                    <div>
+                      <strong>{series.player_name}</strong>
+                      <small>
+                        Rank #{index + 1} · {metricLabel} {formatNumber(series.span_average_value, 2)}
+                      </small>
+                    </div>
+                  </li>
+                ))}
+              </ul>
+            </aside>
 
             <div className="results-table-panel">
               <div className="table-header">
