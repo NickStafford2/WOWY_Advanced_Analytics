@@ -505,6 +505,11 @@
   gap: 10px;
   align-items: center;
 }
+.legend-list-text {
+  display: flex;
+  flex-direction: row;
+  justify-content: space-between;
+}
 
 .legend-swatch {
   width: 10px;

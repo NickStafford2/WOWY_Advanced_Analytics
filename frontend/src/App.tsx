@@ -793,7 +793,7 @@ function App() {
                         style={{ backgroundColor: SERIES_COLORS[index % SERIES_COLORS.length] }}
                         aria-hidden="true"
                       />
-                      <div>
+                      <div className="legend-list-text">
                         <strong>{series.player_name}</strong>
                         <small>{formatNumber(series.span_average_value, 2)}</small>
                       </div>
