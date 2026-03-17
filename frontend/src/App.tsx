@@ -4,6 +4,8 @@ import { LeaderboardChart } from './components/LeaderboardChart'
 import type { SpanSeries } from './components/LeaderboardChart'
 import './App.css'
 
+const LOADING_PANEL_DELAY_MS = 250
+
 type AppMode = 'cached' | 'custom'
 type MetricId = 'wowy' | 'wowy_shrunk' | 'rawr'
 
@@ -124,9 +126,10 @@ function App() {
   const [error, setError] = useState('')
   const [loadingStartedAt, setLoadingStartedAt] = useState<number | null>(Date.now())
   const [loadingTick, setLoadingTick] = useState(0)
+  const [showLoadingPanel, setShowLoadingPanel] = useState(false)
 
   const loadingPanel = useMemo<LoadingPanelModel | null>(() => {
-    if (!isBootstrapping && !isLoading) {
+    if ((!isBootstrapping && !isLoading) || !showLoadingPanel) {
       return null
     }
     const elapsedMs = loadingStartedAt === null ? 0 : Math.max(Date.now() - loadingStartedAt, 0)
@@ -142,6 +145,7 @@ function App() {
   useEffect(() => {
     if (!isBootstrapping && !isLoading) {
       setLoadingStartedAt(null)
+      setShowLoadingPanel(false)
       return
     }
     if (loadingStartedAt !== null) {
@@ -152,13 +156,25 @@ function App() {
 
   useEffect(() => {
     if (!isBootstrapping && !isLoading) {
+      setShowLoadingPanel(false)
+      return
+    }
+    setShowLoadingPanel(false)
+    const timeoutId = window.setTimeout(() => {
+      setShowLoadingPanel(true)
+    }, LOADING_PANEL_DELAY_MS)
+    return () => window.clearTimeout(timeoutId)
+  }, [isBootstrapping, isLoading, loadingStartedAt])
+
+  useEffect(() => {
+    if ((!isBootstrapping && !isLoading) || !showLoadingPanel) {
       return
     }
     const intervalId = window.setInterval(() => {
       setLoadingTick((current) => current + 1)
     }, 180)
     return () => window.clearInterval(intervalId)
-  }, [isBootstrapping, isLoading])
+  }, [isBootstrapping, isLoading, showLoadingPanel])
 
   const loadOptions = useEffectEvent(async (nextMetric: MetricId) => {
     setIsBootstrapping(true)
@@ -638,7 +654,7 @@ function App() {
             </div>
           </section>
         ) : null}
-        {!error && !loadingPanel && (isBootstrapping || isLoading) ? (
+        {!error && !loadingPanel && showLoadingPanel && (isBootstrapping || isLoading) ? (
           <p className="status">{chartStatusLabel}</p>
         ) : null}
         {!error && !isLoading && !leaderboard ? (
