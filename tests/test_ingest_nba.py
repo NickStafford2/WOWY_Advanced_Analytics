@@ -20,6 +20,7 @@ from wowy.data.normalized_io import (
     load_normalized_games_from_csv,
 )
 from wowy.apps.wowy.models import WowyGameRecord
+from wowy.nba.models import NormalizedGamePlayerRecord, NormalizedGameRecord
 
 
 def test_write_team_season_games_csv_writes_normalized_and_derived_outputs(
@@ -342,6 +343,107 @@ def test_build_team_season_artifacts_returns_normalized_and_derived_outputs(
     assert result.summary.cached_box_scores == 0
     assert result.summary.processed_games == 1
     assert result.summary.skipped_games == 0
+
+
+def test_build_team_season_artifacts_supports_historical_team_aliases(
+    tmp_path: Path,
+    monkeypatch,
+):
+    source_data_dir = tmp_path / "source-data"
+    lookup_calls: list[str] = []
+    load_calls: list[tuple[int, str, str]] = []
+    normalize_calls: list[str] = []
+
+    def fake_find_team_by_abbreviation(abbreviation: str):
+        lookup_calls.append(abbreviation)
+        if abbreviation == "BKN":
+            return {"id": 1610612751, "abbreviation": "BKN"}
+        return None
+
+    def fake_load_or_fetch_league_games_with_source(
+        *,
+        team_id: int,
+        team_abbreviation: str,
+        season: str,
+        season_type: str,
+        source_data_dir: Path,
+        log,
+    ):
+        load_calls.append((team_id, team_abbreviation, season))
+        return (
+            {
+                "resultSets": [
+                    {
+                        "headers": ["GAME_ID", "GAME_DATE", "MATCHUP"],
+                        "rowSet": [["0001", "2010-04-01", "NJN vs. BOS"]],
+                    }
+                ]
+            },
+            "fetched",
+        )
+
+    def fake_fetch_normalized_game_data_with_source(
+        *,
+        game_id: str,
+        team_abbreviation: str,
+        season: str,
+        game_date: str,
+        opponent: str,
+        is_home: bool,
+        season_type: str,
+        source_data_dir: Path,
+        log,
+    ):
+        normalize_calls.append(team_abbreviation)
+        return (
+            NormalizedGameRecord(
+                game_id=game_id,
+                season=season,
+                game_date=game_date,
+                team=team_abbreviation,
+                opponent=opponent,
+                is_home=is_home,
+                margin=5.0,
+                season_type=season_type,
+                source="nba_api",
+            ),
+            [
+                NormalizedGamePlayerRecord(
+                    game_id=game_id,
+                    team=team_abbreviation,
+                    player_id=101,
+                    player_name="Player 101",
+                    appeared=True,
+                    minutes=36.0,
+                )
+            ],
+            "fetched",
+        )
+
+    monkeypatch.setattr(
+        "wowy.nba.ingest.teams.find_team_by_abbreviation",
+        fake_find_team_by_abbreviation,
+    )
+    monkeypatch.setattr(
+        "wowy.nba.ingest.load_or_fetch_league_games_with_source",
+        fake_load_or_fetch_league_games_with_source,
+    )
+    monkeypatch.setattr(
+        "wowy.nba.ingest.fetch_normalized_game_data_with_source",
+        fake_fetch_normalized_game_data_with_source,
+    )
+
+    result = build_team_season_artifacts(
+        "NJN",
+        "2009-10",
+        source_data_dir=source_data_dir,
+    )
+
+    assert lookup_calls == ["BKN"]
+    assert load_calls == [(1610612751, "NJN", "2009-10")]
+    assert normalize_calls == ["NJN"]
+    assert result.summary.team == "NJN"
+    assert result.artifacts.normalized_games[0].team == "NJN"
 
 
 def test_write_team_season_games_csv_resumes_from_cached_partial_source_data(

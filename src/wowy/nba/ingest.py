@@ -31,6 +31,21 @@ DEFAULT_NORMALIZED_GAME_PLAYERS_DIR = Path("data/normalized/nba/game_players")
 DEFAULT_WOWY_GAMES_DIR = Path("data/raw/nba/team_games")
 ProgressFn = Callable[[dict], None]
 
+TEAM_ABBREVIATION_ALIASES = {
+    "CHH": "NOP",
+    "NJN": "BKN",
+    "NOH": "NOP",
+    "NOK": "NOP",
+    "SEA": "OKC",
+    "VAN": "MEM",
+    "WSB": "WAS",
+}
+
+
+def resolve_team_lookup_abbreviation(team_abbreviation: str) -> str:
+    normalized = team_abbreviation.upper()
+    return TEAM_ABBREVIATION_ALIASES.get(normalized, normalized)
+
 
 def fetch_team_season_data(
     team_abbreviation: str,
@@ -61,13 +76,16 @@ def build_team_season_artifacts(
     progress: ProgressFn | None = None,
 ) -> TeamSeasonBuildResult:
     season = canonicalize_season_string(season)
-    team = teams.find_team_by_abbreviation(team_abbreviation.upper())
+    requested_team_abbreviation = team_abbreviation.upper()
+    team = teams.find_team_by_abbreviation(
+        resolve_team_lookup_abbreviation(requested_team_abbreviation)
+    )
     if team is None:
         raise ValueError(f"Unknown NBA team abbreviation: {team_abbreviation!r}")
 
     finder_payload, league_games_source = load_or_fetch_league_games_with_source(
         team_id=team["id"],
-        team_abbreviation=team["abbreviation"],
+        team_abbreviation=requested_team_abbreviation,
         season=season,
         season_type=season_type,
         source_data_dir=source_data_dir,
@@ -79,7 +97,7 @@ def build_team_season_artifacts(
         return TeamSeasonBuildResult(
             artifacts=TeamSeasonArtifacts([], [], []),
             summary=TeamSeasonRunSummary(
-                team=team["abbreviation"],
+                team=requested_team_abbreviation,
                 season=season,
                 season_type=season_type,
                 league_games_source=league_games_source,
@@ -105,11 +123,11 @@ def build_team_season_artifacts(
             normalized_game, game_players, box_score_source = (
                 fetch_normalized_game_data_with_source(
                     game_id=game_id,
-                    team_abbreviation=team["abbreviation"],
+                    team_abbreviation=requested_team_abbreviation,
                     season=season,
                     game_date=extract_game_date(game_row),
-                    opponent=extract_opponent(game_row, team["abbreviation"]),
-                    is_home=extract_is_home(game_row, team["abbreviation"]),
+                    opponent=extract_opponent(game_row, requested_team_abbreviation),
+                    is_home=extract_is_home(game_row, requested_team_abbreviation),
                     season_type=season_type,
                     source_data_dir=source_data_dir,
                     log=log,
@@ -119,12 +137,12 @@ def build_team_season_artifacts(
             skipped_games += 1
             if log is not None:
                 log(
-                    f"skip game {game_id} {team['abbreviation']} {season} reason={exc}"
+                    f"skip game {game_id} {requested_team_abbreviation} {season} reason={exc}"
                 )
             if progress is not None:
                 progress(
                     {
-                        "team": team["abbreviation"],
+                        "team": requested_team_abbreviation,
                         "season": season,
                         "game_id": game_id,
                         "current": game_index,
@@ -143,7 +161,7 @@ def build_team_season_artifacts(
         if progress is not None:
             progress(
                 {
-                    "team": team["abbreviation"],
+                    "team": requested_team_abbreviation,
                     "season": season,
                     "game_id": game_id,
                     "current": game_index,
@@ -158,7 +176,7 @@ def build_team_season_artifacts(
         wowy_games=derive_wowy_games(normalized_games, normalized_game_players),
     )
     summary = TeamSeasonRunSummary(
-        team=team["abbreviation"],
+        team=requested_team_abbreviation,
         season=season,
         season_type=season_type,
         league_games_source=league_games_source,

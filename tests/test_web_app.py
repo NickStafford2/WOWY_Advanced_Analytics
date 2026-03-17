@@ -146,6 +146,35 @@ def test_refresh_metric_store_builds_rawr_player_season_rows(
     assert all(row.details == {"games": row.sample_size} for row in rows)
 
 
+def test_refresh_metric_store_skips_empty_historical_rawr_team_seasons(
+    tmp_path: Path,
+    monkeypatch,
+):
+    _seed_rawr_cache_inputs(tmp_path, monkeypatch)
+    (tmp_path / "normalized_games" / "BKN_2008-09.csv").write_text(
+        "game_id,season,game_date,team,opponent,is_home,margin,season_type,source\n",
+        encoding="utf-8",
+    )
+    (tmp_path / "normalized_game_players" / "BKN_2008-09.csv").write_text(
+        "game_id,team,player_id,player_name,appeared,minutes\n",
+        encoding="utf-8",
+    )
+
+    player_metrics_db_path = _refresh_rawr_store(tmp_path)
+    scope_key, _team_filter = build_scope_key(
+        teams=["BKN"],
+        season_type="Regular Season",
+    )
+    rows = load_metric_rows(
+        player_metrics_db_path,
+        metric="rawr",
+        scope_key=scope_key,
+        min_sample_size=1,
+    )
+
+    assert rows == []
+
+
 def test_rawr_options_endpoint_returns_metric_specific_filters(
     tmp_path: Path,
     monkeypatch,

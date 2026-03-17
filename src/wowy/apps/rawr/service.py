@@ -262,12 +262,17 @@ def prepare_rawr_player_season_records(
         )
         games = load_normalized_games_from_csv(games_csv)
         game_players = load_normalized_game_players_from_csv(game_players_csv)
-        games, game_players = filter_rawr_scope(
-            games,
-            game_players,
-            teams=sorted(set(teams_by_season[season])),
-            seasons=[season],
-        )
+        try:
+            games, game_players = filter_rawr_scope(
+                games,
+                game_players,
+                teams=sorted(set(teams_by_season[season])),
+                seasons=[season],
+            )
+        except ValueError as exc:
+            if str(exc) == "No games matched the requested RAWR scope":
+                continue
+            raise
         player_minute_stats = build_player_minute_stats(game_players)
         observations, player_names = build_rawr_observations(games, game_players)
         result = fit_player_rawr(
