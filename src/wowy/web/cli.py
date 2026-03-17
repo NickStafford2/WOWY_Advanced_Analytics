@@ -11,7 +11,7 @@ from wowy.nba.ingest import (
     DEFAULT_WOWY_GAMES_DIR,
 )
 from wowy.web.app import create_app
-from wowy.web.service import WOWY_METRIC, refresh_metric_store
+from wowy.web.service import RAWR_METRIC, WOWY_METRIC, refresh_metric_store
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -37,7 +37,16 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument(
         "--refresh-store",
         action="store_true",
-        help="Refresh the cached WOWY web store before starting the server.",
+        help="Refresh cached web metric stores before starting the server.",
+    )
+    parser.add_argument(
+        "--refresh-metric",
+        action="append",
+        choices=[WOWY_METRIC, RAWR_METRIC],
+        help=(
+            "Metric to refresh when used with --refresh-store. "
+            "Repeat to refresh multiple metrics. Defaults to wowy."
+        ),
     )
     parser.add_argument(
         "--season-type",
@@ -75,6 +84,18 @@ def build_parser() -> argparse.ArgumentParser:
         help=argparse.SUPPRESS,
     )
     parser.add_argument(
+        "--combined-rawr-games-csv",
+        type=Path,
+        default=Path("data/combined/rawr/games.csv"),
+        help=argparse.SUPPRESS,
+    )
+    parser.add_argument(
+        "--combined-rawr-game-players-csv",
+        type=Path,
+        default=Path("data/combined/rawr/game_players.csv"),
+        help=argparse.SUPPRESS,
+    )
+    parser.add_argument(
         "--player-metrics-db-path",
         type=Path,
         default=DEFAULT_PLAYER_METRICS_DB_PATH,
@@ -87,19 +108,21 @@ def main(argv: list[str] | None = None) -> int:
     parser = build_parser()
     args = parser.parse_args(argv)
     if args.refresh_store:
-        print(
-            f"refreshing {WOWY_METRIC} web store at {args.player_metrics_db_path}"
-        )
-        refresh_metric_store(
-            WOWY_METRIC,
-            season_type=args.season_type,
-            db_path=args.player_metrics_db_path,
-            source_data_dir=args.source_data_dir,
-            normalized_games_input_dir=args.normalized_games_input_dir,
-            normalized_game_players_input_dir=args.normalized_game_players_input_dir,
-            wowy_output_dir=args.wowy_output_dir,
-            combined_wowy_csv=args.combined_wowy_csv,
-        )
+        refresh_metrics = args.refresh_metric or [WOWY_METRIC]
+        for metric in refresh_metrics:
+            print(f"refreshing {metric} web store at {args.player_metrics_db_path}")
+            refresh_metric_store(
+                metric,
+                season_type=args.season_type,
+                db_path=args.player_metrics_db_path,
+                source_data_dir=args.source_data_dir,
+                normalized_games_input_dir=args.normalized_games_input_dir,
+                normalized_game_players_input_dir=args.normalized_game_players_input_dir,
+                wowy_output_dir=args.wowy_output_dir,
+                combined_wowy_csv=args.combined_wowy_csv,
+                combined_rawr_games_csv=args.combined_rawr_games_csv,
+                combined_rawr_game_players_csv=args.combined_rawr_game_players_csv,
+            )
     app = create_app(
         source_data_dir=args.source_data_dir,
         normalized_games_input_dir=args.normalized_games_input_dir,

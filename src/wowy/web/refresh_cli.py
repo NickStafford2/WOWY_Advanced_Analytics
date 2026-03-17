@@ -11,7 +11,7 @@ from wowy.nba.ingest import (
     DEFAULT_WOWY_GAMES_DIR,
 )
 from wowy.progress import TerminalProgressBar
-from wowy.web.service import WOWY_METRIC, refresh_metric_store
+from wowy.web.service import RAWR_METRIC, WOWY_METRIC, refresh_metric_store
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -21,7 +21,7 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument(
         "--metric",
         default=WOWY_METRIC,
-        choices=[WOWY_METRIC],
+        choices=[WOWY_METRIC, RAWR_METRIC],
         help="Metric to refresh into the SQLite store.",
     )
     parser.add_argument(
@@ -60,6 +60,18 @@ def build_parser() -> argparse.ArgumentParser:
         help=argparse.SUPPRESS,
     )
     parser.add_argument(
+        "--combined-rawr-games-csv",
+        type=Path,
+        default=Path("data/combined/rawr/games.csv"),
+        help=argparse.SUPPRESS,
+    )
+    parser.add_argument(
+        "--combined-rawr-game-players-csv",
+        type=Path,
+        default=Path("data/combined/rawr/game_players.csv"),
+        help=argparse.SUPPRESS,
+    )
+    parser.add_argument(
         "--player-metrics-db-path",
         type=Path,
         default=DEFAULT_PLAYER_METRICS_DB_PATH,
@@ -81,6 +93,8 @@ def main(argv: list[str] | None = None) -> int:
         normalized_game_players_input_dir=args.normalized_game_players_input_dir,
         wowy_output_dir=args.wowy_output_dir,
         combined_wowy_csv=args.combined_wowy_csv,
+        combined_rawr_games_csv=args.combined_rawr_games_csv,
+        combined_rawr_game_players_csv=args.combined_rawr_game_players_csv,
         progress=lambda current, total, detail: _update_progress(
             progress_bar,
             current=current,
