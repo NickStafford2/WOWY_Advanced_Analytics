@@ -1,107 +1,74 @@
 from __future__ import annotations
 
-import csv
-from pathlib import Path
+from typing import TypeAlias
 
+from wowy.data.game_cache_db import replace_team_season_normalized_rows
 from wowy.nba.models import NormalizedGamePlayerRecord, NormalizedGameRecord
-from wowy.nba.seasons import canonicalize_season_string
-from wowy.nba.team_seasons import TeamSeasonScope
 
 
-NORMALIZED_GAMES_HEADER = [
-    "game_id",
-    "season",
-    "game_date",
-    "team",
-    "opponent",
-    "is_home",
-    "margin",
-    "season_type",
-    "source",
-]
-
-NORMALIZED_GAME_PLAYERS_HEADER = [
-    "game_id",
-    "team",
-    "player_id",
-    "player_name",
-    "appeared",
-    "minutes",
+TeamSeasonSeed: TypeAlias = tuple[
+    str,
+    str,
+    list[NormalizedGameRecord],
+    list[NormalizedGamePlayerRecord],
 ]
 
 
-def parse_team_season_filename(path: Path) -> TeamSeasonScope:
-    parts = path.stem.split("_")
-    if len(parts) < 2 or not parts[0] or not parts[1]:
-        raise ValueError(
-            f"Unexpected team-season filename {path.name!r}. Expected TEAM_SEASON.csv."
-        )
-    return TeamSeasonScope(
-        team=parts[0].upper(),
-        season=canonicalize_season_string(parts[1]),
+def game(
+    game_id: str,
+    season: str,
+    game_date: str,
+    team: str,
+    opponent: str,
+    is_home: bool,
+    margin: float,
+    season_type: str = "Regular Season",
+    source: str = "nba_api",
+) -> NormalizedGameRecord:
+    return NormalizedGameRecord(
+        game_id=game_id,
+        season=season,
+        game_date=game_date,
+        team=team,
+        opponent=opponent,
+        is_home=is_home,
+        margin=margin,
+        season_type=season_type,
+        source=source,
     )
 
 
-def load_normalized_games_from_csv(
-    csv_path: Path | str,
-) -> list[NormalizedGameRecord]:
-    games: list[NormalizedGameRecord] = []
-
-    with open(csv_path, "r", encoding="utf-8", newline="") as f:
-        reader = csv.DictReader(f)
-        missing = set(NORMALIZED_GAMES_HEADER) - set(reader.fieldnames or [])
-        if missing:
-            raise ValueError(f"Missing required CSV columns: {sorted(missing)}")
-
-        for row in reader:
-            games.append(
-                NormalizedGameRecord(
-                    game_id=row["game_id"],
-                    season=canonicalize_season_string(row["season"]),
-                    game_date=row["game_date"],
-                    team=row["team"],
-                    opponent=row["opponent"],
-                    is_home=_parse_bool(row["is_home"]),
-                    margin=float(row["margin"]),
-                    season_type=row["season_type"],
-                    source=row["source"],
-                )
-            )
-
-    return games
+def player(
+    game_id: str,
+    team: str,
+    player_id: int,
+    player_name: str,
+    appeared: bool,
+    minutes: float | None,
+) -> NormalizedGamePlayerRecord:
+    return NormalizedGamePlayerRecord(
+        game_id=game_id,
+        team=team,
+        player_id=player_id,
+        player_name=player_name,
+        appeared=appeared,
+        minutes=minutes,
+    )
 
 
-def load_normalized_game_players_from_csv(
-    csv_path: Path | str,
-) -> list[NormalizedGamePlayerRecord]:
-    players: list[NormalizedGamePlayerRecord] = []
-
-    with open(csv_path, "r", encoding="utf-8", newline="") as f:
-        reader = csv.DictReader(f)
-        missing = set(NORMALIZED_GAME_PLAYERS_HEADER) - set(reader.fieldnames or [])
-        if missing:
-            raise ValueError(f"Missing required CSV columns: {sorted(missing)}")
-
-        for row in reader:
-            minutes_text = (row["minutes"] or "").strip()
-            players.append(
-                NormalizedGamePlayerRecord(
-                    game_id=row["game_id"],
-                    team=row["team"],
-                    player_id=int(row["player_id"]),
-                    player_name=row["player_name"],
-                    appeared=_parse_bool(row["appeared"]),
-                    minutes=float(minutes_text) if minutes_text else None,
-                )
-            )
-
-    return players
-
-
-def _parse_bool(value: str) -> bool:
-    text = value.strip().lower()
-    if text == "true":
-        return True
-    if text == "false":
-        return False
-    raise ValueError(f"Invalid boolean value: {value!r}")
+def seed_db_from_team_seasons(
+    db_path,
+    team_seasons: list[TeamSeasonSeed],
+) -> None:
+    for team, season, games, game_players in team_seasons:
+        replace_team_season_normalized_rows(
+            db_path,
+            team=team,
+            season=season,
+            season_type="Regular Season",
+            games=games,
+            game_players=game_players,
+            source_path=f"test://{team}_{season}",
+            source_snapshot="test-seed",
+            source_kind="test",
+        )

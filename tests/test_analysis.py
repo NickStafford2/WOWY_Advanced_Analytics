@@ -3,9 +3,9 @@ from __future__ import annotations
 from pathlib import Path
 
 from tests.support import (
-    load_normalized_game_players_from_csv,
-    load_normalized_games_from_csv,
-    parse_team_season_filename,
+    game,
+    player,
+    seed_db_from_team_seasons,
 )
 from wowy.data.game_cache_db import replace_team_season_normalized_rows
 from wowy.apps.wowy.service import (
@@ -22,27 +22,6 @@ from wowy.apps.wowy.models import (
     WowyPlayerStats,
 )
 from wowy.nba.models import NormalizedGamePlayerRecord, NormalizedGameRecord
-
-
-def _seed_db_from_normalized_csv_dirs(
-    db_path: Path,
-    normalized_games_dir: Path,
-    normalized_players_dir: Path,
-) -> None:
-    for games_csv_path in sorted(normalized_games_dir.glob("*.csv")):
-        team_season = parse_team_season_filename(games_csv_path)
-        players_csv_path = normalized_players_dir / games_csv_path.name
-        replace_team_season_normalized_rows(
-            db_path,
-            team=team_season.team,
-            season=team_season.season,
-            season_type="Regular Season",
-            games=load_normalized_games_from_csv(games_csv_path),
-            game_players=load_normalized_game_players_from_csv(players_csv_path),
-            source_path=str(games_csv_path),
-            source_snapshot="test-seed",
-            source_kind="test",
-        )
 
 
 def test_compute_wowy_basic():
@@ -167,55 +146,46 @@ def test_prepare_wowy_player_season_records_builds_web_ready_rows_from_cache(
     tmp_path: Path,
     monkeypatch,
 ):
-    normalized_games_dir = tmp_path / "normalized_games"
-    normalized_games_dir.mkdir()
-    (normalized_games_dir / "BOS_2022-23.csv").write_text(
-        (
-            "game_id,season,game_date,team,opponent,is_home,margin,season_type,source\n"
-            "1,2022-23,2023-04-01,BOS,MIL,true,10,Regular Season,nba_api\n"
-            "2,2022-23,2023-04-03,BOS,NYK,false,-5,Regular Season,nba_api\n"
-            "3,2022-23,2023-04-05,BOS,LAL,true,4,Regular Season,nba_api\n"
-        ),
-        encoding="utf-8",
-    )
-    (normalized_games_dir / "BOS_2023-24.csv").write_text(
-        (
-            "game_id,season,game_date,team,opponent,is_home,margin,season_type,source\n"
-            "4,2023-24,2024-04-01,BOS,MIL,true,8,Regular Season,nba_api\n"
-            "5,2023-24,2024-04-03,BOS,NYK,false,-2,Regular Season,nba_api\n"
-            "6,2023-24,2024-04-05,BOS,LAL,true,1,Regular Season,nba_api\n"
-        ),
-        encoding="utf-8",
-    )
-    normalized_players_dir = tmp_path / "normalized_game_players"
-    normalized_players_dir.mkdir()
-    (normalized_players_dir / "BOS_2022-23.csv").write_text(
-        (
-            "game_id,team,player_id,player_name,appeared,minutes\n"
-            "1,BOS,101,Player 101,true,34.0\n"
-            "1,BOS,102,Player 102,true,31.0\n"
-            "2,BOS,102,Player 102,true,31.0\n"
-            "3,BOS,101,Player 101,true,34.0\n"
-        ),
-        encoding="utf-8",
-    )
-    (normalized_players_dir / "BOS_2023-24.csv").write_text(
-        (
-            "game_id,team,player_id,player_name,appeared,minutes\n"
-            "4,BOS,101,Player 101,true,35.0\n"
-            "4,BOS,103,Player 103,true,30.0\n"
-            "5,BOS,101,Player 101,true,33.0\n"
-            "6,BOS,103,Player 103,true,30.0\n"
-        ),
-        encoding="utf-8",
-    )
-
     monkeypatch.setattr(
         "wowy.nba.prepare.load_player_names_from_cache",
         lambda _: {101: "Player 101", 102: "Player 102", 103: "Player 103"},
     )
     db_path = tmp_path / "app" / "player_metrics.sqlite3"
-    _seed_db_from_normalized_csv_dirs(db_path, normalized_games_dir, normalized_players_dir)
+    seed_db_from_team_seasons(
+        db_path,
+        [
+            (
+                "BOS",
+                "2022-23",
+                [
+                    game("1", "2022-23", "2023-04-01", "BOS", "MIL", True, 10.0),
+                    game("2", "2022-23", "2023-04-03", "BOS", "NYK", False, -5.0),
+                    game("3", "2022-23", "2023-04-05", "BOS", "LAL", True, 4.0),
+                ],
+                [
+                    player("1", "BOS", 101, "Player 101", True, 34.0),
+                    player("1", "BOS", 102, "Player 102", True, 31.0),
+                    player("2", "BOS", 102, "Player 102", True, 31.0),
+                    player("3", "BOS", 101, "Player 101", True, 34.0),
+                ],
+            ),
+            (
+                "BOS",
+                "2023-24",
+                [
+                    game("4", "2023-24", "2024-04-01", "BOS", "MIL", True, 8.0),
+                    game("5", "2023-24", "2024-04-03", "BOS", "NYK", False, -2.0),
+                    game("6", "2023-24", "2024-04-05", "BOS", "LAL", True, 1.0),
+                ],
+                [
+                    player("4", "BOS", 101, "Player 101", True, 35.0),
+                    player("4", "BOS", 103, "Player 103", True, 30.0),
+                    player("5", "BOS", 101, "Player 101", True, 33.0),
+                    player("6", "BOS", 103, "Player 103", True, 30.0),
+                ],
+            ),
+        ],
+    )
 
     records = prepare_wowy_player_season_records(
         teams=["BOS"],
@@ -254,7 +224,7 @@ def test_prepare_wowy_player_season_records_builds_web_ready_rows_from_cache(
     }
 
 
-def test_prepare_wowy_player_season_records_uses_db_without_normalized_csv_dirs(
+def test_prepare_wowy_player_season_records_uses_db_without_file_fixture_dirs(
     tmp_path: Path,
 ):
     db_path = tmp_path / "app" / "player_metrics.sqlite3"
