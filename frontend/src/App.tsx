@@ -2,6 +2,8 @@ import { useEffect, useEffectEvent, useMemo, useRef, useState } from 'react'
 import type { ChangeEvent, CSSProperties, Dispatch, SetStateAction } from 'react'
 import { LeaderboardChart } from './components/LeaderboardChart'
 import type { SpanSeries } from './components/LeaderboardChart'
+import { CustomQueryPanel } from './components/CustomQueryPanel'
+import type { CustomFilters, CustomNumberField } from './components/CustomQueryPanel'
 import { ResultsTable } from './components/ResultsTable'
 import type { ResultsTableRow } from './components/ResultsTable'
 import './App.css'
@@ -56,19 +58,6 @@ type ErrorPayload = {
 type CachedFilters = {
   team: string
   topN: number
-}
-
-type CustomFilters = {
-  startSeason: string
-  endSeason: string
-  teams: string[]
-  topN: number
-  minGames: number
-  ridgeAlpha: number
-  minGamesWith: number
-  minGamesWithout: number
-  minAverageMinutes: number
-  minTotalMinutes: number
 }
 
 type LoadingPhase = {
@@ -394,188 +383,25 @@ function App() {
 
       <div className="page-content">
         {mode === 'custom' ? (
-          <section className="query-panel">
-            <div className="query-card query-card--span-2 query-card--scope">
-              <div className="query-card-header">
-                <p className="panel-label">Scope</p>
-              </div>
-              <div className="query-compact-grid">
-                <label>
-                  <span>Start season</span>
-                  <select
-                    value={customFilters.startSeason}
-                    onChange={(event) =>
-                      setCustomFilters((current) => ({
-                        ...current,
-                        startSeason: event.target.value,
-                      }))
-                    }
-                    disabled={isBootstrapping || isLoading}
-                  >
-                    {availableSeasons.map((season) => (
-                      <option key={season} value={season}>
-                        {season}
-                      </option>
-                    ))}
-                  </select>
-                </label>
-
-                <label>
-                  <span>End season</span>
-                  <select
-                    value={customFilters.endSeason}
-                    onChange={(event) =>
-                      setCustomFilters((current) => ({
-                        ...current,
-                        endSeason: event.target.value,
-                      }))
-                    }
-                    disabled={isBootstrapping || isLoading}
-                  >
-                    {availableSeasons.map((season) => (
-                      <option key={season} value={season}>
-                        {season}
-                      </option>
-                    ))}
-                  </select>
-                </label>
-
-                <label>
-                  <span>Top players</span>
-                  <input
-                    type="number"
-                    min="1"
-                    max="50"
-                    value={customFilters.topN}
-                    onChange={(event) => updateCustomNumber(setCustomFilters, 'topN', event)}
-                  />
-                </label>
-              </div>
-            </div>
-
-            <fieldset className="query-card query-card--span-2 query-card--teams query-multi">
-              <legend>Teams</legend>
-              <button
-                type="button"
-                className={allTeamsSelected ? 'team-toggle-button is-selected' : 'team-toggle-button'}
-                onClick={() => toggleAllCustomTeams(setCustomFilters, availableTeams)}
-                disabled={isBootstrapping || isLoading || availableTeams.length === 0}
-              >
-                All
-              </button>
-              <div className="query-team-grid">
-                {availableTeams.map((team) => {
-                  const isSelected = customFilters.teams.includes(team)
-                  return (
-                    <label key={team} className={isSelected ? 'team-chip is-selected' : 'team-chip'}>
-                      <input
-                        type="checkbox"
-                        checked={isSelected}
-                        onChange={() => toggleCustomTeam(setCustomFilters, team)}
-                        disabled={isBootstrapping || isLoading}
-                      />
-                      <span>{team}</span>
-                    </label>
-                  )
-                })}
-              </div>
-              <small>Leave all unchecked to query all teams in the selected span.</small>
-            </fieldset>
-
-            <div className="query-card query-card--span-2 query-card--filters">
-              <div className="query-card-header">
-                <p className="panel-label">{isRawrMetric ? 'Model filters' : 'Query filters'}</p>
-                <p className="query-section-note">
-                  {isRawrMetric
-                    ? 'Model entry and output thresholds are combined here to keep the query compact.'
-                    : 'Set minimum on and off samples plus minute thresholds for the result set.'}
-                </p>
-              </div>
-              <div className="query-compact-grid">
-                <label>
-                  <span>{isRawrMetric ? 'Min games' : 'Min games with'}</span>
-                  <input
-                    type="number"
-                    min="0"
-                    value={isRawrMetric ? customFilters.minGames : customFilters.minGamesWith}
-                    onChange={(event) =>
-                      updateCustomNumber(
-                        setCustomFilters,
-                        isRawrMetric ? 'minGames' : 'minGamesWith',
-                        event,
-                      )
-                    }
-                  />
-                </label>
-
-                {isRawrMetric ? (
-                  <label>
-                    <span>Ridge alpha</span>
-                    <input
-                      type="number"
-                      min="0"
-                      step="0.5"
-                      value={customFilters.ridgeAlpha}
-                      onChange={(event) => updateCustomNumber(setCustomFilters, 'ridgeAlpha', event)}
-                    />
-                  </label>
-                ) : (
-                  <label>
-                    <span>Min games without</span>
-                    <input
-                      type="number"
-                      min="0"
-                      value={customFilters.minGamesWithout}
-                      onChange={(event) =>
-                        updateCustomNumber(setCustomFilters, 'minGamesWithout', event)
-                      }
-                    />
-                  </label>
-                )}
-
-                <label>
-                  <span>Min average minutes</span>
-                  <input
-                    type="number"
-                    min="0"
-                    step="0.5"
-                    value={customFilters.minAverageMinutes}
-                    onChange={(event) =>
-                      updateCustomNumber(setCustomFilters, 'minAverageMinutes', event)
-                    }
-                  />
-                </label>
-
-                <label>
-                  <span>Min total minutes</span>
-                  <input
-                    type="number"
-                    min="0"
-                    step="10"
-                    value={customFilters.minTotalMinutes}
-                    onChange={(event) =>
-                      updateCustomNumber(setCustomFilters, 'minTotalMinutes', event)
-                    }
-                  />
-                </label>
-              </div>
-              <div className="query-actions">
-              <button
-                type="button"
-                className="run-button query-run"
-                onClick={() => void runCustomQuery()}
-                disabled={
-                  isBootstrapping ||
-                  isLoading ||
-                  !customFilters.startSeason ||
-                  !customFilters.endSeason
-                }
-              >
-                {isLoading ? 'Running...' : 'Run query'}
-              </button>
-              </div>
-            </div>
-          </section>
+          <CustomQueryPanel
+            customFilters={customFilters}
+            availableSeasons={availableSeasons}
+            availableTeams={availableTeams}
+            isBootstrapping={isBootstrapping}
+            isLoading={isLoading}
+            isRawrMetric={isRawrMetric}
+            allTeamsSelected={allTeamsSelected}
+            onStartSeasonChange={(season) =>
+              setCustomFilters((current) => ({ ...current, startSeason: season }))
+            }
+            onEndSeasonChange={(season) =>
+              setCustomFilters((current) => ({ ...current, endSeason: season }))
+            }
+            onToggleAllTeams={() => toggleAllCustomTeams(setCustomFilters, availableTeams)}
+            onToggleTeam={(team) => toggleCustomTeam(setCustomFilters, team)}
+            onNumberChange={(field, event) => updateCustomNumber(setCustomFilters, field, event)}
+            onRunQuery={() => void runCustomQuery()}
+          />
         ) : null}
 
         <section className="chart-panel">
@@ -843,16 +669,7 @@ function toggleAllCustomTeams(
 
 function updateCustomNumber(
   setCustomFilters: Dispatch<SetStateAction<CustomFilters>>,
-  field: keyof Pick<
-    CustomFilters,
-    | 'topN'
-    | 'minGames'
-    | 'ridgeAlpha'
-    | 'minGamesWith'
-    | 'minGamesWithout'
-    | 'minAverageMinutes'
-    | 'minTotalMinutes'
-  >,
+  field: CustomNumberField,
   event: ChangeEvent<HTMLInputElement>,
 ) {
   const nextValue = Number(event.target.value)
