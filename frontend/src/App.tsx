@@ -534,6 +534,15 @@ function App() {
             />
           </label>
 
+          {metric === 'rawr' ? (
+            <div className="query-section-heading">
+              <p className="panel-label">Pre-Fit Model Filter</p>
+              <p className="query-section-note">
+                `Min games` is applied before regression and changes which players enter the model.
+              </p>
+            </div>
+          ) : null}
+
           <label>
             <span>{metric === 'rawr' ? 'Min games' : 'Min games with'}</span>
             <input
@@ -573,6 +582,15 @@ function App() {
                 onChange={(event) => updateCustomNumber(setCustomFilters, 'minGamesWithout', event)}
               />
             </label>
+          ) : null}
+
+          {metric === 'rawr' ? (
+            <div className="query-section-heading">
+              <p className="panel-label">Post-Fit Output Filters</p>
+              <p className="query-section-note">
+                Minute thresholds are applied after the regression is fit and only trim the returned rows.
+              </p>
+            </div>
           ) : null}
 
           <label>
