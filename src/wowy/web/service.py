@@ -6,6 +6,7 @@ from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any, Callable
 
+from wowy.apps.wowy.models import WowyPlayerSeasonRecord
 from wowy.apps.wowy.service import prepare_wowy_player_season_records
 from wowy.data.player_metrics_db import (
     DEFAULT_PLAYER_METRICS_DB_PATH,
@@ -225,6 +226,84 @@ def build_metric_player_seasons_payload(
     }
 
 
+def build_cached_metric_leaderboard_payload(
+    metric: str,
+    *,
+    db_path: Path = DEFAULT_PLAYER_METRICS_DB_PATH,
+    scope_key: str,
+    top_n: int,
+    seasons: list[str] | None,
+    min_average_minutes: float | None,
+    min_total_minutes: float | None,
+    min_sample_size: int | None,
+    min_secondary_sample_size: int | None,
+) -> dict[str, Any]:
+    catalog_row = load_metric_scope_catalog_row(db_path, metric, scope_key)
+    if catalog_row is None:
+        raise ValueError("Metric store has not been built for the requested scope")
+    rows = load_metric_rows(
+        db_path,
+        metric=metric,
+        scope_key=scope_key,
+        seasons=seasons,
+        min_average_minutes=min_average_minutes,
+        min_total_minutes=min_total_minutes,
+        min_sample_size=min_sample_size,
+        min_secondary_sample_size=min_secondary_sample_size,
+    )
+    leaderboard = build_leaderboard_payload_from_rows(
+        metric=metric,
+        metric_label=catalog_row.metric_label,
+        rows=rows,
+        seasons=seasons or catalog_row.available_seasons,
+        top_n=top_n,
+        mode="cached",
+    )
+    leaderboard["available_seasons"] = catalog_row.available_seasons
+    leaderboard["available_teams"] = catalog_row.available_teams
+    return leaderboard
+
+
+def build_custom_wowy_leaderboard_payload(
+    *,
+    teams: list[str] | None,
+    seasons: list[str] | None,
+    season_type: str,
+    top_n: int,
+    source_data_dir: Path,
+    normalized_games_input_dir: Path,
+    normalized_game_players_input_dir: Path,
+    wowy_output_dir: Path,
+    combined_wowy_csv: Path,
+    min_games_with: int,
+    min_games_without: int,
+    min_average_minutes: float | None,
+    min_total_minutes: float | None,
+) -> dict[str, Any]:
+    records = prepare_wowy_player_season_records(
+        teams=teams,
+        seasons=seasons,
+        season_type=season_type,
+        source_data_dir=source_data_dir,
+        normalized_games_input_dir=normalized_games_input_dir,
+        normalized_game_players_input_dir=normalized_game_players_input_dir,
+        wowy_output_dir=wowy_output_dir,
+        combined_wowy_csv=combined_wowy_csv,
+        min_games_with=min_games_with,
+        min_games_without=min_games_without,
+        min_average_minutes=min_average_minutes,
+        min_total_minutes=min_total_minutes,
+    )
+    return build_leaderboard_payload_from_records(
+        metric=WOWY_METRIC,
+        metric_label="WOWY",
+        records=records,
+        seasons=sorted({record.season for record in records}),
+        top_n=top_n,
+        mode="custom",
+    )
+
+
 def build_metric_options_payload(
     metric: str,
     *,
@@ -318,6 +397,194 @@ def serialize_metric_player_season_row(row: PlayerSeasonMetricRow) -> dict[str, 
     }
     payload.update(row.details or {})
     return payload
+
+
+def build_leaderboard_payload_from_rows(
+    *,
+    metric: str,
+    metric_label: str,
+    rows: list[PlayerSeasonMetricRow],
+    seasons: list[str],
+    top_n: int,
+    mode: str,
+) -> dict[str, Any]:
+    table_rows = build_ranked_table_rows(
+        [
+            serialize_metric_player_season_row(row)
+            for row in rows
+        ],
+        seasons=seasons,
+        top_n=top_n,
+    )
+    return {
+        "mode": mode,
+        "metric": metric,
+        "metric_label": metric_label,
+        "span": build_span_payload(seasons, top_n=top_n),
+        "table_rows": table_rows,
+        "series": build_series_from_table_rows(table_rows, seasons=seasons),
+    }
+
+
+def build_leaderboard_payload_from_records(
+    *,
+    metric: str,
+    metric_label: str,
+    records: list[WowyPlayerSeasonRecord],
+    seasons: list[str],
+    top_n: int,
+    mode: str,
+) -> dict[str, Any]:
+    rows = [
+        {
+            "season": record.season,
+            "player_id": record.player_id,
+            "player_name": record.player_name,
+            "value": record.wowy_score,
+            "sample_size": record.games_with,
+            "secondary_sample_size": record.games_without,
+            "games_with": record.games_with,
+            "games_without": record.games_without,
+            "avg_margin_with": record.avg_margin_with,
+            "avg_margin_without": record.avg_margin_without,
+            "average_minutes": record.average_minutes,
+            "total_minutes": record.total_minutes,
+        }
+        for record in records
+    ]
+    table_rows = build_ranked_table_rows(rows, seasons=seasons, top_n=top_n)
+    return {
+        "mode": mode,
+        "metric": metric,
+        "metric_label": metric_label,
+        "span": build_span_payload(seasons, top_n=top_n),
+        "table_rows": table_rows,
+        "series": build_series_from_table_rows(table_rows, seasons=seasons),
+    }
+
+
+def build_span_payload(seasons: list[str], *, top_n: int) -> dict[str, Any]:
+    ordered_seasons = sorted(dict.fromkeys(seasons))
+    return {
+        "start_season": ordered_seasons[0] if ordered_seasons else None,
+        "end_season": ordered_seasons[-1] if ordered_seasons else None,
+        "available_seasons": ordered_seasons,
+        "top_n": top_n,
+    }
+
+
+def build_ranked_table_rows(
+    rows: list[dict[str, Any]],
+    *,
+    seasons: list[str],
+    top_n: int,
+) -> list[dict[str, Any]]:
+    rows_by_player: dict[int, list[dict[str, Any]]] = {}
+    for row in rows:
+        rows_by_player.setdefault(row["player_id"], []).append(row)
+
+    full_span_length = len(sorted(dict.fromkeys(seasons))) or 1
+    ranked_rows = []
+    for player_id, player_rows in rows_by_player.items():
+        player_name = player_rows[0]["player_name"]
+        games_with = sum((row.get("games_with") or row.get("sample_size") or 0) for row in player_rows)
+        games_without = sum(
+            (row.get("games_without") or row.get("secondary_sample_size") or 0)
+            for row in player_rows
+        )
+        total_minutes = sum((row.get("total_minutes") or 0.0) for row in player_rows)
+        average_minutes = total_minutes / games_with if games_with > 0 else None
+        ranked_rows.append(
+            {
+                "rank": 0,
+                "player_id": player_id,
+                "player_name": player_name,
+                "span_average_value": sum(row["value"] for row in player_rows) / full_span_length,
+                "average_minutes": average_minutes,
+                "total_minutes": total_minutes,
+                "games_with": games_with,
+                "games_without": games_without,
+                "avg_margin_with": weighted_average_rows(
+                    player_rows,
+                    value_key="avg_margin_with",
+                    weight_keys=("games_with", "sample_size"),
+                ),
+                "avg_margin_without": weighted_average_rows(
+                    player_rows,
+                    value_key="avg_margin_without",
+                    weight_keys=("games_without", "secondary_sample_size"),
+                ),
+                "season_count": len(player_rows),
+                "points": [
+                    {
+                        "season": season,
+                        "value": next(
+                            (
+                                row["value"]
+                                for row in player_rows
+                                if row["season"] == season
+                            ),
+                            None,
+                        ),
+                    }
+                    for season in sorted(dict.fromkeys(seasons))
+                ],
+            }
+        )
+
+    ranked_rows.sort(
+        key=lambda row: (row["span_average_value"], row["player_name"]),
+        reverse=True,
+    )
+    limited_rows = ranked_rows[:top_n]
+    return [{**row, "rank": index + 1} for index, row in enumerate(limited_rows)]
+
+
+def build_series_from_table_rows(
+    table_rows: list[dict[str, Any]],
+    *,
+    seasons: list[str],
+) -> list[dict[str, Any]]:
+    season_order = sorted(dict.fromkeys(seasons))
+    rows_by_player = {row["player_id"]: row for row in table_rows}
+    series = []
+    for row in table_rows:
+        points = row.get("points")
+        if points is None:
+            points = [{"season": season, "value": None} for season in season_order]
+        series.append(
+            {
+                "player_id": row["player_id"],
+                "player_name": row["player_name"],
+                "span_average_value": row["span_average_value"],
+                "season_count": row["season_count"],
+                "points": rows_by_player.get(row["player_id"], {}).get(
+                    "points",
+                    [{"season": season, "value": None} for season in season_order],
+                ),
+            }
+        )
+    return series
+
+
+def weighted_average_rows(
+    rows: list[dict[str, Any]],
+    *,
+    value_key: str,
+    weight_keys: tuple[str, str],
+) -> float | None:
+    weighted_total = 0.0
+    weight_total = 0
+    for row in rows:
+        value = row.get(value_key)
+        weight = row.get(weight_keys[0]) or row.get(weight_keys[1]) or 0
+        if value is None or weight <= 0:
+            continue
+        weighted_total += value * weight
+        weight_total += weight
+    if weight_total == 0:
+        return None
+    return weighted_total / weight_total
 
 
 def build_metric_series(

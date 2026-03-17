@@ -14,6 +14,8 @@ from wowy.nba.ingest import (
 from wowy.web.service import (
     WOWY_METRIC,
     build_scope_key,
+    build_cached_metric_leaderboard_payload,
+    build_custom_wowy_leaderboard_payload,
     build_metric_options_payload,
     build_metric_player_seasons_payload,
     build_metric_span_chart_payload,
@@ -97,6 +99,35 @@ def create_app(
     def get_wowy_span_chart():
         return get_metric_span_chart(WOWY_METRIC)
 
+    @app.get("/api/wowy/cached-leaderboard")
+    def get_wowy_cached_leaderboard():
+        try:
+            payload = _build_wowy_cached_leaderboard_payload(
+                request,
+                metric=WOWY_METRIC,
+                player_metrics_db_path=player_metrics_db_path,
+            )
+        except ValueError as exc:
+            return jsonify({"error": str(exc)}), 400
+
+        return jsonify(payload)
+
+    @app.get("/api/wowy/custom-query")
+    def get_wowy_custom_query():
+        try:
+            payload = _build_wowy_custom_query_payload(
+                request,
+                source_data_dir=source_data_dir,
+                normalized_games_input_dir=normalized_games_input_dir,
+                normalized_game_players_input_dir=normalized_game_players_input_dir,
+                wowy_output_dir=wowy_output_dir,
+                combined_wowy_csv=combined_wowy_csv,
+            )
+        except ValueError as exc:
+            return jsonify({"error": str(exc)}), 400
+
+        return jsonify(payload)
+
     return app
 
 
@@ -160,6 +191,81 @@ def _build_metric_span_chart_payload(
     return payload
 
 
+def _build_wowy_cached_leaderboard_payload(
+    request,
+    *,
+    metric: str,
+    player_metrics_db_path: Path,
+) -> dict[str, Any]:
+    filter_values = _parse_request_filters(request, include_top_n=True)
+    season_type = request.args.get("season_type", "Regular Season")
+    teams = request.args.getlist("team") or None
+    scope_key, _team_filter = build_scope_key(teams=teams, season_type=season_type)
+    payload = build_cached_metric_leaderboard_payload(
+        metric,
+        db_path=player_metrics_db_path,
+        scope_key=scope_key,
+        top_n=filter_values["top_n"],
+        seasons=request.args.getlist("season") or None,
+        min_average_minutes=filter_values["min_average_minutes"],
+        min_total_minutes=filter_values["min_total_minutes"],
+        min_sample_size=filter_values["min_sample_size"],
+        min_secondary_sample_size=filter_values["min_secondary_sample_size"],
+    )
+    payload["filters"] = _build_filters_payload(
+        teams=teams,
+        seasons=request.args.getlist("season") or None,
+        season_type=season_type,
+        min_games_with=request.args.get("min_games_with"),
+        min_games_without=request.args.get("min_games_without"),
+        min_average_minutes=request.args.get("min_average_minutes"),
+        min_total_minutes=request.args.get("min_total_minutes"),
+        top_n=request.args.get("top_n"),
+    )
+    return payload
+
+
+def _build_wowy_custom_query_payload(
+    request,
+    *,
+    source_data_dir: Path,
+    normalized_games_input_dir: Path,
+    normalized_game_players_input_dir: Path,
+    wowy_output_dir: Path,
+    combined_wowy_csv: Path,
+) -> dict[str, Any]:
+    filter_values = _parse_request_filters(request, include_top_n=True)
+    season_type = request.args.get("season_type", "Regular Season")
+    teams = request.args.getlist("team") or None
+    seasons = request.args.getlist("season") or None
+    payload = build_custom_wowy_leaderboard_payload(
+        teams=teams,
+        seasons=seasons,
+        season_type=season_type,
+        top_n=filter_values["top_n"],
+        source_data_dir=source_data_dir,
+        normalized_games_input_dir=normalized_games_input_dir,
+        normalized_game_players_input_dir=normalized_game_players_input_dir,
+        wowy_output_dir=wowy_output_dir,
+        combined_wowy_csv=combined_wowy_csv,
+        min_games_with=int(filter_values["min_sample_size"]),
+        min_games_without=int(filter_values["min_secondary_sample_size"]),
+        min_average_minutes=float(filter_values["min_average_minutes"]),
+        min_total_minutes=float(filter_values["min_total_minutes"]),
+    )
+    payload["filters"] = _build_filters_payload(
+        teams=teams,
+        seasons=seasons,
+        season_type=season_type,
+        min_games_with=request.args.get("min_games_with"),
+        min_games_without=request.args.get("min_games_without"),
+        min_average_minutes=request.args.get("min_average_minutes"),
+        min_total_minutes=request.args.get("min_total_minutes"),
+        top_n=request.args.get("top_n"),
+    )
+    return payload
+
+
 def _parse_request_filters(
     request,
     *,
@@ -207,6 +313,7 @@ def _build_filters_payload(
     min_games_without: str | None,
     min_average_minutes: str | None,
     min_total_minutes: str | None,
+    top_n: str | None = None,
 ) -> dict[str, Any]:
     return {
         "team": teams,
@@ -222,4 +329,5 @@ def _build_filters_payload(
             min_total_minutes,
             default=600.0,
         ),
+        "top_n": _parse_optional_int(top_n, default=30),
     }

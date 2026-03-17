@@ -5,7 +5,9 @@
 }
 
 .hero-panel,
+.mode-panel,
 .control-panel,
+.query-panel,
 .chart-panel {
   border: 1px solid rgba(50, 63, 79, 0.14);
   border-radius: 28px;
@@ -92,7 +94,54 @@
   background: rgba(250, 250, 247, 0.92);
 }
 
+.mode-panel {
+  margin-top: 18px;
+  padding: 10px;
+  background: rgba(255, 253, 248, 0.88);
+}
+
+.mode-toggle {
+  display: inline-flex;
+  gap: 10px;
+  width: 100%;
+}
+
+.mode-tab {
+  flex: 1;
+  min-height: 48px;
+  border: 1px solid rgba(51, 63, 78, 0.18);
+  border-radius: 18px;
+  background: rgba(255, 255, 255, 0.88);
+  color: #445464;
+  font: inherit;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.mode-tab.active {
+  border-color: rgba(38, 70, 83, 0.28);
+  background: linear-gradient(135deg, rgba(38, 70, 83, 0.98), rgba(42, 157, 143, 0.96));
+  color: #fffdf6;
+}
+
+.query-panel {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 16px;
+  padding: 18px;
+  margin-top: 18px;
+  background: rgba(250, 250, 247, 0.92);
+}
+
 .control-panel label {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  font-size: 0.92rem;
+  color: #445464;
+}
+
+.query-panel label {
   display: flex;
   flex-direction: column;
   gap: 8px;
@@ -102,6 +151,8 @@
 
 .control-panel select,
 .control-panel input,
+.query-panel select,
+.query-panel input,
 .control-output,
 .run-button {
   min-height: 48px;
@@ -112,15 +163,34 @@
 
 .control-panel select,
 .control-panel input,
+.query-panel select,
+.query-panel input,
 .control-output {
   padding: 0 14px;
   background: rgba(255, 255, 255, 0.92);
+}
+
+.query-panel select[multiple] {
+  min-height: 164px;
+  padding: 12px 14px;
+}
+
+.query-multi {
+  grid-column: span 2;
+}
+
+.query-multi small {
+  color: #6a7986;
 }
 
 .control-output {
   display: flex;
   align-items: center;
   color: #445464;
+}
+
+.query-run {
+  align-self: end;
 }
 
 .run-button {
@@ -258,6 +328,28 @@
 .grid-line {
   stroke: rgba(48, 60, 74, 0.12);
   stroke-width: 1;
+}
+
+@media (max-width: 980px) {
+  .hero-copy,
+  .chart-header {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .control-panel,
+  .query-panel,
+  .chart-layout {
+    grid-template-columns: 1fr;
+  }
+
+  .query-multi {
+    grid-column: auto;
+  }
+
+  .mode-toggle {
+    flex-direction: column;
+  }
 }
 
 .grid-line-vertical {

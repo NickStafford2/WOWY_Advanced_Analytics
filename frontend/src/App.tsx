@@ -1,5 +1,5 @@
 import { useEffect, useEffectEvent, useMemo, useState } from 'react'
-import type { ChangeEvent } from 'react'
+import type { ChangeEvent, Dispatch, SetStateAction } from 'react'
 import './App.css'
 
 const CHART_WIDTH = 920
@@ -20,6 +20,8 @@ const SERIES_COLORS = [
   '#7f5539',
 ] as const
 
+type AppMode = 'cached' | 'custom'
+
 type SpanPoint = {
   season: string
   value: number | null
@@ -33,25 +35,44 @@ type SpanSeries = {
   points: SpanPoint[]
 }
 
-type PlayerSeasonRow = {
-  season: string
+type TableRow = {
+  rank: number
   player_id: number
   player_name: string
-  value: number
-  sample_size: number | null
-  secondary_sample_size: number | null
-  games_with?: number
-  games_without?: number
-  avg_margin_with?: number
-  avg_margin_without?: number
+  span_average_value: number
   average_minutes: number | null
-  total_minutes: number | null
+  total_minutes: number
+  games_with: number
+  games_without: number
+  avg_margin_with: number | null
+  avg_margin_without: number | null
+  season_count: number
 }
 
-type PlayerSeasonsPayload = {
+type LeaderboardPayload = {
+  mode: AppMode
   metric: string
   metric_label: string
-  rows: PlayerSeasonRow[]
+  span: {
+    start_season: string | null
+    end_season: string | null
+    available_seasons: string[]
+    top_n: number
+  }
+  table_rows: TableRow[]
+  series: SpanSeries[]
+  filters: {
+    team: string[] | null
+    season: string[] | null
+    season_type: string
+    min_games_with: number
+    min_games_without: number
+    min_average_minutes: number
+    min_total_minutes: number
+    top_n: number
+  }
+  available_teams?: string[]
+  available_seasons?: string[]
 }
 
 type MetricOptionsPayload = {
@@ -72,10 +93,6 @@ type MetricOptionsPayload = {
 
 type ErrorPayload = {
   error?: string
-}
-
-type LoadChartOptions = {
-  nextTopN?: number
 }
 
 type ChartGridLine = {
@@ -106,140 +123,159 @@ type ChartModel = {
   series: ChartSeries[]
 }
 
-type TableRow = {
-  rank: number
-  player_id: number
-  player_name: string
-  span_average_value: number
-  average_minutes: number | null
-  total_minutes: number
-  games_with: number
-  games_without: number
-  avg_margin_with: number | null
-  avg_margin_without: number | null
-  season_count: number
+type CachedFilters = {
+  team: string
+  topN: number
+}
+
+type CustomFilters = {
+  startSeason: string
+  endSeason: string
+  teams: string[]
+  topN: number
+  minGamesWith: number
+  minGamesWithout: number
+  minAverageMinutes: number
+  minTotalMinutes: number
 }
 
 function App() {
+  const [mode, setMode] = useState<AppMode>('cached')
+  const [metricLabel, setMetricLabel] = useState('WOWY')
   const [availableTeams, setAvailableTeams] = useState<string[]>([])
   const [availableSeasons, setAvailableSeasons] = useState<string[]>([])
-  const [selectedTeam, setSelectedTeam] = useState('')
-  const [topN, setTopN] = useState(12)
-  const [playerSeasonRows, setPlayerSeasonRows] = useState<PlayerSeasonRow[]>([])
-  const [metricLabel, setMetricLabel] = useState('WOWY')
+  const [leaderboard, setLeaderboard] = useState<LeaderboardPayload | null>(null)
+  const [cachedFilters, setCachedFilters] = useState<CachedFilters>({
+    team: '',
+    topN: 12,
+  })
+  const [customFilters, setCustomFilters] = useState<CustomFilters>({
+    startSeason: '',
+    endSeason: '',
+    teams: [],
+    topN: 12,
+    minGamesWith: 15,
+    minGamesWithout: 2,
+    minAverageMinutes: 30,
+    minTotalMinutes: 600,
+  })
   const [isBootstrapping, setIsBootstrapping] = useState(true)
-  const [isLoading, setIsLoading] = useState(true)
+  const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState('')
 
-  const loadChart = useEffectEvent(async (options: LoadChartOptions) => {
-    const { nextTopN = topN } = options
+  const loadOptions = useEffectEvent(async () => {
+    setIsBootstrapping(true)
+    setError('')
+    try {
+      const payload = (await fetchJson('/api/metrics/wowy/options')) as MetricOptionsPayload
+      const optionsPayload = payload as MetricOptionsPayload
+      setMetricLabel(optionsPayload.metric_label)
+      setAvailableTeams(optionsPayload.available_teams)
+      setAvailableSeasons(optionsPayload.available_seasons)
+      setCachedFilters((current) => ({
+        ...current,
+        topN: current.topN || optionsPayload.filters.top_n,
+      }))
+      setCustomFilters((current) => ({
+        ...current,
+        startSeason: current.startSeason || optionsPayload.available_seasons[0] || '',
+        endSeason:
+          current.endSeason ||
+          optionsPayload.available_seasons[optionsPayload.available_seasons.length - 1] ||
+          '',
+        topN: current.topN || optionsPayload.filters.top_n,
+        minGamesWith: optionsPayload.filters.min_games_with,
+        minGamesWithout: optionsPayload.filters.min_games_without,
+        minAverageMinutes: optionsPayload.filters.min_average_minutes,
+        minTotalMinutes: optionsPayload.filters.min_total_minutes,
+      }))
+    } catch (caughtError) {
+      const message = caughtError instanceof Error ? caughtError.message : 'Request failed'
+      setError(message)
+    } finally {
+      setIsBootstrapping(false)
+    }
+  })
 
+  const loadCachedLeaderboard = useEffectEvent(async () => {
     setIsLoading(true)
     setError('')
-
     const params = new URLSearchParams({
+      top_n: String(cachedFilters.topN),
       min_games_with: '15',
       min_games_without: '2',
       min_average_minutes: '30',
       min_total_minutes: '600',
-      top_n: String(nextTopN),
     })
-
-    if (selectedTeam) {
-      params.set('team', selectedTeam)
+    if (cachedFilters.team) {
+      params.set('team', cachedFilters.team)
     }
 
     try {
-      const response = await fetch(`/api/metrics/wowy/player-seasons?${params.toString()}`)
-      const payload = (await response.json()) as unknown
-
-      if (!response.ok) {
-        const errorPayload = payload as ErrorPayload
-        throw new Error(errorPayload.error ?? 'Request failed')
-      }
-      const playerSeasonsPayload = payload as PlayerSeasonsPayload
-      setMetricLabel(playerSeasonsPayload.metric_label)
-      setTopN(nextTopN)
-      setPlayerSeasonRows(playerSeasonsPayload.rows)
+      const payload = (await fetchJson(
+        `/api/wowy/cached-leaderboard?${params.toString()}`,
+      )) as LeaderboardPayload
+      const leaderboardPayload = payload as LeaderboardPayload
+      setMetricLabel(leaderboardPayload.metric_label)
+      setLeaderboard(leaderboardPayload)
     } catch (caughtError) {
-      const message =
-        caughtError instanceof Error ? caughtError.message : 'Request failed'
+      const message = caughtError instanceof Error ? caughtError.message : 'Request failed'
       setError(message)
-      setPlayerSeasonRows([])
+      setLeaderboard(null)
     } finally {
       setIsLoading(false)
     }
   })
 
-  const loadOptions = useEffectEvent(
-    async ({ nextTeam, bootstrapChart }: { nextTeam: string; bootstrapChart: boolean }) => {
-      setIsBootstrapping(true)
-      setError('')
+  const runCustomQuery = useEffectEvent(async () => {
+    setIsLoading(true)
+    setError('')
+    const params = new URLSearchParams({
+      top_n: String(customFilters.topN),
+      min_games_with: String(customFilters.minGamesWith),
+      min_games_without: String(customFilters.minGamesWithout),
+      min_average_minutes: String(customFilters.minAverageMinutes),
+      min_total_minutes: String(customFilters.minTotalMinutes),
+    })
 
-      const params = new URLSearchParams()
-      if (nextTeam) {
-        params.set('team', nextTeam)
-      }
+    for (const team of customFilters.teams) {
+      params.append('team', team)
+    }
+    for (const season of seasonSpan(customFilters.startSeason, customFilters.endSeason, availableSeasons)) {
+      params.append('season', season)
+    }
 
-      try {
-        const query = params.toString()
-        const response = await fetch(
-          `/api/metrics/wowy/options${query ? `?${query}` : ''}`,
-        )
-        const payload = (await response.json()) as unknown
-
-        if (!response.ok) {
-          const errorPayload = payload as ErrorPayload
-          throw new Error(errorPayload.error ?? 'Request failed')
-        }
-
-        const optionsPayload = payload as MetricOptionsPayload
-        setMetricLabel(optionsPayload.metric_label)
-        setAvailableTeams(optionsPayload.available_teams)
-        setAvailableSeasons(optionsPayload.available_seasons)
-        setSelectedTeam(nextTeam)
-        setTopN((currentTopN) => currentTopN || optionsPayload.filters.top_n)
-
-        if (bootstrapChart) {
-          await loadChart({ nextTopN: topN })
-        }
-      } catch (caughtError) {
-        const message =
-          caughtError instanceof Error ? caughtError.message : 'Request failed'
-        setError(message)
-        setPlayerSeasonRows([])
-        setAvailableSeasons([])
-      } finally {
-        setIsBootstrapping(false)
-      }
-    },
-  )
+    try {
+      const payload = (await fetchJson(
+        `/api/wowy/custom-query?${params.toString()}`,
+      )) as LeaderboardPayload
+      const leaderboardPayload = payload as LeaderboardPayload
+      setMetricLabel(leaderboardPayload.metric_label)
+      setLeaderboard(leaderboardPayload)
+    } catch (caughtError) {
+      const message = caughtError instanceof Error ? caughtError.message : 'Request failed'
+      setError(message)
+      setLeaderboard(null)
+    } finally {
+      setIsLoading(false)
+    }
+  })
 
   useEffect(() => {
-    void loadOptions({ nextTeam: '', bootstrapChart: true })
+    void (async () => {
+      await loadOptions()
+      await loadCachedLeaderboard()
+    })()
   }, [])
 
-  const tableRows = useMemo<TableRow[]>(
-    () => buildTableRows(playerSeasonRows).slice(0, topN),
-    [playerSeasonRows, topN],
-  )
-  const displaySeries = useMemo<SpanSeries[]>(
-    () => buildDisplaySeries(tableRows, playerSeasonRows, availableSeasons),
-    [tableRows, playerSeasonRows, availableSeasons],
-  )
   const chartModel = useMemo<ChartModel>(
-    () => buildChartModel(displaySeries),
-    [displaySeries],
+    () => buildChartModel(leaderboard?.series ?? []),
+    [leaderboard],
   )
 
-  function handleTopNChange(event: ChangeEvent<HTMLInputElement>) {
-    setTopN(Number(event.target.value))
-  }
-
-  function handleTeamChange(event: ChangeEvent<HTMLSelectElement>) {
-    const nextTeam = event.target.value
-    void loadOptions({ nextTeam, bootstrapChart: false })
-  }
+  const seasonSummary = leaderboard?.span.available_seasons.length
+    ? `${leaderboard.span.available_seasons[0]} to ${leaderboard.span.available_seasons.at(-1)}`
+    : 'No seasons loaded'
 
   return (
     <main className="page-shell">
@@ -247,93 +283,257 @@ function App() {
         <p className="eyebrow">Portfolio Prototype</p>
         <div className="hero-copy">
           <div>
-            <h1>WOWY span explorer</h1>
+            <h1>WOWY leaderboard and query lab</h1>
             <p className="lede">
-              Pick a season range and compare the strongest multi-year WOWY lines
-              across the selected span.
+              Use the cached all-time leaderboard by default, or switch to a custom
+              query to recalculate WOWY across a chosen season span and team scope.
             </p>
           </div>
           <div className="hero-note">
             <span>Metric</span>
             <strong>{metricLabel}</strong>
-            <small>Top players ranked by span-average metric value</small>
+            <small>
+              {mode === 'cached'
+                ? 'Cached leaderboard tuned to filter noisy outliers'
+                : 'Live WOWY recalculation from the selected query'}
+            </small>
           </div>
         </div>
       </section>
 
-      <section className="control-panel">
-        <label>
-          <span>Team</span>
-          <select value={selectedTeam} onChange={handleTeamChange} disabled={isBootstrapping}>
-            <option value="">All teams</option>
-            {availableTeams.map((team) => (
-              <option key={team} value={team}>
-                {team}
-              </option>
-            ))}
-          </select>
-        </label>
-
-        <label>
-          <span>Cached seasons</span>
-          <output className="control-output">
-            {availableSeasons.length === 0
-              ? 'No seasons loaded'
-              : `${availableSeasons[0]} to ${availableSeasons.at(-1)}`}
-          </output>
-        </label>
-
-        <label>
-          <span>Top players</span>
-          <input
-            type="number"
-            min="1"
-            max="30"
-            value={topN}
-            onChange={handleTopNChange}
-          />
-        </label>
-
-        <button
-          type="button"
-          className="run-button"
-          onClick={() => void loadChart({})}
-          disabled={
-            isLoading ||
-            isBootstrapping ||
-            availableSeasons.length === 0
-          }
-        >
-          {isLoading || isBootstrapping ? 'Loading...' : 'Update chart'}
-        </button>
+      <section className="mode-panel">
+        <div className="mode-toggle" role="tablist" aria-label="WOWY modes">
+          <button
+            type="button"
+            className={mode === 'cached' ? 'mode-tab active' : 'mode-tab'}
+            onClick={() => setMode('cached')}
+          >
+            Cached leaders
+          </button>
+          <button
+            type="button"
+            className={mode === 'custom' ? 'mode-tab active' : 'mode-tab'}
+            onClick={() => setMode('custom')}
+          >
+            Custom query
+          </button>
+        </div>
       </section>
+
+      {mode === 'cached' ? (
+        <section className="control-panel">
+          <label>
+            <span>Team scope</span>
+            <select
+              value={cachedFilters.team}
+              onChange={(event) =>
+                setCachedFilters((current) => ({ ...current, team: event.target.value }))
+              }
+              disabled={isBootstrapping || isLoading}
+            >
+              <option value="">All teams</option>
+              {availableTeams.map((team) => (
+                <option key={team} value={team}>
+                  {team}
+                </option>
+              ))}
+            </select>
+          </label>
+
+          <label>
+            <span>Cached span</span>
+            <output className="control-output">{seasonSummary}</output>
+          </label>
+
+          <label>
+            <span>Top players</span>
+            <input
+              type="number"
+              min="1"
+              max="50"
+              value={cachedFilters.topN}
+              onChange={(event) =>
+                setCachedFilters((current) => ({
+                  ...current,
+                  topN: Number(event.target.value),
+                }))
+              }
+            />
+          </label>
+
+          <button
+            type="button"
+            className="run-button"
+            onClick={() => void loadCachedLeaderboard()}
+            disabled={isBootstrapping || isLoading}
+          >
+            {isLoading ? 'Loading...' : 'Refresh leaders'}
+          </button>
+        </section>
+      ) : (
+        <section className="query-panel">
+          <label>
+            <span>Start season</span>
+            <select
+              value={customFilters.startSeason}
+              onChange={(event) =>
+                setCustomFilters((current) => ({
+                  ...current,
+                  startSeason: event.target.value,
+                }))
+              }
+              disabled={isBootstrapping || isLoading}
+            >
+              {availableSeasons.map((season) => (
+                <option key={season} value={season}>
+                  {season}
+                </option>
+              ))}
+            </select>
+          </label>
+
+          <label>
+            <span>End season</span>
+            <select
+              value={customFilters.endSeason}
+              onChange={(event) =>
+                setCustomFilters((current) => ({
+                  ...current,
+                  endSeason: event.target.value,
+                }))
+              }
+              disabled={isBootstrapping || isLoading}
+            >
+              {availableSeasons.map((season) => (
+                <option key={season} value={season}>
+                  {season}
+                </option>
+              ))}
+            </select>
+          </label>
+
+          <label className="query-multi">
+            <span>Teams</span>
+            <select
+              multiple
+              value={customFilters.teams}
+              onChange={handleCustomTeamsChange(setCustomFilters)}
+              disabled={isBootstrapping || isLoading}
+            >
+              {availableTeams.map((team) => (
+                <option key={team} value={team}>
+                  {team}
+                </option>
+              ))}
+            </select>
+            <small>Leave empty to query all teams in the selected span.</small>
+          </label>
+
+          <label>
+            <span>Top players</span>
+            <input
+              type="number"
+              min="1"
+              max="50"
+              value={customFilters.topN}
+              onChange={(event) => updateCustomNumber(setCustomFilters, 'topN', event)}
+            />
+          </label>
+
+          <label>
+            <span>Min games with</span>
+            <input
+              type="number"
+              min="0"
+              value={customFilters.minGamesWith}
+              onChange={(event) =>
+                updateCustomNumber(setCustomFilters, 'minGamesWith', event)
+              }
+            />
+          </label>
+
+          <label>
+            <span>Min games without</span>
+            <input
+              type="number"
+              min="0"
+              value={customFilters.minGamesWithout}
+              onChange={(event) =>
+                updateCustomNumber(setCustomFilters, 'minGamesWithout', event)
+              }
+            />
+          </label>
+
+          <label>
+            <span>Min average minutes</span>
+            <input
+              type="number"
+              min="0"
+              step="0.5"
+              value={customFilters.minAverageMinutes}
+              onChange={(event) =>
+                updateCustomNumber(setCustomFilters, 'minAverageMinutes', event)
+              }
+            />
+          </label>
+
+          <label>
+            <span>Min total minutes</span>
+            <input
+              type="number"
+              min="0"
+              step="10"
+              value={customFilters.minTotalMinutes}
+              onChange={(event) =>
+                updateCustomNumber(setCustomFilters, 'minTotalMinutes', event)
+              }
+            />
+          </label>
+
+          <button
+            type="button"
+            className="run-button query-run"
+            onClick={() => void runCustomQuery()}
+            disabled={
+              isBootstrapping ||
+              isLoading ||
+              !customFilters.startSeason ||
+              !customFilters.endSeason
+            }
+          >
+            {isLoading ? 'Running...' : 'Run query'}
+          </button>
+        </section>
+      )}
 
       <section className="chart-panel">
         <div className="chart-header">
           <div>
-            <p className="panel-label">Line chart</p>
-            <h2>
-              {availableSeasons.length > 0
-                ? `${availableSeasons[0]} to ${availableSeasons.at(-1)}`
-                : 'Full cached history'}
-            </h2>
+            <p className="panel-label">{mode === 'cached' ? 'Cached board' : 'Custom run'}</p>
+            <h2>{leaderboard?.span.start_season ? seasonSummary : 'WOWY results'}</h2>
           </div>
-          {playerSeasonRows.length > 0 ? (
+          {leaderboard ? (
             <div className="chart-meta">
-              <span>{tableRows.length} series</span>
-              <span>{availableSeasons.length} seasons loaded</span>
+              <span>{leaderboard.table_rows.length} series</span>
+              <span>{leaderboard.span.available_seasons.length} seasons</span>
+              <span>{leaderboard.mode === 'cached' ? 'Cached' : 'Recalculated live'}</span>
             </div>
           ) : null}
         </div>
 
         {error ? <p className="status error">{error}</p> : null}
-        {!error && (isLoading || isBootstrapping) ? (
-          <p className="status">Loading WOWY chart...</p>
+        {!error && (isBootstrapping || isLoading) ? (
+          <p className="status">
+            {mode === 'cached' ? 'Loading cached WOWY leaders...' : 'Running WOWY query...'}
+          </p>
         ) : null}
-        {!error && !isLoading && playerSeasonRows.length === 0 ? (
+        {!error && !isLoading && !leaderboard ? (
+          <p className="status">No leaderboard data loaded yet.</p>
+        ) : null}
+        {!error && !isLoading && leaderboard && leaderboard.table_rows.length === 0 ? (
           <p className="status">No players matched the current filters.</p>
         ) : null}
-        {!error && !isLoading && tableRows.length > 0 ? (
+        {!error && !isLoading && leaderboard && leaderboard.table_rows.length > 0 ? (
           <>
             <div className="chart-layout">
               <div className="chart-frame">
@@ -341,7 +541,7 @@ function App() {
                   className="wowy-chart"
                   viewBox={`0 0 ${CHART_WIDTH} ${CHART_HEIGHT}`}
                   role="img"
-                  aria-label="Metric leader line chart by season"
+                  aria-label="WOWY line chart by season"
                 >
                   {chartModel.gridLines.map((line) => (
                     <g key={line.value}>
@@ -408,14 +608,17 @@ function App() {
                   ))}
                 </svg>
               </div>
-
             </div>
 
             <div className="results-table-panel">
               <div className="table-header">
                 <div>
                   <p className="panel-label">Ranked table</p>
-                  <h3>Top {topN} players by multi-season WOWY profile</h3>
+                  <h3>
+                    {mode === 'cached'
+                      ? `Top ${leaderboard.span.top_n} cached WOWY leaders`
+                      : `Top ${leaderboard.span.top_n} players for this custom query`}
+                  </h3>
                 </div>
               </div>
               <div className="results-table-frame">
@@ -436,7 +639,7 @@ function App() {
                     </tr>
                   </thead>
                   <tbody>
-                    {tableRows.map((row) => (
+                    {leaderboard.table_rows.map((row) => (
                       <tr key={row.player_id}>
                         <td>{row.rank}</td>
                         <td>{row.player_name}</td>
@@ -460,6 +663,66 @@ function App() {
       </section>
     </main>
   )
+}
+
+function handleCustomTeamsChange(
+  setCustomFilters: Dispatch<SetStateAction<CustomFilters>>,
+) {
+  return (event: ChangeEvent<HTMLSelectElement>) => {
+    const teams = [...event.target.selectedOptions].map((option) => option.value)
+    setCustomFilters((current) => ({ ...current, teams }))
+  }
+}
+
+function updateCustomNumber(
+  setCustomFilters: Dispatch<SetStateAction<CustomFilters>>,
+  field: keyof Pick<
+    CustomFilters,
+    'topN' | 'minGamesWith' | 'minGamesWithout' | 'minAverageMinutes' | 'minTotalMinutes'
+  >,
+  event: ChangeEvent<HTMLInputElement>,
+) {
+  const nextValue = Number(event.target.value)
+  setCustomFilters((current) => ({
+    ...current,
+    [field]: Number.isFinite(nextValue) ? nextValue : 0,
+  }))
+}
+
+function seasonSpan(startSeason: string, endSeason: string, seasons: string[]): string[] {
+  if (!startSeason || !endSeason) {
+    return []
+  }
+  const startIndex = seasons.indexOf(startSeason)
+  const endIndex = seasons.indexOf(endSeason)
+  if (startIndex === -1 || endIndex === -1) {
+    return []
+  }
+  const lowIndex = Math.min(startIndex, endIndex)
+  const highIndex = Math.max(startIndex, endIndex)
+  return seasons.slice(lowIndex, highIndex + 1)
+}
+
+async function fetchJson(url: string): Promise<unknown> {
+  const response = await fetch(url)
+  const contentType = response.headers.get('content-type') ?? ''
+  const bodyText = await response.text()
+
+  if (!contentType.includes('application/json')) {
+    if (response.status >= 500 || bodyText.trimStart().startsWith('<')) {
+      throw new Error(
+        'The web API is unavailable or returned HTML. Start the backend with `poetry run wowy-web`.',
+      )
+    }
+    throw new Error(bodyText || 'Request failed')
+  }
+
+  const payload = JSON.parse(bodyText) as unknown
+  if (!response.ok) {
+    const errorPayload = payload as ErrorPayload
+    throw new Error(errorPayload.error ?? `Request failed (${response.status})`)
+  }
+  return payload
 }
 
 function buildChartModel(series: SpanSeries[]): ChartModel {
@@ -542,111 +805,6 @@ function toSegments(points: ChartPoint[]): string[] {
 
 function uniqueSeasons(series: SpanSeries[]): string[] {
   return [...new Set(series.flatMap((entry) => entry.points.map((point) => point.season)))]
-}
-
-function buildTableRows(playerSeasonRows: PlayerSeasonRow[]): TableRow[] {
-  const rowsByPlayer = new Map<number, PlayerSeasonRow[]>()
-  for (const row of playerSeasonRows) {
-    rowsByPlayer.set(row.player_id, [...(rowsByPlayer.get(row.player_id) ?? []), row])
-  }
-  const fullSpanLength = new Set(playerSeasonRows.map((row) => row.season)).size || 1
-
-  const rows = [...rowsByPlayer.entries()].map(([playerId, playerRows]) => {
-    const playerName = playerRows[0]?.player_name ?? String(playerId)
-    const gamesWith = sumBy(playerRows, (row) => row.games_with ?? row.sample_size ?? 0)
-    const gamesWithout = sumBy(
-      playerRows,
-      (row) => row.games_without ?? row.secondary_sample_size ?? 0,
-    )
-    const totalMinutes = sumBy(playerRows, (row) => row.total_minutes ?? 0)
-    const averageMinutes = gamesWith > 0 ? totalMinutes / gamesWith : null
-    const avgMarginWith = weightedAverage(
-      playerRows,
-      (row) => row.avg_margin_with ?? null,
-      (row) => row.games_with ?? row.sample_size ?? 0,
-    )
-    const avgMarginWithout = weightedAverage(
-      playerRows,
-      (row) => row.avg_margin_without ?? null,
-      (row) => row.games_without ?? row.secondary_sample_size ?? 0,
-    )
-    const spanAverageValue = sumBy(playerRows, (row) => row.value) / fullSpanLength
-
-    return {
-      rank: 0,
-      player_id: playerId,
-      player_name: playerName,
-      span_average_value: spanAverageValue,
-      average_minutes: averageMinutes,
-      total_minutes: totalMinutes,
-      games_with: gamesWith,
-      games_without: gamesWithout,
-      avg_margin_with: avgMarginWith,
-      avg_margin_without: avgMarginWithout,
-      season_count: playerRows.length,
-    }
-  })
-
-  rows.sort((left, right) => {
-    const leftScore = left.span_average_value
-    const rightScore = right.span_average_value
-    if (rightScore !== leftScore) {
-      return rightScore - leftScore
-    }
-    return left.player_name.localeCompare(right.player_name)
-  })
-
-  return rows.map((row, index) => ({ ...row, rank: index + 1 }))
-}
-
-function buildDisplaySeries(
-  tableRows: TableRow[],
-  playerSeasonRows: PlayerSeasonRow[],
-  seasons: string[],
-): SpanSeries[] {
-  const valuesByPlayer = new Map<number, Map<string, number>>()
-  for (const row of playerSeasonRows) {
-    if (!valuesByPlayer.has(row.player_id)) {
-      valuesByPlayer.set(row.player_id, new Map())
-    }
-    valuesByPlayer.get(row.player_id)?.set(row.season, row.value)
-  }
-
-  return tableRows.map((row) => ({
-    player_id: row.player_id,
-    player_name: row.player_name,
-    span_average_value: row.span_average_value,
-    season_count: row.season_count,
-    points: seasons.map((season) => ({
-      season,
-      value: valuesByPlayer.get(row.player_id)?.get(season) ?? null,
-    })),
-  }))
-}
-
-function sumBy<T>(items: T[], fn: (item: T) => number): number {
-  return items.reduce((total, item) => total + fn(item), 0)
-}
-
-function weightedAverage<T>(
-  items: T[],
-  valueFn: (item: T) => number | null,
-  weightFn: (item: T) => number,
-): number | null {
-  let weightedTotal = 0
-  let weightTotal = 0
-
-  for (const item of items) {
-    const value = valueFn(item)
-    const weight = weightFn(item)
-    if (value === null || weight <= 0) {
-      continue
-    }
-    weightedTotal += value * weight
-    weightTotal += weight
-  }
-
-  return weightTotal > 0 ? weightedTotal / weightTotal : null
 }
 
 function formatNumber(value: number | null, decimals: number): string {
