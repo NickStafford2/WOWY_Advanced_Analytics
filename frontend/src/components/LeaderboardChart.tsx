@@ -1,4 +1,4 @@
-import { useMemo } from 'react'
+import { useMemo, useState } from 'react'
 
 const CHART_WIDTH = 920
 const CHART_HEIGHT = 420
@@ -66,6 +66,7 @@ type LeaderboardChartProps = {
 
 export function LeaderboardChart({ metricLabel, series }: LeaderboardChartProps) {
   const chartModel = useMemo<ChartModel>(() => buildChartModel(series), [series])
+  const [activePlayerId, setActivePlayerId] = useState<number | null>(null)
 
   return (
     <div className="chart-layout">
@@ -111,52 +112,84 @@ export function LeaderboardChart({ metricLabel, series }: LeaderboardChartProps)
             </g>
           ))}
 
-          {chartModel.series.map((entry, index) => (
-            <g key={entry.player_id}>
-              {entry.segments.map((segment, segmentIndex) => (
-                <polyline
-                  key={`${entry.player_id}-${segmentIndex}`}
-                  points={segment}
-                  fill="none"
-                  stroke={SERIES_COLORS[index % SERIES_COLORS.length]}
-                  strokeWidth="3"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                />
-              ))}
-              {entry.points.map((point) => (
-                <g key={`${entry.player_id}-${point.season}`}>
-                  <circle
-                    cx={point.x}
-                    cy={point.y}
-                    r="4.5"
-                    fill={SERIES_COLORS[index % SERIES_COLORS.length]}
+          {chartModel.series.map((entry, index) => {
+            const isActive = activePlayerId === entry.player_id
+            const isDimmed = activePlayerId !== null && !isActive
+            const seriesColor = isDimmed
+              ? 'rgba(120, 128, 136, 0.35)'
+              : SERIES_COLORS[index % SERIES_COLORS.length]
+            return (
+              <g
+                key={entry.player_id}
+                className={isDimmed ? 'chart-series is-dimmed' : 'chart-series'}
+              >
+                {entry.segments.map((segment, segmentIndex) => (
+                  <polyline
+                    key={`${entry.player_id}-${segmentIndex}`}
+                    className={isActive ? 'chart-line is-active' : 'chart-line'}
+                    points={segment}
+                    fill="none"
+                    stroke={seriesColor}
+                    strokeWidth={isActive ? '4.5' : '3'}
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
                   />
-                  <title>
-                    {entry.player_name} {point.season}: {point.value.toFixed(2)}
-                  </title>
-                </g>
-              ))}
-            </g>
-          ))}
+                ))}
+                {entry.points.map((point) => (
+                  <g key={`${entry.player_id}-${point.season}`}>
+                    <circle
+                      className={isActive ? 'chart-point is-active' : 'chart-point'}
+                      cx={point.x}
+                      cy={point.y}
+                      r={isActive ? '6.5' : '4.5'}
+                      fill={isDimmed ? 'rgba(120, 128, 136, 0.45)' : seriesColor}
+                      onMouseEnter={() => setActivePlayerId(entry.player_id)}
+                      onMouseLeave={() => setActivePlayerId(null)}
+                    />
+                    <title>
+                      {entry.player_name} {point.season}: {point.value.toFixed(2)}
+                    </title>
+                  </g>
+                ))}
+              </g>
+            )
+          })}
         </svg>
       </div>
       <aside className="legend-panel" aria-label="Chart legend">
         <p className="panel-label">Legend</p>
         <ul className="legend-list">
-          {chartModel.series.map((entry, index) => (
-            <li key={`legend-${entry.player_id}`}>
-              <span
-                className="legend-swatch"
-                style={{ backgroundColor: SERIES_COLORS[index % SERIES_COLORS.length] }}
-                aria-hidden="true"
-              />
-              <div className="legend-list-text">
-                <strong>{entry.player_name}</strong>
-                <small>{formatNumber(entry.span_average_value, 2)}</small>
-              </div>
-            </li>
-          ))}
+          {chartModel.series.map((entry, index) => {
+            const isActive = activePlayerId === entry.player_id
+            const isDimmed = activePlayerId !== null && !isActive
+            const legendClassName = isDimmed
+              ? 'legend-item is-dimmed'
+              : isActive
+                ? 'legend-item is-active'
+                : 'legend-item'
+            return (
+              <li
+                key={`legend-${entry.player_id}`}
+                className={legendClassName}
+                onMouseEnter={() => setActivePlayerId(entry.player_id)}
+                onMouseLeave={() => setActivePlayerId(null)}
+              >
+                <span
+                  className="legend-swatch"
+                  style={{
+                    backgroundColor: isDimmed
+                      ? 'rgba(120, 128, 136, 0.45)'
+                      : SERIES_COLORS[index % SERIES_COLORS.length],
+                  }}
+                  aria-hidden="true"
+                />
+                <div className="legend-list-text">
+                  <strong>{entry.player_name}</strong>
+                  <small>{formatNumber(entry.span_average_value, 2)}</small>
+                </div>
+              </li>
+            )
+          })}
         </ul>
       </aside>
     </div>

@@ -442,6 +442,34 @@
   display: block;
 }
 
+.chart-line,
+.chart-point,
+.legend-item,
+.legend-swatch,
+.legend-list-text strong,
+.legend-list-text small {
+  transition:
+    opacity 140ms ease,
+    fill 140ms ease,
+    stroke 140ms ease,
+    transform 140ms ease,
+    color 140ms ease;
+}
+
+.chart-point {
+  cursor: pointer;
+}
+
+.chart-line.is-active,
+.chart-point.is-active {
+  filter: drop-shadow(0 0 6px rgba(38, 70, 83, 0.18));
+}
+
+.chart-series.is-dimmed .chart-line,
+.chart-series.is-dimmed .chart-point {
+  opacity: 0.9;
+}
+
 .grid-line {
   stroke: rgba(48, 60, 74, 0.12);
   stroke-width: 1;
@@ -505,6 +533,28 @@
   gap: 10px;
   align-items: center;
 }
+
+.legend-item {
+  cursor: pointer;
+}
+
+.legend-item.is-active {
+  transform: translateX(-2px);
+}
+
+.legend-item.is-dimmed {
+  opacity: 0.58;
+}
+
+.legend-item.is-dimmed .legend-list-text strong,
+.legend-item.is-dimmed .legend-list-text small {
+  color: rgba(120, 128, 136, 0.95);
+}
+
+.legend-item.is-active .legend-list-text strong {
+  color: #203744;
+}
+
 .legend-list-text {
   display: flex;
   flex-direction: row;

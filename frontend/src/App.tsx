@@ -310,7 +310,7 @@ function App() {
       <section className="hero-panel">
         <div className="hero-copy">
           <div>
-            <h1>{metricLabel} Leaderboard</h1>
+            <h1>{metricLabel}</h1>
             <p className="lede">
               {metricDescription}
             </p>
