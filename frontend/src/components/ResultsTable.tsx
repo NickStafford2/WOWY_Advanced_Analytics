@@ -21,18 +21,11 @@ type ResultsTableProps = {
 
 export function ResultsTable({
   metricLabel,
-  resultsTitle,
   rows,
   isWowyStyleMetric,
 }: ResultsTableProps) {
   return (
     <div className="results-table-panel">
-      <div className="table-header">
-        <div>
-          <p className="panel-label">Ranked table</p>
-          <h3>{resultsTitle}</h3>
-        </div>
-      </div>
       <div className="results-table-frame">
         <table className="results-table">
           <thead>
