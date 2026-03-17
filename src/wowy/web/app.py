@@ -91,6 +91,19 @@ def create_app(
 
         return jsonify(payload)
 
+    @app.get("/api/metrics/<metric>/cached-leaderboard")
+    def get_metric_cached_leaderboard(metric: str):
+        try:
+            payload = _build_cached_metric_leaderboard_payload(
+                request,
+                metric=metric,
+                player_metrics_db_path=player_metrics_db_path,
+            )
+        except ValueError as exc:
+            return jsonify({"error": str(exc)}), 400
+
+        return jsonify(payload)
+
     @app.get("/api/wowy/player-seasons")
     def get_wowy_player_seasons():
         return get_metric_player_seasons(WOWY_METRIC)
@@ -105,16 +118,7 @@ def create_app(
 
     @app.get("/api/wowy/cached-leaderboard")
     def get_wowy_cached_leaderboard():
-        try:
-            payload = _build_wowy_cached_leaderboard_payload(
-                request,
-                metric=WOWY_METRIC,
-                player_metrics_db_path=player_metrics_db_path,
-            )
-        except ValueError as exc:
-            return jsonify({"error": str(exc)}), 400
-
-        return jsonify(payload)
+        return get_metric_cached_leaderboard(WOWY_METRIC)
 
     @app.get("/api/wowy/custom-query")
     def get_wowy_custom_query():
@@ -212,7 +216,7 @@ def _build_metric_span_chart_payload(
     return payload
 
 
-def _build_wowy_cached_leaderboard_payload(
+def _build_cached_metric_leaderboard_payload(
     request,
     *,
     metric: str,

@@ -265,6 +265,50 @@ def test_rawr_player_seasons_endpoint_rejects_invalid_filters(
     }
 
 
+def test_rawr_cached_leaderboard_endpoint_returns_cached_series(
+    tmp_path: Path,
+    monkeypatch,
+):
+    normalized_games_dir, normalized_players_dir = _seed_rawr_cache_inputs(
+        tmp_path,
+        monkeypatch,
+    )
+    player_metrics_db_path = _refresh_rawr_store(tmp_path)
+
+    app = create_app(
+        source_data_dir=tmp_path / "source",
+        normalized_games_input_dir=normalized_games_dir,
+        normalized_game_players_input_dir=normalized_players_dir,
+        wowy_output_dir=tmp_path / "team_games",
+        combined_wowy_csv=tmp_path / "combined" / "games.csv",
+        player_metrics_db_path=player_metrics_db_path,
+    )
+    client = app.test_client()
+
+    response = client.get(
+        "/api/metrics/rawr/cached-leaderboard",
+        query_string={
+            "top_n": "2",
+            "min_games": "1",
+            "min_average_minutes": "0",
+            "min_total_minutes": "0",
+        },
+    )
+
+    assert response.status_code == 200
+    payload = response.get_json()
+    assert payload["metric"] == "rawr"
+    assert payload["mode"] == "cached"
+    assert payload["span"] == {
+        "start_season": "2023-24",
+        "end_season": "2023-24",
+        "available_seasons": ["2023-24"],
+        "top_n": 2,
+    }
+    assert len(payload["table_rows"]) == 2
+    assert len(payload["series"]) == 2
+
+
 def test_wowy_options_endpoint_returns_cached_teams_and_seasons(
     tmp_path: Path,
     monkeypatch,

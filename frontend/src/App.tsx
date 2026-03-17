@@ -21,6 +21,7 @@ const SERIES_COLORS = [
 ] as const
 
 type AppMode = 'cached' | 'custom'
+type MetricId = 'wowy' | 'rawr'
 
 type SpanPoint = {
   season: string
@@ -49,9 +50,21 @@ type TableRow = {
   season_count: number
 }
 
+type MetricFilters = {
+  team: string[] | null
+  season?: string[] | null
+  season_type: string
+  min_games_with?: number
+  min_games_without?: number
+  min_games?: number
+  min_average_minutes: number
+  min_total_minutes: number
+  top_n: number
+}
+
 type LeaderboardPayload = {
   mode: AppMode
-  metric: string
+  metric: MetricId
   metric_label: string
   span: {
     start_season: string | null
@@ -61,34 +74,17 @@ type LeaderboardPayload = {
   }
   table_rows: TableRow[]
   series: SpanSeries[]
-  filters: {
-    team: string[] | null
-    season: string[] | null
-    season_type: string
-    min_games_with: number
-    min_games_without: number
-    min_average_minutes: number
-    min_total_minutes: number
-    top_n: number
-  }
+  filters: MetricFilters
   available_teams?: string[]
   available_seasons?: string[]
 }
 
 type MetricOptionsPayload = {
-  metric: string
+  metric: MetricId
   metric_label: string
   available_teams: string[]
   available_seasons: string[]
-  filters: {
-    team: string[] | null
-    season_type: string
-    min_games_with: number
-    min_games_without: number
-    min_average_minutes: number
-    min_total_minutes: number
-    top_n: number
-  }
+  filters: MetricFilters
 }
 
 type ErrorPayload = {
@@ -140,8 +136,10 @@ type CustomFilters = {
 }
 
 function App() {
+  const [metric, setMetric] = useState<MetricId>('wowy')
   const [mode, setMode] = useState<AppMode>('cached')
   const [metricLabel, setMetricLabel] = useState('WOWY')
+  const [metricFilters, setMetricFilters] = useState<MetricFilters>(defaultMetricFilters('wowy'))
   const [availableTeams, setAvailableTeams] = useState<string[]>([])
   const [availableSeasons, setAvailableSeasons] = useState<string[]>([])
   const [leaderboard, setLeaderboard] = useState<LeaderboardPayload | null>(null)
@@ -163,71 +161,87 @@ function App() {
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState('')
 
-  const loadOptions = useEffectEvent(async () => {
+  const supportsCustomQuery = metric === 'wowy'
+  const chartModel = useMemo<ChartModel>(
+    () => buildChartModel(leaderboard?.series ?? []),
+    [leaderboard],
+  )
+
+  const loadOptions = useEffectEvent(async (nextMetric: MetricId) => {
     setIsBootstrapping(true)
     setError('')
     try {
-      const payload = (await fetchJson('/api/metrics/wowy/options')) as MetricOptionsPayload
-      const optionsPayload = payload as MetricOptionsPayload
-      setMetricLabel(optionsPayload.metric_label)
-      setAvailableTeams(optionsPayload.available_teams)
-      setAvailableSeasons(optionsPayload.available_seasons)
+      const payload = (await fetchJson(`/api/metrics/${nextMetric}/options`)) as MetricOptionsPayload
+      setMetricLabel(payload.metric_label)
+      setMetricFilters(payload.filters)
+      setAvailableTeams(payload.available_teams)
+      setAvailableSeasons(payload.available_seasons)
       setCachedFilters((current) => ({
         ...current,
-        topN: current.topN || optionsPayload.filters.top_n,
+        topN: current.topN || payload.filters.top_n,
       }))
-      setCustomFilters((current) => ({
-        ...current,
-        startSeason: current.startSeason || optionsPayload.available_seasons[0] || '',
-        endSeason:
-          current.endSeason ||
-          optionsPayload.available_seasons[optionsPayload.available_seasons.length - 1] ||
-          '',
-        topN: current.topN || optionsPayload.filters.top_n,
-        minGamesWith: optionsPayload.filters.min_games_with,
-        minGamesWithout: optionsPayload.filters.min_games_without,
-        minAverageMinutes: optionsPayload.filters.min_average_minutes,
-        minTotalMinutes: optionsPayload.filters.min_total_minutes,
-      }))
-    } catch (caughtError) {
-      const message = caughtError instanceof Error ? caughtError.message : 'Request failed'
-      setError(message)
+      if (nextMetric === 'wowy') {
+        setCustomFilters((current) => ({
+          ...current,
+          startSeason: current.startSeason || payload.available_seasons[0] || '',
+          endSeason:
+            current.endSeason || payload.available_seasons[payload.available_seasons.length - 1] || '',
+          topN: current.topN || payload.filters.top_n,
+          minGamesWith: payload.filters.min_games_with ?? current.minGamesWith,
+          minGamesWithout: payload.filters.min_games_without ?? current.minGamesWithout,
+          minAverageMinutes: payload.filters.min_average_minutes,
+          minTotalMinutes: payload.filters.min_total_minutes,
+        }))
+      }
+      return payload
     } finally {
       setIsBootstrapping(false)
     }
   })
 
-  const loadCachedLeaderboard = useEffectEvent(async () => {
-    setIsLoading(true)
-    setError('')
-    const params = new URLSearchParams({
-      top_n: String(cachedFilters.topN),
-      min_games_with: '15',
-      min_games_without: '2',
-      min_average_minutes: '30',
-      min_total_minutes: '600',
-    })
-    if (cachedFilters.team) {
-      params.set('team', cachedFilters.team)
-    }
+  const loadCachedLeaderboard = useEffectEvent(
+    async (nextMetric: MetricId, filtersOverride?: MetricFilters) => {
+      setIsLoading(true)
+      setError('')
+      const effectiveFilters = filtersOverride ?? metricFilters
+      const params = new URLSearchParams({
+        top_n: String(cachedFilters.topN),
+        min_average_minutes: String(effectiveFilters.min_average_minutes),
+        min_total_minutes: String(effectiveFilters.min_total_minutes),
+      })
+      if (effectiveFilters.min_games !== undefined) {
+        params.set('min_games', String(effectiveFilters.min_games))
+      }
+      if (effectiveFilters.min_games_with !== undefined) {
+        params.set('min_games_with', String(effectiveFilters.min_games_with))
+      }
+      if (effectiveFilters.min_games_without !== undefined) {
+        params.set('min_games_without', String(effectiveFilters.min_games_without))
+      }
+      if (cachedFilters.team) {
+        params.set('team', cachedFilters.team)
+      }
 
-    try {
-      const payload = (await fetchJson(
-        `/api/wowy/cached-leaderboard?${params.toString()}`,
-      )) as LeaderboardPayload
-      const leaderboardPayload = payload as LeaderboardPayload
-      setMetricLabel(leaderboardPayload.metric_label)
-      setLeaderboard(leaderboardPayload)
-    } catch (caughtError) {
-      const message = caughtError instanceof Error ? caughtError.message : 'Request failed'
-      setError(message)
-      setLeaderboard(null)
-    } finally {
-      setIsLoading(false)
-    }
-  })
+      try {
+        const payload = (await fetchJson(
+          `/api/metrics/${nextMetric}/cached-leaderboard?${params.toString()}`,
+        )) as LeaderboardPayload
+        setMetricLabel(payload.metric_label)
+        setLeaderboard(payload)
+      } catch (caughtError) {
+        const message = caughtError instanceof Error ? caughtError.message : 'Request failed'
+        setError(message)
+        setLeaderboard(null)
+      } finally {
+        setIsLoading(false)
+      }
+    },
+  )
 
   const runCustomQuery = useEffectEvent(async () => {
+    if (!supportsCustomQuery) {
+      return
+    }
     setIsLoading(true)
     setError('')
     const params = new URLSearchParams({
@@ -246,12 +260,9 @@ function App() {
     }
 
     try {
-      const payload = (await fetchJson(
-        `/api/wowy/custom-query?${params.toString()}`,
-      )) as LeaderboardPayload
-      const leaderboardPayload = payload as LeaderboardPayload
-      setMetricLabel(leaderboardPayload.metric_label)
-      setLeaderboard(leaderboardPayload)
+      const payload = (await fetchJson(`/api/wowy/custom-query?${params.toString()}`)) as LeaderboardPayload
+      setMetricLabel(payload.metric_label)
+      setLeaderboard(payload)
     } catch (caughtError) {
       const message = caughtError instanceof Error ? caughtError.message : 'Request failed'
       setError(message)
@@ -262,64 +273,94 @@ function App() {
   })
 
   useEffect(() => {
-    void (async () => {
-      await loadOptions()
-      await loadCachedLeaderboard()
-    })()
-  }, [])
+    if (!supportsCustomQuery && mode === 'custom') {
+      setMode('cached')
+    }
+  }, [mode, supportsCustomQuery])
 
-  const chartModel = useMemo<ChartModel>(
-    () => buildChartModel(leaderboard?.series ?? []),
-    [leaderboard],
-  )
+  useEffect(() => {
+    void (async () => {
+      const options = await loadOptions(metric)
+      await loadCachedLeaderboard(metric, options.filters)
+    })()
+  }, [metric])
 
   const seasonSummary = leaderboard?.span.available_seasons.length
     ? `${leaderboard.span.available_seasons[0]} to ${leaderboard.span.available_seasons.at(-1)}`
     : 'No seasons loaded'
+  const metricDescription = supportsCustomQuery
+    ? 'Cross-season on/off impact from with-and-without samples.'
+    : 'Game-level ridge model of player impact across the cached history.'
+  const chartStatusLabel =
+    mode === 'cached' ? `Loading cached ${metricLabel} leaders...` : `Running ${metricLabel} query...`
+  const resultsTitle =
+    mode === 'cached'
+      ? `Top ${leaderboard?.span.top_n ?? cachedFilters.topN} cached ${metricLabel} leaders`
+      : `Top ${leaderboard?.span.top_n ?? customFilters.topN} players for this custom ${metricLabel} query`
 
   return (
     <main className="page-shell">
       <section className="hero-panel">
         <div className="hero-copy">
           <div>
-            <h1>WOWY leaderboard and query lab</h1>
+            <h1>{metricLabel} leaderboard lab</h1>
             <p className="lede">
-              Use the cached all-time leaderboard by default, or switch to a custom
-              query to recalculate WOWY across a chosen season span and team scope.
+              {supportsCustomQuery
+                ? 'Switch between the cached WOWY board and a live cross-season recompute over a chosen team and season span.'
+                : 'Browse the cached RAWR leaderboard across the full history span, then narrow the sample by team scope.'}
             </p>
           </div>
           <div className="hero-note">
             <span>Metric</span>
             <strong>{metricLabel}</strong>
-            <small>
-              {mode === 'cached'
-                ? 'Cached leaderboard tuned to filter noisy outliers'
-                : 'Live WOWY recalculation from the selected query'}
-            </small>
+            <small>{metricDescription}</small>
+            <div className="mode-toggle" role="tablist" aria-label="Metric selector">
+              <button
+                type="button"
+                className={metric === 'wowy' ? 'mode-tab active' : 'mode-tab'}
+                onClick={() => setMetric('wowy')}
+              >
+                WOWY
+              </button>
+              <button
+                type="button"
+                className={metric === 'rawr' ? 'mode-tab active' : 'mode-tab'}
+                onClick={() => setMetric('rawr')}
+              >
+                RAWR
+              </button>
+            </div>
           </div>
         </div>
       </section>
 
+
+
       <section className="mode-panel">
-        <div className="mode-toggle" role="tablist" aria-label="WOWY modes">
+        <div className="mode-toggle" role="tablist" aria-label="Query mode">
           <button
             type="button"
             className={mode === 'cached' ? 'mode-tab active' : 'mode-tab'}
             onClick={() => setMode('cached')}
           >
-            Cached leaders
+            All Time Leaders
           </button>
           <button
             type="button"
             className={mode === 'custom' ? 'mode-tab active' : 'mode-tab'}
             onClick={() => setMode('custom')}
+            disabled={!supportsCustomQuery}
+            title={!supportsCustomQuery ? 'Custom query is available for WOWY only.' : undefined}
           >
             Custom query
           </button>
         </div>
+        {!supportsCustomQuery ? (
+          <p className="mode-note">RAWR currently supports cached leaderboard mode only.</p>
+        ) : null}
       </section>
 
-      {mode === 'cached' ? (
+      {mode === 'cached' || !supportsCustomQuery ? (
         <section className="control-panel">
           <label>
             <span>Team scope</span>
@@ -363,7 +404,7 @@ function App() {
           <button
             type="button"
             className="run-button"
-            onClick={() => void loadCachedLeaderboard()}
+            onClick={() => void loadCachedLeaderboard(metric)}
             disabled={isBootstrapping || isLoading}
           >
             {isLoading ? 'Loading...' : 'Refresh leaders'}
@@ -445,9 +486,7 @@ function App() {
               type="number"
               min="0"
               value={customFilters.minGamesWith}
-              onChange={(event) =>
-                updateCustomNumber(setCustomFilters, 'minGamesWith', event)
-              }
+              onChange={(event) => updateCustomNumber(setCustomFilters, 'minGamesWith', event)}
             />
           </label>
 
@@ -457,9 +496,7 @@ function App() {
               type="number"
               min="0"
               value={customFilters.minGamesWithout}
-              onChange={(event) =>
-                updateCustomNumber(setCustomFilters, 'minGamesWithout', event)
-              }
+              onChange={(event) => updateCustomNumber(setCustomFilters, 'minGamesWithout', event)}
             />
           </label>
 
@@ -483,9 +520,7 @@ function App() {
               min="0"
               step="10"
               value={customFilters.minTotalMinutes}
-              onChange={(event) =>
-                updateCustomNumber(setCustomFilters, 'minTotalMinutes', event)
-              }
+              onChange={(event) => updateCustomNumber(setCustomFilters, 'minTotalMinutes', event)}
             />
           </label>
 
@@ -509,7 +544,7 @@ function App() {
         <div className="chart-header">
           <div>
             <p className="panel-label">{mode === 'cached' ? 'Cached board' : 'Custom run'}</p>
-            <h2>{leaderboard?.span.start_season ? seasonSummary : 'WOWY results'}</h2>
+            <h2>{leaderboard?.span.start_season ? seasonSummary : `${metricLabel} results`}</h2>
           </div>
           {leaderboard ? (
             <div className="chart-meta">
@@ -521,11 +556,7 @@ function App() {
         </div>
 
         {error ? <p className="status error">{error}</p> : null}
-        {!error && (isBootstrapping || isLoading) ? (
-          <p className="status">
-            {mode === 'cached' ? 'Loading cached WOWY leaders...' : 'Running WOWY query...'}
-          </p>
-        ) : null}
+        {!error && (isBootstrapping || isLoading) ? <p className="status">{chartStatusLabel}</p> : null}
         {!error && !isLoading && !leaderboard ? (
           <p className="status">No leaderboard data loaded yet.</p>
         ) : null}
@@ -539,7 +570,7 @@ function App() {
                 className="wowy-chart"
                 viewBox={`0 0 ${CHART_WIDTH} ${CHART_HEIGHT}`}
                 role="img"
-                aria-label="WOWY line chart by season"
+                aria-label={`${metricLabel} line chart by season`}
               >
                 {chartModel.gridLines.map((line) => (
                   <g key={line.value}>
@@ -611,11 +642,7 @@ function App() {
               <div className="table-header">
                 <div>
                   <p className="panel-label">Ranked table</p>
-                  <h3>
-                    {mode === 'cached'
-                      ? `Top ${leaderboard.span.top_n} cached WOWY leaders`
-                      : `Top ${leaderboard.span.top_n} players for this custom query`}
-                  </h3>
+                  <h3>{resultsTitle}</h3>
                 </div>
               </div>
               <div className="results-table-frame">
@@ -624,14 +651,20 @@ function App() {
                     <tr>
                       <th>Rank</th>
                       <th>Player</th>
-                      <th>Span Avg WOWY</th>
+                      <th>{`Span Avg ${metricLabel}`}</th>
                       <th>Seasons</th>
                       <th>Avg Min</th>
                       <th>Tot Min</th>
-                      <th>With</th>
-                      <th>Without</th>
-                      <th>Avg With</th>
-                      <th>Avg Without</th>
+                      {metric === 'wowy' ? (
+                        <>
+                          <th>With</th>
+                          <th>Without</th>
+                          <th>Avg With</th>
+                          <th>Avg Without</th>
+                        </>
+                      ) : (
+                        <th>Games</th>
+                      )}
                     </tr>
                   </thead>
                   <tbody>
@@ -643,10 +676,16 @@ function App() {
                         <td>{row.season_count}</td>
                         <td>{formatNumber(row.average_minutes, 1)}</td>
                         <td>{formatNumber(row.total_minutes, 1)}</td>
-                        <td>{row.games_with}</td>
-                        <td>{row.games_without}</td>
-                        <td>{formatNumber(row.avg_margin_with, 2)}</td>
-                        <td>{formatNumber(row.avg_margin_without, 2)}</td>
+                        {metric === 'wowy' ? (
+                          <>
+                            <td>{row.games_with}</td>
+                            <td>{row.games_without}</td>
+                            <td>{formatNumber(row.avg_margin_with, 2)}</td>
+                            <td>{formatNumber(row.avg_margin_without, 2)}</td>
+                          </>
+                        ) : (
+                          <td>{row.games_with}</td>
+                        )}
                       </tr>
                     ))}
                   </tbody>
@@ -660,9 +699,29 @@ function App() {
   )
 }
 
-function handleCustomTeamsChange(
-  setCustomFilters: Dispatch<SetStateAction<CustomFilters>>,
-) {
+function defaultMetricFilters(metric: MetricId): MetricFilters {
+  if (metric === 'rawr') {
+    return {
+      team: null,
+      season_type: 'Regular Season',
+      min_games: 35,
+      min_average_minutes: 30,
+      min_total_minutes: 600,
+      top_n: 30,
+    }
+  }
+  return {
+    team: null,
+    season_type: 'Regular Season',
+    min_games_with: 15,
+    min_games_without: 2,
+    min_average_minutes: 30,
+    min_total_minutes: 600,
+    top_n: 30,
+  }
+}
+
+function handleCustomTeamsChange(setCustomFilters: Dispatch<SetStateAction<CustomFilters>>) {
   return (event: ChangeEvent<HTMLSelectElement>) => {
     const teams = [...event.target.selectedOptions].map((option) => option.value)
     setCustomFilters((current) => ({ ...current, teams }))
