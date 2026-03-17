@@ -15,9 +15,11 @@ DEFAULT_SOURCE_DATA_DIR = Path("data/source/nba")
 LEAGUE_GAMES_REQUEST_RETRIES = 3
 LEAGUE_GAMES_RETRY_BACKOFF_SECONDS = 2.0
 LEAGUE_GAMES_REQUEST_DELAY_SECONDS = 0.6
-BOX_SCORE_REQUEST_RETRIES = 3
+LEAGUE_GAMES_REQUEST_TIMEOUT_SECONDS = 60
+BOX_SCORE_REQUEST_RETRIES = 5
 BOX_SCORE_RETRY_BACKOFF_SECONDS = 2.0
 BOX_SCORE_REQUEST_DELAY_SECONDS = 0.6
+BOX_SCORE_REQUEST_TIMEOUT_SECONDS = 60
 LogFn = Callable[[str], None]
 
 
@@ -54,6 +56,7 @@ def load_or_fetch_league_games_with_source(
                 team_id_nullable=str(team_id),
                 season_nullable=season,
                 season_type_nullable=season_type,
+                timeout=LEAGUE_GAMES_REQUEST_TIMEOUT_SECONDS,
             )
             payload = finder.get_dict()
             write_cached_payload(cache_path, payload)
@@ -108,7 +111,10 @@ def load_or_fetch_box_score_with_source(
             time.sleep(BOX_SCORE_REQUEST_DELAY_SECONDS)
             if log is not None:
                 log(f"api box_score {game_id} attempt={attempt}")
-            box_score = boxscoretraditionalv2.BoxScoreTraditionalV2(game_id=game_id)
+            box_score = boxscoretraditionalv2.BoxScoreTraditionalV2(
+                game_id=game_id,
+                timeout=BOX_SCORE_REQUEST_TIMEOUT_SECONDS,
+            )
             payload = box_score.get_dict()
             write_cached_payload(cache_path, payload)
             return payload, "fetched"
