@@ -356,31 +356,26 @@ function App() {
       <section className="hero-panel">
         <div className="hero-copy">
           <div>
-            <h1>{metricLabel} Leaderboard Lab</h1>
+            <h1>{metricLabel} Leaderboard</h1>
             <p className="lede">
-              {supportsCustomQuery
-                ? 'Switch between the cached WOWY board and a live cross-season recompute over a chosen team and season span.'
-                : 'Browse the cached RAWR leaderboard across the full history span, then narrow the sample by team scope.'}
+              {metricDescription}
             </p>
           </div>
-          <div className="hero-note">
-            <span>Metric</span>
-            <strong>{metricLabel}</strong>
-            <small>{metricDescription}</small>
+          <div className="metric-select">
             <div className="mode-toggle" role="tablist" aria-label="Metric selector">
-              <button
-                type="button"
-                className={metric === 'wowy' ? 'mode-tab active' : 'mode-tab'}
-                onClick={() => setMetric('wowy')}
-              >
-                WOWY
-              </button>
               <button
                 type="button"
                 className={metric === 'rawr' ? 'mode-tab active' : 'mode-tab'}
                 onClick={() => setMetric('rawr')}
               >
                 RAWR
+              </button>
+              <button
+                type="button"
+                className={metric === 'wowy' ? 'mode-tab active' : 'mode-tab'}
+                onClick={() => setMetric('wowy')}
+              >
+                WOWY
               </button>
             </div>
           </div>
