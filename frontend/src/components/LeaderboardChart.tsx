@@ -1,0 +1,253 @@
+import { useMemo } from 'react'
+
+const CHART_WIDTH = 920
+const CHART_HEIGHT = 420
+const CHART_PADDING = { top: 24, right: 28, bottom: 48, left: 60 }
+const SERIES_COLORS = [
+  '#e76f51',
+  '#2a9d8f',
+  '#264653',
+  '#f4a261',
+  '#457b9d',
+  '#8d99ae',
+  '#ef476f',
+  '#118ab2',
+  '#6d597a',
+  '#588157',
+  '#bc6c25',
+  '#7f5539',
+] as const
+
+export type SpanPoint = {
+  season: string
+  value: number | null
+}
+
+export type SpanSeries = {
+  player_id: number
+  player_name: string
+  span_average_value: number
+  season_count: number
+  points: SpanPoint[]
+}
+
+type ChartGridLine = {
+  value: number
+  y: number
+}
+
+type ChartTick = {
+  season: string
+  x: number
+}
+
+type ChartPoint = {
+  season: string
+  value: number
+  x: number
+  y: number
+}
+
+type ChartSeries = Omit<SpanSeries, 'points'> & {
+  points: ChartPoint[]
+  segments: string[]
+}
+
+type ChartModel = {
+  gridLines: ChartGridLine[]
+  xTicks: ChartTick[]
+  series: ChartSeries[]
+}
+
+type LeaderboardChartProps = {
+  metricLabel: string
+  series: SpanSeries[]
+}
+
+export function LeaderboardChart({ metricLabel, series }: LeaderboardChartProps) {
+  const chartModel = useMemo<ChartModel>(() => buildChartModel(series), [series])
+
+  return (
+    <div className="chart-layout">
+      <div className="chart-frame">
+        <svg
+          className="wowy-chart"
+          viewBox={`0 0 ${CHART_WIDTH} ${CHART_HEIGHT}`}
+          role="img"
+          aria-label={`${metricLabel} line chart by season`}
+        >
+          {chartModel.gridLines.map((line) => (
+            <g key={line.value}>
+              <line
+                x1={CHART_PADDING.left}
+                x2={CHART_WIDTH - CHART_PADDING.right}
+                y1={line.y}
+                y2={line.y}
+                className="grid-line"
+              />
+              <text x={18} y={line.y + 4} className="axis-label">
+                {line.value.toFixed(1)}
+              </text>
+            </g>
+          ))}
+
+          {chartModel.xTicks.map((tick) => (
+            <g key={tick.season}>
+              <line
+                x1={tick.x}
+                x2={tick.x}
+                y1={CHART_PADDING.top}
+                y2={CHART_HEIGHT - CHART_PADDING.bottom}
+                className="grid-line grid-line-vertical"
+              />
+              <text
+                x={tick.x}
+                y={CHART_HEIGHT - 16}
+                textAnchor="middle"
+                className="axis-label"
+              >
+                {tick.season}
+              </text>
+            </g>
+          ))}
+
+          {chartModel.series.map((entry, index) => (
+            <g key={entry.player_id}>
+              {entry.segments.map((segment, segmentIndex) => (
+                <polyline
+                  key={`${entry.player_id}-${segmentIndex}`}
+                  points={segment}
+                  fill="none"
+                  stroke={SERIES_COLORS[index % SERIES_COLORS.length]}
+                  strokeWidth="3"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                />
+              ))}
+              {entry.points.map((point) => (
+                <g key={`${entry.player_id}-${point.season}`}>
+                  <circle
+                    cx={point.x}
+                    cy={point.y}
+                    r="4.5"
+                    fill={SERIES_COLORS[index % SERIES_COLORS.length]}
+                  />
+                  <title>
+                    {entry.player_name} {point.season}: {point.value.toFixed(2)}
+                  </title>
+                </g>
+              ))}
+            </g>
+          ))}
+        </svg>
+      </div>
+      <aside className="legend-panel" aria-label="Chart legend">
+        <p className="panel-label">Legend</p>
+        <ul className="legend-list">
+          {chartModel.series.map((entry, index) => (
+            <li key={`legend-${entry.player_id}`}>
+              <span
+                className="legend-swatch"
+                style={{ backgroundColor: SERIES_COLORS[index % SERIES_COLORS.length] }}
+                aria-hidden="true"
+              />
+              <div className="legend-list-text">
+                <strong>{entry.player_name}</strong>
+                <small>{formatNumber(entry.span_average_value, 2)}</small>
+              </div>
+            </li>
+          ))}
+        </ul>
+      </aside>
+    </div>
+  )
+}
+
+function buildChartModel(series: SpanSeries[]): ChartModel {
+  const seasons = uniqueSeasons(series)
+  const scoredPoints = series.flatMap((entry) =>
+    entry.points.filter((point): point is ChartPointBase => point.value !== null),
+  )
+
+  if (seasons.length === 0 || scoredPoints.length === 0) {
+    return { gridLines: [], xTicks: [], series: [] }
+  }
+
+  const minScore = Math.min(...scoredPoints.map((point) => point.value))
+  const maxScore = Math.max(...scoredPoints.map((point) => point.value))
+  const spread = maxScore - minScore || 1
+  const yMin = minScore - spread * 0.15
+  const yMax = maxScore + spread * 0.15
+  const chartInnerWidth = CHART_WIDTH - CHART_PADDING.left - CHART_PADDING.right
+  const chartInnerHeight = CHART_HEIGHT - CHART_PADDING.top - CHART_PADDING.bottom
+  const seasonIndex = new Map(seasons.map((season, index) => [season, index]))
+
+  const xForSeason = (index: number) =>
+    CHART_PADDING.left +
+    (seasons.length === 1 ? chartInnerWidth / 2 : (index / (seasons.length - 1)) * chartInnerWidth)
+
+  const yForScore = (score: number) =>
+    CHART_PADDING.top + ((yMax - score) / (yMax - yMin || 1)) * chartInnerHeight
+
+  return {
+    gridLines: buildGridLines(yMin, yMax, yForScore),
+    xTicks: seasons.map((season, index) => ({ season, x: xForSeason(index) })),
+    series: series.map<ChartSeries>((entry) => {
+      const points: ChartPoint[] = entry.points
+        .filter((point): point is ChartPointBase => point.value !== null)
+        .map((point) => {
+          const index = seasonIndex.get(point.season)
+          if (index === undefined) {
+            throw new Error(`Unknown season ${point.season}`)
+          }
+          return {
+            ...point,
+            x: xForSeason(index),
+            y: yForScore(point.value),
+          }
+        })
+
+      return {
+        ...entry,
+        points,
+        segments: toSegments(points),
+      }
+    }),
+  }
+}
+
+type ChartPointBase = {
+  season: string
+  value: number
+}
+
+function buildGridLines(
+  yMin: number,
+  yMax: number,
+  yForScore: (score: number) => number,
+): ChartGridLine[] {
+  const steps = 5
+  return Array.from({ length: steps + 1 }, (_, index) => {
+    const value = yMin + ((yMax - yMin) / steps) * index
+    return { value, y: yForScore(value) }
+  })
+}
+
+function toSegments(points: ChartPoint[]): string[] {
+  if (points.length === 0) {
+    return []
+  }
+
+  return [points.map((point) => `${point.x},${point.y}`).join(' ')]
+}
+
+function uniqueSeasons(series: SpanSeries[]): string[] {
+  return [...new Set(series.flatMap((entry) => entry.points.map((point) => point.season)))]
+}
+
+function formatNumber(value: number | null, decimals: number): string {
+  if (value === null) {
+    return '-'
+  }
+  return value.toFixed(decimals)
+}
