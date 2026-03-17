@@ -15,7 +15,13 @@ from wowy.apps.wowy.service import (
     prepare_wowy_player_season_records,
     serialize_wowy_player_season_records,
 )
-from wowy.apps.wowy.analysis import compute_wowy, filter_results
+from wowy.apps.wowy.analysis import (
+    DEFAULT_WOWY_SHRINKAGE_PRIOR_GAMES,
+    apply_wowy_shrinkage,
+    compute_wowy_shrinkage_score,
+    compute_wowy,
+    filter_results,
+)
 from wowy.apps.wowy.models import (
     WowyGameRecord,
     WowyPlayerSeasonRecord,
@@ -71,6 +77,47 @@ def test_filter_results():
     assert 101 in filtered
     assert 102 not in filtered
     assert 103 not in filtered
+
+
+def test_compute_wowy_shrinkage_score_penalizes_imbalanced_samples():
+    raw_score = 12.0
+
+    wowy_shrunk_score = compute_wowy_shrinkage_score(
+        games_with=2,
+        games_without=1,
+        wowy_score=raw_score,
+    )
+
+    assert wowy_shrunk_score is not None
+    assert round(wowy_shrunk_score, 4) == round(
+        raw_score * ((4.0 / 3.0) / ((4.0 / 3.0) + DEFAULT_WOWY_SHRINKAGE_PRIOR_GAMES)),
+        4,
+    )
+
+
+def test_apply_wowy_shrinkage_preserves_context_and_shrinks_score_only():
+    results = {
+        101: WowyPlayerStats(
+            games_with=4,
+            games_without=2,
+            avg_margin_with=6.0,
+            avg_margin_without=-2.0,
+            wowy_score=8.0,
+            average_minutes=33.5,
+            total_minutes=134.0,
+        )
+    }
+
+    wowy_shrunk_results = apply_wowy_shrinkage(results)
+
+    assert wowy_shrunk_results[101].games_with == 4
+    assert wowy_shrunk_results[101].games_without == 2
+    assert wowy_shrunk_results[101].avg_margin_with == 6.0
+    assert wowy_shrunk_results[101].avg_margin_without == -2.0
+    assert wowy_shrunk_results[101].average_minutes == 33.5
+    assert wowy_shrunk_results[101].total_minutes == 134.0
+    assert wowy_shrunk_results[101].wowy_score is not None
+    assert 0.0 < wowy_shrunk_results[101].wowy_score < 8.0
 
 
 def test_build_wowy_player_season_records_returns_one_row_per_player_per_season():
@@ -300,10 +347,18 @@ def test_prepare_wowy_player_season_records_uses_db_without_file_fixture_dirs(
 
 def test_build_wowy_span_chart_rows_ranks_players_across_selected_seasons():
     records = [
-        WowyPlayerSeasonRecord("2022-23", 101, "Player 101", 2, 1, 7.0, -5.0, 12.0, 34.0, 68.0),
-        WowyPlayerSeasonRecord("2022-23", 102, "Player 102", 2, 1, 2.5, 4.0, -1.5, 31.0, 62.0),
-        WowyPlayerSeasonRecord("2023-24", 101, "Player 101", 2, 1, 3.0, 1.0, 2.0, 34.0, 68.0),
-        WowyPlayerSeasonRecord("2023-24", 103, "Player 103", 2, 1, 4.5, -2.0, 6.5, 30.0, 60.0),
+        WowyPlayerSeasonRecord(
+            "2022-23", 101, "Player 101", 2, 1, 7.0, -5.0, 12.0, 34.0, 68.0
+        ),
+        WowyPlayerSeasonRecord(
+            "2022-23", 102, "Player 102", 2, 1, 2.5, 4.0, -1.5, 31.0, 62.0
+        ),
+        WowyPlayerSeasonRecord(
+            "2023-24", 101, "Player 101", 2, 1, 3.0, 1.0, 2.0, 34.0, 68.0
+        ),
+        WowyPlayerSeasonRecord(
+            "2023-24", 103, "Player 103", 2, 1, 4.5, -2.0, 6.5, 30.0, 60.0
+        ),
     ]
 
     assert available_wowy_seasons(records) == ["2022-23", "2023-24"]

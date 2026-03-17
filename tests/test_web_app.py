@@ -11,7 +11,12 @@ from tests.support import (
 from wowy.data.game_cache_db import replace_team_season_normalized_rows
 from wowy.data.player_metrics_db import load_metric_rows
 from wowy.web.app import create_app
-from wowy.web.service import build_scope_key, refresh_metric_store
+from wowy.web.service import (
+    WOWY_SHRUNK_METRIC,
+    WOWY_METRIC,
+    build_scope_key,
+    refresh_metric_store,
+)
 
 
 def _refresh_wowy_store(tmp_path: Path, team_seasons: list[TeamSeasonSeed]) -> Path:
@@ -175,6 +180,84 @@ def test_refresh_metric_store_builds_rawr_player_season_rows(
     assert all(row.season == "2023-24" for row in rows)
     assert all(row.sample_size and row.sample_size >= 1 for row in rows)
     assert all(row.details == {"games": row.sample_size} for row in rows)
+
+
+def test_refresh_metric_store_builds_wowy_shrunk_rows(
+    tmp_path: Path,
+):
+    player_metrics_db_path = tmp_path / "app" / "player_metrics.sqlite3"
+    seed_db_from_team_seasons(player_metrics_db_path, _wowy_single_season_seed())
+    refresh_metric_store(
+        WOWY_SHRUNK_METRIC,
+        season_type="Regular Season",
+        db_path=player_metrics_db_path,
+        source_data_dir=tmp_path / "source",
+    )
+    scope_key, _team_filter = build_scope_key(
+        teams=None,
+        season_type="Regular Season",
+    )
+    rows = load_metric_rows(
+        player_metrics_db_path,
+        metric=WOWY_SHRUNK_METRIC,
+        scope_key=scope_key,
+        min_sample_size=1,
+        min_secondary_sample_size=1,
+    )
+    raw_rows = load_metric_rows(
+        player_metrics_db_path,
+        metric=WOWY_METRIC,
+        scope_key=scope_key,
+        min_sample_size=1,
+        min_secondary_sample_size=1,
+    )
+
+    assert {row.player_name for row in rows} == {"101", "102"}
+    assert all(row.metric_label == "WOWY Shrunk" for row in rows)
+    assert all(abs(row.details["raw_wowy_score"]) > abs(row.value) for row in rows)
+    assert all(row.details["raw_wowy_score"] * row.value >= 0 for row in rows)
+    assert raw_rows == []
+
+
+def test_wowy_shrunk_options_endpoint_returns_wowy_style_filters(
+    tmp_path: Path,
+):
+    player_metrics_db_path = tmp_path / "app" / "player_metrics.sqlite3"
+    seed_db_from_team_seasons(player_metrics_db_path, _wowy_options_seed())
+    refresh_metric_store(
+        WOWY_SHRUNK_METRIC,
+        season_type="Regular Season",
+        db_path=player_metrics_db_path,
+        source_data_dir=tmp_path / "source",
+    )
+
+    app = create_app(
+        source_data_dir=tmp_path / "source",
+        player_metrics_db_path=player_metrics_db_path,
+    )
+    client = app.test_client()
+
+    response = client.get(
+        "/api/metrics/wowy_shrunk/options",
+        query_string={"team": "BOS"},
+    )
+
+    assert response.status_code == 200
+    assert response.get_json() == {
+        "metric": "wowy_shrunk",
+        "metric_label": "WOWY Shrunk",
+        "available_teams": ["BOS", "NYK"],
+        "available_seasons": ["2022-23", "2023-24"],
+        "filters": {
+            "team": ["BOS"],
+            "season_type": "Regular Season",
+            "min_games_with": 15,
+            "min_games_without": 2,
+            "min_average_minutes": 30.0,
+            "min_total_minutes": 600.0,
+            "top_n": 30,
+        },
+    }
 
 
 def test_refresh_metric_store_skips_empty_historical_rawr_team_seasons(

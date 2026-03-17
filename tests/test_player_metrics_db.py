@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import sqlite3
 from pathlib import Path
 
 from wowy.data.player_metrics_db import (
@@ -7,6 +8,7 @@ from wowy.data.player_metrics_db import (
     MetricFullSpanSeriesRow,
     MetricScopeCatalogRow,
     PlayerSeasonMetricRow,
+    initialize_player_metrics_db,
     load_metric_full_span_points_map,
     load_metric_full_span_series_rows,
     load_metric_scope_catalog_row,
@@ -198,3 +200,180 @@ def test_full_span_rows_and_scope_catalog_are_queryable(tmp_path: Path):
         scope_key="teams=all-teams|season_type=Regular Season",
         player_ids=[101],
     ) == {101: {"2022-23": 12.0, "2023-24": 2.0}}
+
+
+def test_initialize_player_metrics_db_migrates_legacy_wowy_shrinkage_metric_names(
+    tmp_path: Path,
+):
+    db_path = tmp_path / "app" / "player_metrics.sqlite3"
+    initialize_player_metrics_db(db_path)
+
+    with sqlite3.connect(db_path) as connection:
+        connection.execute(
+            """
+            INSERT INTO metric_player_season_values (
+                metric,
+                metric_label,
+                scope_key,
+                team_filter,
+                season_type,
+                season,
+                player_id,
+                player_name,
+                value,
+                sample_size,
+                secondary_sample_size,
+                average_minutes,
+                total_minutes,
+                details_json
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            """,
+            (
+                "shrinkage_wowy",
+                "Shrinkage WOWY",
+                "teams=all-teams|season_type=Regular Season",
+                "",
+                "Regular Season",
+                "2023-24",
+                101,
+                "Player 101",
+                1.5,
+                2,
+                1,
+                34.0,
+                68.0,
+                '{"raw_wowy_score": 12.0}',
+            ),
+        )
+        connection.execute(
+            """
+            INSERT INTO metric_store_metadata_v2 (
+                metric,
+                scope_key,
+                metric_label,
+                build_version,
+                source_fingerprint,
+                row_count,
+                updated_at
+            ) VALUES (?, ?, ?, ?, ?, ?, ?)
+            """,
+            (
+                "shrinkage_wowy",
+                "teams=all-teams|season_type=Regular Season",
+                "Shrinkage WOWY",
+                "v1",
+                "fingerprint-1",
+                1,
+                "2026-03-17T00:00:00+00:00",
+            ),
+        )
+        connection.execute(
+            """
+            INSERT INTO metric_scope_catalog (
+                metric,
+                scope_key,
+                metric_label,
+                team_filter,
+                season_type,
+                available_seasons_json,
+                available_teams_json,
+                full_span_start_season,
+                full_span_end_season,
+                updated_at
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            """,
+            (
+                "shrinkage_wowy",
+                "teams=all-teams|season_type=Regular Season",
+                "Shrinkage WOWY",
+                "",
+                "Regular Season",
+                '["2023-24"]',
+                '["BOS"]',
+                "2023-24",
+                "2023-24",
+                "2026-03-17T00:00:00+00:00",
+            ),
+        )
+        connection.execute(
+            """
+            INSERT INTO metric_full_span_series (
+                metric,
+                scope_key,
+                player_id,
+                player_name,
+                span_average_value,
+                season_count,
+                rank_order
+            ) VALUES (?, ?, ?, ?, ?, ?, ?)
+            """,
+            (
+                "shrinkage_wowy",
+                "teams=all-teams|season_type=Regular Season",
+                101,
+                "Player 101",
+                1.5,
+                1,
+                1,
+            ),
+        )
+        connection.execute(
+            """
+            INSERT INTO metric_full_span_points (
+                metric,
+                scope_key,
+                player_id,
+                season,
+                value
+            ) VALUES (?, ?, ?, ?, ?)
+            """,
+            (
+                "shrinkage_wowy",
+                "teams=all-teams|season_type=Regular Season",
+                101,
+                "2023-24",
+                1.5,
+            ),
+        )
+        connection.commit()
+
+    initialize_player_metrics_db(db_path)
+
+    rows = load_metric_rows(
+        db_path,
+        metric="wowy_shrunk",
+        scope_key="teams=all-teams|season_type=Regular Season",
+    )
+    metadata = load_metric_store_metadata(
+        db_path,
+        "wowy_shrunk",
+        "teams=all-teams|season_type=Regular Season",
+    )
+    catalog_row = load_metric_scope_catalog_row(
+        db_path,
+        "wowy_shrunk",
+        "teams=all-teams|season_type=Regular Season",
+    )
+    series_rows = load_metric_full_span_series_rows(
+        db_path,
+        metric="wowy_shrunk",
+        scope_key="teams=all-teams|season_type=Regular Season",
+    )
+    point_map = load_metric_full_span_points_map(
+        db_path,
+        metric="wowy_shrunk",
+        scope_key="teams=all-teams|season_type=Regular Season",
+        player_ids=[101],
+    )
+
+    assert len(rows) == 1
+    assert rows[0].metric == "wowy_shrunk"
+    assert rows[0].metric_label == "WOWY Shrunk"
+    assert metadata is not None
+    assert metadata.metric == "wowy_shrunk"
+    assert metadata.metric_label == "WOWY Shrunk"
+    assert catalog_row is not None
+    assert catalog_row.metric == "wowy_shrunk"
+    assert catalog_row.metric_label == "WOWY Shrunk"
+    assert series_rows[0].metric == "wowy_shrunk"
+    assert point_map == {101: {"2023-24": 1.5}}

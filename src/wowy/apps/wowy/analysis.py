@@ -6,6 +6,7 @@ from wowy.apps.wowy.models import WowyGameRecord, WowyPlayerStats
 
 
 ProgressFn = Callable[[int, int, str | None], None]
+DEFAULT_WOWY_SHRINKAGE_PRIOR_GAMES = 10.0
 
 
 def compute_wowy(
@@ -76,3 +77,51 @@ def filter_results(
         filtered[player] = stats
 
     return filtered
+
+
+def compute_wowy_shrinkage_score(
+    *,
+    games_with: int,
+    games_without: int,
+    wowy_score: float | None,
+    prior_games: float = DEFAULT_WOWY_SHRINKAGE_PRIOR_GAMES,
+) -> float | None:
+    if wowy_score is None:
+        return None
+    if prior_games < 0:
+        raise ValueError("prior_games must be non-negative")
+    effective_games = harmonic_mean_sample_size(games_with, games_without)
+    if effective_games <= 0:
+        return 0.0
+    shrinkage_factor = effective_games / (effective_games + prior_games)
+    return wowy_score * shrinkage_factor
+
+
+def apply_wowy_shrinkage(
+    results: dict[int, WowyPlayerStats],
+    *,
+    prior_games: float = DEFAULT_WOWY_SHRINKAGE_PRIOR_GAMES,
+) -> dict[int, WowyPlayerStats]:
+    return {
+        player_id: WowyPlayerStats(
+            games_with=stats.games_with,
+            games_without=stats.games_without,
+            avg_margin_with=stats.avg_margin_with,
+            avg_margin_without=stats.avg_margin_without,
+            wowy_score=compute_wowy_shrinkage_score(
+                games_with=stats.games_with,
+                games_without=stats.games_without,
+                wowy_score=stats.wowy_score,
+                prior_games=prior_games,
+            ),
+            average_minutes=stats.average_minutes,
+            total_minutes=stats.total_minutes,
+        )
+        for player_id, stats in results.items()
+    }
+
+
+def harmonic_mean_sample_size(games_with: int, games_without: int) -> float:
+    if games_with <= 0 or games_without <= 0:
+        return 0.0
+    return (2.0 * games_with * games_without) / (games_with + games_without)

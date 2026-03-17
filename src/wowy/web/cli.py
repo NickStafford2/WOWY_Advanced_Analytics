@@ -9,6 +9,7 @@ from wowy.web.app import create_app
 from wowy.web.service import (
     DEFAULT_RAWR_RIDGE_ALPHA,
     RAWR_METRIC,
+    WOWY_SHRUNK_METRIC,
     WOWY_METRIC,
     refresh_metric_store,
 )
@@ -42,7 +43,7 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument(
         "--refresh-metric",
         action="append",
-        choices=[WOWY_METRIC, RAWR_METRIC],
+        choices=[WOWY_METRIC, WOWY_SHRUNK_METRIC, RAWR_METRIC],
         help=(
             "Metric to refresh when used with --refresh-store. "
             "Repeat to refresh multiple metrics. Defaults to refreshing both."
@@ -78,7 +79,11 @@ def main(argv: list[str] | None = None) -> int:
     parser = build_parser()
     args = parser.parse_args(argv)
     if args.refresh_store:
-        refresh_metrics = args.refresh_metric or [WOWY_METRIC, RAWR_METRIC]
+        refresh_metrics = args.refresh_metric or [
+            WOWY_METRIC,
+            WOWY_SHRUNK_METRIC,
+            RAWR_METRIC,
+        ]
         for metric in refresh_metrics:
             print(f"refreshing {metric} web store at {args.player_metrics_db_path}")
             refresh_metric_store(

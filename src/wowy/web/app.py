@@ -11,8 +11,10 @@ from wowy.nba.seasons import canonicalize_season_string
 from wowy.web.service import (
     DEFAULT_RAWR_RIDGE_ALPHA,
     RAWR_METRIC,
+    WOWY_SHRUNK_METRIC,
     WOWY_METRIC,
     build_custom_rawr_leaderboard_payload,
+    build_custom_wowy_shrunk_leaderboard_payload,
     build_metric_default_filters_payload,
     build_scope_key,
     build_cached_metric_leaderboard_payload,
@@ -131,6 +133,10 @@ def create_app(
     def get_wowy_custom_query():
         return get_metric_custom_query(WOWY_METRIC)
 
+    @app.get("/api/wowy-shrunk/custom-query")
+    def get_wowy_shrunk_custom_query():
+        return get_metric_custom_query(WOWY_SHRUNK_METRIC)
+
     @app.get("/api/rawr/custom-query")
     def get_rawr_custom_query():
         return get_metric_custom_query(RAWR_METRIC)
@@ -169,7 +175,7 @@ def _build_metric_player_seasons_payload(
         seasons=seasons,
         season_type=season_type,
         min_sample_size=request.args.get("min_games_with")
-        if metric == WOWY_METRIC
+        if metric in {WOWY_METRIC, WOWY_SHRUNK_METRIC}
         else request.args.get("min_games"),
         min_secondary_sample_size=request.args.get("min_games_without"),
         ridge_alpha=request.args.get("ridge_alpha"),
@@ -206,7 +212,7 @@ def _build_metric_span_chart_payload(
         seasons=seasons,
         season_type=season_type,
         min_sample_size=request.args.get("min_games_with")
-        if metric == WOWY_METRIC
+        if metric in {WOWY_METRIC, WOWY_SHRUNK_METRIC}
         else request.args.get("min_games"),
         min_secondary_sample_size=request.args.get("min_games_without"),
         ridge_alpha=request.args.get("ridge_alpha"),
@@ -249,7 +255,7 @@ def _build_cached_metric_leaderboard_payload(
         seasons=seasons,
         season_type=season_type,
         min_sample_size=request.args.get("min_games_with")
-        if metric == WOWY_METRIC
+        if metric in {WOWY_METRIC, WOWY_SHRUNK_METRIC}
         else request.args.get("min_games"),
         min_secondary_sample_size=request.args.get("min_games_without"),
         ridge_alpha=request.args.get("ridge_alpha"),
@@ -288,6 +294,19 @@ def _build_metric_custom_query_payload(
             min_average_minutes=float(filter_values["min_average_minutes"]),
             min_total_minutes=float(filter_values["min_total_minutes"]),
         )
+    elif metric == WOWY_SHRUNK_METRIC:
+        payload = build_custom_wowy_shrunk_leaderboard_payload(
+            teams=teams,
+            seasons=seasons,
+            season_type=season_type,
+            top_n=filter_values["top_n"],
+            source_data_dir=source_data_dir,
+            player_metrics_db_path=player_metrics_db_path,
+            min_games_with=int(filter_values["min_sample_size"]),
+            min_games_without=int(filter_values["min_secondary_sample_size"]),
+            min_average_minutes=float(filter_values["min_average_minutes"]),
+            min_total_minutes=float(filter_values["min_total_minutes"]),
+        )
     elif metric == RAWR_METRIC:
         payload = build_custom_rawr_leaderboard_payload(
             teams=teams,
@@ -309,7 +328,7 @@ def _build_metric_custom_query_payload(
         seasons=seasons,
         season_type=season_type,
         min_sample_size=request.args.get("min_games_with")
-        if metric == WOWY_METRIC
+        if metric in {WOWY_METRIC, WOWY_SHRUNK_METRIC}
         else request.args.get("min_games"),
         min_secondary_sample_size=request.args.get("min_games_without"),
         ridge_alpha=request.args.get("ridge_alpha"),
@@ -326,7 +345,7 @@ def _parse_request_filters(
     metric: str,
     include_top_n: bool,
 ) -> dict[str, int | float]:
-    if metric == WOWY_METRIC:
+    if metric in {WOWY_METRIC, WOWY_SHRUNK_METRIC}:
         min_sample_size = _parse_optional_int(
             request.args.get("min_games_with"),
             default=15,
@@ -436,7 +455,7 @@ def _build_filters_payload(
         ),
         "top_n": _parse_optional_int(top_n, default=30),
     }
-    if metric == WOWY_METRIC:
+    if metric in {WOWY_METRIC, WOWY_SHRUNK_METRIC}:
         payload["min_games_with"] = _parse_optional_int(
             min_sample_size,
             default=int(defaults["min_games_with"]),

@@ -9,6 +9,9 @@ from typing import Any
 
 
 DEFAULT_PLAYER_METRICS_DB_PATH = Path("data/app/player_metrics.sqlite3")
+LEGACY_METRIC_RENAMES = {
+    "shrinkage_wowy": ("wowy_shrunk", "WOWY Shrunk"),
+}
 
 
 @dataclass(frozen=True)
@@ -154,6 +157,7 @@ def initialize_player_metrics_db(db_path: Path) -> None:
             ON metric_full_span_points (metric, scope_key, player_id);
             """
         )
+        _migrate_legacy_metric_names(connection)
 
 
 def replace_metric_rows(
@@ -605,3 +609,51 @@ def _connect(db_path: Path) -> sqlite3.Connection:
     connection = sqlite3.connect(db_path)
     connection.row_factory = sqlite3.Row
     return connection
+
+
+def _migrate_legacy_metric_names(connection: sqlite3.Connection) -> None:
+    for old_metric, (new_metric, new_label) in LEGACY_METRIC_RENAMES.items():
+        if old_metric == new_metric:
+            continue
+        connection.execute("BEGIN")
+        connection.execute(
+            """
+            UPDATE OR REPLACE metric_player_season_values
+            SET metric = ?, metric_label = ?
+            WHERE metric = ?
+            """,
+            (new_metric, new_label, old_metric),
+        )
+        connection.execute(
+            """
+            UPDATE OR REPLACE metric_store_metadata_v2
+            SET metric = ?, metric_label = ?
+            WHERE metric = ?
+            """,
+            (new_metric, new_label, old_metric),
+        )
+        connection.execute(
+            """
+            UPDATE OR REPLACE metric_scope_catalog
+            SET metric = ?, metric_label = ?
+            WHERE metric = ?
+            """,
+            (new_metric, new_label, old_metric),
+        )
+        connection.execute(
+            """
+            UPDATE OR REPLACE metric_full_span_series
+            SET metric = ?
+            WHERE metric = ?
+            """,
+            (new_metric, old_metric),
+        )
+        connection.execute(
+            """
+            UPDATE OR REPLACE metric_full_span_points
+            SET metric = ?
+            WHERE metric = ?
+            """,
+            (new_metric, old_metric),
+        )
+        connection.commit()
