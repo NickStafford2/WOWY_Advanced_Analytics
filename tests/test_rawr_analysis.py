@@ -2,13 +2,13 @@ from __future__ import annotations
 
 import pytest
 
-from wowy.apps.regression.analysis import fit_player_regression, tune_ridge_alpha
-from wowy.apps.regression.models import RegressionObservation
+from wowy.apps.rawr.analysis import fit_player_rawr, tune_ridge_alpha
+from wowy.apps.rawr.models import RawrObservation
 
 
-def test_fit_player_regression_returns_expected_coefficients():
+def test_fit_player_rawr_returns_expected_coefficients():
     observations = [
-        RegressionObservation(
+        RawrObservation(
             "1",
             "2023-24",
             "2024-04-01",
@@ -17,7 +17,7 @@ def test_fit_player_regression_returns_expected_coefficients():
             2.0,
             {101: 1.0, 201: -1.0},
         ),
-        RegressionObservation(
+        RawrObservation(
             "2",
             "2023-24",
             "2024-04-03",
@@ -26,7 +26,7 @@ def test_fit_player_regression_returns_expected_coefficients():
             -2.0,
             {202: 1.0, 102: -1.0},
         ),
-        RegressionObservation(
+        RawrObservation(
             "3",
             "2023-24",
             "2024-04-05",
@@ -37,7 +37,7 @@ def test_fit_player_regression_returns_expected_coefficients():
         ),
     ]
 
-    result = fit_player_regression(
+    result = fit_player_rawr(
         observations,
         player_names={
             101: "Player 101",
@@ -59,9 +59,9 @@ def test_fit_player_regression_returns_expected_coefficients():
     assert estimates[101].total_minutes is None
 
 
-def test_fit_player_regression_does_not_use_minute_thresholds_for_prefit():
+def test_fit_player_rawr_does_not_use_minute_thresholds_for_prefit():
     observations = [
-        RegressionObservation(
+        RawrObservation(
             "1",
             "2023-24",
             "2024-04-01",
@@ -70,7 +70,7 @@ def test_fit_player_regression_does_not_use_minute_thresholds_for_prefit():
             2.0,
             {101: 1.0, 201: -1.0},
         ),
-        RegressionObservation(
+        RawrObservation(
             "2",
             "2023-24",
             "2024-04-03",
@@ -81,7 +81,7 @@ def test_fit_player_regression_does_not_use_minute_thresholds_for_prefit():
         ),
     ]
 
-    result = fit_player_regression(
+    result = fit_player_rawr(
         observations,
         player_names={
             101: "Player 101",
@@ -95,9 +95,9 @@ def test_fit_player_regression_does_not_use_minute_thresholds_for_prefit():
     assert {estimate.player_id for estimate in result.estimates} == {101, 201, 202}
 
 
-def test_fit_player_regression_applies_min_games_filter():
+def test_fit_player_rawr_applies_min_games_filter():
     observations = [
-        RegressionObservation(
+        RawrObservation(
             "1",
             "2023-24",
             "2024-04-01",
@@ -106,7 +106,7 @@ def test_fit_player_regression_applies_min_games_filter():
             2.0,
             {101: 1.0, 201: -1.0},
         ),
-        RegressionObservation(
+        RawrObservation(
             "2",
             "2023-24",
             "2024-04-03",
@@ -115,7 +115,7 @@ def test_fit_player_regression_applies_min_games_filter():
             -2.0,
             {202: 1.0, 102: -1.0},
         ),
-        RegressionObservation(
+        RawrObservation(
             "3",
             "2023-24",
             "2024-04-05",
@@ -126,7 +126,7 @@ def test_fit_player_regression_applies_min_games_filter():
         ),
     ]
 
-    result = fit_player_regression(
+    result = fit_player_rawr(
         observations,
         player_names={
             101: "Player 101",
@@ -141,35 +141,35 @@ def test_fit_player_regression_applies_min_games_filter():
     assert [estimate.player_id for estimate in result.estimates] == [101, 102, 201, 202]
 
 
-def test_fit_player_regression_rejects_singular_system_without_ridge():
+def test_fit_player_rawr_rejects_singular_system_without_ridge():
     observations = [
-        RegressionObservation(
+        RawrObservation(
             "1", "2023-24", "2024-04-01", "BOS", "MIL", 2.0, {101: 1.0}
         ),
-        RegressionObservation(
+        RawrObservation(
             "2", "2023-24", "2024-04-03", "BOS", "NYK", 3.0, {101: 1.0}
         ),
     ]
 
     with pytest.raises(ValueError, match="singular"):
-        fit_player_regression(
+        fit_player_rawr(
             observations,
             player_names={101: "Player 101"},
             ridge_alpha=0.0,
         )
 
 
-def test_fit_player_regression_handles_singular_system_with_ridge():
+def test_fit_player_rawr_handles_singular_system_with_ridge():
     observations = [
-        RegressionObservation(
+        RawrObservation(
             "1", "2023-24", "2024-04-01", "BOS", "MIL", 2.0, {101: 1.0, 201: -1.0}
         ),
-        RegressionObservation(
+        RawrObservation(
             "2", "2023-24", "2024-04-03", "BOS", "NYK", 3.0, {101: 1.0, 201: -1.0}
         ),
     ]
 
-    result = fit_player_regression(
+    result = fit_player_rawr(
         observations,
         player_names={101: "Player 101", 201: "Player 201"},
         ridge_alpha=1.0,
@@ -186,19 +186,19 @@ def test_fit_player_regression_handles_singular_system_with_ridge():
 
 def test_tune_ridge_alpha_returns_best_value_from_grid():
     observations = [
-        RegressionObservation(
+        RawrObservation(
             "1", "2023-24", "2024-04-01", "BOS", "MIL", 4.0, {101: 1.0, 201: -1.0}
         ),
-        RegressionObservation(
+        RawrObservation(
             "2", "2023-24", "2024-04-03", "BOS", "MIL", 3.0, {101: 1.0, 201: -1.0}
         ),
-        RegressionObservation(
+        RawrObservation(
             "3", "2023-24", "2024-04-05", "BOS", "MIL", 5.0, {101: 1.0, 201: -1.0}
         ),
-        RegressionObservation(
+        RawrObservation(
             "4", "2023-24", "2024-04-07", "BOS", "MIL", 4.0, {101: 1.0, 201: -1.0}
         ),
-        RegressionObservation(
+        RawrObservation(
             "5", "2023-24", "2024-04-09", "BOS", "MIL", 4.5, {101: 1.0, 201: -1.0}
         ),
     ]

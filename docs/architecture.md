@@ -1,26 +1,22 @@
 # Architecture
 
-The repository is organized around a small set of responsibilities.
-
 ## `apps/`
 
 Application-specific analysis flows live under `src/wowy/apps/`.
 
 - `apps/wowy/` contains the baseline WOWY analysis, formatting, and CLI entrypoint
-- `apps/regression/` contains the RAWR-specific data shaping, model fitting, formatting, and CLI entrypoint
+- `apps/rawr/` contains the RAWR-specific data shaping, model fitting, formatting, and CLI entrypoint
 
 If you add a new user-facing analysis tool, it should usually get its own `apps/<tool_name>/` package.
 
 ## `nba/`
 
 NBA-specific ingestion, cache management, file path conventions, and team-season scope logic live under `src/wowy/nba/`.
-
 This layer is responsible for getting source data into the local normalized cache and preparing derived files needed by the analysis apps.
 
 ## `data/`
 
 CSV loading, writing, and combine utilities live under `src/wowy/data/`.
-
 This layer should stay focused on file formats and I/O mechanics rather than analysis rules.
 
 ## `shared/`

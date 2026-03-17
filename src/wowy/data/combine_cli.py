@@ -8,13 +8,13 @@ from wowy.data.combine import combine_normalized_data
 
 DEFAULT_GAMES_INPUT_DIR = Path("data/normalized/nba/games")
 DEFAULT_GAME_PLAYERS_INPUT_DIR = Path("data/normalized/nba/game_players")
-DEFAULT_GAMES_OUTPUT_PATH = Path("data/combined/regression/games.csv")
-DEFAULT_GAME_PLAYERS_OUTPUT_PATH = Path("data/combined/regression/game_players.csv")
+DEFAULT_GAMES_OUTPUT_PATH = Path("data/combined/rawr/games.csv")
+DEFAULT_GAME_PLAYERS_OUTPUT_PATH = Path("data/combined/rawr/game_players.csv")
 
 
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
-        description="Combine normalized game and game-player CSV files for regression input."
+        description="Combine normalized game and game-player CSV files for RAWR input."
     )
     parser.add_argument(
         "--games-input-dir",

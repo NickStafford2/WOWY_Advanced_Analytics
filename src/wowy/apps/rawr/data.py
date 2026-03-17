@@ -2,16 +2,16 @@ from __future__ import annotations
 
 from collections import defaultdict
 
-from wowy.apps.regression.models import RegressionObservation
+from wowy.apps.rawr.models import RawrObservation
 from wowy.nba.models import NormalizedGamePlayerRecord, NormalizedGameRecord
 
 LINEUP_WEIGHT_SUM = 5.0
 
 
-def build_regression_observations(
+def build_rawr_observations(
     games: list[NormalizedGameRecord],
     game_players: list[NormalizedGamePlayerRecord],
-) -> tuple[list[RegressionObservation], dict[int, str]]:
+) -> tuple[list[RawrObservation], dict[int, str]]:
     player_minutes_by_game_team: dict[tuple[str, str], dict[int, float]] = defaultdict(
         dict
     )
@@ -27,15 +27,15 @@ def build_regression_observations(
                 f"Missing positive minutes for appeared player {player.player_id!r} "
                 f"in game {player.game_id!r} and team {player.team!r}"
             )
-        player_minutes_by_game_team[(player.game_id, player.team)][
-            player.player_id
-        ] = minutes
+        player_minutes_by_game_team[(player.game_id, player.team)][player.player_id] = (
+            minutes
+        )
 
     games_by_id: dict[str, list[NormalizedGameRecord]] = defaultdict(list)
     for game in games:
         games_by_id[game.game_id].append(game)
 
-    observations: list[RegressionObservation] = []
+    observations: list[RawrObservation] = []
     for game_id, game_rows in sorted(games_by_id.items()):
         if len(game_rows) != 2:
             raise ValueError(
@@ -51,8 +51,12 @@ def build_regression_observations(
 
         home_game = home_games[0]
         away_game = away_games[0]
-        home_player_minutes = player_minutes_by_game_team.get((game_id, home_game.team), {})
-        away_player_minutes = player_minutes_by_game_team.get((game_id, away_game.team), {})
+        home_player_minutes = player_minutes_by_game_team.get(
+            (game_id, home_game.team), {}
+        )
+        away_player_minutes = player_minutes_by_game_team.get(
+            (game_id, away_game.team), {}
+        )
         if not home_player_minutes:
             raise ValueError(
                 f"No appeared players found for game {game_id!r} and team {home_game.team!r}"
@@ -69,7 +73,7 @@ def build_regression_observations(
             player_weights[player_id] = -weight
 
         observations.append(
-            RegressionObservation(
+            RawrObservation(
                 game_id=game_id,
                 season=home_game.season,
                 game_date=home_game.game_date,
@@ -86,7 +90,7 @@ def build_regression_observations(
 def build_minute_weights(player_minutes: dict[int, float]) -> dict[int, float]:
     total_minutes = sum(player_minutes.values())
     if total_minutes <= 0.0:
-        raise ValueError("Expected positive total team minutes for regression observation")
+        raise ValueError("Expected positive total team minutes for RAWR observation")
 
     return {
         player_id: (minutes / total_minutes) * LINEUP_WEIGHT_SUM
@@ -94,7 +98,7 @@ def build_minute_weights(player_minutes: dict[int, float]) -> dict[int, float]:
     }
 
 
-def count_player_games(observations: list[RegressionObservation]) -> dict[int, int]:
+def count_player_games(observations: list[RawrObservation]) -> dict[int, int]:
     games_by_player: dict[int, int] = defaultdict(int)
     for observation in observations:
         for player_id in observation.player_weights:

@@ -9,12 +9,12 @@ from wowy.nba.ingest import (
     DEFAULT_SOURCE_DATA_DIR,
     DEFAULT_WOWY_GAMES_DIR,
 )
-from wowy.apps.regression.service import prepare_and_run_regression
+from wowy.apps.rawr.service import prepare_and_run_rawr
 
 
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
-        description="Run regression on cached data, fetching missing requested scope when needed."
+        description="Run RAWR on cached data, fetching missing requested scope when needed."
     )
     parser.add_argument(
         "--team",
@@ -60,20 +60,20 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument(
         "--combined-games-csv",
         type=Path,
-        default=Path("data/combined/regression/games.csv"),
+        default=Path("data/combined/rawr/games.csv"),
         help=argparse.SUPPRESS,
     )
     parser.add_argument(
         "--combined-game-players-csv",
         type=Path,
-        default=Path("data/combined/regression/game_players.csv"),
+        default=Path("data/combined/rawr/game_players.csv"),
         help=argparse.SUPPRESS,
     )
     parser.add_argument(
         "--min-games",
         type=int,
         default=35,
-        help="Minimum games required to include a player in the regression output (default: 35)",
+        help="Minimum games required to include a player in the RAWR output (default: 35)",
     )
     parser.add_argument(
         "--ridge-alpha",
@@ -121,5 +121,5 @@ def build_parser() -> argparse.ArgumentParser:
 def main(argv: list[str] | None = None) -> int:
     parser = build_parser()
     args = parser.parse_args(argv)
-    print(prepare_and_run_regression(args))
+    print(prepare_and_run_rawr(args))
     return 0

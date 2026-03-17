@@ -12,10 +12,14 @@ def test_normalize_cache_season_keys_rewrites_files_and_db(tmp_path: Path):
     normalized_game_players_dir = tmp_path / "normalized" / "game_players"
     wowy_output_dir = tmp_path / "raw" / "team_games"
     combined_wowy_csv = tmp_path / "combined" / "wowy" / "games.csv"
-    combined_regression_games_csv = tmp_path / "combined" / "regression" / "games.csv"
+    combined_rawr_games_csv = tmp_path / "combined" / "rawr" / "games.csv"
     db_path = tmp_path / "app" / "player_metrics.sqlite3"
 
-    team_season_json = source_data_dir / "team_seasons" / "BOS_2014_regular_season_leaguegamefinder.json"
+    team_season_json = (
+        source_data_dir
+        / "team_seasons"
+        / "BOS_2014_regular_season_leaguegamefinder.json"
+    )
     team_season_json.parent.mkdir(parents=True, exist_ok=True)
     team_season_json.write_text('{"resultSets": []}', encoding="utf-8")
 
@@ -42,24 +46,18 @@ def test_normalize_cache_season_keys_rewrites_files_and_db(tmp_path: Path):
     wowy_path = wowy_output_dir / "BOS_2014.csv"
     wowy_path.parent.mkdir(parents=True, exist_ok=True)
     wowy_path.write_text(
-        (
-            "game_id,season,team,margin,players\n"
-            "1,2014,BOS,5,101\n"
-        ),
+        ("game_id,season,team,margin,players\n1,2014,BOS,5,101\n"),
         encoding="utf-8",
     )
 
     combined_wowy_csv.parent.mkdir(parents=True, exist_ok=True)
     combined_wowy_csv.write_text(
-        (
-            "game_id,season,team,margin,players\n"
-            "1,2014,BOS,5,101\n"
-        ),
+        ("game_id,season,team,margin,players\n1,2014,BOS,5,101\n"),
         encoding="utf-8",
     )
 
-    combined_regression_games_csv.parent.mkdir(parents=True, exist_ok=True)
-    combined_regression_games_csv.write_text(
+    combined_rawr_games_csv.parent.mkdir(parents=True, exist_ok=True)
+    combined_rawr_games_csv.write_text(
         (
             "game_id,season,game_date,team,opponent,is_home,margin,season_type,source\n"
             "1,2014,2015-04-01,BOS,ATL,true,5,Regular Season,nba_api\n"
@@ -158,7 +156,7 @@ def test_normalize_cache_season_keys_rewrites_files_and_db(tmp_path: Path):
         normalized_game_players_input_dir=normalized_game_players_dir,
         wowy_output_dir=wowy_output_dir,
         combined_wowy_csv=combined_wowy_csv,
-        combined_regression_games_csv=combined_regression_games_csv,
+        combined_rawr_games_csv=combined_rawr_games_csv,
         player_metrics_db_path=db_path,
         log=None,
     )
@@ -168,27 +166,48 @@ def test_normalize_cache_season_keys_rewrites_files_and_db(tmp_path: Path):
     assert summary.updated_db_rows == 4
 
     assert not team_season_json.exists()
-    assert (source_data_dir / "team_seasons" / "BOS_2014-15_regular_season_leaguegamefinder.json").exists()
-    assert (normalized_games_dir / "BOS_2014-15.csv").read_text(encoding="utf-8").splitlines()[1].split(",")[1] == "2014-15"
+    assert (
+        source_data_dir
+        / "team_seasons"
+        / "BOS_2014-15_regular_season_leaguegamefinder.json"
+    ).exists()
+    assert (normalized_games_dir / "BOS_2014-15.csv").read_text(
+        encoding="utf-8"
+    ).splitlines()[1].split(",")[1] == "2014-15"
     assert (normalized_game_players_dir / "BOS_2014-15.csv").exists()
-    assert (wowy_output_dir / "BOS_2014-15.csv").read_text(encoding="utf-8").splitlines()[1].split(",")[1] == "2014-15"
-    assert combined_wowy_csv.read_text(encoding="utf-8").splitlines()[1].split(",")[1] == "2014-15"
-    assert combined_regression_games_csv.read_text(encoding="utf-8").splitlines()[1].split(",")[1] == "2014-15"
+    assert (wowy_output_dir / "BOS_2014-15.csv").read_text(
+        encoding="utf-8"
+    ).splitlines()[1].split(",")[1] == "2014-15"
+    assert (
+        combined_wowy_csv.read_text(encoding="utf-8").splitlines()[1].split(",")[1]
+        == "2014-15"
+    )
+    assert (
+        combined_rawr_games_csv.read_text(encoding="utf-8")
+        .splitlines()[1]
+        .split(",")[1]
+        == "2014-15"
+    )
 
     connection = sqlite3.connect(db_path)
-    assert connection.execute(
-        "SELECT season FROM metric_player_season_values"
-    ).fetchone()[0] == "2014-15"
-    assert connection.execute(
-        "SELECT season FROM metric_full_span_points"
-    ).fetchone()[0] == "2014-15"
+    assert (
+        connection.execute("SELECT season FROM metric_player_season_values").fetchone()[
+            0
+        ]
+        == "2014-15"
+    )
+    assert (
+        connection.execute("SELECT season FROM metric_full_span_points").fetchone()[0]
+        == "2014-15"
+    )
     scope_row = connection.execute(
         "SELECT available_seasons_json, full_span_start_season, full_span_end_season FROM metric_scope_catalog"
     ).fetchone()
     assert scope_row[0] == '["2014-15"]'
     assert scope_row[1] == "2014-15"
     assert scope_row[2] == "2014-15"
-    assert connection.execute(
-        "SELECT season FROM player_season_metrics"
-    ).fetchone()[0] == "2014-15"
+    assert (
+        connection.execute("SELECT season FROM player_season_metrics").fetchone()[0]
+        == "2014-15"
+    )
     connection.close()

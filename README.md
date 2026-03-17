@@ -44,7 +44,7 @@ poetry run wowy
 Run RAWR:
 
 ```bash
-poetry run regression
+poetry run rawr
 ```
 
 Run the Flask backend for the web prototype:
@@ -57,7 +57,7 @@ Show CLI usage:
 
 ```bash
 poetry run wowy --help
-poetry run regression --help
+poetry run rawr --help
 ```
 
 Run tests:
@@ -72,9 +72,9 @@ Examples:
 
 ```bash
 poetry run wowy --season 2024-25 --team BOS --top-n 25
-poetry run regression --season 2024-25 --ridge-alpha 1.0 --top-n 25
-poetry run regression --season 2024-25 --team BOS --ridge-alpha 1.0 --min-games 20 --min-average-minutes 15 --min-total-minutes 500
-poetry run regression --season 2024-25 --team BOS --tune-ridge
+poetry run rawr --season 2024-25 --ridge-alpha 1.0 --top-n 25
+poetry run rawr --season 2024-25 --team BOS --ridge-alpha 1.0 --min-games 20 --min-average-minutes 15 --min-total-minutes 500
+poetry run rawr --season 2024-25 --team BOS --tune-ridge
 poetry run wowy --season 2020-21 --season 2021-22 --season 2022-23 --season 2023-24 --season 2024-25 --export-player-seasons data/combined/wowy/player_seasons.csv
 ```
 

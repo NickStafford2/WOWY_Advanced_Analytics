@@ -35,7 +35,7 @@ def normalize_cache_season_keys(
     normalized_game_players_input_dir: Path = DEFAULT_NORMALIZED_GAME_PLAYERS_DIR,
     wowy_output_dir: Path = DEFAULT_WOWY_GAMES_DIR,
     combined_wowy_csv: Path = Path("data/combined/wowy/games.csv"),
-    combined_regression_games_csv: Path = Path("data/combined/regression/games.csv"),
+    combined_rawr_games_csv: Path = Path("data/combined/rawr/games.csv"),
     player_metrics_db_path: Path = DEFAULT_PLAYER_METRICS_DB_PATH,
     log: LogFn | None = print,
 ) -> CacheSeasonMigrationSummary:
@@ -80,7 +80,7 @@ def normalize_cache_season_keys(
         log=log,
     )
     rewritten_files += normalize_combined_csv(
-        combined_regression_games_csv,
+        combined_rawr_games_csv,
         season_column="season",
         log=log,
     )
@@ -287,10 +287,7 @@ def rewrite_metric_scope_catalog(connection: sqlite3.Connection) -> int:
     for row in rows:
         available_seasons = json.loads(row["available_seasons_json"])
         canonical_seasons = sorted(
-            {
-                canonicalize_season_string(season)
-                for season in available_seasons
-            },
+            {canonicalize_season_string(season) for season in available_seasons},
             key=season_sort_key,
         )
         start_season = canonicalize_nullable_season(row["full_span_start_season"])

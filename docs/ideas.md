@@ -4,9 +4,6 @@ Suggestions for improving RAWR accuracy while staying at the game level and avoi
 
 ## Highest-value upgrades
 
-- Add time decay across seasons.
-  Recent games should count more than older games in multi-year fits.
-
 - Use player-season coefficients instead of one pooled coefficient per player.
   This avoids blending together very different versions of the same player across years.
 

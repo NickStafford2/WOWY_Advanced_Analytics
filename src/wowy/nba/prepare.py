@@ -55,7 +55,7 @@ def prepare_wowy_inputs(
     return combined_wowy_csv, load_player_names_from_cache(source_data_dir)
 
 
-def prepare_regression_inputs(
+def prepare_rawr_inputs(
     teams: list[str] | None,
     seasons: list[str] | None,
     combined_games_csv: Path,
@@ -69,7 +69,7 @@ def prepare_regression_inputs(
 ) -> tuple[Path, Path]:
     team_seasons = resolve_team_seasons(teams, seasons, normalized_games_input_dir)
     if not team_seasons:
-        raise ValueError("No cached data matched the requested regression scope")
+        raise ValueError("No cached data matched the requested RAWR scope")
 
     requested_team_seasons = list(team_seasons)
 

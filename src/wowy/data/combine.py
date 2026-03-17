@@ -68,7 +68,7 @@ def combine_normalized_files(
     games_output_path: Path,
     game_players_output_path: Path,
 ) -> None:
-    """Combine selected normalized CSVs for regression input."""
+    """Combine selected normalized CSVs for RAWR input."""
 
     combine_csv_paths(games_input_paths, games_output_path, NORMALIZED_GAMES_HEADER)
     combine_csv_paths(
@@ -84,7 +84,7 @@ def combine_normalized_data(
     games_output_path: Path,
     game_players_output_path: Path,
 ) -> None:
-    """Combine normalized game and game-player CSVs for regression input."""
+    """Combine normalized game and game-player CSVs for RAWR input."""
 
     combine_csvs(games_input_dir, games_output_path, NORMALIZED_GAMES_HEADER)
     combine_csvs(

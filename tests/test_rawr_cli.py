@@ -4,12 +4,12 @@ from pathlib import Path
 
 import pytest
 
-from wowy.apps.regression.cli import main
+from wowy.apps.rawr.cli import main
 
-from wowy.apps.regression.service import parse_ridge_grid, run_regression
+from wowy.apps.rawr.service import parse_ridge_grid, run_rawr
 
 
-def test_run_regression_returns_report_text(tmp_path: Path):
+def test_run_rawr_returns_report_text(tmp_path: Path):
     games_csv = tmp_path / "games.csv"
     games_csv.write_text(
         (
@@ -39,18 +39,18 @@ def test_run_regression_returns_report_text(tmp_path: Path):
         encoding="utf-8",
     )
 
-    report = run_regression(
+    report = run_rawr(
         games_csv,
         game_players_csv,
         min_games=1,
         ridge_alpha=1.0,
     )
 
-    assert "Regression results (Game-level player model)" in report
+    assert "RAWR results (Game-level player model)" in report
     assert "Player 101" in report
 
 
-def test_run_regression_applies_top_n(tmp_path: Path):
+def test_run_rawr_applies_top_n(tmp_path: Path):
     games_csv = tmp_path / "games.csv"
     games_csv.write_text(
         (
@@ -80,7 +80,7 @@ def test_run_regression_applies_top_n(tmp_path: Path):
         encoding="utf-8",
     )
 
-    report = run_regression(
+    report = run_rawr(
         games_csv,
         game_players_csv,
         min_games=1,
@@ -91,7 +91,7 @@ def test_run_regression_applies_top_n(tmp_path: Path):
     assert len(report.splitlines()) == 6
 
 
-def test_run_regression_applies_minute_filters(tmp_path: Path):
+def test_run_rawr_applies_minute_filters(tmp_path: Path):
     games_csv = tmp_path / "games.csv"
     games_csv.write_text(
         (
@@ -122,7 +122,7 @@ def test_run_regression_applies_minute_filters(tmp_path: Path):
         encoding="utf-8",
     )
 
-    report = run_regression(
+    report = run_rawr(
         games_csv,
         game_players_csv,
         min_games=1,
@@ -142,7 +142,7 @@ def test_run_regression_applies_minute_filters(tmp_path: Path):
     assert "Player 102" not in report
 
 
-def test_run_regression_team_scope_applies_minute_filters_after_fit(tmp_path: Path):
+def test_run_rawr_team_scope_applies_minute_filters_after_fit(tmp_path: Path):
     games_csv = tmp_path / "games.csv"
     games_csv.write_text(
         (
@@ -173,7 +173,7 @@ def test_run_regression_team_scope_applies_minute_filters_after_fit(tmp_path: Pa
         encoding="utf-8",
     )
 
-    report = run_regression(
+    report = run_rawr(
         games_csv,
         game_players_csv,
         min_games=1,
@@ -290,7 +290,7 @@ def test_main_runs_with_cached_scope_without_explicit_csvs(
 
     captured = capsys.readouterr()
     assert exit_code == 0
-    assert "Regression results (Game-level player model)" in captured.out
+    assert "RAWR results (Game-level player model)" in captured.out
 
 
 def test_main_filters_cached_scope_by_team_and_season(

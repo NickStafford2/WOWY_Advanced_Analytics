@@ -8,7 +8,7 @@ from wowy.nba.models import NormalizedGamePlayerRecord, NormalizedGameRecord
 from wowy.nba.seasons import canonicalize_season_string
 
 
-# Canonical normalized layer used by ingestion, cache validation, and regression.
+# Canonical normalized layer used by ingestion, cache validation, and RAWR.
 # WOWY reads derived `games.csv`, but can still use normalized player rows to apply
 # minute-based output filters on cache-managed runs.
 NORMALIZED_GAMES_HEADER = [

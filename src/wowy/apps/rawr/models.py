@@ -4,7 +4,7 @@ from dataclasses import dataclass
 
 
 @dataclass(frozen=True)
-class RegressionObservation:
+class RawrObservation:
     game_id: str
     season: str
     game_date: str
@@ -15,7 +15,7 @@ class RegressionObservation:
 
 
 @dataclass(frozen=True)
-class RegressionPlayerEstimate:
+class RawrPlayerEstimate:
     player_id: int
     player_name: str
     games: int
@@ -25,16 +25,16 @@ class RegressionPlayerEstimate:
 
 
 @dataclass(frozen=True)
-class RegressionResult:
+class RawrResult:
     observations: int
     players: int
     intercept: float
     home_court_advantage: float
-    estimates: list[RegressionPlayerEstimate]
+    estimates: list[RawrPlayerEstimate]
 
 
 @dataclass(frozen=True)
-class RegressionModel:
+class RawrModel:
     player_ids: list[int]
     team_seasons: list[str]
     coefficients: list[float]

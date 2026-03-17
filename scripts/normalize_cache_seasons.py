@@ -48,9 +48,9 @@ def build_parser() -> argparse.ArgumentParser:
         help=argparse.SUPPRESS,
     )
     parser.add_argument(
-        "--combined-regression-games-csv",
+        "--combined-rawr-games-csv",
         type=Path,
-        default=Path("data/combined/regression/games.csv"),
+        default=Path("data/combined/rawr/games.csv"),
         help=argparse.SUPPRESS,
     )
     parser.add_argument(
@@ -71,7 +71,7 @@ def main(argv: list[str] | None = None) -> int:
         normalized_game_players_input_dir=args.normalized_game_players_input_dir,
         wowy_output_dir=args.wowy_output_dir,
         combined_wowy_csv=args.combined_wowy_csv,
-        combined_regression_games_csv=args.combined_regression_games_csv,
+        combined_rawr_games_csv=args.combined_rawr_games_csv,
         player_metrics_db_path=args.player_metrics_db_path,
     )
     print(

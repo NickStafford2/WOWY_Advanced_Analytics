@@ -1,10 +1,10 @@
 from __future__ import annotations
 
-from wowy.apps.regression.models import RegressionResult
+from wowy.apps.rawr.models import RawrResult
 
 
-def format_regression_results(
-    result: RegressionResult,
+def format_rawr_results(
+    result: RawrResult,
     top_n: int | None = None,
 ) -> str:
     ranked = sorted(
@@ -16,7 +16,7 @@ def format_regression_results(
         ranked = ranked[:top_n]
     if not ranked:
         return (
-            "Regression results (Game-level player model)\n"
+            "RAWR results (Game-level player model)\n"
             f"observations={result.observations} players={result.players} "
             f"intercept={result.intercept:.4f} home_court={result.home_court_advantage:.4f}\n"
             "No players matched the current filters."
@@ -37,18 +37,20 @@ def format_regression_results(
     )
 
     lines = [
-        "Regression results (Game-level player model)",
+        "RAWR results (Game-level player model)",
         (
             f"observations={result.observations} players={result.players} "
             f"intercept={result.intercept:.4f} home_court={result.home_court_advantage:.4f}"
         ),
-        "-" * (name_width + player_id_width + avg_minutes_width + total_minutes_width + 28),
+        "-"
+        * (name_width + player_id_width + avg_minutes_width + total_minutes_width + 28),
         (
             f"{'player':<{name_width}} {'player_id':<{player_id_width}} "
             f"{'games':>6} {'avg_min':>{avg_minutes_width}} "
             f"{'tot_min':>{total_minutes_width}} {'coef':>10}"
         ),
-        "-" * (name_width + player_id_width + avg_minutes_width + total_minutes_width + 28),
+        "-"
+        * (name_width + player_id_width + avg_minutes_width + total_minutes_width + 28),
     ]
 
     for estimate in ranked:

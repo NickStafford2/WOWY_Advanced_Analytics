@@ -2,11 +2,11 @@ from __future__ import annotations
 
 import pytest
 
-from wowy.apps.regression.data import build_regression_observations, count_player_games
+from wowy.apps.rawr.data import build_rawr_observations, count_player_games
 from wowy.nba.models import NormalizedGamePlayerRecord, NormalizedGameRecord
 
 
-def test_build_regression_observations_preserves_game_context():
+def test_build_rawr_observations_preserves_game_context():
     games = [
         NormalizedGameRecord(
             game_id="1",
@@ -39,7 +39,7 @@ def test_build_regression_observations_preserves_game_context():
         NormalizedGamePlayerRecord("1", "MIL", 202, "Player 202", True, 24.0),
     ]
 
-    observations, player_names = build_regression_observations(games, game_players)
+    observations, player_names = build_rawr_observations(games, game_players)
 
     assert observations[0].home_team == "BOS"
     assert observations[0].away_team == "MIL"
@@ -116,12 +116,12 @@ def test_count_player_games_counts_appeared_games():
         NormalizedGamePlayerRecord("2", "NYK", 202, "Player 202", True, 48.0),
     ]
 
-    observations, _ = build_regression_observations(games, game_players)
+    observations, _ = build_rawr_observations(games, game_players)
 
     assert count_player_games(observations) == {101: 2, 103: 1, 201: 1, 202: 1}
 
 
-def test_build_regression_observations_rejects_missing_minutes_for_appeared_player():
+def test_build_rawr_observations_rejects_missing_minutes_for_appeared_player():
     games = [
         NormalizedGameRecord(
             game_id="1",
@@ -152,4 +152,4 @@ def test_build_regression_observations_rejects_missing_minutes_for_appeared_play
     ]
 
     with pytest.raises(ValueError, match="Missing positive minutes"):
-        build_regression_observations(games, game_players)
+        build_rawr_observations(games, game_players)

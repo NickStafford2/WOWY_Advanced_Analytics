@@ -54,15 +54,15 @@ def build_parser() -> argparse.ArgumentParser:
         help="Combined WOWY games CSV path",
     )
     parser.add_argument(
-        "--combined-regression-games-csv",
+        "--combined-rawr-games-csv",
         type=Path,
-        default=Path("data/combined/regression/games.csv"),
+        default=Path("data/combined/rawr/games.csv"),
         help="Combined normalized games CSV path",
     )
     parser.add_argument(
-        "--combined-regression-game-players-csv",
+        "--combined-rawr-game-players-csv",
         type=Path,
-        default=Path("data/combined/regression/game_players.csv"),
+        default=Path("data/combined/rawr/game_players.csv"),
         help="Combined normalized game-player CSV path",
     )
     return parser
@@ -221,8 +221,8 @@ def main(argv: list[str] | None = None) -> int:
     combine_normalized_files(
         games_input_paths=normalized_games_paths,
         game_players_input_paths=normalized_game_players_paths,
-        games_output_path=args.combined_regression_games_csv,
-        game_players_output_path=args.combined_regression_game_players_csv,
+        games_output_path=args.combined_rawr_games_csv,
+        game_players_output_path=args.combined_rawr_game_players_csv,
     )
     combine_wowy_csvs(wowy_csv_paths, args.combined_wowy_csv)
     return 0

@@ -5,12 +5,12 @@ from typing import Callable
 
 import numpy as np
 
-from wowy.apps.regression.data import count_player_games
-from wowy.apps.regression.models import (
-    RegressionModel,
-    RegressionObservation,
-    RegressionPlayerEstimate,
-    RegressionResult,
+from wowy.apps.rawr.data import count_player_games
+from wowy.apps.rawr.models import (
+    RawrModel,
+    RawrObservation,
+    RawrPlayerEstimate,
+    RawrResult,
     RidgeTuningResult,
     RidgeTuningSummary,
 )
@@ -18,25 +18,23 @@ from wowy.apps.regression.models import (
 ProgressFn = Callable[[int, int, str | None], None]
 
 
-def fit_player_regression(
-    observations: list[RegressionObservation],
+def fit_player_rawr(
+    observations: list[RawrObservation],
     player_names: dict[int, str],
     min_games: int = 1,
     ridge_alpha: float = 1.0,
     progress: ProgressFn | None = None,
-) -> RegressionResult:
+) -> RawrResult:
     if min_games < 0:
         raise ValueError("Minimum games filter must be non-negative")
     if ridge_alpha < 0:
         raise ValueError("Ridge alpha must be non-negative")
     if not observations:
-        raise ValueError("At least one regression observation is required")
+        raise ValueError("At least one RAWR observation is required")
 
     games_by_player = count_player_games(observations)
     included_players = sorted(
-        player_id
-        for player_id, games in games_by_player.items()
-        if games >= min_games
+        player_id for player_id, games in games_by_player.items() if games >= min_games
     )
     if not included_players:
         raise ValueError("No players met the minimum games requirement")
@@ -51,7 +49,7 @@ def fit_player_regression(
     home_court_advantage = model.coefficients[1]
 
     estimates = [
-        RegressionPlayerEstimate(
+        RawrPlayerEstimate(
             player_id=player_id,
             player_name=player_names.get(player_id, str(player_id)),
             games=games_by_player[player_id],
@@ -62,7 +60,7 @@ def fit_player_regression(
         for index, player_id in enumerate(included_players)
     ]
 
-    return RegressionResult(
+    return RawrResult(
         observations=len(observations),
         players=len(estimates),
         intercept=intercept,
@@ -72,11 +70,11 @@ def fit_player_regression(
 
 
 def fit_regression_model(
-    observations: list[RegressionObservation],
+    observations: list[RawrObservation],
     player_ids: list[int],
     ridge_alpha: float = 1.0,
     progress: ProgressFn | None = None,
-) -> RegressionModel:
+) -> RawrModel:
     team_seasons = sorted(
         {
             team_season_key(observation.home_team, observation.season)
@@ -156,7 +154,7 @@ def fit_regression_model(
         if progress is not None:
             progress(completed_steps, total_steps, "applying ridge penalty")
 
-    return RegressionModel(
+    return RawrModel(
         player_ids=player_ids,
         team_seasons=team_seasons,
         coefficients=solve_linear_system(
@@ -170,8 +168,8 @@ def fit_regression_model(
 
 
 def predict_margin(
-    observation: RegressionObservation,
-    model: RegressionModel,
+    observation: RawrObservation,
+    model: RawrModel,
 ) -> float:
     row = build_feature_row(
         feature_count=len(model.coefficients),
@@ -198,14 +196,14 @@ def predict_margin(
 
 
 def tune_ridge_alpha(
-    observations: list[RegressionObservation],
+    observations: list[RawrObservation],
     player_names: dict[int, str],
     alphas: list[float],
     min_games: int = 1,
     validation_fraction: float = 0.2,
 ) -> RidgeTuningSummary:
     if not observations:
-        raise ValueError("At least one regression observation is required")
+        raise ValueError("At least one RAWR observation is required")
     if not alphas:
         raise ValueError("At least one ridge alpha is required")
     if not 0.0 < validation_fraction < 0.5:
@@ -228,7 +226,9 @@ def tune_ridge_alpha(
         if games >= min_games and player_id in player_names
     )
     if not included_players:
-        raise ValueError("No players met the minimum games requirement in training data")
+        raise ValueError(
+            "No players met the minimum games requirement in training data"
+        )
 
     results: list[RidgeTuningResult] = []
     for alpha in alphas:
@@ -297,7 +297,7 @@ def solve_linear_system(
         solution = np.linalg.solve(matrix, vector)
     except np.linalg.LinAlgError as exc:
         raise ValueError(
-            "Regression system is singular; the current game-level regression design matrix is not identifiable for this input."
+            "RAWR system is singular; the current game-level rawr design matrix is not identifiable for this input."
         ) from exc
 
     return solution.tolist()
