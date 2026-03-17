@@ -10,7 +10,6 @@ from wowy.apps.wowy.models import (
     WowyPlayerSeasonRecord,
     WowyPlayerStats,
 )
-from wowy.data.wowy_io import write_player_season_records_csv
 from wowy.data.player_metrics_db import DEFAULT_PLAYER_METRICS_DB_PATH
 from wowy.nba.ingest import load_player_names_from_cache
 from wowy.nba.prepare import (
@@ -466,28 +465,6 @@ def prepare_and_run_wowy(
     )
     print(f"[2/3] loaded {len(games)} WOWY game rows from cache")
     print("[3/3] computing WOWY results")
-    if args.export_player_seasons is not None:
-        records = prepare_wowy_player_season_records(
-            teams=args.team,
-            seasons=args.season,
-            season_type=args.season_type,
-            source_data_dir=args.source_data_dir,
-            player_metrics_db_path=getattr(
-                args,
-                "player_metrics_db_path",
-                DEFAULT_PLAYER_METRICS_DB_PATH,
-            ),
-            min_games_with=args.min_games_with,
-            min_games_without=args.min_games_without,
-            min_average_minutes=args.min_average_minutes,
-            min_total_minutes=args.min_total_minutes,
-            load_player_names_fn=load_player_names_fn,
-        )
-        write_player_season_records_csv(args.export_player_seasons, records)
-        print(
-            f"exported {len(records)} player-season WOWY rows to "
-            f"{args.export_player_seasons}"
-        )
     return run_wowy_records(
         games,
         min_games_with=args.min_games_with,

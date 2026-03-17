@@ -75,7 +75,6 @@ poetry run wowy --season 2024-25 --team BOS --top-n 25
 poetry run rawr --season 2024-25 --ridge-alpha 1.0 --top-n 25
 poetry run rawr --season 2024-25 --team BOS --ridge-alpha 1.0 --min-games 20 --min-average-minutes 15 --min-total-minutes 500
 poetry run rawr --season 2024-25 --team BOS --tune-ridge
-poetry run wowy --season 2020-21 --season 2021-22 --season 2022-23 --season 2023-24 --season 2024-25 --export-player-seasons outputs/wowy/player_seasons.csv
 ```
 
 Both CLIs read cached team-season data from `data/app/player_metrics.sqlite3`. If you request a specific scope with `--season` and optionally `--team`, missing team-season data is fetched into the database automatically.
@@ -109,11 +108,6 @@ For the web app, treat the primary WOWY ranking differently from a pooled all-ga
 - Non-goal: replacing the main leaderboard with noisy pooled with/without rankings that push role players with tiny samples above long-term stars
 
 RAWR output includes observation count, fitted player count, intercept, home-court estimate, and ranked player coefficients.
-
-Player-season WOWY export:
-
-- `poetry run wowy --season ... --export-player-seasons outputs/wowy/player_seasons.csv`
-- `poetry run python scripts/plot_wowy_player_history.py --input outputs/wowy/player_seasons.csv --season 2020-21 --season 2021-22 --season 2022-23 --season 2023-24 --season 2024-25 --top-n 10 --min-seasons 3 --output outputs/wowy/player_history.png`
 
 ## Interpretation
 

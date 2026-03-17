@@ -307,9 +307,7 @@ def test_rawr_player_seasons_endpoint_rejects_invalid_filters(
     )
 
     assert response.status_code == 400
-    assert response.get_json() == {
-        "error": "Minimum games filter must be non-negative"
-    }
+    assert response.get_json() == {"error": "Minimum games filter must be non-negative"}
 
 
 def test_rawr_cached_leaderboard_endpoint_returns_cached_series(
@@ -409,7 +407,11 @@ def test_rawr_custom_query_endpoint_recalculates_requested_span(
     }
     assert len(payload["table_rows"]) == 3
     assert all(row["season_count"] == 1 for row in payload["table_rows"])
-    assert all(point["season"] == "2023-24" for row in payload["series"] for point in row["points"])
+    assert all(
+        point["season"] == "2023-24"
+        for row in payload["series"]
+        for point in row["points"]
+    )
 
 
 def test_rawr_custom_query_endpoint_rejects_invalid_filters(tmp_path: Path):
@@ -425,9 +427,7 @@ def test_rawr_custom_query_endpoint_rejects_invalid_filters(tmp_path: Path):
     )
 
     assert response.status_code == 400
-    assert response.get_json() == {
-        "error": "Minimum games filter must be non-negative"
-    }
+    assert response.get_json() == {"error": "Minimum games filter must be non-negative"}
 
 
 def test_rawr_custom_query_skips_seasons_without_qualifying_players(
@@ -701,9 +701,7 @@ def test_wowy_player_seasons_endpoint_returns_bad_request_for_invalid_filters(
     )
 
     assert response.status_code == 400
-    assert response.get_json() == {
-        "error": "Minimum game filters must be non-negative"
-    }
+    assert response.get_json() == {"error": "Minimum game filters must be non-negative"}
 
 
 def test_wowy_options_endpoint_requires_prebuilt_store(tmp_path: Path):
