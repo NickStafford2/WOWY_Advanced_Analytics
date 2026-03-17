@@ -11,17 +11,17 @@
 ## Workflow
 - Use Poetry for all Python commands.
 - Run tests with `poetry run pytest`.
-- Run the app with `poetry run wowy`.
 
 ## Coding style
 - Keep changes simple, readable, and focused.
+- Prefer quality code over backwards compatibilty. 
 - Prefer small pure functions.
 - Do not refactor unrelated files.
 - Do not add advanced modeling features unless asked.
 - Follow Python 3.12 best practices.
 
 ## Data files
-- Treat `data/` as generated or cached project data.
+- Treat `data/source` as generated or cached project data.
 - Do not bulk-read files under `data/`.
 - Only inspect specific files when needed, and prefer small samples, headers, or row counts.
 
@@ -30,8 +30,7 @@
 - The app is player-focused, not team-focused. Team filters are allowed only as a way to restrict the game sample used for player comparison.
 - For WOWY, the primary web ranking is the strongest multi-season WOWY profile over the full cached history span.
 - Do not replace the primary web ranking with pooled or recomputed all-games WOWY unless explicitly requested.
-- Prefer a narrow first version over a broad app. One page, one chart, and a small controls panel is enough.
-- Keep backend and frontend responsibilities separated:
+- Keep backend and frontend responsibilities separated. 
 - React should handle controls, loading state, errors, and chart rendering.
 - Prefer reusing existing pure Python service logic from the analytics layer in Flask routes.
 - If there is ambiguity about ranking semantics, prefer the ranking that surfaces the strongest cross-season WOWY player histories rather than noisy role-player outliers from tiny with/without samples.
