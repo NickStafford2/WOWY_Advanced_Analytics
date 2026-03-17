@@ -21,7 +21,7 @@ const SERIES_COLORS = [
 ] as const
 
 type AppMode = 'cached' | 'custom'
-type MetricId = 'wowy' | 'rawr'
+type MetricId = 'wowy' | 'wowy_shrunk' | 'rawr'
 
 type SpanPoint = {
   season: string
@@ -351,10 +351,14 @@ function App() {
   const seasonSummary = leaderboard?.span.available_seasons.length
     ? `${leaderboard.span.available_seasons[0]} to ${leaderboard.span.available_seasons.at(-1)}`
     : 'No seasons loaded'
+  const isRawrMetric = metric === 'rawr'
+  const isWowyStyleMetric = !isRawrMetric
   const metricDescription =
     metric === 'wowy'
       ? 'Cross-season on/off impact from with-and-without samples.'
-      : 'Game-level ridge model of player impact across the cached history.'
+      : metric === 'wowy_shrunk'
+        ? 'WOWY impact with shrinkage applied to pull small-sample seasons toward the prior.'
+        : 'Game-level ridge model of player impact across the cached history.'
   const chartStatusLabel =
     mode === 'cached' ? `Loading cached ${metricLabel} leaders...` : `Running ${metricLabel} query...`
   const resultsTitle =
@@ -380,6 +384,13 @@ function App() {
                 onClick={() => setMetric('rawr')}
               >
                 RAWR
+              </button>
+              <button
+                type="button"
+                className={metric === 'wowy_shrunk' ? 'mode-tab active' : 'mode-tab'}
+                onClick={() => setMetric('wowy_shrunk')}
+              >
+                WOWY Shrinkage
               </button>
               <button
                 type="button"
@@ -534,7 +545,7 @@ function App() {
             />
           </label>
 
-          {metric === 'rawr' ? (
+          {isRawrMetric ? (
             <div className="query-section-heading">
               <p className="panel-label">Pre-Fit Model Filter</p>
               <p className="query-section-note">
@@ -544,22 +555,22 @@ function App() {
           ) : null}
 
           <label>
-            <span>{metric === 'rawr' ? 'Min games' : 'Min games with'}</span>
+            <span>{isRawrMetric ? 'Min games' : 'Min games with'}</span>
             <input
               type="number"
               min="0"
-              value={metric === 'rawr' ? customFilters.minGames : customFilters.minGamesWith}
+              value={isRawrMetric ? customFilters.minGames : customFilters.minGamesWith}
               onChange={(event) =>
                 updateCustomNumber(
                   setCustomFilters,
-                  metric === 'rawr' ? 'minGames' : 'minGamesWith',
+                  isRawrMetric ? 'minGames' : 'minGamesWith',
                   event,
                 )
               }
             />
           </label>
 
-          {metric === 'rawr' ? (
+          {isRawrMetric ? (
             <label>
               <span>Ridge alpha</span>
               <input
@@ -572,7 +583,7 @@ function App() {
             </label>
           ) : null}
 
-          {metric === 'wowy' ? (
+          {isWowyStyleMetric ? (
             <label>
               <span>Min games without</span>
               <input
@@ -584,7 +595,7 @@ function App() {
             </label>
           ) : null}
 
-          {metric === 'rawr' ? (
+          {isRawrMetric ? (
             <div className="query-section-heading">
               <p className="panel-label">Post-Fit Output Filters</p>
               <p className="query-section-note">
@@ -789,7 +800,7 @@ function App() {
                       <th>Seasons</th>
                       <th>Avg Min</th>
                       <th>Tot Min</th>
-                      {metric === 'wowy' ? (
+                      {isWowyStyleMetric ? (
                         <>
                           <th>With</th>
                           <th>Without</th>
@@ -810,7 +821,7 @@ function App() {
                         <td>{row.season_count}</td>
                         <td>{formatNumber(row.average_minutes, 1)}</td>
                         <td>{formatNumber(row.total_minutes, 1)}</td>
-                        {metric === 'wowy' ? (
+                        {isWowyStyleMetric ? (
                           <>
                             <td>{row.games_with}</td>
                             <td>{row.games_without}</td>
@@ -954,11 +965,17 @@ function buildLoadingPhases(
     return [
       {
         label: 'Gathering sample',
-        detail: 'Collecting the requested team and season slice from the cached WOWY inputs.',
+        detail:
+          metric === 'wowy_shrunk'
+            ? 'Collecting the requested team and season slice from the cached WOWY inputs before shrinkage is applied.'
+            : 'Collecting the requested team and season slice from the cached WOWY inputs.',
       },
       {
-        label: 'Running WOWY',
-        detail: 'Computing with/without impact for each player across the selected game sample.',
+        label: metric === 'wowy_shrunk' ? 'Applying shrinkage' : 'Running WOWY',
+        detail:
+          metric === 'wowy_shrunk'
+            ? 'Computing with/without impact and shrinking each player-season toward the prior based on sample balance.'
+            : 'Computing with/without impact for each player across the selected game sample.',
       },
       {
         label: 'Ranking span',
@@ -970,7 +987,10 @@ function buildLoadingPhases(
   return [
     {
       label: 'Loading cache',
-      detail: 'Reading cached WOWY player-season rows for the selected scope.',
+      detail:
+        metric === 'wowy_shrunk'
+          ? 'Reading cached WOWY shrinkage player-season rows for the selected scope.'
+          : 'Reading cached WOWY player-season rows for the selected scope.',
     },
     {
       label: 'Applying filters',
