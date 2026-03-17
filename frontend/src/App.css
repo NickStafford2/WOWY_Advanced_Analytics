@@ -67,6 +67,7 @@
 .metric-container {
   display: flex;
   flex-direction: column;
+  gap: .7em;
 }
 
 .metric-select {

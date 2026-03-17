@@ -393,298 +393,298 @@ function App() {
       <div className="page-content">
         {mode === 'cached' ? (
           <section className="control-panel">
-          <label>
-            <span>Team scope</span>
-            <select
-              value={cachedFilters.team}
-              onChange={(event) =>
-                setCachedFilters((current) => ({ ...current, team: event.target.value }))
-              }
+            <label>
+              <span>Team scope</span>
+              <select
+                value={cachedFilters.team}
+                onChange={(event) =>
+                  setCachedFilters((current) => ({ ...current, team: event.target.value }))
+                }
+                disabled={isBootstrapping || isLoading}
+              >
+                <option value="">All teams</option>
+                {availableTeams.map((team) => (
+                  <option key={team} value={team}>
+                    {team}
+                  </option>
+                ))}
+              </select>
+            </label>
+
+            <label>
+              <span>Cached span</span>
+              <output className="control-output">{seasonSummary}</output>
+            </label>
+
+            <label>
+              <span>Top players</span>
+              <input
+                type="number"
+                min="1"
+                max="50"
+                value={cachedFilters.topN}
+                onChange={(event) =>
+                  setCachedFilters((current) => ({
+                    ...current,
+                    topN: Number(event.target.value),
+                  }))
+                }
+              />
+            </label>
+
+            <button
+              type="button"
+              className="run-button"
+              onClick={() => void loadCachedLeaderboard(metric)}
               disabled={isBootstrapping || isLoading}
             >
-              <option value="">All teams</option>
-              {availableTeams.map((team) => (
-                <option key={team} value={team}>
-                  {team}
-                </option>
-              ))}
-            </select>
-          </label>
-
-          <label>
-            <span>Cached span</span>
-            <output className="control-output">{seasonSummary}</output>
-          </label>
-
-          <label>
-            <span>Top players</span>
-            <input
-              type="number"
-              min="1"
-              max="50"
-              value={cachedFilters.topN}
-              onChange={(event) =>
-                setCachedFilters((current) => ({
-                  ...current,
-                  topN: Number(event.target.value),
-                }))
-              }
-            />
-          </label>
-
-          <button
-            type="button"
-            className="run-button"
-            onClick={() => void loadCachedLeaderboard(metric)}
-            disabled={isBootstrapping || isLoading}
-          >
-            {isLoading ? 'Loading...' : 'Refresh leaders'}
-          </button>
+              {isLoading ? 'Loading...' : 'Refresh leaders'}
+            </button>
           </section>
         ) : (
           <section className="query-panel">
-          <label>
-            <span>Start season</span>
-            <select
-              value={customFilters.startSeason}
-              onChange={(event) =>
-                setCustomFilters((current) => ({
-                  ...current,
-                  startSeason: event.target.value,
-                }))
-              }
-              disabled={isBootstrapping || isLoading}
-            >
-              {availableSeasons.map((season) => (
-                <option key={season} value={season}>
-                  {season}
-                </option>
-              ))}
-            </select>
-          </label>
-
-          <label>
-            <span>End season</span>
-            <select
-              value={customFilters.endSeason}
-              onChange={(event) =>
-                setCustomFilters((current) => ({
-                  ...current,
-                  endSeason: event.target.value,
-                }))
-              }
-              disabled={isBootstrapping || isLoading}
-            >
-              {availableSeasons.map((season) => (
-                <option key={season} value={season}>
-                  {season}
-                </option>
-              ))}
-            </select>
-          </label>
-
-          <label className="query-multi">
-            <span>Teams</span>
-            <select
-              multiple
-              value={customFilters.teams}
-              onChange={handleCustomTeamsChange(setCustomFilters)}
-              disabled={isBootstrapping || isLoading}
-            >
-              {availableTeams.map((team) => (
-                <option key={team} value={team}>
-                  {team}
-                </option>
-              ))}
-            </select>
-            <small>Leave empty to query all teams in the selected span.</small>
-          </label>
-
-          <label>
-            <span>Top players</span>
-            <input
-              type="number"
-              min="1"
-              max="50"
-              value={customFilters.topN}
-              onChange={(event) => updateCustomNumber(setCustomFilters, 'topN', event)}
-            />
-          </label>
-
-          {isRawrMetric ? (
-            <div className="query-section-heading">
-              <p className="panel-label">Pre-Fit Model Filter</p>
-              <p className="query-section-note">
-                `Min games` is applied before regression and changes which players enter the model.
-              </p>
-            </div>
-          ) : null}
-
-          <label>
-            <span>{isRawrMetric ? 'Min games' : 'Min games with'}</span>
-            <input
-              type="number"
-              min="0"
-              value={isRawrMetric ? customFilters.minGames : customFilters.minGamesWith}
-              onChange={(event) =>
-                updateCustomNumber(
-                  setCustomFilters,
-                  isRawrMetric ? 'minGames' : 'minGamesWith',
-                  event,
-                )
-              }
-            />
-          </label>
-
-          {isRawrMetric ? (
             <label>
-              <span>Ridge alpha</span>
+              <span>Start season</span>
+              <select
+                value={customFilters.startSeason}
+                onChange={(event) =>
+                  setCustomFilters((current) => ({
+                    ...current,
+                    startSeason: event.target.value,
+                  }))
+                }
+                disabled={isBootstrapping || isLoading}
+              >
+                {availableSeasons.map((season) => (
+                  <option key={season} value={season}>
+                    {season}
+                  </option>
+                ))}
+              </select>
+            </label>
+
+            <label>
+              <span>End season</span>
+              <select
+                value={customFilters.endSeason}
+                onChange={(event) =>
+                  setCustomFilters((current) => ({
+                    ...current,
+                    endSeason: event.target.value,
+                  }))
+                }
+                disabled={isBootstrapping || isLoading}
+              >
+                {availableSeasons.map((season) => (
+                  <option key={season} value={season}>
+                    {season}
+                  </option>
+                ))}
+              </select>
+            </label>
+
+            <label className="query-multi">
+              <span>Teams</span>
+              <select
+                multiple
+                value={customFilters.teams}
+                onChange={handleCustomTeamsChange(setCustomFilters)}
+                disabled={isBootstrapping || isLoading}
+              >
+                {availableTeams.map((team) => (
+                  <option key={team} value={team}>
+                    {team}
+                  </option>
+                ))}
+              </select>
+              <small>Leave empty to query all teams in the selected span.</small>
+            </label>
+
+            <label>
+              <span>Top players</span>
+              <input
+                type="number"
+                min="1"
+                max="50"
+                value={customFilters.topN}
+                onChange={(event) => updateCustomNumber(setCustomFilters, 'topN', event)}
+              />
+            </label>
+
+            {isRawrMetric ? (
+              <div className="query-section-heading">
+                <p className="panel-label">Pre-Fit Model Filter</p>
+                <p className="query-section-note">
+                  `Min games` is applied before regression and changes which players enter the model.
+                </p>
+              </div>
+            ) : null}
+
+            <label>
+              <span>{isRawrMetric ? 'Min games' : 'Min games with'}</span>
+              <input
+                type="number"
+                min="0"
+                value={isRawrMetric ? customFilters.minGames : customFilters.minGamesWith}
+                onChange={(event) =>
+                  updateCustomNumber(
+                    setCustomFilters,
+                    isRawrMetric ? 'minGames' : 'minGamesWith',
+                    event,
+                  )
+                }
+              />
+            </label>
+
+            {isRawrMetric ? (
+              <label>
+                <span>Ridge alpha</span>
+                <input
+                  type="number"
+                  min="0"
+                  step="0.5"
+                  value={customFilters.ridgeAlpha}
+                  onChange={(event) => updateCustomNumber(setCustomFilters, 'ridgeAlpha', event)}
+                />
+              </label>
+            ) : null}
+
+            {isWowyStyleMetric ? (
+              <label>
+                <span>Min games without</span>
+                <input
+                  type="number"
+                  min="0"
+                  value={customFilters.minGamesWithout}
+                  onChange={(event) => updateCustomNumber(setCustomFilters, 'minGamesWithout', event)}
+                />
+              </label>
+            ) : null}
+
+            {isRawrMetric ? (
+              <div className="query-section-heading">
+                <p className="panel-label">Post-Fit Output Filters</p>
+                <p className="query-section-note">
+                  Minute thresholds are applied after the regression is fit and only trim the returned rows.
+                </p>
+              </div>
+            ) : null}
+
+            <label>
+              <span>Min average minutes</span>
               <input
                 type="number"
                 min="0"
                 step="0.5"
-                value={customFilters.ridgeAlpha}
-                onChange={(event) => updateCustomNumber(setCustomFilters, 'ridgeAlpha', event)}
+                value={customFilters.minAverageMinutes}
+                onChange={(event) =>
+                  updateCustomNumber(setCustomFilters, 'minAverageMinutes', event)
+                }
               />
             </label>
-          ) : null}
 
-          {isWowyStyleMetric ? (
             <label>
-              <span>Min games without</span>
+              <span>Min total minutes</span>
               <input
                 type="number"
                 min="0"
-                value={customFilters.minGamesWithout}
-                onChange={(event) => updateCustomNumber(setCustomFilters, 'minGamesWithout', event)}
+                step="10"
+                value={customFilters.minTotalMinutes}
+                onChange={(event) => updateCustomNumber(setCustomFilters, 'minTotalMinutes', event)}
               />
             </label>
-          ) : null}
 
-          {isRawrMetric ? (
-            <div className="query-section-heading">
-              <p className="panel-label">Post-Fit Output Filters</p>
-              <p className="query-section-note">
-                Minute thresholds are applied after the regression is fit and only trim the returned rows.
-              </p>
-            </div>
-          ) : null}
-
-          <label>
-            <span>Min average minutes</span>
-            <input
-              type="number"
-              min="0"
-              step="0.5"
-              value={customFilters.minAverageMinutes}
-              onChange={(event) =>
-                updateCustomNumber(setCustomFilters, 'minAverageMinutes', event)
+            <button
+              type="button"
+              className="run-button query-run"
+              onClick={() => void runCustomQuery()}
+              disabled={
+                isBootstrapping ||
+                isLoading ||
+                !customFilters.startSeason ||
+                !customFilters.endSeason
               }
-            />
-          </label>
-
-          <label>
-            <span>Min total minutes</span>
-            <input
-              type="number"
-              min="0"
-              step="10"
-              value={customFilters.minTotalMinutes}
-              onChange={(event) => updateCustomNumber(setCustomFilters, 'minTotalMinutes', event)}
-            />
-          </label>
-
-          <button
-            type="button"
-            className="run-button query-run"
-            onClick={() => void runCustomQuery()}
-            disabled={
-              isBootstrapping ||
-              isLoading ||
-              !customFilters.startSeason ||
-              !customFilters.endSeason
-            }
-          >
-            {isLoading ? 'Running...' : 'Run query'}
-          </button>
+            >
+              {isLoading ? 'Running...' : 'Run query'}
+            </button>
           </section>
         )}
 
         <section className="chart-panel">
-        <div className="chart-header">
-          <div>
-            <p className="panel-label">{mode === 'cached' ? 'Cached board' : 'Custom run'}</p>
-            <h2>{leaderboard?.span.start_season ? seasonSummary : `${metricLabel} results`}</h2>
-          </div>
-          {leaderboard ? (
-            <div className="chart-meta">
-              <span>{leaderboard.table_rows.length} series</span>
-              <span>{leaderboard.span.available_seasons.length} seasons</span>
-              <span>{leaderboard.mode === 'cached' ? 'Cached' : 'Recalculated live'}</span>
+          <div className="chart-header">
+            <div>
+              <p className="panel-label">{mode === 'cached' ? 'Cached board' : 'Custom run'}</p>
+              <h2>{leaderboard?.span.start_season ? seasonSummary : `${metricLabel} results`}</h2>
             </div>
-          ) : null}
-        </div>
-
-        {error ? <p className="status error">{error}</p> : null}
-        {!error && loadingPanel ? (
-          <section className="status status-loading" aria-live="polite">
-            <div className="status-progress-header">
-              <div>
-                <p className="panel-label">Live status</p>
-                <h3>{loadingPanel.title}</h3>
+            {leaderboard ? (
+              <div className="chart-meta">
+                <span>{leaderboard.table_rows.length} series</span>
+                <span>{leaderboard.span.available_seasons.length} seasons</span>
+                <span>{leaderboard.mode === 'cached' ? 'Cached' : 'Recalculated live'}</span>
               </div>
-              <strong>{loadingPanel.progressPercent}%</strong>
-            </div>
-            <p className="status-summary">{loadingPanel.summary}</p>
-            <div
-              className="status-progress-track"
-              role="progressbar"
-              aria-valuemin={0}
-              aria-valuemax={100}
-              aria-valuenow={loadingPanel.progressPercent}
-              aria-label={loadingPanel.progressLabel}
-            >
+            ) : null}
+          </div>
+
+          {error ? <p className="status error">{error}</p> : null}
+          {!error && loadingPanel ? (
+            <section className="status status-loading" aria-live="polite">
+              <div className="status-progress-header">
+                <div>
+                  <p className="panel-label">Live status</p>
+                  <h3>{loadingPanel.title}</h3>
+                </div>
+                <strong>{loadingPanel.progressPercent}%</strong>
+              </div>
+              <p className="status-summary">{loadingPanel.summary}</p>
               <div
-                className="status-progress-fill"
-                style={{ width: `${loadingPanel.progressPercent}%` }}
+                className="status-progress-track"
+                role="progressbar"
+                aria-valuemin={0}
+                aria-valuemax={100}
+                aria-valuenow={loadingPanel.progressPercent}
+                aria-label={loadingPanel.progressLabel}
+              >
+                <div
+                  className="status-progress-fill"
+                  style={{ width: `${loadingPanel.progressPercent}%` }}
+                />
+              </div>
+              <p className="status-progress-label">{loadingPanel.progressLabel}</p>
+              <div className="status-phase-list">
+                {loadingPanel.phases.map((phase, index) => (
+                  <article
+                    key={phase.label}
+                    className={
+                      index === loadingPanel.activePhaseIndex ? 'status-phase active' : 'status-phase'
+                    }
+                  >
+                    <strong>{phase.label}</strong>
+                    <p>{phase.detail}</p>
+                  </article>
+                ))}
+              </div>
+            </section>
+          ) : null}
+          {!error && !loadingPanel && showLoadingPanel && (isBootstrapping || isLoading) ? (
+            <p className="status">{chartStatusLabel}</p>
+          ) : null}
+          {!error && !isLoading && !leaderboard ? (
+            <p className="status">No leaderboard data loaded yet.</p>
+          ) : null}
+          {!error && !isLoading && leaderboard && leaderboard.table_rows.length === 0 ? (
+            <p className="status">No players matched the current filters.</p>
+          ) : null}
+          {!error && !isLoading && leaderboard && leaderboard.table_rows.length > 0 ? (
+            <>
+              <LeaderboardChart metricLabel={metricLabel} series={leaderboard.series} />
+              <ResultsTable
+                metricLabel={metricLabel}
+                resultsTitle={resultsTitle}
+                rows={leaderboard.table_rows}
+                isWowyStyleMetric={isWowyStyleMetric}
               />
-            </div>
-            <p className="status-progress-label">{loadingPanel.progressLabel}</p>
-            <div className="status-phase-list">
-              {loadingPanel.phases.map((phase, index) => (
-                <article
-                  key={phase.label}
-                  className={
-                    index === loadingPanel.activePhaseIndex ? 'status-phase active' : 'status-phase'
-                  }
-                >
-                  <strong>{phase.label}</strong>
-                  <p>{phase.detail}</p>
-                </article>
-              ))}
-            </div>
-          </section>
-        ) : null}
-        {!error && !loadingPanel && showLoadingPanel && (isBootstrapping || isLoading) ? (
-          <p className="status">{chartStatusLabel}</p>
-        ) : null}
-        {!error && !isLoading && !leaderboard ? (
-          <p className="status">No leaderboard data loaded yet.</p>
-        ) : null}
-        {!error && !isLoading && leaderboard && leaderboard.table_rows.length === 0 ? (
-          <p className="status">No players matched the current filters.</p>
-        ) : null}
-        {!error && !isLoading && leaderboard && leaderboard.table_rows.length > 0 ? (
-          <>
-            <LeaderboardChart metricLabel={metricLabel} series={leaderboard.series} />
-            <ResultsTable
-              metricLabel={metricLabel}
-              resultsTitle={resultsTitle}
-              rows={leaderboard.table_rows}
-              isWowyStyleMetric={isWowyStyleMetric}
-            />
-          </>
-        ) : null}
+            </>
+          ) : null}
         </section>
       </div>
     </main>
