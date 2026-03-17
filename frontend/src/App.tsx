@@ -391,60 +391,10 @@ function App() {
       </section>
 
       <div className="page-content">
-        {mode === 'cached' ? (
-          <section className="control-panel">
-            <label>
-              <span>Team scope</span>
-              <select
-                value={cachedFilters.team}
-                onChange={(event) =>
-                  setCachedFilters((current) => ({ ...current, team: event.target.value }))
-                }
-                disabled={isBootstrapping || isLoading}
-              >
-                <option value="">All teams</option>
-                {availableTeams.map((team) => (
-                  <option key={team} value={team}>
-                    {team}
-                  </option>
-                ))}
-              </select>
-            </label>
-
-            <label>
-              <span>Cached span</span>
-              <output className="control-output">{seasonSummary}</output>
-            </label>
-
-            <label>
-              <span>Top players</span>
-              <input
-                type="number"
-                min="1"
-                max="50"
-                value={cachedFilters.topN}
-                onChange={(event) =>
-                  setCachedFilters((current) => ({
-                    ...current,
-                    topN: Number(event.target.value),
-                  }))
-                }
-              />
-            </label>
-
-            <button
-              type="button"
-              className="run-button"
-              onClick={() => void loadCachedLeaderboard(metric)}
-              disabled={isBootstrapping || isLoading}
-            >
-              {isLoading ? 'Loading...' : 'Refresh leaders'}
-            </button>
-          </section>
-        ) : (
+        {mode === 'custom' ? (
           <section className="query-panel">
-            <label>
-              <span>Start season</span>
+          <label>
+            <span>Start season</span>
               <select
                 value={customFilters.startSeason}
                 onChange={(event) =>
@@ -604,11 +554,11 @@ function App() {
                 !customFilters.startSeason ||
                 !customFilters.endSeason
               }
-            >
-              {isLoading ? 'Running...' : 'Run query'}
-            </button>
+          >
+            {isLoading ? 'Running...' : 'Run query'}
+          </button>
           </section>
-        )}
+        ) : null}
 
         <section className="chart-panel">
           <div className="chart-header">
