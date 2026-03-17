@@ -9,7 +9,7 @@ from tests.support import (
     seed_db_from_team_seasons,
 )
 from wowy.data.game_cache_db import replace_team_season_normalized_rows
-from wowy.data.player_metrics_db import load_metric_rows
+from wowy.data.player_metrics_db import load_metric_rows, load_metric_store_metadata
 from wowy.web.app import create_app
 from wowy.web.service import (
     WOWY_SHRUNK_METRIC,
@@ -180,6 +180,43 @@ def test_refresh_metric_store_builds_rawr_player_season_rows(
     assert all(row.season == "2023-24" for row in rows)
     assert all(row.sample_size and row.sample_size >= 1 for row in rows)
     assert all(row.details == {"games": row.sample_size} for row in rows)
+
+
+def test_refresh_metric_store_can_skip_team_scopes(
+    tmp_path: Path,
+):
+    player_metrics_db_path = tmp_path / "app" / "player_metrics.sqlite3"
+    seed_db_from_team_seasons(player_metrics_db_path, _wowy_options_seed())
+    refresh_metric_store(
+        WOWY_METRIC,
+        season_type="Regular Season",
+        db_path=player_metrics_db_path,
+        source_data_dir=tmp_path / "source",
+        include_team_scopes=False,
+    )
+
+    all_scope_key, _team_filter = build_scope_key(
+        teams=None,
+        season_type="Regular Season",
+    )
+    team_scope_key, _team_filter = build_scope_key(
+        teams=["BOS"],
+        season_type="Regular Season",
+    )
+
+    assert load_metric_store_metadata(
+        player_metrics_db_path,
+        WOWY_METRIC,
+        all_scope_key,
+    ) is not None
+    assert (
+        load_metric_store_metadata(
+            player_metrics_db_path,
+            WOWY_METRIC,
+            team_scope_key,
+        )
+        is None
+    )
 
 
 def test_refresh_metric_store_builds_wowy_shrunk_rows(

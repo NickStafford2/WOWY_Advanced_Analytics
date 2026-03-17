@@ -241,6 +241,7 @@ def refresh_metric_store(
     db_path: Path = DEFAULT_PLAYER_METRICS_DB_PATH,
     source_data_dir: Path,
     rawr_ridge_alpha: float = DEFAULT_RAWR_RIDGE_ALPHA,
+    include_team_scopes: bool = True,
     progress: RefreshProgressFn | None = None,
 ) -> None:
     definition = get_metric_definition(metric)
@@ -253,7 +254,9 @@ def refresh_metric_store(
         season_type=season_type,
     )
     available_teams = sorted({team_season.team for team_season in cached_team_seasons})
-    team_scopes: list[list[str] | None] = [None, *[[team] for team in available_teams]]
+    team_scopes: list[list[str] | None] = [None]
+    if include_team_scopes:
+        team_scopes.extend([[team] for team in available_teams])
 
     for index, teams in enumerate(team_scopes):
         scope_key, team_filter = build_scope_key(teams=teams, season_type=season_type)

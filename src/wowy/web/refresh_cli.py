@@ -71,6 +71,7 @@ def main(argv: list[str] | None = None) -> int:
         db_path=args.player_metrics_db_path,
         source_data_dir=args.source_data_dir,
         rawr_ridge_alpha=args.rawr_ridge_alpha,
+        include_team_scopes=False,
         progress=lambda current, total, detail: _update_progress(
             progress_bar,
             current=current,
