@@ -160,22 +160,38 @@
 .query-panel {
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
-  gap: 16px;
-  padding: 18px;
+  gap: 12px;
+  padding: 14px;
   margin-top: 18px;
   background: rgba(250, 250, 247, 0.92);
 }
 
-.query-section-heading {
-  grid-column: 1 / -1;
-  padding-top: 4px;
+.query-card {
+  padding: 12px;
+  border: 1px solid rgba(50, 63, 79, 0.1);
+  border-radius: 18px;
+  background: rgba(255, 255, 255, 0.6);
+}
+
+.query-card--span-2 {
+  grid-column: span 2;
+}
+
+.query-card-header {
+  margin-bottom: 10px;
 }
 
 .query-section-note {
-  margin: 6px 0 0;
-  font-size: 0.92rem;
-  line-height: 1.5;
+  margin: 4px 0 0;
+  font-size: 0.82rem;
+  line-height: 1.45;
   color: #5c6d7a;
+}
+
+.query-compact-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
 }
 
 .control-panel label {
@@ -189,8 +205,8 @@
 .query-panel label {
   display: flex;
   flex-direction: column;
-  gap: 8px;
-  font-size: 0.92rem;
+  gap: 6px;
+  font-size: 0.84rem;
   color: #445464;
 }
 
@@ -200,8 +216,8 @@
 .query-panel input,
 .control-output,
 .run-button {
-  min-height: 48px;
-  border-radius: 14px;
+  min-height: 40px;
+  border-radius: 12px;
   border: 1px solid rgba(51, 63, 78, 0.18);
   font: inherit;
 }
@@ -218,15 +234,15 @@
 .query-multi {
   grid-column: span 2;
   margin: 0;
-  padding: 0;
-  border: none;
+  padding: 12px;
   min-width: 0;
 }
 
 .query-multi legend {
-  margin-bottom: 8px;
+  margin-bottom: 6px;
   padding: 0;
-  font-size: 0.92rem;
+  font-size: 0.84rem;
+  font-weight: 700;
   color: #445464;
 }
 
@@ -257,24 +273,24 @@
 
 .query-multi small {
   display: block;
-  margin-top: 8px;
-  font-size: 0.8rem;
+  margin-top: 6px;
+  font-size: 0.74rem;
   color: #6a7986;
 }
 
 .query-team-grid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(48px, 1fr));
-  gap: 6px;
+  gap: 5px;
 }
 
 .team-chip {
   display: flex;
   align-items: center;
   justify-content: center;
-  min-height: 32px;
+  min-height: 28px;
   border: 1px solid rgba(51, 63, 78, 0.18);
-  border-radius: 10px;
+  border-radius: 9px;
   background: rgba(255, 255, 255, 0.88);
   color: #445464;
   cursor: pointer;
@@ -291,9 +307,9 @@
 }
 
 .team-chip span {
-  font-size: 0.76rem;
+  font-size: 0.72rem;
   font-weight: 700;
-  letter-spacing: 0.03em;
+  letter-spacing: 0.02em;
 }
 
 .team-chip.is-selected {
@@ -309,7 +325,13 @@
 }
 
 .query-run {
-  align-self: end;
+  min-width: 180px;
+}
+
+.query-actions {
+  grid-column: 1 / -1;
+  display: flex;
+  justify-content: flex-end;
 }
 
 .run-button {

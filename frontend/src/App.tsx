@@ -395,47 +395,65 @@ function App() {
       <div className="page-content">
         {mode === 'custom' ? (
           <section className="query-panel">
-          <label>
-            <span>Start season</span>
-              <select
-                value={customFilters.startSeason}
-                onChange={(event) =>
-                  setCustomFilters((current) => ({
-                    ...current,
-                    startSeason: event.target.value,
-                  }))
-                }
-                disabled={isBootstrapping || isLoading}
-              >
-                {availableSeasons.map((season) => (
-                  <option key={season} value={season}>
-                    {season}
-                  </option>
-                ))}
-              </select>
-            </label>
+            <div className="query-card query-card--span-2">
+              <div className="query-card-header">
+                <p className="panel-label">Scope</p>
+              </div>
+              <div className="query-compact-grid">
+                <label>
+                  <span>Start season</span>
+                  <select
+                    value={customFilters.startSeason}
+                    onChange={(event) =>
+                      setCustomFilters((current) => ({
+                        ...current,
+                        startSeason: event.target.value,
+                      }))
+                    }
+                    disabled={isBootstrapping || isLoading}
+                  >
+                    {availableSeasons.map((season) => (
+                      <option key={season} value={season}>
+                        {season}
+                      </option>
+                    ))}
+                  </select>
+                </label>
 
-            <label>
-              <span>End season</span>
-              <select
-                value={customFilters.endSeason}
-                onChange={(event) =>
-                  setCustomFilters((current) => ({
-                    ...current,
-                    endSeason: event.target.value,
-                  }))
-                }
-                disabled={isBootstrapping || isLoading}
-              >
-                {availableSeasons.map((season) => (
-                  <option key={season} value={season}>
-                    {season}
-                  </option>
-                ))}
-              </select>
-            </label>
+                <label>
+                  <span>End season</span>
+                  <select
+                    value={customFilters.endSeason}
+                    onChange={(event) =>
+                      setCustomFilters((current) => ({
+                        ...current,
+                        endSeason: event.target.value,
+                      }))
+                    }
+                    disabled={isBootstrapping || isLoading}
+                  >
+                    {availableSeasons.map((season) => (
+                      <option key={season} value={season}>
+                        {season}
+                      </option>
+                    ))}
+                  </select>
+                </label>
 
-            <fieldset className="query-multi">
+                <label>
+                  <span>Top players</span>
+                  <input
+                    type="number"
+                    min="1"
+                    max="50"
+                    value={customFilters.topN}
+                    onChange={(event) => updateCustomNumber(setCustomFilters, 'topN', event)}
+                  />
+                </label>
+              </div>
+            </div>
+
+            <fieldset className="query-card query-card--span-2 query-multi">
               <legend>Teams</legend>
               <button
                 type="button"
@@ -464,113 +482,100 @@ function App() {
               <small>Leave all unchecked to query all teams in the selected span.</small>
             </fieldset>
 
-            <label>
-              <span>Top players</span>
-              <input
-                type="number"
-                min="1"
-                max="50"
-                value={customFilters.topN}
-                onChange={(event) => updateCustomNumber(setCustomFilters, 'topN', event)}
-              />
-            </label>
-
-            {isRawrMetric ? (
-              <div className="query-section-heading">
-                <p className="panel-label">Pre-Fit Model Filter</p>
+            <div className="query-card query-card--span-2">
+              <div className="query-card-header">
+                <p className="panel-label">{isRawrMetric ? 'Model filters' : 'Query filters'}</p>
                 <p className="query-section-note">
-                  `Min games` is applied before regression and changes which players enter the model.
+                  {isRawrMetric
+                    ? 'Model entry and output thresholds are combined here to keep the query compact.'
+                    : 'Set minimum on and off samples plus minute thresholds for the result set.'}
                 </p>
               </div>
-            ) : null}
+              <div className="query-compact-grid">
+                <label>
+                  <span>{isRawrMetric ? 'Min games' : 'Min games with'}</span>
+                  <input
+                    type="number"
+                    min="0"
+                    value={isRawrMetric ? customFilters.minGames : customFilters.minGamesWith}
+                    onChange={(event) =>
+                      updateCustomNumber(
+                        setCustomFilters,
+                        isRawrMetric ? 'minGames' : 'minGamesWith',
+                        event,
+                      )
+                    }
+                  />
+                </label>
 
-            <label>
-              <span>{isRawrMetric ? 'Min games' : 'Min games with'}</span>
-              <input
-                type="number"
-                min="0"
-                value={isRawrMetric ? customFilters.minGames : customFilters.minGamesWith}
-                onChange={(event) =>
-                  updateCustomNumber(
-                    setCustomFilters,
-                    isRawrMetric ? 'minGames' : 'minGamesWith',
-                    event,
-                  )
-                }
-              />
-            </label>
+                {isRawrMetric ? (
+                  <label>
+                    <span>Ridge alpha</span>
+                    <input
+                      type="number"
+                      min="0"
+                      step="0.5"
+                      value={customFilters.ridgeAlpha}
+                      onChange={(event) => updateCustomNumber(setCustomFilters, 'ridgeAlpha', event)}
+                    />
+                  </label>
+                ) : (
+                  <label>
+                    <span>Min games without</span>
+                    <input
+                      type="number"
+                      min="0"
+                      value={customFilters.minGamesWithout}
+                      onChange={(event) =>
+                        updateCustomNumber(setCustomFilters, 'minGamesWithout', event)
+                      }
+                    />
+                  </label>
+                )}
 
-            {isRawrMetric ? (
-              <label>
-                <span>Ridge alpha</span>
-                <input
-                  type="number"
-                  min="0"
-                  step="0.5"
-                  value={customFilters.ridgeAlpha}
-                  onChange={(event) => updateCustomNumber(setCustomFilters, 'ridgeAlpha', event)}
-                />
-              </label>
-            ) : null}
+                <label>
+                  <span>Min average minutes</span>
+                  <input
+                    type="number"
+                    min="0"
+                    step="0.5"
+                    value={customFilters.minAverageMinutes}
+                    onChange={(event) =>
+                      updateCustomNumber(setCustomFilters, 'minAverageMinutes', event)
+                    }
+                  />
+                </label>
 
-            {isWowyStyleMetric ? (
-              <label>
-                <span>Min games without</span>
-                <input
-                  type="number"
-                  min="0"
-                  value={customFilters.minGamesWithout}
-                  onChange={(event) => updateCustomNumber(setCustomFilters, 'minGamesWithout', event)}
-                />
-              </label>
-            ) : null}
-
-            {isRawrMetric ? (
-              <div className="query-section-heading">
-                <p className="panel-label">Post-Fit Output Filters</p>
-                <p className="query-section-note">
-                  Minute thresholds are applied after the regression is fit and only trim the returned rows.
-                </p>
+                <label>
+                  <span>Min total minutes</span>
+                  <input
+                    type="number"
+                    min="0"
+                    step="10"
+                    value={customFilters.minTotalMinutes}
+                    onChange={(event) =>
+                      updateCustomNumber(setCustomFilters, 'minTotalMinutes', event)
+                    }
+                  />
+                </label>
               </div>
-            ) : null}
+            </div>
 
-            <label>
-              <span>Min average minutes</span>
-              <input
-                type="number"
-                min="0"
-                step="0.5"
-                value={customFilters.minAverageMinutes}
-                onChange={(event) =>
-                  updateCustomNumber(setCustomFilters, 'minAverageMinutes', event)
+            <div className="query-actions">
+              <button
+                type="button"
+                className="run-button query-run"
+                onClick={() => void runCustomQuery()}
+                disabled={
+                  isBootstrapping ||
+                  isLoading ||
+                  !customFilters.startSeason ||
+                  !customFilters.endSeason
                 }
-              />
-            </label>
-
-            <label>
-              <span>Min total minutes</span>
-              <input
-                type="number"
-                min="0"
-                step="10"
-                value={customFilters.minTotalMinutes}
-                onChange={(event) => updateCustomNumber(setCustomFilters, 'minTotalMinutes', event)}
-              />
-            </label>
-
-            <button
-              type="button"
-              className="run-button query-run"
-              onClick={() => void runCustomQuery()}
-              disabled={
-                isBootstrapping ||
-                isLoading ||
-                !customFilters.startSeason ||
-                !customFilters.endSeason
-              }
-          >
-            {isLoading ? 'Running...' : 'Run query'}
-          </button>
+              >
+                {isLoading ? 'Running...' : 'Run query'}
+              </button>
+            </div>
           </section>
         ) : null}
 
