@@ -54,7 +54,7 @@ def test_cache_team_season_data_writes_normalized_outputs(
             }
 
     class FakeBoxScoreTraditionalV2:
-        def __init__(self, game_id: str):
+        def __init__(self, game_id: str, timeout: int | None = None):
             self.game_id = game_id
 
         def get_dict(self):
@@ -71,6 +71,9 @@ def test_cache_team_season_data_writes_normalized_outputs(
                             "rowSet": [
                                 ["BOS", 1628369, "Jayson Tatum", "35:12"],
                                 ["BOS", 1627759, "Jaylen Brown", "34:01"],
+                                ["BOS", 1628401, "Derrick White", "55:00"],
+                                ["BOS", 1629680, "Al Horford", "55:00"],
+                                ["BOS", 1629641, "Kristaps Porzingis", "60:47"],
                                 ["BOS", 999999, "Deep Bench", "0:00"],
                                 ["LAL", 200000, "Opponent Player", "33:44"],
                             ],
@@ -94,6 +97,9 @@ def test_cache_team_season_data_writes_normalized_outputs(
                         "rowSet": [
                             ["BOS", 1628369, "Jayson Tatum", "36:00"],
                             ["BOS", 1628401, "Derrick White", "30:15"],
+                            ["BOS", 1627759, "Jaylen Brown", "48:00"],
+                            ["BOS", 1629680, "Al Horford", "60:00"],
+                            ["BOS", 1629641, "Kristaps Porzingis", "65:00"],
                             ["LAL", 200000, "Opponent Player", "31:02"],
                         ],
                     },
@@ -142,8 +148,14 @@ def test_cache_team_season_data_writes_normalized_outputs(
         999999,
         1627759,
         1628369,
+        1628401,
+        1629641,
+        1629680,
+        1627759,
         1628369,
         1628401,
+        1629641,
+        1629680,
     ]
     assert normalized_game_players[2].minutes == 35.2
     assert normalized_game_players[0].appeared is False
@@ -192,7 +204,7 @@ def test_cache_team_season_data_skips_empty_box_scores(
             }
 
     class FakeBoxScoreTraditionalV2:
-        def __init__(self, game_id: str):
+        def __init__(self, game_id: str, timeout: int | None = None):
             self.game_id = game_id
 
         def get_dict(self):
@@ -227,6 +239,9 @@ def test_cache_team_season_data_skips_empty_box_scores(
                         "rowSet": [
                             ["ATL", 101, "Player 101", "36:00"],
                             ["ATL", 102, "Player 102", "30:15"],
+                            ["ATL", 103, "Player 103", "48:00"],
+                            ["ATL", 104, "Player 104", "60:00"],
+                            ["ATL", 105, "Player 105", "65:00"],
                         ],
                     },
                     {
@@ -289,7 +304,7 @@ def test_build_team_season_artifacts_returns_normalized_and_derived_outputs(
             }
 
     class FakeBoxScoreTraditionalV2:
-        def __init__(self, game_id: str):
+        def __init__(self, game_id: str, timeout: int | None = None):
             self.game_id = game_id
 
         def get_dict(self):
@@ -305,6 +320,9 @@ def test_build_team_season_artifacts_returns_normalized_and_derived_outputs(
                         "rowSet": [
                             ["BOS", 1628369, "Jayson Tatum", "35:12"],
                             ["BOS", 1627759, "Jaylen Brown", "34:01"],
+                            ["BOS", 1628401, "Derrick White", "55:00"],
+                            ["BOS", 1629680, "Al Horford", "55:00"],
+                            ["BOS", 1629641, "Kristaps Porzingis", "60:47"],
                             ["LAL", 200000, "Opponent Player", "33:44"],
                         ],
                     },
@@ -334,9 +352,18 @@ def test_build_team_season_artifacts_returns_normalized_and_derived_outputs(
     assert [player.player_id for player in result.artifacts.normalized_game_players] == [
         1628369,
         1627759,
+        1628401,
+        1629680,
+        1629641,
     ]
     assert result.artifacts.wowy_games == [
-        WowyGameRecord("0001", "2023-24", "BOS", 12.0, {1628369, 1627759}),
+        WowyGameRecord(
+            "0001",
+            "2023-24",
+            "BOS",
+            12.0,
+            {1628369, 1627759, 1628401, 1629680, 1629641},
+        ),
     ]
     assert result.summary.league_games_source == "fetched"
     assert result.summary.fetched_box_scores == 1
@@ -476,7 +503,7 @@ def test_cache_team_season_data_resumes_from_cached_partial_source_data(
             }
 
     class FakeBoxScoreTraditionalV2:
-        def __init__(self, game_id: str):
+        def __init__(self, game_id: str, timeout: int | None = None):
             self.game_id = game_id
             boxscore_calls.append(game_id)
 
@@ -494,6 +521,9 @@ def test_cache_team_season_data_resumes_from_cached_partial_source_data(
                             "rowSet": [
                                 ["ATL", 101, "Player 101", "36:00"],
                                 ["ATL", 102, "Player 102", "30:15"],
+                                ["ATL", 103, "Player 103", "48:00"],
+                                ["ATL", 104, "Player 104", "60:00"],
+                                ["ATL", 105, "Player 105", "65:00"],
                             ],
                         },
                         {
@@ -524,11 +554,11 @@ def test_cache_team_season_data_resumes_from_cached_partial_source_data(
             player_metrics_db_path=db_path,
         )
 
-    assert boxscore_calls == ["0001", "0002", "0002", "0002"]
+    assert boxscore_calls == ["0001", "0002", "0002", "0002", "0002", "0002"]
     assert (source_data_dir / "boxscores/0001_boxscoretraditionalv2.json").exists()
 
     class RecoveryBoxScoreTraditionalV2:
-        def __init__(self, game_id: str):
+        def __init__(self, game_id: str, timeout: int | None = None):
             self.game_id = game_id
             boxscore_calls.append(f"recovery:{game_id}")
 
@@ -543,8 +573,11 @@ def test_cache_team_season_data_resumes_from_cached_partial_source_data(
                             "MIN",
                         ],
                         "rowSet": [
-                            ["ATL", 201, "Player 201", "34:00"],
-                            ["ATL", 202, "Player 202", "28:15"],
+                            ["ATL", 201, "Player 201", "36:00"],
+                            ["ATL", 202, "Player 202", "30:15"],
+                            ["ATL", 203, "Player 203", "48:00"],
+                            ["ATL", 204, "Player 204", "60:00"],
+                            ["ATL", 205, "Player 205", "65:00"],
                         ],
                     },
                     {
@@ -573,7 +606,15 @@ def test_cache_team_season_data_resumes_from_cached_partial_source_data(
         seasons=["2023-24"],
     )
 
-    assert boxscore_calls == ["0001", "0002", "0002", "0002", "recovery:0002"]
+    assert boxscore_calls == [
+        "0001",
+        "0002",
+        "0002",
+        "0002",
+        "0002",
+        "0002",
+        "recovery:0002",
+    ]
     assert summary.league_games_source == "cached"
     assert summary.fetched_box_scores == 1
     assert summary.cached_box_scores == 1
@@ -608,7 +649,7 @@ def test_cache_team_season_data_raises_on_inconsistent_outputs(
             }
 
     class FakeBoxScoreTraditionalV2:
-        def __init__(self, game_id: str):
+        def __init__(self, game_id: str, timeout: int | None = None):
             self.game_id = game_id
 
         def get_dict(self):
@@ -623,6 +664,10 @@ def test_cache_team_season_data_raises_on_inconsistent_outputs(
                         ],
                         "rowSet": [
                             ["BOS", 1628369, "Jayson Tatum", "35:12"],
+                            ["BOS", 1627759, "Jaylen Brown", "34:01"],
+                            ["BOS", 1628401, "Derrick White", "55:00"],
+                            ["BOS", 1629680, "Al Horford", "55:00"],
+                            ["BOS", 1629641, "Kristaps Porzingis", "60:47"],
                             ["LAL", 200000, "Opponent Player", "33:44"],
                         ],
                     },

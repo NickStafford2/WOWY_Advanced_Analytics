@@ -3,6 +3,8 @@ from __future__ import annotations
 import sqlite3
 from pathlib import Path
 
+import pytest
+
 from wowy.data.player_metrics_db import (
     MetricFullSpanPointRow,
     MetricFullSpanSeriesRow,
@@ -377,3 +379,198 @@ def test_initialize_player_metrics_db_migrates_legacy_wowy_shrinkage_metric_name
     assert catalog_row.metric_label == "WOWY Shrunk"
     assert series_rows[0].metric == "wowy_shrunk"
     assert point_map == {101: {"2023-24": 1.5}}
+
+
+def test_initialize_player_metrics_db_uses_expected_primary_keys(tmp_path: Path):
+    db_path = tmp_path / "app" / "player_metrics.sqlite3"
+    initialize_player_metrics_db(db_path)
+
+    with sqlite3.connect(db_path) as connection:
+        metric_rows = connection.execute(
+            "PRAGMA table_info(metric_player_season_values)"
+        ).fetchall()
+        full_span_points = connection.execute(
+            "PRAGMA table_info(metric_full_span_points)"
+        ).fetchall()
+
+    assert [row[1] for row in metric_rows if row[5] > 0] == [
+        "metric",
+        "scope_key",
+        "season",
+        "player_id",
+    ]
+    assert [row[1] for row in full_span_points if row[5] > 0] == [
+        "metric",
+        "scope_key",
+        "player_id",
+        "season",
+    ]
+
+
+def test_replace_metric_rows_rejects_non_canonical_scope_values(
+    tmp_path: Path,
+):
+    db_path = tmp_path / "app" / "player_metrics.sqlite3"
+
+    with pytest.raises(ValueError, match="non-canonical season_type"):
+        replace_metric_rows(
+            db_path,
+            metric="wowy",
+            scope_key="teams=BOS|season_type=regular season",
+            metric_label="WOWY",
+            build_version="v1",
+            source_fingerprint="fingerprint-1",
+            rows=[
+                PlayerSeasonMetricRow(
+                    metric="wowy",
+                    metric_label="WOWY",
+                    scope_key="teams=BOS|season_type=regular season",
+                    team_filter="BOS",
+                    season_type="regular season",
+                    season="2023-24",
+                    player_id=101,
+                    player_name="Player 101",
+                    value=2.5,
+                    sample_size=3,
+                    average_minutes=30.0,
+                    total_minutes=90.0,
+                    details={"games": 3},
+                )
+            ],
+        )
+
+    with pytest.raises(ValueError, match="non-canonical season_type"):
+        replace_metric_rows(
+            db_path,
+            metric="wowy",
+            scope_key="teams=BOS|season_type=Regular Season",
+            metric_label="WOWY",
+            build_version="v1",
+            source_fingerprint="fingerprint-1",
+            rows=[
+                PlayerSeasonMetricRow(
+                    metric="wowy",
+                    metric_label="WOWY",
+                    scope_key="teams=BOS|season_type=Regular Season",
+                    team_filter="BOS",
+                    season_type="regular season",
+                    season="2023-24",
+                    player_id=101,
+                    player_name="Player 101",
+                    value=2.5,
+                    sample_size=3,
+                    average_minutes=30.0,
+                    total_minutes=90.0,
+                    details={"games": 3},
+                )
+            ],
+        )
+
+    with pytest.raises(ValueError, match="non-canonical team_filter"):
+        replace_metric_rows(
+            db_path,
+            metric="wowy",
+            scope_key="teams=BOS|season_type=Regular Season",
+            metric_label="WOWY",
+            build_version="v1",
+            source_fingerprint="fingerprint-1",
+            rows=[
+                PlayerSeasonMetricRow(
+                    metric="wowy",
+                    metric_label="WOWY",
+                    scope_key="teams=BOS|season_type=Regular Season",
+                    team_filter="bos",
+                    season_type="Regular Season",
+                    season="2023-24",
+                    player_id=101,
+                    player_name="Player 101",
+                    value=2.5,
+                    sample_size=3,
+                    average_minutes=30.0,
+                    total_minutes=90.0,
+                    details={"games": 3},
+                )
+            ],
+        )
+
+
+def test_metric_catalog_and_full_span_writes_reject_inconsistent_shapes(tmp_path: Path):
+    db_path = tmp_path / "app" / "player_metrics.sqlite3"
+
+    with pytest.raises(ValueError, match="available_seasons must be unique and sorted"):
+        replace_metric_scope_catalog_row(
+            db_path,
+            row=MetricScopeCatalogRow(
+                metric="wowy",
+                scope_key="teams=all-teams|season_type=Regular Season",
+                metric_label="WOWY",
+                team_filter="",
+                season_type="Regular Season",
+                available_seasons=["2023-24", "2022-23"],
+                available_teams=["BOS", "NYK"],
+                full_span_start_season="2022-23",
+                full_span_end_season="2023-24",
+                updated_at="2026-03-16T00:00:00+00:00",
+            ),
+        )
+
+    with pytest.raises(ValueError, match="rank_order values must be unique and contiguous"):
+        replace_metric_full_span_rows(
+            db_path,
+            metric="wowy",
+            scope_key="teams=all-teams|season_type=Regular Season",
+            series_rows=[
+                MetricFullSpanSeriesRow(
+                    metric="wowy",
+                    scope_key="teams=all-teams|season_type=Regular Season",
+                    player_id=101,
+                    player_name="Player 101",
+                    span_average_value=7.0,
+                    season_count=2,
+                    rank_order=2,
+                )
+            ],
+            point_rows=[
+                MetricFullSpanPointRow(
+                    metric="wowy",
+                    scope_key="teams=all-teams|season_type=Regular Season",
+                    player_id=101,
+                    season="2022-23",
+                    value=12.0,
+                ),
+                MetricFullSpanPointRow(
+                    metric="wowy",
+                    scope_key="teams=all-teams|season_type=Regular Season",
+                    player_id=101,
+                    season="2023-24",
+                    value=2.0,
+                ),
+            ],
+        )
+
+    with pytest.raises(ValueError, match="expected 2 season points but found 1"):
+        replace_metric_full_span_rows(
+            db_path,
+            metric="wowy",
+            scope_key="teams=all-teams|season_type=Regular Season",
+            series_rows=[
+                MetricFullSpanSeriesRow(
+                    metric="wowy",
+                    scope_key="teams=all-teams|season_type=Regular Season",
+                    player_id=101,
+                    player_name="Player 101",
+                    span_average_value=7.0,
+                    season_count=2,
+                    rank_order=1,
+                )
+            ],
+            point_rows=[
+                MetricFullSpanPointRow(
+                    metric="wowy",
+                    scope_key="teams=all-teams|season_type=Regular Season",
+                    player_id=101,
+                    season="2022-23",
+                    value=12.0,
+                )
+            ],
+        )

@@ -12,6 +12,7 @@ from wowy.nba.models import NormalizedGamePlayerRecord, NormalizedGameRecord
 from wowy.nba.seasons import canonicalize_season_string
 from wowy.nba.season_types import canonicalize_season_type
 from wowy.nba.team_seasons import TeamSeasonScope
+from wowy.nba.validation import validate_normalized_cache_batch
 
 GAME_CACHE_BUILD_VERSION = "normalized-cache-v1"
 REGULAR_SEASON = "Regular Season"
@@ -119,6 +120,13 @@ def replace_team_season_normalized_rows(
     team = team.upper()
     season = canonicalize_season_string(season)
     season_type = canonicalize_season_type(season_type)
+    validate_normalized_cache_batch(
+        team=team,
+        season=season,
+        season_type=season_type,
+        games=games,
+        game_players=game_players,
+    )
     refreshed_at = datetime.now(UTC).isoformat()
 
     with _connect(db_path) as connection:

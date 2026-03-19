@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import sqlite3
 from pathlib import Path
 
 import pytest
@@ -15,6 +16,11 @@ from wowy.nba.cache import (
     load_or_fetch_league_games_with_source,
     write_cached_payload,
 )
+from wowy.data.game_cache_db import (
+    initialize_game_cache_db,
+    replace_team_season_normalized_rows,
+)
+from wowy.nba.models import NormalizedGamePlayerRecord, NormalizedGameRecord
 from wowy.nba.season_types import canonicalize_season_type
 
 
@@ -199,3 +205,124 @@ def test_league_games_cache_path_uses_canonical_season_type_slug(tmp_path: Path)
     assert cache_path == (
         tmp_path / "team_seasons" / "BOS_2023-24_playoffs_leaguegamefinder.json"
     )
+
+
+def test_initialize_game_cache_db_uses_expected_primary_keys(tmp_path: Path):
+    db_path = tmp_path / "app" / "player_metrics.sqlite3"
+    initialize_game_cache_db(db_path)
+
+    with sqlite3.connect(db_path) as connection:
+        normalized_games_pk = connection.execute(
+            "PRAGMA table_info(normalized_games)"
+        ).fetchall()
+        normalized_players_pk = connection.execute(
+            "PRAGMA table_info(normalized_game_players)"
+        ).fetchall()
+
+    assert [
+        row[1] for row in sorted(normalized_games_pk, key=lambda row: row[5]) if row[5] > 0
+    ] == ["game_id", "team", "season", "season_type"]
+    assert [
+        row[1]
+        for row in sorted(normalized_players_pk, key=lambda row: row[5])
+        if row[5] > 0
+    ] == ["game_id", "team", "player_id", "season", "season_type"]
+
+
+def test_replace_team_season_normalized_rows_rejects_non_canonical_or_implausible_data(
+    tmp_path: Path,
+):
+    db_path = tmp_path / "app" / "player_metrics.sqlite3"
+
+    with pytest.raises(ValueError, match="expected '2023-24'"):
+        replace_team_season_normalized_rows(
+            db_path,
+            team="BOS",
+            season="2023-24",
+            season_type="Regular Season",
+            games=[
+                NormalizedGameRecord(
+                    game_id="0001",
+                    season="2022-23",
+                    game_date="2024-04-01",
+                    team="BOS",
+                    opponent="LAL",
+                    is_home=True,
+                    margin=8.0,
+                    season_type="Regular Season",
+                    source="nba_api",
+                )
+            ],
+            game_players=[
+                NormalizedGamePlayerRecord("0001", "BOS", 101, "Player 101", True, 48.0),
+                NormalizedGamePlayerRecord("0001", "BOS", 102, "Player 102", True, 48.0),
+                NormalizedGamePlayerRecord("0001", "BOS", 103, "Player 103", True, 48.0),
+                NormalizedGamePlayerRecord("0001", "BOS", 104, "Player 104", True, 48.0),
+                NormalizedGamePlayerRecord("0001", "BOS", 105, "Player 105", True, 48.0),
+            ],
+            source_path="sqlite://normalized_games/BOS_2023-24_regular_season",
+            source_snapshot="test",
+            source_kind="unit-test",
+        )
+
+    with pytest.raises(ValueError, match="positive minutes"):
+        replace_team_season_normalized_rows(
+            db_path,
+            team="BOS",
+            season="2023-24",
+            season_type="Regular Season",
+            games=[
+                NormalizedGameRecord(
+                    game_id="0002",
+                    season="2023-24",
+                    game_date="2024-04-03",
+                    team="BOS",
+                    opponent="LAL",
+                    is_home=False,
+                    margin=-4.0,
+                    season_type="Regular Season",
+                    source="nba_api",
+                )
+            ],
+            game_players=[
+                NormalizedGamePlayerRecord("0002", "BOS", 101, "Player 101", True, None),
+                NormalizedGamePlayerRecord("0002", "BOS", 102, "Player 102", True, 60.0),
+                NormalizedGamePlayerRecord("0002", "BOS", 103, "Player 103", True, 60.0),
+                NormalizedGamePlayerRecord("0002", "BOS", 104, "Player 104", True, 60.0),
+                NormalizedGamePlayerRecord("0002", "BOS", 105, "Player 105", True, 60.0),
+            ],
+            source_path="sqlite://normalized_games/BOS_2023-24_regular_season",
+            source_snapshot="test",
+            source_kind="unit-test",
+        )
+
+    with pytest.raises(ValueError, match="Implausible total appeared minutes"):
+        replace_team_season_normalized_rows(
+            db_path,
+            team="BOS",
+            season="2023-24",
+            season_type="Regular Season",
+            games=[
+                NormalizedGameRecord(
+                    game_id="0003",
+                    season="2023-24",
+                    game_date="2024-04-05",
+                    team="BOS",
+                    opponent="LAL",
+                    is_home=True,
+                    margin=2.0,
+                    season_type="Regular Season",
+                    source="nba_api",
+                )
+            ],
+            game_players=[
+                NormalizedGamePlayerRecord("0003", "BOS", 101, "Player 101", True, 20.0),
+                NormalizedGamePlayerRecord("0003", "BOS", 102, "Player 102", True, 20.0),
+                NormalizedGamePlayerRecord("0003", "BOS", 103, "Player 103", True, 20.0),
+                NormalizedGamePlayerRecord("0003", "BOS", 104, "Player 104", True, 20.0),
+                NormalizedGamePlayerRecord("0003", "BOS", 105, "Player 105", True, 20.0),
+            ],
+            source_path="sqlite://normalized_games/BOS_2023-24_regular_season",
+            source_snapshot="test",
+            source_kind="unit-test",
+        )
