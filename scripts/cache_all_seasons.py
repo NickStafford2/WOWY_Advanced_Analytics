@@ -98,6 +98,13 @@ def main(argv: list[str] | None = None) -> int:
 def run(argv: list[str] | None = None) -> int:
     try:
         return main(argv)
+    except subprocess.CalledProcessError as exc:
+        sys.stderr.write(
+            f"Season caching failed for command {' '.join(exc.cmd)} "
+            f"with exit status {exc.returncode}.\n"
+        )
+        sys.stderr.flush()
+        return exc.returncode
     except KeyboardInterrupt:
         sys.stderr.write("\nInterrupted. Shutting down cleanly.\n")
         sys.stderr.flush()

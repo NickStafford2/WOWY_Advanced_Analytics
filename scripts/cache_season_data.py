@@ -115,6 +115,16 @@ def render_team_failed_line(
     write_status_line(line)
 
 
+def render_team_validation_failed_line(
+    team_index: int,
+    team_total: int,
+    team: str,
+    season: str,
+) -> None:
+    line = f"  [{team_index:>2}/{team_total}] {team} {season} failed validation"
+    write_status_line(line)
+
+
 def parse_consistency_failure(message: str) -> str | None:
     prefix = "Inconsistent team-season cache for "
     if not message.startswith(prefix):
@@ -149,18 +159,29 @@ def main(argv: list[str] | None = None) -> int:
             )
         except ValueError as exc:
             reason = parse_consistency_failure(str(exc))
-            if reason is None:
-                raise
-            render_team_failed_line(
+            if reason is not None:
+                render_team_failed_line(
+                    team_index=team_index,
+                    team_total=team_total,
+                    team=team_code,
+                    season=season,
+                    reason=reason,
+                )
+                sys.stdout.write("\n")
+                sys.stderr.write(
+                    f"Inconsistent cache for {team_code} {season}: {reason}\n"
+                )
+                sys.stderr.flush()
+                return 1
+            render_team_validation_failed_line(
                 team_index=team_index,
                 team_total=team_total,
                 team=team_code,
                 season=season,
-                reason=reason,
             )
             sys.stdout.write("\n")
             sys.stderr.write(
-                f"Inconsistent cache for {team_code} {season}: {reason}\n"
+                f"Validation failed for {team_code} {season}: {exc}\n"
             )
             sys.stderr.flush()
             return 1

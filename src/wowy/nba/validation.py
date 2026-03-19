@@ -28,8 +28,8 @@ def validate_normalized_cache_batch(
     normalized_season_type = canonicalize_season_type(season_type)
 
     game_keys: set[tuple[str, str]] = set()
-    players_by_game_key: dict[tuple[str, str], list[NormalizedGamePlayerRecord]] = defaultdict(
-        list
+    players_by_game_key: dict[tuple[str, str], list[NormalizedGamePlayerRecord]] = (
+        defaultdict(list)
     )
 
     for game in games:
@@ -165,7 +165,9 @@ def _validate_normalized_game(
     if not math.isfinite(game.margin):
         raise ValueError(f"Normalized game {game.game_id!r} has non-finite margin")
     if not game.source.strip():
-        raise ValueError(f"Normalized game {game.game_id!r} must have a non-empty source")
+        raise ValueError(
+            f"Normalized game {game.game_id!r} must have a non-empty source"
+        )
 
 
 def _validate_normalized_game_player(
@@ -173,6 +175,13 @@ def _validate_normalized_game_player(
     *,
     expected_team: str,
 ) -> None:
+    source_path = (
+        f"data/source/nba/boxscores/{player.game_id}_boxscoretraditionalv2.json"
+    )
+    player_ref = (
+        f"game {player.game_id!r} player_id={player.player_id!r} "
+        f"player_name={player.player_name!r} source_path={source_path!r}"
+    )
     if not player.game_id.strip():
         raise ValueError("Normalized player game_id must not be empty")
     if _canonical_team_abbreviation(player.team) != expected_team:
@@ -182,24 +191,24 @@ def _validate_normalized_game_player(
         )
     if player.player_id <= 0:
         raise ValueError(
-            f"Normalized player row for game {player.game_id!r} has invalid player_id "
+            f"Normalized player row for {player_ref} has invalid player_id "
             f"{player.player_id!r}"
         )
     if not player.player_name.strip():
         raise ValueError(
-            f"Normalized player row for game {player.game_id!r} must have a player name"
+            f"Normalized player row for {player_ref} must have a player name"
         )
 
     minutes = player.minutes
     if minutes is not None:
         if not math.isfinite(minutes) or minutes < 0.0:
             raise ValueError(
-                f"Normalized player row for game {player.game_id!r} has invalid minutes "
+                f"Normalized player row for {player_ref} has invalid minutes "
                 f"{minutes!r}"
             )
         if minutes > 80.0:
             raise ValueError(
-                f"Normalized player row for game {player.game_id!r} has implausible minutes "
+                f"Normalized player row for {player_ref} has implausible minutes "
                 f"{minutes!r}"
             )
 
