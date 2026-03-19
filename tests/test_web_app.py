@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import csv
+from io import StringIO
 from pathlib import Path
 
 from tests.support import (
@@ -295,6 +297,33 @@ def test_wowy_shrunk_options_endpoint_returns_wowy_style_filters(
             "top_n": 30,
         },
     }
+
+
+def test_options_endpoint_canonicalizes_lowercase_season_type(
+    tmp_path: Path,
+):
+    player_metrics_db_path = tmp_path / "app" / "player_metrics.sqlite3"
+    seed_db_from_team_seasons(player_metrics_db_path, _wowy_options_seed())
+    refresh_metric_store(
+        WOWY_METRIC,
+        season_type="regular season",
+        db_path=player_metrics_db_path,
+        source_data_dir=tmp_path / "source",
+    )
+
+    app = create_app(
+        source_data_dir=tmp_path / "source",
+        player_metrics_db_path=player_metrics_db_path,
+    )
+    client = app.test_client()
+
+    response = client.get(
+        "/api/metrics/wowy/options",
+        query_string={"season_type": "regular season"},
+    )
+
+    assert response.status_code == 200
+    assert response.get_json()["filters"]["season_type"] == "Regular Season"
 
 
 def test_refresh_metric_store_skips_empty_historical_rawr_team_seasons(
@@ -844,6 +873,56 @@ def test_wowy_cached_leaderboard_endpoint_returns_server_ranked_rows(
     ]
 
 
+def test_wowy_cached_leaderboard_csv_exports_all_players_ignoring_top_n(
+    tmp_path: Path,
+    monkeypatch,
+):
+    monkeypatch.setattr(
+        "wowy.nba.prepare.load_player_names_from_cache",
+        lambda _: {101: "Player 101", 102: "Player 102", 103: "Player 103"},
+    )
+    player_metrics_db_path = _refresh_wowy_store(tmp_path, _wowy_two_season_seed())
+
+    app = create_app(
+        source_data_dir=tmp_path / "source",
+        player_metrics_db_path=player_metrics_db_path,
+    )
+    client = app.test_client()
+
+    response = client.get(
+        "/api/metrics/wowy/cached-leaderboard.csv",
+        query_string={
+            "team": "BOS",
+            "top_n": "1",
+            "min_games_with": "1",
+            "min_games_without": "1",
+            "min_average_minutes": "0",
+            "min_total_minutes": "0",
+        },
+    )
+
+    assert response.status_code == 200
+    assert response.mimetype == "text/csv"
+    assert "wowy-all-players.csv" in response.headers["Content-Disposition"]
+    rows = list(csv.reader(StringIO(response.get_data(as_text=True))))
+    assert rows[0] == [
+        "Rank",
+        "Player ID",
+        "Player",
+        "WOWY",
+        "Avg Min",
+        "Tot Min",
+        "With",
+        "Without",
+        "Avg With",
+        "Avg Without",
+        "Seasons",
+        "Points",
+    ]
+    assert len(rows) == 4
+    assert [row[2] for row in rows[1:]] == ["Player 101", "Player 103", "Player 102"]
+
+
 def test_wowy_custom_query_endpoint_recalculates_requested_span(
     tmp_path: Path,
     monkeypatch,
@@ -915,3 +994,59 @@ def test_wowy_custom_query_endpoint_recalculates_requested_span(
             "points": [{"season": "2022-23", "value": -1.5}],
         },
     ]
+
+
+def test_rawr_custom_query_csv_exports_all_players_ignoring_top_n(
+    tmp_path: Path,
+    monkeypatch,
+):
+    team_seasons = _seed_rawr_cache_inputs(monkeypatch)
+    seed_db_from_team_seasons(
+        tmp_path / "app" / "player_metrics.sqlite3",
+        team_seasons,
+    )
+
+    app = create_app(
+        source_data_dir=tmp_path / "source",
+        player_metrics_db_path=tmp_path / "app" / "player_metrics.sqlite3",
+    )
+    client = app.test_client()
+
+    response = client.get(
+        "/api/metrics/rawr/custom-query.csv",
+        query_string={
+            "team": "BOS",
+            "season": ["2023-24"],
+            "top_n": "1",
+            "min_games": "1",
+            "ridge_alpha": "4.0",
+            "min_average_minutes": "0",
+            "min_total_minutes": "0",
+        },
+    )
+
+    assert response.status_code == 200
+    assert response.mimetype == "text/csv"
+    assert "rawr-all-players.csv" in response.headers["Content-Disposition"]
+    rows = list(csv.reader(StringIO(response.get_data(as_text=True))))
+    assert rows[0] == [
+        "Rank",
+        "Player ID",
+        "Player",
+        "RAWR",
+        "Avg Min",
+        "Tot Min",
+        "With",
+        "Without",
+        "Avg With",
+        "Avg Without",
+        "Seasons",
+        "Points",
+    ]
+    assert len(rows) == 5
+    assert {row[2] for row in rows[1:]} == {
+        "Player 101",
+        "Player 102",
+        "Player 201",
+        "Player 202",
+    }

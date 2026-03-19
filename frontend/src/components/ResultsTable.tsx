@@ -14,13 +14,14 @@ export type ResultsTableRow = {
 
 type ResultsTableProps = {
   metricLabel: string
-  resultsTitle: string
+  exportUrl: string
   rows: ResultsTableRow[]
   isWowyStyleMetric: boolean
 }
 
 export function ResultsTable({
   metricLabel,
+  exportUrl,
   rows,
   isWowyStyleMetric,
 }: ResultsTableProps) {
@@ -71,6 +72,17 @@ export function ResultsTable({
             ))}
           </tbody>
         </table>
+      </div>
+      <div className="results-table-actions">
+        <button
+          type="button"
+          className="results-export-button"
+          onClick={() => {
+            window.location.assign(exportUrl)
+          }}
+        >
+          Export Full CSV
+        </button>
       </div>
     </div>
   )

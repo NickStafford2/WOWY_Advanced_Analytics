@@ -11,6 +11,7 @@ from wowy.nba.ingest import (
     cache_team_season_data,
 )
 from wowy.nba.seasons import canonicalize_season_string
+from wowy.nba.season_types import canonicalize_season_type
 from wowy.nba.team_seasons import TeamSeasonScope
 
 
@@ -126,6 +127,7 @@ def main(argv: list[str] | None = None) -> int:
     parser = build_parser()
     args = parser.parse_args(argv)
     season = canonicalize_season_string(args.season)
+    season_type = canonicalize_season_type(args.season_type)
 
     team_codes = resolve_teams(args.teams)
     team_total = len(team_codes)
@@ -135,7 +137,7 @@ def main(argv: list[str] | None = None) -> int:
             summary = cache_team_season_data(
                 team_abbreviation=team_code,
                 season=season,
-                season_type=args.season_type,
+                season_type=season_type,
                 source_data_dir=DEFAULT_SOURCE_DATA_DIR,
                 player_metrics_db_path=args.player_metrics_db_path,
                 log=quiet_log,

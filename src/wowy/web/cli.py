@@ -5,6 +5,7 @@ from pathlib import Path
 
 from wowy.data.player_metrics_db import DEFAULT_PLAYER_METRICS_DB_PATH
 from wowy.nba.ingest import DEFAULT_SOURCE_DATA_DIR
+from wowy.nba.season_types import canonicalize_season_type
 from wowy.web.app import create_app
 from wowy.web.service import (
     DEFAULT_RAWR_RIDGE_ALPHA,
@@ -78,6 +79,7 @@ def build_parser() -> argparse.ArgumentParser:
 def main(argv: list[str] | None = None) -> int:
     parser = build_parser()
     args = parser.parse_args(argv)
+    season_type = canonicalize_season_type(args.season_type)
     if args.refresh_store:
         refresh_metrics = args.refresh_metric or [
             WOWY_METRIC,
@@ -88,7 +90,7 @@ def main(argv: list[str] | None = None) -> int:
             print(f"refreshing {metric} web store at {args.player_metrics_db_path}")
             refresh_metric_store(
                 metric,
-                season_type=args.season_type,
+                season_type=season_type,
                 db_path=args.player_metrics_db_path,
                 source_data_dir=args.source_data_dir,
                 rawr_ridge_alpha=args.rawr_ridge_alpha,

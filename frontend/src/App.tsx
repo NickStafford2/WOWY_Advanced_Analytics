@@ -323,12 +323,16 @@ function App() {
         : 'Game-level ridge model of player impact across the cached history.'
   const chartStatusLabel =
     mode === 'cached' ? `Loading cached ${metricLabel} leaders...` : `Running ${metricLabel} query...`
-  const resultsTitle =
-    mode === 'cached'
-      ? `Top ${leaderboard?.span.top_n ?? cachedFilters.topN} cached ${metricLabel} leaders`
-      : `Top ${leaderboard?.span.top_n ?? customFilters.topN} players for this custom ${metricLabel} query`
   const allTeamsSelected =
     availableTeams.length > 0 && customFilters.teams.length === availableTeams.length
+  const exportUrl = buildExportUrl({
+    metric,
+    mode,
+    cachedFilters,
+    customFilters,
+    availableSeasons,
+    metricFilters,
+  })
   const pageShellStyle = {
     '--header-offset': `${headerHeight}px`,
   } as CSSProperties
@@ -483,7 +487,7 @@ function App() {
               <LeaderboardChart metricLabel={metricLabel} series={leaderboard.series} />
               <ResultsTable
                 metricLabel={metricLabel}
-                resultsTitle={resultsTitle}
+                exportUrl={exportUrl}
                 rows={leaderboard.table_rows}
                 isWowyStyleMetric={isWowyStyleMetric}
               />
@@ -711,6 +715,65 @@ function seasonSpan(startSeason: string, endSeason: string, seasons: string[]): 
   const lowIndex = Math.min(startIndex, endIndex)
   const highIndex = Math.max(startIndex, endIndex)
   return seasons.slice(lowIndex, highIndex + 1)
+}
+
+function buildExportUrl({
+  metric,
+  mode,
+  cachedFilters,
+  customFilters,
+  availableSeasons,
+  metricFilters,
+}: {
+  metric: MetricId
+  mode: AppMode
+  cachedFilters: CachedFilters
+  customFilters: CustomFilters
+  availableSeasons: string[]
+  metricFilters: MetricFilters
+}): string {
+  const params = new URLSearchParams({
+    min_average_minutes: String(metricFilters.min_average_minutes),
+    min_total_minutes: String(metricFilters.min_total_minutes),
+  })
+
+  if (mode === 'cached') {
+    if (metricFilters.min_games !== undefined) {
+      params.set('min_games', String(metricFilters.min_games))
+    }
+    if (metricFilters.ridge_alpha !== undefined) {
+      params.set('ridge_alpha', String(metricFilters.ridge_alpha))
+    }
+    if (metricFilters.min_games_with !== undefined) {
+      params.set('min_games_with', String(metricFilters.min_games_with))
+    }
+    if (metricFilters.min_games_without !== undefined) {
+      params.set('min_games_without', String(metricFilters.min_games_without))
+    }
+    if (cachedFilters.team) {
+      params.set('team', cachedFilters.team)
+    }
+    params.set('top_n', String(cachedFilters.topN))
+    return `/api/metrics/${metric}/cached-leaderboard.csv?${params.toString()}`
+  }
+
+  params.set('top_n', String(customFilters.topN))
+  params.set('min_average_minutes', String(customFilters.minAverageMinutes))
+  params.set('min_total_minutes', String(customFilters.minTotalMinutes))
+  if (metric === 'rawr') {
+    params.set('min_games', String(customFilters.minGames))
+    params.set('ridge_alpha', String(customFilters.ridgeAlpha))
+  } else {
+    params.set('min_games_with', String(customFilters.minGamesWith))
+    params.set('min_games_without', String(customFilters.minGamesWithout))
+  }
+  for (const team of customFilters.teams) {
+    params.append('team', team)
+  }
+  for (const season of seasonSpan(customFilters.startSeason, customFilters.endSeason, availableSeasons)) {
+    params.append('season', season)
+  }
+  return `/api/metrics/${metric}/custom-query.csv?${params.toString()}`
 }
 
 async function fetchJson(url: string): Promise<unknown> {

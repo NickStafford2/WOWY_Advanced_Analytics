@@ -419,6 +419,24 @@
   margin-top: 22px;
 }
 
+.results-table-actions {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: 12px;
+}
+
+.results-export-button {
+  min-height: 40px;
+  padding: 0 16px;
+  border: 1px solid var(--control-border);
+  border-radius: 12px;
+  background: var(--input-background);
+  color: var(--text-primary);
+  font: inherit;
+  font-weight: 700;
+  cursor: pointer;
+}
+
 .table-header h3 {
   margin: 8px 0 0;
   font-size: 1.5rem;

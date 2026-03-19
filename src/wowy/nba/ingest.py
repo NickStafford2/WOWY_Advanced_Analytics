@@ -25,6 +25,7 @@ from wowy.nba.normalize import (
 from wowy.nba.team_seasons import TeamSeasonScope
 from wowy.nba.validation import validate_team_season_records
 from wowy.nba.seasons import canonicalize_season_string
+from wowy.nba.season_types import canonicalize_season_type
 
 
 ProgressFn = Callable[[dict], None]
@@ -41,7 +42,7 @@ TEAM_ABBREVIATION_ALIASES = {
 
 
 def season_type_slug(season_type: str) -> str:
-    return season_type.lower().replace(" ", "_")
+    return canonicalize_season_type(season_type).lower().replace(" ", "_")
 
 
 def resolve_team_lookup_abbreviation(team_abbreviation: str) -> str:
@@ -58,6 +59,7 @@ def fetch_team_season_data(
     progress: ProgressFn | None = None,
 ) -> tuple[list[NormalizedGameRecord], list[NormalizedGamePlayerRecord]]:
     season = canonicalize_season_string(season)
+    season_type = canonicalize_season_type(season_type)
     result = build_team_season_artifacts(
         team_abbreviation=team_abbreviation,
         season=season,
@@ -78,6 +80,7 @@ def build_team_season_artifacts(
     progress: ProgressFn | None = None,
 ) -> TeamSeasonBuildResult:
     season = canonicalize_season_string(season)
+    season_type = canonicalize_season_type(season_type)
     requested_team_abbreviation = team_abbreviation.upper()
     team = teams.find_team_by_abbreviation(
         resolve_team_lookup_abbreviation(requested_team_abbreviation)
@@ -200,6 +203,7 @@ def cache_team_season_data(
     progress: ProgressFn | None = None,
 ) -> TeamSeasonRunSummary:
     season = canonicalize_season_string(season)
+    season_type = canonicalize_season_type(season_type)
     normalized_games_source_path = (
         f"sqlite://normalized_games/"
         f"{team_abbreviation.upper()}_{season}_{season_type_slug(season_type)}"

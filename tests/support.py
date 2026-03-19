@@ -61,11 +61,16 @@ def seed_db_from_team_seasons(
     team_seasons: list[TeamSeasonSeed],
 ) -> None:
     for team, season, games, game_players in team_seasons:
+        season_types = {game.season_type for game in games}
+        if len(season_types) > 1:
+            raise ValueError(
+                f"Expected one season type per team-season seed for {team} {season}"
+            )
         replace_team_season_normalized_rows(
             db_path,
             team=team,
             season=season,
-            season_type="Regular Season",
+            season_type=season_types.pop() if season_types else "Regular Season",
             games=games,
             game_players=game_players,
             source_path=f"test://{team}_{season}",

@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 from pathlib import Path
 from typing import Any
 
@@ -8,12 +9,15 @@ from wowy.apps.wowy.service import validate_filters as validate_wowy_filters
 from wowy.data.player_metrics_db import DEFAULT_PLAYER_METRICS_DB_PATH
 from wowy.nba.ingest import DEFAULT_SOURCE_DATA_DIR
 from wowy.nba.seasons import canonicalize_season_string
+from wowy.nba.season_types import canonicalize_season_type
 from wowy.web.service import (
     DEFAULT_RAWR_RIDGE_ALPHA,
     RAWR_METRIC,
     WOWY_SHRUNK_METRIC,
     WOWY_METRIC,
+    build_cached_metric_export_table_rows,
     build_custom_rawr_leaderboard_payload,
+    build_custom_metric_export_table_rows,
     build_custom_wowy_shrunk_leaderboard_payload,
     build_metric_default_filters_payload,
     build_scope_key,
@@ -42,7 +46,7 @@ def create_app(
     source_data_dir: Path = DEFAULT_SOURCE_DATA_DIR,
     player_metrics_db_path: Path = DEFAULT_PLAYER_METRICS_DB_PATH,
 ):
-    from flask import Flask, jsonify, request
+    from flask import Flask, Response, jsonify, request
 
     app = Flask(__name__)
 
@@ -99,6 +103,23 @@ def create_app(
 
         return jsonify(payload)
 
+    @app.get("/api/metrics/<metric>/cached-leaderboard.csv")
+    def export_metric_cached_leaderboard(metric: str):
+        try:
+            csv_content, filename = _build_cached_metric_leaderboard_csv(
+                request,
+                metric=metric,
+                player_metrics_db_path=player_metrics_db_path,
+            )
+        except ValueError as exc:
+            return jsonify({"error": str(exc)}), 400
+
+        return Response(
+            csv_content,
+            mimetype="text/csv",
+            headers={"Content-Disposition": f'attachment; filename="{filename}"'},
+        )
+
     @app.get("/api/metrics/<metric>/custom-query")
     def get_metric_custom_query(metric: str):
         try:
@@ -112,6 +133,24 @@ def create_app(
             return jsonify({"error": str(exc)}), 400
 
         return jsonify(payload)
+
+    @app.get("/api/metrics/<metric>/custom-query.csv")
+    def export_metric_custom_query(metric: str):
+        try:
+            csv_content, filename = _build_metric_custom_query_csv(
+                request,
+                metric=metric,
+                source_data_dir=source_data_dir,
+                player_metrics_db_path=player_metrics_db_path,
+            )
+        except ValueError as exc:
+            return jsonify({"error": str(exc)}), 400
+
+        return Response(
+            csv_content,
+            mimetype="text/csv",
+            headers={"Content-Disposition": f'attachment; filename="{filename}"'},
+        )
 
     @app.get("/api/wowy/player-seasons")
     def get_wowy_player_seasons():
@@ -155,7 +194,9 @@ def _build_metric_player_seasons_payload(
         metric=metric,
         include_top_n=False,
     )
-    season_type = request.args.get("season_type", "Regular Season")
+    season_type = canonicalize_season_type(
+        request.args.get("season_type", "Regular Season")
+    )
     teams = request.args.getlist("team") or None
     seasons = _parse_request_seasons(request)
     scope_key, _team_filter = build_scope_key(teams=teams, season_type=season_type)
@@ -196,7 +237,9 @@ def _build_metric_span_chart_payload(
         metric=metric,
         include_top_n=True,
     )
-    season_type = request.args.get("season_type", "Regular Season")
+    season_type = canonicalize_season_type(
+        request.args.get("season_type", "Regular Season")
+    )
     teams = request.args.getlist("team") or None
     seasons = _parse_request_seasons(request)
     scope_key, _team_filter = build_scope_key(teams=teams, season_type=season_type)
@@ -234,7 +277,9 @@ def _build_cached_metric_leaderboard_payload(
         metric=metric,
         include_top_n=True,
     )
-    season_type = request.args.get("season_type", "Regular Season")
+    season_type = canonicalize_season_type(
+        request.args.get("season_type", "Regular Season")
+    )
     teams = request.args.getlist("team") or None
     seasons = _parse_request_seasons(request)
     scope_key, _team_filter = build_scope_key(teams=teams, season_type=season_type)
@@ -278,7 +323,9 @@ def _build_metric_custom_query_payload(
         metric=metric,
         include_top_n=True,
     )
-    season_type = request.args.get("season_type", "Regular Season")
+    season_type = canonicalize_season_type(
+        request.args.get("season_type", "Regular Season")
+    )
     teams = request.args.getlist("team") or None
     seasons = _parse_request_seasons(request)
     if metric == WOWY_METRIC:
@@ -337,6 +384,78 @@ def _build_metric_custom_query_payload(
         top_n=request.args.get("top_n"),
     )
     return payload
+
+
+def _build_cached_metric_leaderboard_csv(
+    request,
+    *,
+    metric: str,
+    player_metrics_db_path: Path,
+) -> tuple[str, str]:
+    filter_values = _parse_request_filters(
+        request,
+        metric=metric,
+        include_top_n=True,
+    )
+    season_type = canonicalize_season_type(
+        request.args.get("season_type", "Regular Season")
+    )
+    teams = request.args.getlist("team") or None
+    seasons = _parse_request_seasons(request)
+    scope_key, _team_filter = build_scope_key(teams=teams, season_type=season_type)
+    metric_label, table_rows = build_cached_metric_export_table_rows(
+        metric,
+        db_path=player_metrics_db_path,
+        scope_key=scope_key,
+        seasons=seasons,
+        min_average_minutes=filter_values["min_average_minutes"],
+        min_total_minutes=filter_values["min_total_minutes"],
+        min_sample_size=filter_values["min_sample_size"],
+        min_secondary_sample_size=filter_values["min_secondary_sample_size"],
+    )
+    return _render_leaderboard_csv(metric_label=metric_label, table_rows=table_rows), (
+        f"{metric}-all-players.csv"
+    )
+
+
+def _build_metric_custom_query_csv(
+    request,
+    *,
+    metric: str,
+    source_data_dir: Path,
+    player_metrics_db_path: Path,
+) -> tuple[str, str]:
+    filter_values = _parse_request_filters(
+        request,
+        metric=metric,
+        include_top_n=True,
+    )
+    season_type = canonicalize_season_type(
+        request.args.get("season_type", "Regular Season")
+    )
+    teams = request.args.getlist("team") or None
+    seasons = _parse_request_seasons(request)
+    metric_label, table_rows = build_custom_metric_export_table_rows(
+        metric,
+        teams=teams,
+        seasons=seasons,
+        season_type=season_type,
+        source_data_dir=source_data_dir,
+        player_metrics_db_path=player_metrics_db_path,
+        min_games_with=int(filter_values["min_sample_size"])
+        if metric in {WOWY_METRIC, WOWY_SHRUNK_METRIC}
+        else None,
+        min_games_without=int(filter_values["min_secondary_sample_size"])
+        if metric in {WOWY_METRIC, WOWY_SHRUNK_METRIC}
+        else None,
+        min_games=int(filter_values["min_sample_size"]) if metric == RAWR_METRIC else None,
+        ridge_alpha=float(filter_values["ridge_alpha"]) if metric == RAWR_METRIC else None,
+        min_average_minutes=float(filter_values["min_average_minutes"]),
+        min_total_minutes=float(filter_values["min_total_minutes"]),
+    )
+    return _render_leaderboard_csv(metric_label=metric_label, table_rows=table_rows), (
+        f"{metric}-all-players.csv"
+    )
 
 
 def _parse_request_filters(
@@ -476,3 +595,72 @@ def _build_filters_payload(
         )
         return payload
     raise ValueError(f"Unknown metric: {metric}")
+
+
+def _render_leaderboard_csv(
+    *,
+    metric_label: str,
+    table_rows: list[dict[str, Any]],
+) -> str:
+    import csv
+    from io import StringIO
+
+    output = StringIO()
+    writer = csv.writer(output)
+    column_order = _build_csv_column_order(table_rows)
+    writer.writerow([_csv_header_label(column, metric_label=metric_label) for column in column_order])
+    for row in table_rows:
+        writer.writerow([_format_csv_value(row.get(column)) for column in column_order])
+    return output.getvalue()
+
+
+def _build_csv_column_order(table_rows: list[dict[str, Any]]) -> list[str]:
+    preferred_order = [
+        "rank",
+        "player_id",
+        "player_name",
+        "span_average_value",
+        "average_minutes",
+        "total_minutes",
+        "games_with",
+        "games_without",
+        "avg_margin_with",
+        "avg_margin_without",
+        "season_count",
+        "points",
+    ]
+    available_columns = {
+        key
+        for row in table_rows
+        for key in row
+    }
+    ordered_columns = [column for column in preferred_order if column in available_columns]
+    ordered_columns.extend(sorted(available_columns - set(ordered_columns)))
+    return ordered_columns
+
+
+def _csv_header_label(column: str, *, metric_label: str) -> str:
+    return {
+        "rank": "Rank",
+        "player_id": "Player ID",
+        "player_name": "Player",
+        "span_average_value": metric_label,
+        "average_minutes": "Avg Min",
+        "total_minutes": "Tot Min",
+        "games_with": "With",
+        "games_without": "Without",
+        "avg_margin_with": "Avg With",
+        "avg_margin_without": "Avg Without",
+        "season_count": "Seasons",
+        "points": "Points",
+    }.get(column, column)
+
+
+def _format_csv_value(value: Any) -> str:
+    if isinstance(value, (list, dict)):
+        return json.dumps(value, separators=(",", ":"))
+    if isinstance(value, float):
+        return f"{value:.6g}"
+    if value is None:
+        return "—"
+    return str(value)

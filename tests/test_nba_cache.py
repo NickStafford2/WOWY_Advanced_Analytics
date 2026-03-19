@@ -9,11 +9,13 @@ from requests import RequestException
 from wowy.nba.cache import (
     BOX_SCORE_REQUEST_TIMEOUT_SECONDS,
     LEAGUE_GAMES_REQUEST_TIMEOUT_SECONDS,
+    league_games_cache_path,
     load_cached_payload,
     load_or_fetch_box_score_with_source,
     load_or_fetch_league_games_with_source,
     write_cached_payload,
 )
+from wowy.nba.season_types import canonicalize_season_type
 
 
 def test_write_cached_payload_writes_json_atomically(tmp_path: Path):
@@ -178,3 +180,22 @@ def test_load_or_fetch_box_score_retries_request_exception(tmp_path: Path, monke
     assert source == "fetched"
     assert calls == ["0002", "0002", "0002", "0002"]
     assert sleeps == [0.6, 2.0, 0.6, 4.0, 0.6, 6.0, 0.6]
+
+
+def test_canonicalize_season_type_accepts_common_aliases():
+    assert canonicalize_season_type("regular season") == "Regular Season"
+    assert canonicalize_season_type("postseason") == "Playoffs"
+    assert canonicalize_season_type("Playoff") == "Playoffs"
+
+
+def test_league_games_cache_path_uses_canonical_season_type_slug(tmp_path: Path):
+    cache_path = league_games_cache_path(
+        team_abbreviation="BOS",
+        season="2023-24",
+        season_type="postseason",
+        source_data_dir=tmp_path,
+    )
+
+    assert cache_path == (
+        tmp_path / "team_seasons" / "BOS_2023-24_playoffs_leaguegamefinder.json"
+    )

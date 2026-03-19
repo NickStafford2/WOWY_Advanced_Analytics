@@ -10,6 +10,7 @@ from pathlib import Path
 from wowy.data.player_metrics_db import DEFAULT_PLAYER_METRICS_DB_PATH
 from wowy.nba.models import NormalizedGamePlayerRecord, NormalizedGameRecord
 from wowy.nba.seasons import canonicalize_season_string
+from wowy.nba.season_types import canonicalize_season_type
 from wowy.nba.team_seasons import TeamSeasonScope
 
 GAME_CACHE_BUILD_VERSION = "normalized-cache-v1"
@@ -117,6 +118,7 @@ def replace_team_season_normalized_rows(
     initialize_game_cache_db(db_path)
     team = team.upper()
     season = canonicalize_season_string(season)
+    season_type = canonicalize_season_type(season_type)
     refreshed_at = datetime.now(UTC).isoformat()
 
     with _connect(db_path) as connection:
@@ -239,6 +241,7 @@ def load_normalized_games_from_db(
     game_ids: list[str] | None = None,
 ) -> list[NormalizedGameRecord]:
     initialize_game_cache_db(db_path)
+    season_type = canonicalize_season_type(season_type)
     query = """
         SELECT
             game_id,
@@ -301,6 +304,7 @@ def load_normalized_game_players_from_db(
     game_ids: list[str] | None = None,
 ) -> list[NormalizedGamePlayerRecord]:
     initialize_game_cache_db(db_path)
+    season_type = canonicalize_season_type(season_type)
     query = """
         SELECT
             game_id,
@@ -356,6 +360,7 @@ def load_cache_load_row(
     season_type: str,
 ) -> NormalizedCacheLoadRow | None:
     initialize_game_cache_db(db_path)
+    season_type = canonicalize_season_type(season_type)
     with _connect(db_path) as connection:
         row = connection.execute(
             """
@@ -398,6 +403,8 @@ def list_cached_team_seasons_from_db(
     if not db_path.exists():
         return []
     initialize_game_cache_db(db_path)
+    if season_type is not None:
+        season_type = canonicalize_season_type(season_type)
     query = """
         SELECT DISTINCT team, season
         FROM normalized_games
@@ -421,6 +428,8 @@ def build_normalized_cache_fingerprint(
     season_type: str | None = None,
 ) -> str:
     initialize_game_cache_db(db_path)
+    if season_type is not None:
+        season_type = canonicalize_season_type(season_type)
     query = """
         SELECT
             team,

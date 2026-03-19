@@ -12,6 +12,7 @@ from wowy.nba.cache import (
 )
 from wowy.nba.models import NormalizedGamePlayerRecord, NormalizedGameRecord
 from wowy.nba.seasons import canonicalize_season_string
+from wowy.nba.season_types import canonicalize_season_type
 
 
 def result_set_to_data_frame(result_set: dict) -> pd.DataFrame:
@@ -56,6 +57,7 @@ def fetch_normalized_game_data(
     log: Callable[[str], None] | None = print,
 ) -> tuple[NormalizedGameRecord, list[NormalizedGamePlayerRecord]]:
     season = canonicalize_season_string(season)
+    season_type = canonicalize_season_type(season_type)
     box_score_payload = load_or_fetch_box_score(
         game_id=game_id,
         source_data_dir=source_data_dir,
@@ -87,6 +89,7 @@ def fetch_normalized_game_data_with_source(
     log: Callable[[str], None] | None = print,
 ) -> tuple[NormalizedGameRecord, list[NormalizedGamePlayerRecord], str]:
     season = canonicalize_season_string(season)
+    season_type = canonicalize_season_type(season_type)
     box_score_payload, box_score_source = load_or_fetch_box_score_with_source(
         game_id=game_id,
         source_data_dir=source_data_dir,
@@ -118,6 +121,7 @@ def normalize_box_score_payload(
     source: str = "nba_api",
 ) -> tuple[NormalizedGameRecord, list[NormalizedGamePlayerRecord]]:
     season = canonicalize_season_string(season)
+    season_type = canonicalize_season_type(season_type)
     player_stats_df = result_set_to_data_frame(box_score_payload["resultSets"][0])
     team_stats_df = result_set_to_data_frame(box_score_payload["resultSets"][1])
 
