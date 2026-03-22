@@ -11,6 +11,9 @@
 ## Workflow
 - Use Poetry for all Python commands.
 - Run tests with `poetry run pytest`.
+- Any long-running script or CLI must show visible progress by default.
+- For multi-step or full-database/full-season jobs, include a status bar or staged progress indicator that makes it clear the process is advancing and roughly how much is done.
+- Do not ship long-running commands that appear silent or hung during normal execution.
 
 ## Coding style
 - Keep changes simple, readable, and focused.
