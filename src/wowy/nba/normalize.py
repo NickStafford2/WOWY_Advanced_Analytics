@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import math
 from pathlib import Path
 from typing import Callable
 
@@ -229,6 +230,13 @@ def played_in_game(minutes: object) -> bool:
 def parse_minutes_to_float(minutes: object) -> float | None:
     if minutes is None:
         return None
+    if isinstance(minutes, bool):
+        return None
+    if isinstance(minutes, int | float):
+        numeric_minutes = float(minutes)
+        if not math.isfinite(numeric_minutes):
+            return None
+        return numeric_minutes
 
     minute_text = str(minutes).strip()
     if not minute_text:
@@ -237,12 +245,18 @@ def parse_minutes_to_float(minutes: object) -> float | None:
         return 0.0
     if ":" not in minute_text:
         try:
-            return float(minute_text)
+            numeric_minutes = float(minute_text)
         except ValueError:
             return None
+        if not math.isfinite(numeric_minutes):
+            return None
+        return numeric_minutes
 
     whole_minutes, seconds = minute_text.split(":", maxsplit=1)
     try:
-        return float(whole_minutes) + (float(seconds) / 60.0)
+        parsed_minutes = float(whole_minutes) + (float(seconds) / 60.0)
     except ValueError:
         return None
+    if not math.isfinite(parsed_minutes):
+        return None
+    return parsed_minutes

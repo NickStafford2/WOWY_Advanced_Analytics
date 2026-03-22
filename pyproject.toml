@@ -12,6 +12,7 @@ wowy = "wowy.apps.wowy.cli:main"
 rawr = "wowy.apps.rawr.cli:main"
 wowy-web = "wowy.web.cli:main"
 wowy-refresh-web-store = "wowy.web.refresh_cli:main"
+wowy-audit-db = "wowy.data.db_validation_cli:main"
 
 [dependency-groups]
 test = ["pytest>=8.0,<9.0"]

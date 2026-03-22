@@ -6,7 +6,16 @@ from pathlib import Path
 import pytest
 
 from tests.support import game, player
-from wowy.data.db_validation import assert_valid_player_metrics_db, audit_player_metrics_db
+from wowy.data.db_validation import (
+    DatabaseValidationReport,
+    ValidationIssue,
+    assert_valid_player_metrics_db,
+    audit_player_metrics_db,
+    normalize_issue_message,
+    render_validation_summary,
+    summarize_validation_report,
+)
+from wowy.data.db_validation_cli import main as db_validation_cli_main
 from wowy.data.game_cache_db import replace_team_season_normalized_rows
 from wowy.data.player_metrics_db import (
     MetricFullSpanPointRow,
@@ -95,6 +104,86 @@ def test_audit_player_metrics_db_reports_noncanonical_persisted_catalog_values(t
         issue.table == "metric_scope_catalog"
         and "canonical uppercase abbreviations" in issue.message
         for issue in report.issues
+    )
+
+
+def test_summarize_validation_report_groups_similar_errors():
+    report = DatabaseValidationReport(
+        issues=[
+            ValidationIssue(
+                table="normalized_game_players",
+                key="row-1",
+                message=(
+                    "Normalized player row for game '0020301176' player_id=445 "
+                    "player_name='Wesley Person' source_path="
+                    "'data/source/nba/boxscores/0020301176_boxscoretraditionalv2.json' "
+                    "has invalid minutes nan"
+                ),
+            ),
+            ValidationIssue(
+                table="normalized_game_players",
+                key="row-2",
+                message=(
+                    "Normalized player row for game '0020301180' player_id=1442 "
+                    "player_name='Zeljko Rebraca' source_path="
+                    "'data/source/nba/boxscores/0020301180_boxscoretraditionalv2.json' "
+                    "has invalid minutes nan"
+                ),
+            ),
+        ]
+    )
+
+    summary = summarize_validation_report(report)
+
+    assert summary.issue_count == 2
+    assert summary.table_counts == {"normalized_game_players": 2}
+    assert len(summary.trends) == 1
+    assert summary.trends[0].count == 2
+    assert "has invalid minutes nan" in summary.trends[0].signature
+
+
+def test_render_validation_summary_and_cli_show_top_error_trends(
+    tmp_path: Path,
+    capsys,
+):
+    db_path = _seed_valid_db(tmp_path)
+
+    with sqlite3.connect(db_path) as connection:
+        connection.execute(
+            """
+            UPDATE normalized_cache_loads
+            SET games_row_count = 99
+            WHERE team = 'BOS' AND season = '2023-24' AND season_type = 'Regular Season'
+            """
+        )
+        connection.commit()
+
+    report = audit_player_metrics_db(db_path)
+    summary = summarize_validation_report(report)
+    rendered = render_validation_summary(summary, top_n=5)
+
+    assert "Issues by table:" in rendered
+    assert "Top 1 error trends:" in rendered
+
+    exit_code = db_validation_cli_main(["--db-path", str(db_path), "--top", "5"])
+    captured = capsys.readouterr()
+
+    assert exit_code == 1
+    assert "Database validation status: invalid" in captured.out
+    assert "normalized_cache_loads" in captured.out
+    assert "games_row_count does not match normalized_games count" in captured.out
+
+
+def test_normalize_issue_message_replaces_embedded_ids_and_paths():
+    normalized = normalize_issue_message(
+        "Normalized player row for game '0020301176' player_id=445 player_name='Wesley Person' "
+        "source_path='data/source/nba/boxscores/0020301176_boxscoretraditionalv2.json' "
+        "has invalid minutes nan"
+    )
+
+    assert normalized == (
+        "Normalized player row for game '<value>' player_id=<num> player_name='<value>' "
+        "source_path='<value>' has invalid minutes nan"
     )
 
 

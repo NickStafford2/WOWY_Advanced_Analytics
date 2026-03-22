@@ -1,8 +1,10 @@
 from __future__ import annotations
 
 import json
+import math
 from pathlib import Path
 
+import pandas as pd
 import pytest
 from requests import RequestException
 
@@ -14,6 +16,7 @@ from wowy.nba.ingest import (
     load_player_names_from_cache,
 )
 from wowy.nba.normalize import parse_minutes_to_float, played_in_game
+from wowy.nba.normalize import extract_normalized_game_players
 from wowy.data.game_cache_db import (
     load_normalized_game_players_from_db,
     load_normalized_games_from_db,
@@ -735,3 +738,38 @@ def test_played_in_game_handles_numeric_and_status_values(
 
 def test_parse_minutes_to_float_returns_none_for_status_text():
     assert parse_minutes_to_float("DNP") is None
+
+
+@pytest.mark.parametrize("minutes", [math.nan, "nan", float("inf"), "-inf"])
+def test_parse_minutes_to_float_returns_none_for_non_finite_values(minutes: object):
+    assert parse_minutes_to_float(minutes) is None
+
+
+def test_extract_normalized_game_players_treats_pandas_nan_minutes_as_did_not_play():
+    player_rows = pd.DataFrame(
+        [
+            {
+                "TEAM_ABBREVIATION": "ATL",
+                "PLAYER_ID": 445,
+                "PLAYER_NAME": "Wesley Person",
+                "MIN": math.nan,
+            }
+        ]
+    )
+
+    players = extract_normalized_game_players(
+        game_id="0020301176",
+        team_abbreviation="ATL",
+        player_rows=player_rows,
+    )
+
+    assert players == [
+        NormalizedGamePlayerRecord(
+            game_id="0020301176",
+            team="ATL",
+            player_id=445,
+            player_name="Wesley Person",
+            appeared=False,
+            minutes=None,
+        )
+    ]
