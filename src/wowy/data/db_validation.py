@@ -6,6 +6,7 @@ import sqlite3
 from collections import Counter, defaultdict
 from dataclasses import dataclass
 from pathlib import Path
+from typing import Callable
 
 from wowy.data.game_cache_db import NormalizedCacheLoadRow, initialize_game_cache_db
 from wowy.data.player_metrics_db import (
@@ -94,25 +95,58 @@ class DatabaseValidationSummary:
 
 _QUOTED_VALUE_PATTERN = re.compile(r"'[^']*'")
 _NUMBER_PATTERN = re.compile(r"(?<![A-Za-z])-?\d+(?:\.\d+)?")
+ValidationProgressFn = Callable[[int, int, str], None]
 
 
 def audit_player_metrics_db(
     db_path: Path = DEFAULT_PLAYER_METRICS_DB_PATH,
+    progress: ValidationProgressFn | None = None,
 ) -> DatabaseValidationReport:
     initialize_game_cache_db(db_path)
     issues: list[ValidationIssue] = []
+    steps = (
+        ("normalized games", _validate_normalized_games_table),
+        ("normalized game players", _validate_normalized_game_players_table),
+        ("normalized cache loads", _validate_normalized_cache_loads_table),
+        ("normalized cache relations", _validate_normalized_cache_relations),
+        ("metric player season values", _validate_metric_player_season_values_table),
+        ("metric scope catalog", _validate_metric_scope_catalog_table),
+        ("metric full span tables", _validate_metric_full_span_tables),
+    )
+    total_steps = len(steps) + 1
+    current_step = 0
+
+    def report_progress(label: str) -> None:
+        if progress is not None:
+            progress(current_step, total_steps, label)
 
     with _connect_player_metrics_db(db_path) as connection:
+        current_step = 1
+        report_progress("Validating normalized games")
         _validate_normalized_games_table(connection, issues)
+        current_step = 2
+        report_progress("Validating normalized game players")
         _validate_normalized_game_players_table(connection, issues)
+        current_step = 3
+        report_progress("Validating normalized cache loads")
         _validate_normalized_cache_loads_table(connection, issues)
+        current_step = 4
+        report_progress("Validating normalized cache relations")
         _validate_normalized_cache_relations(connection, issues)
+        current_step = 5
+        report_progress("Validating metric player season values")
         metric_row_groups, metadata_rows = _validate_metric_player_season_values_table(
             connection,
             issues,
         )
+        current_step = 6
+        report_progress("Validating metric scope catalog")
         catalog_rows = _validate_metric_scope_catalog_table(connection, issues)
+        current_step = 7
+        report_progress("Validating metric full span tables")
         full_span_groups = _validate_metric_full_span_tables(connection, issues)
+        current_step = 8
+        report_progress("Validating metric store relations")
         _validate_metric_store_relations(
             metric_row_groups=metric_row_groups,
             metadata_rows=metadata_rows,

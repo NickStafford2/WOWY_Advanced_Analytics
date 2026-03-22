@@ -172,6 +172,7 @@ def test_render_validation_summary_and_cli_show_top_error_trends(
     assert "Database validation status: invalid" in captured.out
     assert "normalized_cache_loads" in captured.out
     assert "games_row_count does not match normalized_games count" in captured.out
+    assert "Validating metric store relations" in captured.err
 
 
 def test_normalize_issue_message_replaces_embedded_ids_and_paths():
@@ -185,6 +186,17 @@ def test_normalize_issue_message_replaces_embedded_ids_and_paths():
         "Normalized player row for game '<value>' player_id=<num> player_name='<value>' "
         "source_path='<value>' has invalid minutes nan"
     )
+
+
+def test_db_validation_cli_json_mode_omits_progress_output(tmp_path: Path, capsys):
+    db_path = _seed_valid_db(tmp_path)
+
+    exit_code = db_validation_cli_main(["--db-path", str(db_path), "--json"])
+    captured = capsys.readouterr()
+
+    assert exit_code == 0
+    assert "\"ok\": true" in captured.out
+    assert captured.err == ""
 
 
 def _seed_valid_db(tmp_path: Path) -> Path:

@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import sys
 from pathlib import Path
 
 from wowy.data.db_validation import (
@@ -10,6 +11,9 @@ from wowy.data.db_validation import (
     summarize_validation_report,
 )
 from wowy.data.player_metrics_db import DEFAULT_PLAYER_METRICS_DB_PATH
+
+
+_LAST_PROGRESS_LINE_LENGTH = 0
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -34,11 +38,39 @@ def build_parser() -> argparse.ArgumentParser:
     return parser
 
 
+def write_progress_line(line: str) -> None:
+    global _LAST_PROGRESS_LINE_LENGTH
+    padding = max(0, _LAST_PROGRESS_LINE_LENGTH - len(line))
+    sys.stderr.write(f"\r{line}{' ' * padding}")
+    sys.stderr.flush()
+    _LAST_PROGRESS_LINE_LENGTH = len(line)
+
+
+def clear_progress_line() -> None:
+    global _LAST_PROGRESS_LINE_LENGTH
+    if _LAST_PROGRESS_LINE_LENGTH == 0:
+        return
+    sys.stderr.write(f"\r{' ' * _LAST_PROGRESS_LINE_LENGTH}\r")
+    sys.stderr.flush()
+    _LAST_PROGRESS_LINE_LENGTH = 0
+
+
+def render_progress(current: int, total: int, label: str) -> None:
+    filled = total if total == 0 else int((current / total) * 20)
+    bar = "#" * filled + "-" * (20 - filled)
+    write_progress_line(f"[{current:>2}/{total}] [{bar}] {label}")
+
+
 def main(argv: list[str] | None = None) -> int:
     parser = build_parser()
     args = parser.parse_args(argv)
 
-    report = audit_player_metrics_db(args.db_path)
+    progress = None if args.json else render_progress
+    try:
+        report = audit_player_metrics_db(args.db_path, progress=progress)
+    finally:
+        if progress is not None:
+            clear_progress_line()
     summary = summarize_validation_report(report)
     if args.json:
         print(json.dumps(summary.to_dict(), indent=2, sort_keys=True))
