@@ -28,6 +28,7 @@ from wowy.apps.wowy.models import (
     WowyPlayerStats,
 )
 from wowy.nba.models import NormalizedGamePlayerRecord, NormalizedGameRecord
+from tests.support import seed_db_from_team_seasons
 
 
 def test_compute_wowy_basic():
@@ -275,55 +276,55 @@ def test_prepare_wowy_player_season_records_uses_db_without_file_fixture_dirs(
     tmp_path: Path,
 ):
     db_path = tmp_path / "app" / "player_metrics.sqlite3"
-    replace_team_season_normalized_rows(
+    seed_db_from_team_seasons(
         db_path,
-        team="BOS",
-        season="2022-23",
-        season_type="Regular Season",
-        games=[
-            NormalizedGameRecord(
-                "1",
-                "2022-23",
-                "2023-04-01",
+        [
+            (
                 "BOS",
-                "MIL",
-                True,
-                10.0,
-                "Regular Season",
-                "nba_api",
-            ),
-            NormalizedGameRecord(
-                "2",
                 "2022-23",
-                "2023-04-03",
-                "BOS",
-                "NYK",
-                False,
-                -5.0,
-                "Regular Season",
-                "nba_api",
-            ),
-            NormalizedGameRecord(
-                "3",
-                "2022-23",
-                "2023-04-05",
-                "BOS",
-                "LAL",
-                True,
-                4.0,
-                "Regular Season",
-                "nba_api",
-            ),
+                [
+                    NormalizedGameRecord(
+                        "1",
+                        "2022-23",
+                        "2023-04-01",
+                        "BOS",
+                        "MIL",
+                        True,
+                        10.0,
+                        "Regular Season",
+                        "nba_api",
+                    ),
+                    NormalizedGameRecord(
+                        "2",
+                        "2022-23",
+                        "2023-04-03",
+                        "BOS",
+                        "NYK",
+                        False,
+                        -5.0,
+                        "Regular Season",
+                        "nba_api",
+                    ),
+                    NormalizedGameRecord(
+                        "3",
+                        "2022-23",
+                        "2023-04-05",
+                        "BOS",
+                        "LAL",
+                        True,
+                        4.0,
+                        "Regular Season",
+                        "nba_api",
+                    ),
+                ],
+                [
+                    NormalizedGamePlayerRecord("1", "BOS", 101, "Player 101", True, 34.0),
+                    NormalizedGamePlayerRecord("1", "BOS", 102, "Player 102", True, 31.0),
+                    NormalizedGamePlayerRecord("2", "BOS", 102, "Player 102", True, 31.0),
+                    NormalizedGamePlayerRecord("3", "BOS", 101, "Player 101", True, 34.0),
+                ],
+            )
         ],
-        game_players=[
-            NormalizedGamePlayerRecord("1", "BOS", 101, "Player 101", True, 34.0),
-            NormalizedGamePlayerRecord("1", "BOS", 102, "Player 102", True, 31.0),
-            NormalizedGamePlayerRecord("2", "BOS", 102, "Player 102", True, 31.0),
-            NormalizedGamePlayerRecord("3", "BOS", 101, "Player 101", True, 34.0),
-        ],
-        source_path="db-only",
-        source_snapshot="db-only",
-        source_kind="test",
     )
 
     records = prepare_wowy_player_season_records(

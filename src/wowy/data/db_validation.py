@@ -26,6 +26,7 @@ from wowy.data.player_metrics_db import (
 from wowy.nba.models import NormalizedGamePlayerRecord, NormalizedGameRecord
 from wowy.nba.seasons import canonicalize_season_string
 from wowy.nba.season_types import canonicalize_season_type
+from wowy.nba.team_identity import resolve_team_id
 from wowy.nba.validation import (
     _canonical_team_abbreviation,
     _validate_normalized_game,
@@ -397,7 +398,7 @@ def _validate_normalized_cache_loads_table(
             games_row_count,
             game_players_row_count
         FROM normalized_cache_loads
-        ORDER BY season_type, season, team
+        ORDER BY season_type, season, team_id
         """
     ).fetchall()
     for row in rows:
@@ -423,6 +424,10 @@ def _validate_normalized_cache_loads_table(
             _validate_required_text(load_row.team, "team")
             _canonical_team_abbreviation(load_row.team)
             _validate_optional_non_negative_int(load_row.team_id, "team_id")
+            if load_row.team_id is None or load_row.team_id <= 0:
+                raise ValueError("team_id must be a positive integer")
+            if resolve_team_id(load_row.team) != load_row.team_id:
+                raise ValueError("team_id does not match team abbreviation identity")
             _validate_required_text(load_row.source_path, "source_path")
             _validate_required_text(load_row.source_snapshot, "source_snapshot")
             _validate_required_text(load_row.source_kind, "source_kind")

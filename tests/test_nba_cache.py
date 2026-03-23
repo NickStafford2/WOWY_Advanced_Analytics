@@ -18,6 +18,8 @@ from wowy.nba.cache import (
 )
 from wowy.data.game_cache_db import (
     initialize_game_cache_db,
+    load_cache_load_row,
+    load_normalized_games_from_db,
     replace_team_season_normalized_rows,
 )
 from wowy.nba.errors import BoxScoreFetchError, LeagueGamesFetchError
@@ -286,12 +288,66 @@ def test_initialize_game_cache_db_uses_expected_primary_keys(tmp_path: Path):
 
     assert [
         row[1] for row in sorted(normalized_games_pk, key=lambda row: row[5]) if row[5] > 0
-    ] == ["game_id", "team", "season", "season_type"]
+    ] == ["game_id", "team_id", "season", "season_type"]
     assert [
         row[1]
         for row in sorted(normalized_players_pk, key=lambda row: row[5])
         if row[5] > 0
-    ] == ["game_id", "team", "player_id", "season", "season_type"]
+    ] == ["game_id", "team_id", "player_id", "season", "season_type"]
+
+
+def test_team_id_authoritative_reads_match_historical_alias_scopes(tmp_path: Path):
+    db_path = tmp_path / "app" / "player_metrics.sqlite3"
+
+    replace_team_season_normalized_rows(
+        db_path,
+        team="NJN",
+        season="2009-10",
+        season_type="Regular Season",
+        games=[
+            NormalizedGameRecord(
+                game_id="0001",
+                season="2009-10",
+                game_date="2010-04-01",
+                team="NJN",
+                opponent="BOS",
+                is_home=True,
+                margin=3.0,
+                season_type="Regular Season",
+                source="nba_api",
+            )
+        ],
+        game_players=[
+            NormalizedGamePlayerRecord("0001", "NJN", 101, "Player 101", True, 48.0),
+            NormalizedGamePlayerRecord("0001", "NJN", 102, "Player 102", True, 48.0),
+            NormalizedGamePlayerRecord("0001", "NJN", 103, "Player 103", True, 48.0),
+            NormalizedGamePlayerRecord("0001", "NJN", 104, "Player 104", True, 48.0),
+            NormalizedGamePlayerRecord("0001", "NJN", 105, "Player 105", True, 48.0),
+        ],
+        source_path="sqlite://normalized_games/NJN_2009-10_regular_season",
+        source_snapshot="test",
+        source_kind="unit-test",
+    )
+
+    games = load_normalized_games_from_db(
+        db_path,
+        season_type="Regular Season",
+        teams=["BKN"],
+        seasons=["2009-10"],
+    )
+    load_row = load_cache_load_row(
+        db_path,
+        team="BKN",
+        season="2009-10",
+        season_type="Regular Season",
+    )
+
+    assert [(game.game_id, game.team, game.team_id) for game in games] == [
+        ("0001", "NJN", 1610612751)
+    ]
+    assert load_row is not None
+    assert load_row.team == "NJN"
+    assert load_row.team_id == 1610612751
 
 
 def test_replace_team_season_normalized_rows_rejects_non_canonical_or_implausible_data(
