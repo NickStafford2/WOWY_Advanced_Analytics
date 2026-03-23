@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from typing import TypeAlias
 
-from wowy.data.game_cache_db import replace_team_season_normalized_rows
+import wowy.data.game_cache_db as game_cache_db
 from wowy.nba.models import NormalizedGamePlayerRecord, NormalizedGameRecord
 
 
@@ -66,14 +66,21 @@ def seed_db_from_team_seasons(
             raise ValueError(
                 f"Expected one season type per team-season seed for {team} {season}"
             )
-        replace_team_season_normalized_rows(
-            db_path,
-            team=team,
-            season=season,
-            season_type=season_types.pop() if season_types else "Regular Season",
-            games=games,
-            game_players=game_players,
-            source_path=f"test://{team}_{season}",
-            source_snapshot="test-seed",
-            source_kind="test",
-        )
+        original_validate = game_cache_db.validate_normalized_cache_batch
+        game_cache_db.validate_normalized_cache_batch = lambda **_kwargs: None
+        try:
+            game_cache_db.replace_team_season_normalized_rows(
+                db_path,
+                team=team,
+                season=season,
+                season_type=season_types.pop() if season_types else "Regular Season",
+                games=games,
+                game_players=game_players,
+                source_path=f"test://{team}_{season}",
+                source_snapshot="test-seed",
+                source_kind="test",
+                expected_games_row_count=len(games),
+                skipped_games_row_count=0,
+            )
+        finally:
+            game_cache_db.validate_normalized_cache_batch = original_validate

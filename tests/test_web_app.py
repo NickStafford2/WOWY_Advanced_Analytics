@@ -54,6 +54,10 @@ def _seed_rawr_cache_inputs(
         "wowy.nba.prepare.ensure_team_season_data",
         lambda **_kwargs: None,
     )
+    monkeypatch.setattr(
+        "wowy.apps.rawr.service.list_expected_rawr_teams_for_season",
+        lambda _season: ["BOS", "LAL", "MIL", "NYK"],
+    )
     return [
         (
             "BOS",
@@ -184,6 +188,72 @@ def test_refresh_metric_store_builds_rawr_player_season_rows(
     assert all(row.season == "2023-24" for row in rows)
     assert all(row.sample_size and row.sample_size >= 1 for row in rows)
     assert all(row.details == {"games": row.sample_size} for row in rows)
+
+
+def test_refresh_metric_store_skips_incomplete_rawr_seasons_without_scraping(
+    tmp_path: Path,
+    monkeypatch,
+    capsys,
+):
+    team_seasons = _seed_rawr_cache_inputs(monkeypatch)
+    player_metrics_db_path = tmp_path / "app" / "player_metrics.sqlite3"
+    seed_db_from_team_seasons(player_metrics_db_path, team_seasons[:-1])
+    refresh_metric_store(
+        "rawr",
+        season_type="Regular Season",
+        db_path=player_metrics_db_path,
+        source_data_dir=tmp_path / "source",
+    )
+    scope_key, _team_filter = build_scope_key(
+        teams=None,
+        season_type="Regular Season",
+    )
+    rows = load_metric_rows(
+        player_metrics_db_path,
+        metric="rawr",
+        scope_key=scope_key,
+        min_sample_size=1,
+    )
+    captured = capsys.readouterr()
+
+    assert rows == []
+    assert "RAWR warning: skipped incomplete seasons" in captured.out
+    assert (
+        "2023-24: ERROR: MetaData incomplete/out of date. "
+        "Run `poetry run python scripts/cache_season_data.py 2023-24` "
+        "or repopulate DB."
+    ) not in captured.out
+    assert "2023-24: missing team-seasons: LAL" in captured.out
+
+
+def test_refresh_metric_store_warns_about_incomplete_rawr_seasons_even_when_cached(
+    tmp_path: Path,
+    monkeypatch,
+    capsys,
+):
+    team_seasons = _seed_rawr_cache_inputs(monkeypatch)
+    player_metrics_db_path = tmp_path / "app" / "player_metrics.sqlite3"
+    seed_db_from_team_seasons(player_metrics_db_path, team_seasons[:-1])
+
+    refresh_metric_store(
+        "rawr",
+        season_type="Regular Season",
+        db_path=player_metrics_db_path,
+        source_data_dir=tmp_path / "source",
+    )
+    first_run = capsys.readouterr()
+
+    refresh_metric_store(
+        "rawr",
+        season_type="Regular Season",
+        db_path=player_metrics_db_path,
+        source_data_dir=tmp_path / "source",
+    )
+    second_run = capsys.readouterr()
+
+    assert "RAWR warning: skipped incomplete seasons" in first_run.out
+    assert "RAWR warning: skipped incomplete seasons" in second_run.out
+    assert "2023-24: missing team-seasons: LAL" in second_run.out
 
 
 def test_refresh_metric_store_can_skip_team_scopes(

@@ -21,15 +21,38 @@ from wowy.nba.team_seasons import TeamSeasonScope
 
 
 _LAST_STATUS_LINE_LENGTH = 0
+DEFAULT_START_YEAR = 2024
+DEFAULT_FIRST_YEAR = 1946
 
 
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
-        description="Fetch, normalize, and cache one NBA season for many teams."
+        description="Fetch, normalize, and cache all NBA seasons by default, or one season."
     )
     parser.add_argument(
         "season",
-        help="NBA season string, for example 2023-24",
+        nargs="?",
+        help="Optional NBA season string, for example 2023-24. If omitted, refreshes all seasons.",
+    )
+    parser.add_argument(
+        "--all-seasons",
+        action="store_true",
+        help="Refresh every season from --start-year back to --first-year.",
+    )
+    parser.add_argument(
+        "--start-year",
+        type=int,
+        default=DEFAULT_START_YEAR,
+        help=f"First season start year to cache when using --all-seasons (default: {DEFAULT_START_YEAR})",
+    )
+    parser.add_argument(
+        "--first-year",
+        type=int,
+        default=DEFAULT_FIRST_YEAR,
+        help=(
+            "Earliest season start year to cache, inclusive, when using "
+            f"--all-seasons (default: {DEFAULT_FIRST_YEAR})"
+        ),
     )
     parser.add_argument(
         "--season-type",
@@ -60,6 +83,17 @@ def build_parser() -> argparse.ArgumentParser:
         help="JSONL file where ingest failures are appended.",
     )
     return parser
+
+
+def season_string(start_year: int) -> str:
+    end_year = (start_year + 1) % 100
+    return f"{start_year}-{end_year:02d}"
+
+
+def build_season_strings(start_year: int, first_year: int) -> list[str]:
+    if start_year < first_year:
+        raise ValueError("Start year must be greater than or equal to first year")
+    return [season_string(year) for year in range(start_year, first_year - 1, -1)]
 
 
 def resolve_teams(team_codes: list[str] | None) -> list[str]:
@@ -153,92 +187,99 @@ def render_team_fetch_failed_line(
 def main(argv: list[str] | None = None) -> int:
     parser = build_parser()
     args = parser.parse_args(argv)
-    season = canonicalize_season_string(args.season)
     season_type = canonicalize_season_type(args.season_type)
+    if args.all_seasons or not args.season:
+        seasons = build_season_strings(args.start_year, args.first_year)
+    else:
+        seasons = [canonicalize_season_string(args.season)]
 
     team_codes = resolve_teams(args.teams)
     team_total = len(team_codes)
-    for team_index, team_code in enumerate(team_codes, start=1):
-        team_season = TeamSeasonScope(team=team_code, season=season)
-        try:
-            summary = cache_team_season_data(
-                team_abbreviation=team_code,
-                season=season,
-                season_type=season_type,
-                source_data_dir=DEFAULT_SOURCE_DATA_DIR,
-                player_metrics_db_path=args.player_metrics_db_path,
-                log=quiet_log,
-                progress=lambda payload, team_index=team_index: render_progress_line(
-                    team_index,
-                    team_total,
-                    payload,
-                ),
-            )
-        except FetchError as exc:
-            append_ingest_failure_log(
-                team=team_code,
-                season=season,
-                season_type=season_type,
-                failure_kind="fetch_error",
-                error=exc,
-                log_path=args.failure_log_path,
-            )
-            render_team_fetch_failed_line(
-                team_index=team_index,
-                team_total=team_total,
-                team=team_code,
-                season=season,
-                error_type=exc.last_error_type,
-            )
+    season_count = len(seasons)
+    for season_index, season in enumerate(seasons, start=1):
+        if season_count > 1:
+            print(f"[{season_index}/{season_count}] caching {season}")
+        for team_index, team_code in enumerate(team_codes, start=1):
+            team_season = TeamSeasonScope(team=team_code, season=season)
+            try:
+                summary = cache_team_season_data(
+                    team_abbreviation=team_code,
+                    season=season,
+                    season_type=season_type,
+                    source_data_dir=DEFAULT_SOURCE_DATA_DIR,
+                    player_metrics_db_path=args.player_metrics_db_path,
+                    log=quiet_log,
+                    progress=lambda payload, team_index=team_index: render_progress_line(
+                        team_index,
+                        team_total,
+                        payload,
+                    ),
+                )
+            except FetchError as exc:
+                append_ingest_failure_log(
+                    team=team_code,
+                    season=season,
+                    season_type=season_type,
+                    failure_kind="fetch_error",
+                    error=exc,
+                    log_path=args.failure_log_path,
+                )
+                render_team_fetch_failed_line(
+                    team_index=team_index,
+                    team_total=team_total,
+                    team=team_code,
+                    season=season,
+                    error_type=exc.last_error_type,
+                )
+                sys.stdout.write("\n")
+                sys.stderr.write(f"Fetch failed for {team_code} {season}: {exc}\n")
+                sys.stderr.flush()
+                return 1
+            except TeamSeasonConsistencyError as exc:
+                append_ingest_failure_log(
+                    team=team_code,
+                    season=season,
+                    season_type=season_type,
+                    failure_kind="consistency_error",
+                    error=exc,
+                    log_path=args.failure_log_path,
+                )
+                render_team_failed_line(
+                    team_index=team_index,
+                    team_total=team_total,
+                    team=team_code,
+                    season=season,
+                    reason=exc.reason,
+                )
+                sys.stdout.write("\n")
+                sys.stderr.write(
+                    f"Inconsistent cache for {team_code} {season}: {exc.reason}\n"
+                )
+                sys.stderr.flush()
+                return 1
+            except ValueError as exc:
+                append_ingest_failure_log(
+                    team=team_code,
+                    season=season,
+                    season_type=season_type,
+                    failure_kind="validation_error",
+                    error=exc,
+                    log_path=args.failure_log_path,
+                )
+                render_team_validation_failed_line(
+                    team_index=team_index,
+                    team_total=team_total,
+                    team=team_code,
+                    season=season,
+                )
+                sys.stdout.write("\n")
+                sys.stderr.write(
+                    f"Validation failed for {team_code} {season}: {exc}\n"
+                )
+                sys.stderr.flush()
+                return 1
+            render_team_complete_line(team_index, team_total, summary)
             sys.stdout.write("\n")
-            sys.stderr.write(f"Fetch failed for {team_code} {season}: {exc}\n")
-            sys.stderr.flush()
-            return 1
-        except TeamSeasonConsistencyError as exc:
-            append_ingest_failure_log(
-                team=team_code,
-                season=season,
-                season_type=season_type,
-                failure_kind="consistency_error",
-                error=exc,
-                log_path=args.failure_log_path,
-            )
-            render_team_failed_line(
-                team_index=team_index,
-                team_total=team_total,
-                team=team_code,
-                season=season,
-                reason=exc.reason,
-            )
-            sys.stdout.write("\n")
-            sys.stderr.write(
-                f"Inconsistent cache for {team_code} {season}: {exc.reason}\n"
-            )
-            sys.stderr.flush()
-            return 1
-        except ValueError as exc:
-            append_ingest_failure_log(
-                team=team_code,
-                season=season,
-                season_type=season_type,
-                failure_kind="validation_error",
-                error=exc,
-                log_path=args.failure_log_path,
-            )
-            render_team_validation_failed_line(
-                team_index=team_index,
-                team_total=team_total,
-                team=team_code,
-                season=season,
-            )
-            sys.stdout.write("\n")
-            sys.stderr.write(
-                f"Validation failed for {team_code} {season}: {exc}\n"
-            )
-            sys.stderr.flush()
-            return 1
-        render_team_complete_line(team_index, team_total, summary)
-        sys.stdout.write("\n")
     return 0
 
 

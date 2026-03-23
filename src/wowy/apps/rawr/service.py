@@ -1,6 +1,9 @@
 from __future__ import annotations
 
 from pathlib import Path
+from dataclasses import dataclass
+
+from nba_api.stats.static import teams as nba_teams
 
 from wowy.apps.rawr.analysis import fit_player_rawr, tune_ridge_alpha
 from wowy.apps.rawr.data import build_rawr_observations, count_player_games
@@ -11,6 +14,7 @@ from wowy.apps.rawr.models import (
     RawrResult,
 )
 from wowy.nba.models import NormalizedGamePlayerRecord, NormalizedGameRecord
+from wowy.data.game_cache_db import list_cache_load_rows
 from wowy.data.player_metrics_db import DEFAULT_PLAYER_METRICS_DB_PATH
 from wowy.nba.prepare import prepare_normalized_scope_records
 from wowy.nba.team_seasons import resolve_team_seasons
@@ -237,6 +241,138 @@ def build_tuning_report(best_alpha: float, results) -> str:
     return "\n".join(lines)
 
 
+@dataclass(frozen=True)
+class RawrSeasonCompletenessIssue:
+    season: str
+    reason: str
+
+
+def list_expected_rawr_teams_for_season(_season: str) -> list[str]:
+    return sorted(team["abbreviation"] for team in nba_teams.get_teams())
+
+
+def list_incomplete_rawr_seasons(
+    *,
+    seasons: list[str],
+    season_type: str,
+    player_metrics_db_path: Path,
+) -> list[RawrSeasonCompletenessIssue]:
+    cache_load_rows = list_cache_load_rows(
+        player_metrics_db_path,
+        season_type=season_type,
+        seasons=seasons,
+    )
+    rows_by_season: dict[str, dict[str, object]] = {}
+    for row in cache_load_rows:
+        season_rows = rows_by_season.setdefault(
+            row.season,
+            {"teams": {}, "issues": set()},
+        )
+        season_rows["teams"][row.team] = row
+        if row.expected_games_row_count is None or row.skipped_games_row_count is None:
+            season_rows["issues"].add(
+                "ERROR: MetaData incomplete/out of date. "
+                f"Run `poetry run python scripts/cache_season_data.py {row.season}` "
+                "or repopulate DB."
+            )
+        if (
+            row.expected_games_row_count is not None
+            and row.games_row_count != row.expected_games_row_count
+        ):
+            season_rows["issues"].add(
+                f"partial team-season cache for {row.team} "
+                f"({row.games_row_count}/{row.expected_games_row_count} games)"
+            )
+        if row.skipped_games_row_count:
+            season_rows["issues"].add(
+                f"skipped games present for {row.team} "
+                f"({row.skipped_games_row_count} skipped)"
+            )
+
+    issues: list[RawrSeasonCompletenessIssue] = []
+    for season in seasons:
+        season_rows = rows_by_season.get(season)
+        expected_teams = set(list_expected_rawr_teams_for_season(season))
+        if season_rows is None:
+            issues.append(
+                RawrSeasonCompletenessIssue(
+                    season=season,
+                    reason="no cache load metadata found",
+                )
+            )
+            continue
+        missing_teams = sorted(expected_teams - set(season_rows["teams"]))
+        if missing_teams:
+            season_rows["issues"].add(
+                f"missing team-seasons: {', '.join(missing_teams)}"
+            )
+        for reason in sorted(season_rows["issues"]):
+            issues.append(RawrSeasonCompletenessIssue(season=season, reason=reason))
+    return issues
+
+
+def list_complete_rawr_seasons(
+    *,
+    seasons: list[str],
+    season_type: str,
+    player_metrics_db_path: Path,
+) -> set[str]:
+    cache_load_rows = list_cache_load_rows(
+        player_metrics_db_path,
+        season_type=season_type,
+        seasons=seasons,
+    )
+    rows_by_season: dict[str, dict[str, object]] = {}
+    for row in cache_load_rows:
+        season_rows = rows_by_season.setdefault(
+            row.season,
+            {"teams": {}, "all_complete": True},
+        )
+        season_rows["teams"][row.team] = row
+        if (
+            row.expected_games_row_count is None
+            or row.skipped_games_row_count is None
+            or row.games_row_count != row.expected_games_row_count
+            or row.skipped_games_row_count != 0
+        ):
+            season_rows["all_complete"] = False
+
+    complete_seasons: set[str] = set()
+    for season in seasons:
+        season_rows = rows_by_season.get(season)
+        if season_rows is None or not season_rows["all_complete"]:
+            continue
+        expected_teams = set(list_expected_rawr_teams_for_season(season))
+        if set(season_rows["teams"]) != expected_teams:
+            continue
+        complete_seasons.add(season)
+    return complete_seasons
+
+
+def select_complete_rawr_scope_seasons(
+    *,
+    teams: list[str] | None,
+    seasons: list[str] | None,
+    season_type: str,
+    player_metrics_db_path: Path,
+) -> list[str]:
+    team_seasons = resolve_team_seasons(
+        teams,
+        seasons,
+        player_metrics_db_path=player_metrics_db_path,
+        season_type=season_type,
+    )
+    candidate_seasons = sorted({team_season.season for team_season in team_seasons})
+    if not candidate_seasons:
+        return []
+    complete_seasons = list_complete_rawr_seasons(
+        seasons=candidate_seasons,
+        season_type=season_type,
+        player_metrics_db_path=player_metrics_db_path,
+    )
+    return [season for season in candidate_seasons if season in complete_seasons]
+
+
 def build_player_season_minute_stats(
     games,
     game_players,
@@ -300,9 +436,19 @@ def prepare_rawr_player_season_records(
     teams_by_season: dict[str, list[str]] = {}
     for team_season in team_seasons:
         teams_by_season.setdefault(team_season.season, []).append(team_season.team)
+    complete_seasons = set(
+        select_complete_rawr_scope_seasons(
+            teams=teams,
+            seasons=seasons,
+            season_type=season_type,
+            player_metrics_db_path=player_metrics_db_path,
+        )
+    )
     records: list[RawrPlayerSeasonRecord] = []
 
     for season in sorted(teams_by_season):
+        if season not in complete_seasons:
+            continue
         games, game_players = prepare_normalized_scope_records(
             teams=sorted(set(teams_by_season[season])),
             seasons=[season],
@@ -310,6 +456,7 @@ def prepare_rawr_player_season_records(
             source_data_dir=source_data_dir,
             player_metrics_db_path=player_metrics_db_path,
             include_opponents_for_team_scope=True,
+            require_cached_only=True,
             log=lambda *_args, **_kwargs: None,
         )
         try:
@@ -390,12 +537,26 @@ def prepare_and_run_rawr(args) -> str:
             " solving for the requested sample.",
         ],
     )
+    complete_seasons = select_complete_rawr_scope_seasons(
+        teams=args.team,
+        seasons=args.season,
+        season_type=args.season_type,
+        player_metrics_db_path=getattr(
+            args,
+            "player_metrics_db_path",
+            DEFAULT_PLAYER_METRICS_DB_PATH,
+        ),
+    )
+    if not complete_seasons:
+        raise ValueError(
+            "No complete cached seasons matched the requested RAWR scope"
+        )
     print(
         f"[1/3] preparing RAWR inputs for {format_scope(args.team, args.season)}"
     )
     games, game_players = prepare_normalized_scope_records(
         teams=args.team,
-        seasons=args.season,
+        seasons=complete_seasons,
         season_type=args.season_type,
         source_data_dir=args.source_data_dir,
         player_metrics_db_path=getattr(
@@ -404,6 +565,7 @@ def prepare_and_run_rawr(args) -> str:
             DEFAULT_PLAYER_METRICS_DB_PATH,
         ),
         include_opponents_for_team_scope=True,
+        require_cached_only=True,
         log=lambda *_args, **_kwargs: None,
     )
     print(

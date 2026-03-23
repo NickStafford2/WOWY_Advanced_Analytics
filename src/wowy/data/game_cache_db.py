@@ -30,6 +30,8 @@ class NormalizedCacheLoadRow:
     refreshed_at: str
     games_row_count: int
     game_players_row_count: int
+    expected_games_row_count: int | None = None
+    skipped_games_row_count: int | None = None
 
 
 def initialize_game_cache_db(db_path: Path = DEFAULT_PLAYER_METRICS_DB_PATH) -> None:
@@ -94,6 +96,8 @@ def initialize_game_cache_db(db_path: Path = DEFAULT_PLAYER_METRICS_DB_PATH) -> 
                 refreshed_at TEXT NOT NULL,
                 games_row_count INTEGER NOT NULL,
                 game_players_row_count INTEGER NOT NULL,
+                expected_games_row_count INTEGER,
+                skipped_games_row_count INTEGER,
                 PRIMARY KEY (team, season, season_type)
             );
 
@@ -115,6 +119,8 @@ def replace_team_season_normalized_rows(
     source_snapshot: str,
     source_kind: str,
     build_version: str = GAME_CACHE_BUILD_VERSION,
+    expected_games_row_count: int | None = None,
+    skipped_games_row_count: int | None = None,
 ) -> None:
     initialize_game_cache_db(db_path)
     team = team.upper()
@@ -213,8 +219,10 @@ def replace_team_season_normalized_rows(
                 build_version,
                 refreshed_at,
                 games_row_count,
-                game_players_row_count
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                game_players_row_count,
+                expected_games_row_count,
+                skipped_games_row_count
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             ON CONFLICT(team, season, season_type) DO UPDATE SET
                 source_path = excluded.source_path,
                 source_snapshot = excluded.source_snapshot,
@@ -222,7 +230,9 @@ def replace_team_season_normalized_rows(
                 build_version = excluded.build_version,
                 refreshed_at = excluded.refreshed_at,
                 games_row_count = excluded.games_row_count,
-                game_players_row_count = excluded.game_players_row_count
+                game_players_row_count = excluded.game_players_row_count,
+                expected_games_row_count = excluded.expected_games_row_count,
+                skipped_games_row_count = excluded.skipped_games_row_count
             """,
             (
                 team,
@@ -235,6 +245,8 @@ def replace_team_season_normalized_rows(
                 refreshed_at,
                 len(games),
                 len(game_players),
+                expected_games_row_count,
+                skipped_games_row_count,
             ),
         )
         connection.commit()
@@ -382,7 +394,9 @@ def load_cache_load_row(
                 build_version,
                 refreshed_at,
                 games_row_count,
-                game_players_row_count
+                game_players_row_count,
+                expected_games_row_count,
+                skipped_games_row_count
             FROM normalized_cache_loads
             WHERE team = ? AND season = ? AND season_type = ?
             """,
@@ -401,7 +415,74 @@ def load_cache_load_row(
         refreshed_at=row["refreshed_at"],
         games_row_count=row["games_row_count"],
         game_players_row_count=row["game_players_row_count"],
+        expected_games_row_count=row["expected_games_row_count"],
+        skipped_games_row_count=row["skipped_games_row_count"],
     )
+
+
+def list_cache_load_rows(
+    db_path: Path,
+    *,
+    season_type: str | None = None,
+    seasons: list[str] | None = None,
+    teams: list[str] | None = None,
+) -> list[NormalizedCacheLoadRow]:
+    if not db_path.exists():
+        return []
+    initialize_game_cache_db(db_path)
+    query = """
+        SELECT
+            team,
+            season,
+            season_type,
+            source_path,
+            source_snapshot,
+            source_kind,
+            build_version,
+            refreshed_at,
+            games_row_count,
+            game_players_row_count,
+            expected_games_row_count,
+            skipped_games_row_count
+        FROM normalized_cache_loads
+        WHERE 1 = 1
+    """
+    params: list[object] = []
+    if season_type is not None:
+        query += " AND season_type = ?"
+        params.append(canonicalize_season_type(season_type))
+    query, params = _append_in_filter(
+        query,
+        params,
+        column="season",
+        values=[canonicalize_season_string(season) for season in seasons or []],
+    )
+    query, params = _append_in_filter(
+        query,
+        params,
+        column="team",
+        values=[team.upper() for team in teams or []],
+    )
+    query += " ORDER BY season, team"
+    with _connect(db_path) as connection:
+        rows = connection.execute(query, params).fetchall()
+    return [
+        NormalizedCacheLoadRow(
+            team=row["team"],
+            season=row["season"],
+            season_type=row["season_type"],
+            source_path=row["source_path"],
+            source_snapshot=row["source_snapshot"],
+            source_kind=row["source_kind"],
+            build_version=row["build_version"],
+            refreshed_at=row["refreshed_at"],
+            games_row_count=row["games_row_count"],
+            game_players_row_count=row["game_players_row_count"],
+            expected_games_row_count=row["expected_games_row_count"],
+            skipped_games_row_count=row["skipped_games_row_count"],
+        )
+        for row in rows
+    ]
 
 def list_cached_team_seasons_from_db(
     db_path: Path,
@@ -448,7 +529,9 @@ def build_normalized_cache_fingerprint(
             source_kind,
             build_version,
             games_row_count,
-            game_players_row_count
+            game_players_row_count,
+            expected_games_row_count,
+            skipped_games_row_count
         FROM normalized_cache_loads
     """
     params: list[object] = []
@@ -470,6 +553,8 @@ def build_normalized_cache_fingerprint(
         digest.update(row["build_version"].encode("utf-8"))
         digest.update(str(row["games_row_count"]).encode("utf-8"))
         digest.update(str(row["game_players_row_count"]).encode("utf-8"))
+        digest.update(str(row["expected_games_row_count"]).encode("utf-8"))
+        digest.update(str(row["skipped_games_row_count"]).encode("utf-8"))
     return digest.hexdigest()
 
 
@@ -545,6 +630,29 @@ def _migrate_cache_schema_if_needed(connection: sqlite3.Connection) -> None:
             DROP TABLE IF EXISTS normalized_games;
             """
         )
+        return
+    if _table_exists(connection, "normalized_cache_loads") and not _table_has_column(
+        connection,
+        "normalized_cache_loads",
+        "expected_games_row_count",
+    ):
+        connection.execute(
+            """
+            ALTER TABLE normalized_cache_loads
+            ADD COLUMN expected_games_row_count INTEGER
+            """
+        )
+    if _table_exists(connection, "normalized_cache_loads") and not _table_has_column(
+        connection,
+        "normalized_cache_loads",
+        "skipped_games_row_count",
+    ):
+        connection.execute(
+            """
+            ALTER TABLE normalized_cache_loads
+            ADD COLUMN skipped_games_row_count INTEGER
+            """
+        )
 
 
 def _primary_key_columns(connection: sqlite3.Connection, table_name: str) -> list[str]:
@@ -560,6 +668,25 @@ def _primary_key_columns(connection: sqlite3.Connection, table_name: str) -> lis
         for column in sorted(columns, key=lambda item: item["pk"])
         if column["pk"] > 0
     ]
+
+
+def _table_has_column(
+    connection: sqlite3.Connection,
+    table_name: str,
+    column_name: str,
+) -> bool:
+    if not _table_exists(connection, table_name):
+        return False
+    columns = connection.execute(f"PRAGMA table_info({table_name})").fetchall()
+    return any(column["name"] == column_name for column in columns)
+
+
+def _table_exists(connection: sqlite3.Connection, table_name: str) -> bool:
+    table_exists = connection.execute(
+        "SELECT 1 FROM sqlite_master WHERE type = 'table' AND name = ?",
+        (table_name,),
+    ).fetchone()
+    return table_exists is not None
 
 
 def _connect(db_path: Path) -> sqlite3.Connection:

@@ -227,6 +227,8 @@ def cache_team_season_data(
         source_path=normalized_games_source_path,
         source_snapshot="ingest-build",
         source_kind="nba-api",
+        expected_games_row_count=result.summary.total_games,
+        skipped_games_row_count=result.summary.skipped_games,
     )
     consistency = validate_team_season_records(
         result.artifacts.normalized_games,

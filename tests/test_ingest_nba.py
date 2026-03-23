@@ -822,6 +822,90 @@ def test_cache_season_script_logs_consistency_failures_to_same_ingest_log(
     assert records[0]["reason"] == "wowy_data"
 
 
+def test_cache_season_script_defaults_to_all_seasons_when_season_is_omitted(
+    monkeypatch,
+    capsys,
+) -> None:
+    calls: list[tuple[str, str]] = []
+
+    monkeypatch.setattr(
+        "scripts.cache_season_data.resolve_teams",
+        lambda team_codes: ["BOS"],
+    )
+
+    class Summary:
+        def __init__(self, season: str):
+            self.team = "BOS"
+            self.season = season
+            self.processed_games = 82
+            self.total_games = 82
+            self.league_games_source = "cached"
+            self.fetched_box_scores = 0
+            self.cached_box_scores = 82
+            self.skipped_games = 0
+
+    def fake_cache_team_season_data(**kwargs):
+        calls.append((kwargs["team_abbreviation"], kwargs["season"]))
+        return Summary(kwargs["season"])
+
+    monkeypatch.setattr(
+        "scripts.cache_season_data.cache_team_season_data",
+        fake_cache_team_season_data,
+    )
+
+    exit_code = cache_season_data_main(
+        ["--start-year", "2024", "--first-year", "2023", "--teams", "BOS"]
+    )
+    captured = capsys.readouterr()
+
+    assert exit_code == 0
+    assert calls == [("BOS", "2024-25"), ("BOS", "2023-24")]
+    assert "[1/2] caching 2024-25" in captured.out
+    assert "[2/2] caching 2023-24" in captured.out
+
+
+def test_cache_season_script_can_run_all_seasons_range(
+    monkeypatch,
+    capsys,
+) -> None:
+    calls: list[tuple[str, str]] = []
+
+    monkeypatch.setattr(
+        "scripts.cache_season_data.resolve_teams",
+        lambda team_codes: ["BOS"],
+    )
+
+    class Summary:
+        def __init__(self, season: str):
+            self.team = "BOS"
+            self.season = season
+            self.processed_games = 82
+            self.total_games = 82
+            self.league_games_source = "cached"
+            self.fetched_box_scores = 0
+            self.cached_box_scores = 82
+            self.skipped_games = 0
+
+    def fake_cache_team_season_data(**kwargs):
+        calls.append((kwargs["team_abbreviation"], kwargs["season"]))
+        return Summary(kwargs["season"])
+
+    monkeypatch.setattr(
+        "scripts.cache_season_data.cache_team_season_data",
+        fake_cache_team_season_data,
+    )
+
+    exit_code = cache_season_data_main(
+        ["--all-seasons", "--start-year", "2024", "--first-year", "2023", "--teams", "BOS"]
+    )
+    captured = capsys.readouterr()
+
+    assert exit_code == 0
+    assert calls == [("BOS", "2024-25"), ("BOS", "2023-24")]
+    assert "[1/2] caching 2024-25" in captured.out
+    assert "[2/2] caching 2023-24" in captured.out
+
+
 def test_extract_matchup_fields_accept_requested_team_on_either_side() -> None:
     home_row = {"GAME_ID": "0001", "MATCHUP": "MIA @ WAS"}
     away_row = {"GAME_ID": "0002", "MATCHUP": "WAS @ MIA"}

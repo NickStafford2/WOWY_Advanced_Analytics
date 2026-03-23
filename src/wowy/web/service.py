@@ -5,7 +5,10 @@ from pathlib import Path
 from typing import Any, Callable
 
 from wowy.apps.rawr.models import RawrPlayerSeasonRecord
-from wowy.apps.rawr.service import prepare_rawr_player_season_records
+from wowy.apps.rawr.service import (
+    list_incomplete_rawr_seasons,
+    prepare_rawr_player_season_records,
+)
 from wowy.apps.wowy.analysis import (
     DEFAULT_WOWY_SHRINKAGE_PRIOR_GAMES,
     compute_wowy_shrinkage_score,
@@ -146,6 +149,30 @@ def _build_rawr_rows(
     ]
 
 
+def _print_rawr_incomplete_season_warning(
+    *,
+    season_type: str,
+    db_path: Path,
+) -> None:
+    cached_team_seasons = list_cached_team_seasons(
+        player_metrics_db_path=db_path,
+        season_type=season_type,
+    )
+    candidate_seasons = sorted({team_season.season for team_season in cached_team_seasons})
+    if not candidate_seasons:
+        return
+    issues = list_incomplete_rawr_seasons(
+        seasons=candidate_seasons,
+        season_type=season_type,
+        player_metrics_db_path=db_path,
+    )
+    if not issues:
+        return
+    print("RAWR warning: skipped incomplete seasons")
+    for issue in issues:
+        print(f"  - {issue.season}: {issue.reason}")
+
+
 def _build_wowy_shrunk_rows(
     *,
     scope_key: str,
@@ -215,7 +242,7 @@ METRIC_DEFINITIONS = {
     RAWR_METRIC: MetricDefinition(
         metric=RAWR_METRIC,
         label="RAWR",
-        build_version="rawr-player-season-v2",
+        build_version="rawr-player-season-v3",
         build_rows=_build_rawr_rows,
     ),
 }
@@ -264,6 +291,11 @@ def refresh_metric_store(
     for index, teams in enumerate(team_scopes):
         scope_key, team_filter = build_scope_key(teams=teams, season_type=season_type)
         scope_label = team_filter or "all-teams"
+        if metric == RAWR_METRIC and teams is None:
+            _print_rawr_incomplete_season_warning(
+                season_type=season_type,
+                db_path=db_path,
+            )
         scope_seasons = sorted(
             {
                 team_season.season

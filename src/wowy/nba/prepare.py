@@ -48,6 +48,7 @@ def prepare_normalized_scope_records(
     source_data_dir: Path = DEFAULT_SOURCE_DATA_DIR,
     player_metrics_db_path: Path = DEFAULT_PLAYER_METRICS_DB_PATH,
     include_opponents_for_team_scope: bool = True,
+    require_cached_only: bool = False,
     log=print,
 ) -> tuple[list[NormalizedGameRecord], list[NormalizedGamePlayerRecord]]:
     team_seasons = resolve_team_seasons(
@@ -66,6 +67,7 @@ def prepare_normalized_scope_records(
             season_type=season_type,
             source_data_dir=source_data_dir,
             player_metrics_db_path=player_metrics_db_path,
+            require_cached_only=require_cached_only,
             log=log,
         )
 
@@ -86,6 +88,7 @@ def prepare_normalized_scope_records(
                 season_type=season_type,
                 source_data_dir=source_data_dir,
                 player_metrics_db_path=player_metrics_db_path,
+                require_cached_only=require_cached_only,
                 log=log,
             )
             team_seasons.append(team_season)
@@ -163,6 +166,7 @@ def _ensure_team_season_scope_available(
     season_type: str,
     source_data_dir: Path,
     player_metrics_db_path: Path,
+    require_cached_only: bool,
     log,
 ) -> None:
     cache_load_row = load_cache_load_row(
@@ -177,6 +181,11 @@ def _ensure_team_season_scope_available(
         and cache_load_row.game_players_row_count > 0
     ):
         return
+    if require_cached_only:
+        raise ValueError(
+            f"Missing cached team-season scope for {team_season.team} "
+            f"{team_season.season} {season_type}"
+        )
     ensure_team_season_data(
         team_season=team_season,
         season_type=season_type,
