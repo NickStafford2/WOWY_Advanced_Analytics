@@ -716,7 +716,9 @@ def test_cache_team_season_data_raises_on_inconsistent_outputs(
 def test_cache_season_script_reports_fetch_failures_without_mislabeling(
     monkeypatch,
     capsys,
+    tmp_path: Path,
 ):
+    failure_log_path = tmp_path / "logs" / "ingest_failures.jsonl"
     monkeypatch.setattr(
         "scripts.cache_season_data.resolve_teams",
         lambda team_codes: ["CLE"],
@@ -743,13 +745,81 @@ def test_cache_season_script_reports_fetch_failures_without_mislabeling(
         fake_cache_team_season_data,
     )
 
-    exit_code = cache_season_data_main(["2002-03", "--teams", "CLE"])
+    exit_code = cache_season_data_main(
+        [
+            "2002-03",
+            "--teams",
+            "CLE",
+            "--failure-log-path",
+            str(failure_log_path),
+        ]
+    )
     captured = capsys.readouterr()
+    records = [
+        json.loads(line)
+        for line in failure_log_path.read_text(encoding="utf-8").splitlines()
+    ]
 
     assert exit_code == 1
     assert "failed fetch=JSONDecodeError" in captured.out
     assert "Fetch failed for CLE 2002-03" in captured.err
     assert "Validation failed for CLE 2002-03" not in captured.err
+    assert len(records) == 1
+    assert records[0]["team"] == "CLE"
+    assert records[0]["season"] == "2002-03"
+    assert records[0]["failure_kind"] == "fetch_error"
+    assert records[0]["error_type"] == "LeagueGamesFetchError"
+    assert records[0]["last_error_type"] == "JSONDecodeError"
+
+
+def test_cache_season_script_logs_consistency_failures_to_same_ingest_log(
+    monkeypatch,
+    capsys,
+    tmp_path: Path,
+):
+    failure_log_path = tmp_path / "logs" / "ingest_failures.jsonl"
+    monkeypatch.setattr(
+        "scripts.cache_season_data.resolve_teams",
+        lambda team_codes: ["DET"],
+    )
+
+    def fake_cache_team_season_data(**kwargs):
+        raise TeamSeasonConsistencyError(
+            message="Inconsistent team-season cache for DET 2002-03: wowy_data",
+            team="DET",
+            season="2002-03",
+            reason="wowy_data",
+        )
+
+    monkeypatch.setattr(
+        "scripts.cache_season_data.cache_team_season_data",
+        fake_cache_team_season_data,
+    )
+
+    exit_code = cache_season_data_main(
+        [
+            "2002-03",
+            "--teams",
+            "DET",
+            "--failure-log-path",
+            str(failure_log_path),
+        ]
+    )
+    captured = capsys.readouterr()
+    records = [
+        json.loads(line)
+        for line in failure_log_path.read_text(encoding="utf-8").splitlines()
+    ]
+
+    assert exit_code == 1
+    assert "failed consistency=wowy_data" in captured.out
+    assert "Inconsistent cache for DET 2002-03: wowy_data" in captured.err
+    assert len(records) == 1
+    assert records[0]["team"] == "DET"
+    assert records[0]["season"] == "2002-03"
+    assert records[0]["failure_kind"] == "consistency_error"
+    assert records[0]["error_type"] == "TeamSeasonConsistencyError"
+    assert records[0]["reason"] == "wowy_data"
 
 
 def test_extract_matchup_fields_accept_requested_team_on_either_side() -> None:

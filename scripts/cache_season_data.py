@@ -11,6 +11,10 @@ from wowy.nba.ingest import (
     cache_team_season_data,
 )
 from wowy.nba.errors import FetchError, TeamSeasonConsistencyError
+from wowy.nba.ingest_logging import (
+    DEFAULT_INGEST_FAILURE_LOG_PATH,
+    append_ingest_failure_log,
+)
 from wowy.nba.seasons import canonicalize_season_string
 from wowy.nba.season_types import canonicalize_season_type
 from wowy.nba.team_seasons import TeamSeasonScope
@@ -48,6 +52,12 @@ def build_parser() -> argparse.ArgumentParser:
         type=Path,
         default=Path("data/app/player_metrics.sqlite3"),
         help="SQLite cache path for normalized team-season rows.",
+    )
+    parser.add_argument(
+        "--failure-log-path",
+        type=Path,
+        default=DEFAULT_INGEST_FAILURE_LOG_PATH,
+        help="JSONL file where ingest failures are appended.",
     )
     return parser
 
@@ -165,6 +175,14 @@ def main(argv: list[str] | None = None) -> int:
                 ),
             )
         except FetchError as exc:
+            append_ingest_failure_log(
+                team=team_code,
+                season=season,
+                season_type=season_type,
+                failure_kind="fetch_error",
+                error=exc,
+                log_path=args.failure_log_path,
+            )
             render_team_fetch_failed_line(
                 team_index=team_index,
                 team_total=team_total,
@@ -177,6 +195,14 @@ def main(argv: list[str] | None = None) -> int:
             sys.stderr.flush()
             return 1
         except TeamSeasonConsistencyError as exc:
+            append_ingest_failure_log(
+                team=team_code,
+                season=season,
+                season_type=season_type,
+                failure_kind="consistency_error",
+                error=exc,
+                log_path=args.failure_log_path,
+            )
             render_team_failed_line(
                 team_index=team_index,
                 team_total=team_total,
@@ -191,6 +217,14 @@ def main(argv: list[str] | None = None) -> int:
             sys.stderr.flush()
             return 1
         except ValueError as exc:
+            append_ingest_failure_log(
+                team=team_code,
+                season=season,
+                season_type=season_type,
+                failure_kind="validation_error",
+                error=exc,
+                log_path=args.failure_log_path,
+            )
             render_team_validation_failed_line(
                 team_index=team_index,
                 team_total=team_total,
