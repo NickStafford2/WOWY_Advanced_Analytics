@@ -16,7 +16,10 @@ from wowy.data.db_validation import (
     summarize_validation_report,
 )
 from wowy.data.db_validation_cli import main as db_validation_cli_main
-from wowy.data.game_cache_db import replace_team_season_normalized_rows
+from wowy.data.game_cache_db import (
+    build_normalized_cache_fingerprint,
+    replace_team_season_normalized_rows,
+)
 from wowy.data.player_metrics_db import (
     MetricFullSpanPointRow,
     MetricFullSpanSeriesRow,
@@ -161,7 +164,7 @@ def test_render_validation_summary_and_cli_show_top_error_trends(
     rendered = render_validation_summary(summary, top_n=5)
 
     assert "Issues by table:" in rendered
-    assert "Top 1 error trends:" in rendered
+    assert "Top 2 error trends:" in rendered
 
     exit_code = db_validation_cli_main(["--db-path", str(db_path), "--top", "5"])
     captured = capsys.readouterr()
@@ -170,6 +173,7 @@ def test_render_validation_summary_and_cli_show_top_error_trends(
     assert "Database validation status: invalid" in captured.out
     assert "normalized_cache_loads" in captured.out
     assert "games_row_count does not match normalized_games count" in captured.out
+    assert "source_fingerprint does not match normalized cache" in captured.out
     assert "Validating metric store relations" in captured.err
 
 
@@ -258,7 +262,10 @@ def _seed_valid_db(tmp_path: Path) -> Path:
         scope_key="teams=BOS|season_type=Regular Season",
         metric_label="WOWY",
         build_version="v1",
-        source_fingerprint="fingerprint-1",
+        source_fingerprint=build_normalized_cache_fingerprint(
+            db_path,
+            season_type="Regular Season",
+        ),
         rows=[
             PlayerSeasonMetricRow(
                 metric="wowy",

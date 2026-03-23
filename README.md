@@ -97,6 +97,12 @@ poetry run python scripts/cache_all_seasons.py --start-year 2024 --first-year 20
 
 Runtime analysis and the web app only depend on two live project data stores: the source cache under `data/source` and the SQLite app store under `data/app`.
 
+Source cache quality rules:
+
+- Empty box score payloads are invalid source data and must not be normalized or preserved.
+- If a cached box score is empty, discard it for that scope and refetch instead of rebuilding the DB from bad source data.
+- Newer NBA games may return empty `BoxScoreTraditionalV2` payloads. Ingest now retries with `BoxScoreTraditionalV3` before treating the game as a failure.
+
 ## Output notes
 
 WOWY output includes player name or id, minute summaries, with/without samples, average margins, and score.

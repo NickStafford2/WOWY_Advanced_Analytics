@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 
 
 @dataclass(frozen=True)
@@ -40,6 +40,13 @@ class TeamSeasonConsistencyError(NbaIngestError):
 
 
 @dataclass(frozen=True)
+class GameNormalizationFailure:
+    game_id: str
+    error_type: str
+    message: str
+
+
+@dataclass(frozen=True)
 class PartialTeamSeasonError(NbaIngestError):
     team: str
     season: str
@@ -47,3 +54,6 @@ class PartialTeamSeasonError(NbaIngestError):
     failed_game_ids: list[str]
     total_games: int
     failed_games: int
+    failed_game_details: list[GameNormalizationFailure] = field(default_factory=list)
+    failure_reason_counts: dict[str, int] = field(default_factory=dict)
+    failure_reason_examples: dict[str, list[str]] = field(default_factory=dict)

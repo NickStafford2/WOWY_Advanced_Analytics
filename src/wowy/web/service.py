@@ -15,7 +15,7 @@ from wowy.apps.wowy.analysis import (
 )
 from wowy.apps.wowy.models import WowyPlayerSeasonRecord
 from wowy.apps.wowy.service import prepare_wowy_player_season_records
-from wowy.data.game_cache_db import build_normalized_cache_fingerprint
+from wowy.data.game_cache_db import build_normalized_cache_fingerprint, list_cache_load_rows
 from wowy.data.player_metrics_db import (
     DEFAULT_PLAYER_METRICS_DB_PATH,
     MetricFullSpanPointRow,
@@ -28,9 +28,7 @@ from wowy.data.player_metrics_db import (
     load_metric_full_span_series_rows,
     load_metric_scope_catalog_row,
     load_metric_store_metadata,
-    replace_metric_full_span_rows,
-    replace_metric_scope_catalog_row,
-    replace_metric_rows,
+    replace_metric_scope_store,
 )
 from wowy.nba.team_seasons import list_cached_team_seasons
 from wowy.nba.season_types import canonicalize_season_type
@@ -301,14 +299,22 @@ def refresh_metric_store(
 ) -> RefreshMetricStoreResult:
     season_type = canonicalize_season_type(season_type)
     definition = get_metric_definition(metric)
+    cache_load_rows = list_cache_load_rows(db_path, season_type=season_type)
+    if not cache_load_rows:
+        return RefreshMetricStoreResult(
+            metric=metric,
+            scope_results=[],
+            warnings=[],
+            failure_message=(
+                "Normalized cache is empty for the requested season type. "
+                "Rebuild ingest before refreshing the web metric store."
+            ),
+        )
     source_fingerprint = build_normalized_cache_fingerprint(
         db_path,
         season_type=season_type,
     )
-    cached_team_seasons = list_cached_team_seasons(
-        player_metrics_db_path=db_path,
-        season_type=season_type,
-    )
+    cached_team_seasons = list_cached_team_seasons(player_metrics_db_path=db_path, season_type=season_type)
     available_teams = sorted({team_season.team for team_season in cached_team_seasons})
     team_scopes: list[list[str] | None] = [None]
     if include_team_scopes:
@@ -335,6 +341,7 @@ def refresh_metric_store(
         if progress is not None:
             progress(index, len(team_scopes), f"building {scope_label}")
         metadata = load_metric_store_metadata(db_path, metric, scope_key)
+        catalog_row = load_metric_scope_catalog_row(db_path, metric, scope_key)
         build_version = (
             f"{definition.build_version}-alpha-{rawr_ridge_alpha:.4f}"
             if metric == RAWR_METRIC
@@ -342,6 +349,7 @@ def refresh_metric_store(
         )
         if (
             metadata is not None
+            and catalog_row is not None
             and metadata.source_fingerprint == source_fingerprint
             and metadata.build_version == build_version
             and metadata.row_count > 0
@@ -378,15 +386,6 @@ def refresh_metric_store(
             if progress is not None:
                 progress(index + 1, len(team_scopes), f"empty {scope_label}")
         else:
-            replace_metric_rows(
-                db_path,
-                metric=definition.metric,
-                scope_key=scope_key,
-                metric_label=definition.label,
-                build_version=build_version,
-                source_fingerprint=source_fingerprint,
-                rows=rows,
-            )
             _replace_metric_scope_rows(
                 db_path=db_path,
                 definition=definition,
@@ -396,6 +395,8 @@ def refresh_metric_store(
                 rows=rows,
                 available_teams=available_teams,
                 available_seasons=scope_seasons,
+                build_version=build_version,
+                source_fingerprint=source_fingerprint,
             )
             status = "built"
             if progress is not None:
@@ -434,9 +435,11 @@ def build_metric_player_seasons_payload(
     min_sample_size: int | None,
     min_secondary_sample_size: int | None,
 ) -> dict[str, Any]:
-    catalog_row = load_metric_scope_catalog_row(db_path, metric, scope_key)
-    if catalog_row is None:
-        raise ValueError("Metric store has not been built for the requested scope")
+    catalog_row = _require_current_metric_scope(
+        db_path=db_path,
+        metric=metric,
+        scope_key=scope_key,
+    )
     rows = load_metric_rows(
         db_path,
         metric=metric,
@@ -467,9 +470,11 @@ def build_cached_metric_leaderboard_payload(
     min_sample_size: int | None,
     min_secondary_sample_size: int | None,
 ) -> dict[str, Any]:
-    catalog_row = load_metric_scope_catalog_row(db_path, metric, scope_key)
-    if catalog_row is None:
-        raise ValueError("Metric store has not been built for the requested scope")
+    catalog_row = _require_current_metric_scope(
+        db_path=db_path,
+        metric=metric,
+        scope_key=scope_key,
+    )
     rows = load_metric_rows(
         db_path,
         metric=metric,
@@ -504,9 +509,11 @@ def build_cached_metric_export_table_rows(
     min_sample_size: int | None,
     min_secondary_sample_size: int | None,
 ) -> tuple[str, list[dict[str, Any]]]:
-    catalog_row = load_metric_scope_catalog_row(db_path, metric, scope_key)
-    if catalog_row is None:
-        raise ValueError("Metric store has not been built for the requested scope")
+    catalog_row = _require_current_metric_scope(
+        db_path=db_path,
+        metric=metric,
+        scope_key=scope_key,
+    )
     rows = load_metric_rows(
         db_path,
         metric=metric,
@@ -793,9 +800,11 @@ def build_metric_options_payload(
     season_type: str,
 ) -> dict[str, Any]:
     scope_key, _team_filter = build_scope_key(teams=teams, season_type=season_type)
-    catalog_row = load_metric_scope_catalog_row(db_path, metric, scope_key)
-    if catalog_row is None:
-        raise ValueError("Metric store has not been built for the requested scope")
+    catalog_row = _require_current_metric_scope(
+        db_path=db_path,
+        metric=metric,
+        scope_key=scope_key,
+    )
     return {
         "metric": catalog_row.metric,
         "metric_label": catalog_row.metric_label,
@@ -841,9 +850,11 @@ def build_metric_span_chart_payload(
     scope_key: str,
     top_n: int,
 ) -> dict[str, Any]:
-    catalog_row = load_metric_scope_catalog_row(db_path, metric, scope_key)
-    if catalog_row is None:
-        raise ValueError("Metric store has not been built for the requested scope")
+    catalog_row = _require_current_metric_scope(
+        db_path=db_path,
+        metric=metric,
+        scope_key=scope_key,
+    )
     series_rows = load_metric_full_span_series_rows(
         db_path,
         metric=metric,
@@ -1179,15 +1190,23 @@ def _replace_metric_scope_rows(
     rows: list[PlayerSeasonMetricRow],
     available_teams: list[str],
     available_seasons: list[str],
+    build_version: str,
+    source_fingerprint: str,
 ) -> None:
     span_series = build_metric_series(
         rows,
         seasons=available_seasons,
         top_n=len({row.player_id for row in rows}),
     )
-    replace_metric_scope_catalog_row(
+    replace_metric_scope_store(
         db_path,
-        row=MetricScopeCatalogRow(
+        metric=definition.metric,
+        scope_key=scope_key,
+        metric_label=definition.label,
+        build_version=build_version,
+        source_fingerprint=source_fingerprint,
+        rows=rows,
+        catalog_row=MetricScopeCatalogRow(
             metric=definition.metric,
             scope_key=scope_key,
             metric_label=definition.label,
@@ -1199,11 +1218,6 @@ def _replace_metric_scope_rows(
             full_span_end_season=available_seasons[-1] if available_seasons else None,
             updated_at=datetime.now(UTC).isoformat(),
         ),
-    )
-    replace_metric_full_span_rows(
-        db_path,
-        metric=definition.metric,
-        scope_key=scope_key,
         series_rows=[
             MetricFullSpanSeriesRow(
                 metric=definition.metric,
@@ -1229,6 +1243,36 @@ def _replace_metric_scope_rows(
             if point["value"] is not None
         ],
     )
+
+
+def _require_current_metric_scope(
+    *,
+    db_path: Path,
+    metric: str,
+    scope_key: str,
+) -> MetricScopeCatalogRow:
+    catalog_row = load_metric_scope_catalog_row(db_path, metric, scope_key)
+    if catalog_row is None:
+        raise ValueError("Metric store has not been built for the requested scope")
+    metadata = load_metric_store_metadata(db_path, metric, scope_key)
+    if metadata is None:
+        raise ValueError("Metric store metadata is missing for the requested scope")
+    cache_load_rows = list_cache_load_rows(db_path, season_type=catalog_row.season_type)
+    if not cache_load_rows:
+        raise ValueError(
+            "Normalized cache is empty for the requested scope season type. "
+            "Rebuild ingest before using cached metrics."
+        )
+    current_fingerprint = build_normalized_cache_fingerprint(
+        db_path,
+        season_type=catalog_row.season_type,
+    )
+    if metadata.source_fingerprint != current_fingerprint:
+        raise ValueError(
+            "Cached metric store is stale relative to normalized cache. "
+            "Refresh the web metric store after ingest is rebuilt."
+        )
+    return catalog_row
 
 
 def get_metric_definition(metric: str) -> MetricDefinition:

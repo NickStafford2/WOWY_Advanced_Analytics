@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import hashlib
 import json
 import re
 import sqlite3
@@ -149,6 +150,7 @@ def audit_player_metrics_db(
         current_step = 8
         report_progress("Validating metric store relations")
         _validate_metric_store_relations(
+            connection=connection,
             metric_row_groups=metric_row_groups,
             metadata_rows=metadata_rows,
             catalog_rows=catalog_rows,
@@ -950,6 +952,7 @@ def _validate_metric_full_span_tables(
 
 def _validate_metric_store_relations(
     *,
+    connection: sqlite3.Connection,
     metric_row_groups: dict[tuple[str, str], list[PlayerSeasonMetricRow]],
     metadata_rows: dict[tuple[str, str], tuple[str, str, str, int]],
     catalog_rows: dict[tuple[str, str], MetricScopeCatalogRow],
@@ -962,6 +965,7 @@ def _validate_metric_store_relations(
     metadata_scopes = set(metadata_rows)
     catalog_scopes = set(catalog_rows)
     full_span_scopes = set(full_span_groups)
+    cache_load_counts, fingerprint_by_season_type = _load_normalized_cache_state(connection)
 
     for key, rows in metric_row_groups.items():
         metric, scope_key = key
@@ -1001,6 +1005,48 @@ def _validate_metric_store_relations(
                     message=(
                         "available_seasons is missing seasons present in metric rows: "
                         f"catalog={catalog_row.available_seasons!r} metric_rows={seasons!r}"
+                    ),
+                )
+            )
+
+    all_scopes = metric_scopes | metadata_scopes | catalog_scopes | full_span_scopes
+    for key in sorted(all_scopes):
+        metric, scope_key = key
+        catalog_row = catalog_rows.get(key)
+        group_rows = metric_row_groups.get(key, [])
+        season_type = (
+            catalog_row.season_type
+            if catalog_row is not None
+            else group_rows[0].season_type if group_rows else None
+        )
+        if season_type is None:
+            continue
+        if cache_load_counts.get(season_type, 0) == 0:
+            issues.append(
+                ValidationIssue(
+                    table="metric_store_metadata_v2",
+                    key=f"metric={metric!r},scope_key={scope_key!r}",
+                    message=(
+                        "derived metric scope exists but normalized cache is empty for "
+                        f"season_type {season_type!r}"
+                    ),
+                )
+            )
+            continue
+        metadata_row = metadata_rows.get(key)
+        if metadata_row is None:
+            continue
+        current_fingerprint = fingerprint_by_season_type.get(season_type)
+        if current_fingerprint is None:
+            continue
+        if metadata_row[2] != current_fingerprint:
+            issues.append(
+                ValidationIssue(
+                    table="metric_store_metadata_v2",
+                    key=f"metric={metric!r},scope_key={scope_key!r}",
+                    message=(
+                        "source_fingerprint does not match normalized cache for "
+                        f"season_type {season_type!r}"
                     ),
                 )
             )
@@ -1065,3 +1111,49 @@ def _validate_metric_store_relations(
                 message="metric scope has no matching full-span rows",
             )
         )
+
+
+def _load_normalized_cache_state(
+    connection: sqlite3.Connection,
+) -> tuple[dict[str, int], dict[str, str]]:
+    rows = connection.execute(
+        """
+        SELECT
+            team,
+            team_id,
+            season,
+            season_type,
+            source_path,
+            source_snapshot,
+            source_kind,
+            build_version,
+            games_row_count,
+            game_players_row_count,
+            expected_games_row_count,
+            skipped_games_row_count
+        FROM normalized_cache_loads
+        ORDER BY season_type, season, team_id
+        """
+    ).fetchall()
+    counts: dict[str, int] = Counter()
+    digests: dict[str, object] = {}
+    for row in rows:
+        season_type = row["season_type"]
+        counts[season_type] += 1
+        digest = digests.setdefault(season_type, hashlib.sha256())
+        digest.update(row["team"].encode("utf-8"))
+        digest.update(str(row["team_id"]).encode("utf-8"))
+        digest.update(row["season"].encode("utf-8"))
+        digest.update(row["season_type"].encode("utf-8"))
+        digest.update(row["source_path"].encode("utf-8"))
+        digest.update(row["source_snapshot"].encode("utf-8"))
+        digest.update(row["source_kind"].encode("utf-8"))
+        digest.update(row["build_version"].encode("utf-8"))
+        digest.update(str(row["games_row_count"]).encode("utf-8"))
+        digest.update(str(row["game_players_row_count"]).encode("utf-8"))
+        digest.update(str(row["expected_games_row_count"]).encode("utf-8"))
+        digest.update(str(row["skipped_games_row_count"]).encode("utf-8"))
+    return (
+        counts,
+        {season_type: digest.hexdigest() for season_type, digest in digests.items()},
+    )

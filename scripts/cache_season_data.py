@@ -179,6 +179,19 @@ def render_team_partial_failed_line(
     write_status_line(line)
 
 
+def render_partial_failure_details(error: PartialTeamSeasonError) -> str:
+    lines = ["Failure reasons:"]
+    ranked_reasons = sorted(
+        error.failure_reason_counts.items(),
+        key=lambda item: (-item[1], item[0]),
+    )
+    for reason, count in ranked_reasons:
+        examples = ", ".join(error.failure_reason_examples.get(reason, [])[:3])
+        example_suffix = f" examples={examples}" if examples else ""
+        lines.append(f"  - {count} games: {reason}{example_suffix}")
+    return "\n".join(lines)
+
+
 def render_team_validation_failed_line(
     team_index: int,
     team_total: int,
@@ -298,6 +311,7 @@ def main(argv: list[str] | None = None) -> int:
                     f"Incomplete cache for {team_code} {season}: "
                     f"{exc.failed_games}/{exc.total_games} games failed normalization\n"
                 )
+                sys.stderr.write(f"{render_partial_failure_details(exc)}\n")
                 sys.stderr.flush()
                 return 1
             except ValueError as exc:

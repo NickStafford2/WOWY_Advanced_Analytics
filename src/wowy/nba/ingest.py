@@ -16,7 +16,11 @@ from wowy.nba.build_models import (
     TeamSeasonRunSummary,
 )
 from wowy.nba.cache import DEFAULT_SOURCE_DATA_DIR, load_or_fetch_league_games_with_source
-from wowy.nba.errors import PartialTeamSeasonError, TeamSeasonConsistencyError
+from wowy.nba.errors import (
+    GameNormalizationFailure,
+    PartialTeamSeasonError,
+    TeamSeasonConsistencyError,
+)
 from wowy.nba.models import NormalizedGamePlayerRecord, NormalizedGameRecord
 from wowy.nba.normalize import (
     fetch_normalized_game_data_with_source,
@@ -110,6 +114,9 @@ def build_team_season_artifacts(
     cached_box_scores = 0
     skipped_games = 0
     failed_game_ids: list[str] = []
+    failed_game_details: list[GameNormalizationFailure] = []
+    failure_reason_counts: dict[str, int] = {}
+    failure_reason_examples: dict[str, list[str]] = {}
 
     unique_games_df = games_df.drop_duplicates(subset=["GAME_ID"])
     total_games = len(unique_games_df)
@@ -132,6 +139,17 @@ def build_team_season_artifacts(
         except ValueError as exc:
             skipped_games += 1
             failed_game_ids.append(game_id)
+            failure = GameNormalizationFailure(
+                game_id=game_id,
+                error_type=type(exc).__name__,
+                message=str(exc),
+            )
+            failed_game_details.append(failure)
+            reason_key = f"{failure.error_type}: {failure.message}"
+            failure_reason_counts[reason_key] = failure_reason_counts.get(reason_key, 0) + 1
+            failure_reason_examples.setdefault(reason_key, [])
+            if len(failure_reason_examples[reason_key]) < 5:
+                failure_reason_examples[reason_key].append(game_id)
             if log is not None:
                 log(
                     f"skip game {game_id} {requested_team_abbreviation} {season} reason={exc}"
@@ -178,6 +196,12 @@ def build_team_season_artifacts(
             season=season,
             season_type=season_type,
             failed_game_ids=failed_game_ids,
+            failed_game_details=failed_game_details,
+            failure_reason_counts=dict(sorted(failure_reason_counts.items())),
+            failure_reason_examples={
+                reason: examples[:]
+                for reason, examples in sorted(failure_reason_examples.items())
+            },
             total_games=total_games,
             failed_games=failed_games,
         )

@@ -124,6 +124,62 @@ def test_cache_team_season_data_writes_normalized_outputs(
                 ]
             }
 
+    class FakeBoxScoreTraditionalV3:
+        def __init__(self, game_id: str, timeout: int | None = None):
+            self.game_id = game_id
+
+        def get_dict(self):
+            if self.game_id == "0001":
+                return {
+                    "resultSets": {
+                        "PlayerStats": {"headers": ["personId"], "data": []},
+                        "TeamStats": {"headers": ["teamId"], "data": []},
+                    }
+                }
+            raise AssertionError("unexpected v3 fallback for non-empty test game")
+
+    class FakeLiveBoxScore:
+        def __init__(self, game_id: str, timeout: int | None = None):
+            self.game_id = game_id
+
+        def get_dict(self):
+            if self.game_id == "0001":
+                return {
+                    "game": {
+                        "homeTeam": {"players": [], "statistics": {}},
+                        "awayTeam": {"players": [], "statistics": {}},
+                    }
+                }
+            raise AssertionError("unexpected live fallback for non-empty test game")
+
+    class FakeLiveBoxScore:
+        def __init__(self, game_id: str, timeout: int | None = None):
+            self.game_id = game_id
+
+        def get_dict(self):
+            if self.game_id == "0001":
+                return {
+                    "game": {
+                        "homeTeam": {"players": [], "statistics": {}},
+                        "awayTeam": {"players": [], "statistics": {}},
+                    }
+                }
+            raise AssertionError("unexpected live fallback for non-empty test game")
+
+    class FakeLiveBoxScore:
+        def __init__(self, game_id: str, timeout: int | None = None):
+            self.game_id = game_id
+
+        def get_dict(self):
+            if self.game_id == "0001":
+                return {
+                    "game": {
+                        "homeTeam": {"players": [], "statistics": {}},
+                        "awayTeam": {"players": [], "statistics": {}},
+                    }
+                }
+            raise AssertionError("unexpected live fallback for non-empty test game")
+
     monkeypatch.setattr(
         "wowy.nba.cache.leaguegamefinder.LeagueGameFinder",
         FakeLeagueGameFinder,
@@ -132,6 +188,11 @@ def test_cache_team_season_data_writes_normalized_outputs(
         "wowy.nba.cache.boxscoretraditionalv2.BoxScoreTraditionalV2",
         FakeBoxScoreTraditionalV2,
     )
+    monkeypatch.setattr(
+        "wowy.nba.cache.boxscoretraditionalv3.BoxScoreTraditionalV3",
+        FakeBoxScoreTraditionalV3,
+    )
+    monkeypatch.setattr("wowy.nba.cache.live_boxscore.BoxScore", FakeLiveBoxScore)
 
     db_path = tmp_path / "app" / "player_metrics.sqlite3"
     cache_team_season_data(
@@ -265,6 +326,34 @@ def test_cache_team_season_data_rejects_partial_team_season_on_empty_box_score(
                 ]
             }
 
+    class FakeBoxScoreTraditionalV3:
+        def __init__(self, game_id: str, timeout: int | None = None):
+            self.game_id = game_id
+
+        def get_dict(self):
+            if self.game_id == "0001":
+                return {
+                    "resultSets": {
+                        "PlayerStats": {"headers": ["personId"], "data": []},
+                        "TeamStats": {"headers": ["teamId"], "data": []},
+                    }
+                }
+            raise AssertionError("unexpected v3 fallback for non-empty test game")
+
+    class FakeLiveBoxScore:
+        def __init__(self, game_id: str, timeout: int | None = None):
+            self.game_id = game_id
+
+        def get_dict(self):
+            if self.game_id == "0001":
+                return {
+                    "game": {
+                        "homeTeam": {"players": [], "statistics": {}},
+                        "awayTeam": {"players": [], "statistics": {}},
+                    }
+                }
+            raise AssertionError("unexpected live fallback for non-empty test game")
+
     monkeypatch.setattr(
         "wowy.nba.cache.leaguegamefinder.LeagueGameFinder",
         FakeLeagueGameFinder,
@@ -273,6 +362,11 @@ def test_cache_team_season_data_rejects_partial_team_season_on_empty_box_score(
         "wowy.nba.cache.boxscoretraditionalv2.BoxScoreTraditionalV2",
         FakeBoxScoreTraditionalV2,
     )
+    monkeypatch.setattr(
+        "wowy.nba.cache.boxscoretraditionalv3.BoxScoreTraditionalV3",
+        FakeBoxScoreTraditionalV3,
+    )
+    monkeypatch.setattr("wowy.nba.cache.live_boxscore.BoxScore", FakeLiveBoxScore)
 
     db_path = tmp_path / "app" / "player_metrics.sqlite3"
     with pytest.raises(
@@ -1005,6 +1099,10 @@ def test_parse_minutes_to_float_returns_none_for_status_text():
     assert parse_minutes_to_float("DNP") is None
 
 
+def test_parse_minutes_to_float_accepts_iso_duration_values():
+    assert parse_minutes_to_float("PT29M03.00S") == pytest.approx(29.05)
+
+
 @pytest.mark.parametrize("minutes", [math.nan, "nan", float("inf"), "-inf"])
 def test_parse_minutes_to_float_returns_none_for_non_finite_values(minutes: object):
     assert parse_minutes_to_float(minutes) is None
@@ -1085,3 +1183,113 @@ def test_normalize_box_score_payload_derives_margin_from_points_when_plus_minus_
 
     assert game.margin == -22.0
     assert len(players) == 5
+
+
+def test_normalize_box_score_payload_accepts_v3_result_set_shape():
+    payload = {
+        "resultSets": {
+            "PlayerStats": {
+                "headers": [
+                    "gameId",
+                    "teamId",
+                    "teamTricode",
+                    "personId",
+                    "firstName",
+                    "familyName",
+                    "minutes",
+                ],
+                "data": [
+                    ["0001", 1610612737, "ATL", 101, "Test", "Player", "12:00"],
+                    ["0001", 1610612738, "BOS", 201, "Other", "Player", "11:00"],
+                ],
+            },
+            "TeamStats": {
+                "headers": [
+                    "gameId",
+                    "teamId",
+                    "teamTricode",
+                    "points",
+                    "plusMinusPoints",
+                ],
+                "data": [
+                    ["0001", 1610612737, "ATL", 110, 5],
+                    ["0001", 1610612738, "BOS", 105, -5],
+                ],
+            },
+        }
+    }
+
+    game, players = normalize_box_score_payload(
+        box_score_payload=payload,
+        game_id="0001",
+        team_abbreviation="ATL",
+        season="2025-26",
+        game_date="2025-10-22",
+        opponent="BOS",
+        is_home=True,
+        season_type="Regular Season",
+    )
+
+    assert game.team == "ATL"
+    assert game.opponent == "BOS"
+    assert game.team_id == 1610612737
+    assert game.opponent_team_id == 1610612738
+    assert game.margin == 5.0
+    assert [(player.player_id, player.player_name, player.minutes) for player in players] == [
+        (101, "Test Player", 12.0)
+    ]
+
+
+def test_normalize_box_score_payload_accepts_live_box_score_shape():
+    payload = {
+        "game": {
+            "homeTeam": {
+                "teamId": 1610612737,
+                "teamTricode": "ATL",
+                "score": 122,
+                "statistics": {"plusMinusPoints": 14},
+                "players": [
+                    {
+                        "personId": 101,
+                        "firstName": "Test",
+                        "familyName": "Player",
+                        "statistics": {"minutes": "PT29M03.00S"},
+                    }
+                ],
+            },
+            "awayTeam": {
+                "teamId": 1610612749,
+                "teamTricode": "MIL",
+                "score": 108,
+                "statistics": {"plusMinusPoints": -14},
+                "players": [
+                    {
+                        "personId": 201,
+                        "firstName": "Other",
+                        "familyName": "Player",
+                        "statistics": {"minutes": "PT31M00.00S"},
+                    }
+                ],
+            },
+        }
+    }
+
+    game, players = normalize_box_score_payload(
+        box_score_payload=payload,
+        game_id="0022500970",
+        team_abbreviation="ATL",
+        season="2025-26",
+        game_date="2026-03-14",
+        opponent="MIL",
+        is_home=True,
+        season_type="Regular Season",
+    )
+
+    assert game.team == "ATL"
+    assert game.opponent == "MIL"
+    assert game.team_id == 1610612737
+    assert game.opponent_team_id == 1610612749
+    assert game.margin == 14.0
+    assert [(player.player_id, player.player_name, player.minutes) for player in players] == [
+        (101, "Test Player", pytest.approx(29.05))
+    ]

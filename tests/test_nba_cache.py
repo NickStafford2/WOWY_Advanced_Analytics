@@ -192,6 +192,145 @@ def test_load_or_fetch_box_score_reports_cache_source(tmp_path: Path, monkeypatc
     assert calls == ["0001"]
 
 
+def test_load_or_fetch_box_score_falls_back_to_v3_when_v2_is_empty(tmp_path: Path, monkeypatch):
+    v2_calls: list[str] = []
+    v3_calls: list[str] = []
+
+    class FakeBoxScoreTraditionalV2:
+        def __init__(self, game_id: str, timeout: int):
+            assert timeout == BOX_SCORE_REQUEST_TIMEOUT_SECONDS
+            v2_calls.append(game_id)
+
+        def get_dict(self):
+            return {
+                "resultSets": [
+                    {"name": "PlayerStats", "headers": ["A"], "rowSet": []},
+                    {"name": "TeamStats", "headers": ["B"], "rowSet": []},
+                ]
+            }
+
+    class FakeBoxScoreTraditionalV3:
+        def __init__(self, game_id: str, timeout: int):
+            assert timeout == BOX_SCORE_REQUEST_TIMEOUT_SECONDS
+            v3_calls.append(game_id)
+
+        def get_dict(self):
+            return {
+                "resultSets": {
+                    "PlayerStats": {
+                        "headers": ["personId"],
+                        "data": [[1]],
+                    },
+                    "TeamStats": {
+                        "headers": ["teamId"],
+                        "data": [[2]],
+                    },
+                }
+            }
+
+    monkeypatch.setattr(
+        "wowy.nba.cache.boxscoretraditionalv2.BoxScoreTraditionalV2",
+        FakeBoxScoreTraditionalV2,
+    )
+    monkeypatch.setattr(
+        "wowy.nba.cache.boxscoretraditionalv3.BoxScoreTraditionalV3",
+        FakeBoxScoreTraditionalV3,
+    )
+    monkeypatch.setattr("wowy.nba.cache.time.sleep", lambda _: None)
+
+    payload, source = load_or_fetch_box_score_with_source(
+        game_id="0003",
+        source_data_dir=tmp_path,
+    )
+    cached_payload, cached_source = load_or_fetch_box_score_with_source(
+        game_id="0003",
+        source_data_dir=tmp_path,
+    )
+
+    assert source == "fetched"
+    assert cached_source == "cached"
+    assert payload == cached_payload
+    assert v2_calls == ["0003"]
+    assert v3_calls == ["0003"]
+    assert (tmp_path / "boxscores" / "0003_boxscoretraditionalv3.json").exists()
+
+
+def test_load_or_fetch_box_score_falls_back_to_live_when_v2_and_v3_are_empty(
+    tmp_path: Path,
+    monkeypatch,
+):
+    v2_calls: list[str] = []
+    v3_calls: list[str] = []
+    live_calls: list[str] = []
+
+    class FakeBoxScoreTraditionalV2:
+        def __init__(self, game_id: str, timeout: int):
+            assert timeout == BOX_SCORE_REQUEST_TIMEOUT_SECONDS
+            v2_calls.append(game_id)
+
+        def get_dict(self):
+            return {
+                "resultSets": [
+                    {"name": "PlayerStats", "headers": ["A"], "rowSet": []},
+                    {"name": "TeamStats", "headers": ["B"], "rowSet": []},
+                ]
+            }
+
+    class FakeBoxScoreTraditionalV3:
+        def __init__(self, game_id: str, timeout: int):
+            assert timeout == BOX_SCORE_REQUEST_TIMEOUT_SECONDS
+            v3_calls.append(game_id)
+
+        def get_dict(self):
+            return {
+                "resultSets": {
+                    "PlayerStats": {"headers": [], "data": []},
+                    "TeamStats": {"headers": [], "data": []},
+                }
+            }
+
+    class FakeLiveBoxScore:
+        def __init__(self, game_id: str, timeout: int):
+            assert timeout == BOX_SCORE_REQUEST_TIMEOUT_SECONDS
+            live_calls.append(game_id)
+
+        def get_dict(self):
+            return {
+                "game": {
+                    "homeTeam": {"players": [{"personId": 1}], "statistics": {}},
+                    "awayTeam": {"players": [{"personId": 2}], "statistics": {}},
+                }
+            }
+
+    monkeypatch.setattr(
+        "wowy.nba.cache.boxscoretraditionalv2.BoxScoreTraditionalV2",
+        FakeBoxScoreTraditionalV2,
+    )
+    monkeypatch.setattr(
+        "wowy.nba.cache.boxscoretraditionalv3.BoxScoreTraditionalV3",
+        FakeBoxScoreTraditionalV3,
+    )
+    monkeypatch.setattr("wowy.nba.cache.live_boxscore.BoxScore", FakeLiveBoxScore)
+    monkeypatch.setattr("wowy.nba.cache.time.sleep", lambda _: None)
+
+    payload, source = load_or_fetch_box_score_with_source(
+        game_id="0004",
+        source_data_dir=tmp_path,
+    )
+    cached_payload, cached_source = load_or_fetch_box_score_with_source(
+        game_id="0004",
+        source_data_dir=tmp_path,
+    )
+
+    assert source == "fetched"
+    assert cached_source == "cached"
+    assert payload == cached_payload
+    assert v2_calls == ["0004"]
+    assert v3_calls == ["0004"]
+    assert live_calls == ["0004"]
+    assert (tmp_path / "boxscores" / "0004_boxscorelive.json").exists()
+
+
 def test_load_or_fetch_box_score_retries_request_exception(tmp_path: Path, monkeypatch):
     calls: list[str] = []
     sleeps: list[float] = []

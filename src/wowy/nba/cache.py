@@ -6,7 +6,12 @@ import time
 from pathlib import Path
 from typing import Callable
 
-from nba_api.stats.endpoints import boxscoretraditionalv2, leaguegamefinder
+from nba_api.stats.endpoints import (
+    boxscoretraditionalv2,
+    boxscoretraditionalv3,
+    leaguegamefinder,
+)
+from nba_api.live.nba.endpoints import boxscore as live_boxscore
 from requests import RequestException
 
 from wowy.nba.errors import BoxScoreFetchError, LeagueGamesFetchError
@@ -116,9 +121,12 @@ def load_or_fetch_box_score_with_source(
     source_data_dir: Path,
     log: LogFn | None = print,
 ) -> tuple[dict, str]:
-    cache_path = box_score_cache_path(game_id, source_data_dir=source_data_dir)
-    cached_payload = load_cached_payload(cache_path)
-    if cached_payload is not None:
+    for cache_path in box_score_cache_paths(game_id, source_data_dir=source_data_dir):
+        cached_payload = load_cached_payload(cache_path)
+        if cached_payload is None:
+            continue
+        if _box_score_payload_is_empty(cached_payload):
+            continue
         return cached_payload, "cached"
 
     last_error: Exception | None = None
@@ -133,15 +141,53 @@ def load_or_fetch_box_score_with_source(
                 timeout=BOX_SCORE_REQUEST_TIMEOUT_SECONDS,
             )
             payload = box_score.get_dict()
-            write_cached_payload(cache_path, payload)
-            return payload, "fetched"
+            if not _box_score_payload_is_empty(payload):
+                write_cached_payload(
+                    box_score_cache_path(game_id, source_data_dir=source_data_dir),
+                    payload,
+                )
+                return payload, "fetched"
+            if log is not None:
+                log(f"api box_score {game_id} attempt={attempt} empty-v2 fallback=v3")
+            v3_payload = boxscoretraditionalv3.BoxScoreTraditionalV3(
+                game_id=game_id,
+                timeout=BOX_SCORE_REQUEST_TIMEOUT_SECONDS,
+            ).get_dict()
+            if _box_score_payload_is_empty(v3_payload):
+                if log is not None:
+                    log(f"api box_score {game_id} attempt={attempt} empty-v3 fallback=live")
+                live_payload = live_boxscore.BoxScore(
+                    game_id=game_id,
+                    timeout=BOX_SCORE_REQUEST_TIMEOUT_SECONDS,
+                ).get_dict()
+                if _box_score_payload_is_empty(live_payload):
+                    raise ValueError(
+                        f"Box score endpoint returned empty data for game {game_id!r}"
+                    )
+                write_cached_payload(
+                    box_score_live_cache_path(game_id, source_data_dir=source_data_dir),
+                    live_payload,
+                )
+                return live_payload, "fetched"
+            write_cached_payload(
+                box_score_v3_cache_path(game_id, source_data_dir=source_data_dir),
+                v3_payload,
+            )
+            return v3_payload, "fetched"
         except (json.JSONDecodeError, RequestException) as exc:
+            last_error = exc
+            if attempt == BOX_SCORE_REQUEST_RETRIES:
+                break
+            time.sleep(BOX_SCORE_RETRY_BACKOFF_SECONDS * attempt)
+        except ValueError as exc:
             last_error = exc
             if attempt == BOX_SCORE_REQUEST_RETRIES:
                 break
             time.sleep(BOX_SCORE_RETRY_BACKOFF_SECONDS * attempt)
 
     if last_error is not None:
+        if isinstance(last_error, ValueError):
+            raise last_error
         raise BoxScoreFetchError(
             message=(
                 f"Failed to fetch box score for game {game_id} after "
@@ -188,6 +234,22 @@ def box_score_cache_path(game_id: str, source_data_dir: Path) -> Path:
     return source_data_dir / "boxscores" / f"{game_id}_boxscoretraditionalv2.json"
 
 
+def box_score_v3_cache_path(game_id: str, source_data_dir: Path) -> Path:
+    return source_data_dir / "boxscores" / f"{game_id}_boxscoretraditionalv3.json"
+
+
+def box_score_live_cache_path(game_id: str, source_data_dir: Path) -> Path:
+    return source_data_dir / "boxscores" / f"{game_id}_boxscorelive.json"
+
+
+def box_score_cache_paths(game_id: str, source_data_dir: Path) -> tuple[Path, Path, Path]:
+    return (
+        box_score_cache_path(game_id, source_data_dir=source_data_dir),
+        box_score_v3_cache_path(game_id, source_data_dir=source_data_dir),
+        box_score_live_cache_path(game_id, source_data_dir=source_data_dir),
+    )
+
+
 def load_cached_payload(cache_path: Path) -> dict | None:
     if not cache_path.exists():
         return None
@@ -207,3 +269,35 @@ def write_cached_payload(cache_path: Path, payload: dict) -> None:
         f.flush()
         os.fsync(f.fileno())
     temp_path.replace(cache_path)
+
+
+def _box_score_payload_is_empty(payload: dict) -> bool:
+    game_payload = payload.get("game")
+    if isinstance(game_payload, dict):
+        home_team = game_payload.get("homeTeam", {})
+        away_team = game_payload.get("awayTeam", {})
+        home_players = home_team.get("players", []) if isinstance(home_team, dict) else []
+        away_players = away_team.get("players", []) if isinstance(away_team, dict) else []
+        return len(home_players) == 0 or len(away_players) == 0
+
+    result_sets = payload.get("resultSets")
+    if isinstance(result_sets, list):
+        named_sets = {
+            str(result_set.get("name", "")): result_set
+            for result_set in result_sets
+            if isinstance(result_set, dict)
+        }
+        if "PlayerStats" not in named_sets or "TeamStats" not in named_sets:
+            return not any(
+                len(result_set.get("rowSet", [])) > 0
+                for result_set in result_sets
+                if isinstance(result_set, dict)
+            )
+        player_rows = named_sets.get("PlayerStats", {}).get("rowSet", [])
+        team_rows = named_sets.get("TeamStats", {}).get("rowSet", [])
+        return len(player_rows) == 0 or len(team_rows) == 0
+    if isinstance(result_sets, dict):
+        player_rows = result_sets.get("PlayerStats", {}).get("data", [])
+        team_rows = result_sets.get("TeamStats", {}).get("data", [])
+        return len(player_rows) == 0 or len(team_rows) == 0
+    return True

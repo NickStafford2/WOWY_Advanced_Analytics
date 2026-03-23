@@ -22,6 +22,7 @@
 - If any database data is discovered to be wrong, stale, ambiguous, partially populated, or structurally invalid, stop and surface it immediately.
 - Do not keep using a bad database. Either repair/recalculate the affected scopes immediately or stop and report the exact invalid scopes.
 - Do not preserve legacy compatibility at the expense of data quality. Rebuild or recalculate bad data instead of adding workarounds that keep invalid rows alive.
+- Empty source payloads are invalid cached data. Discard and refetch them instead of normalizing them or rebuilding the DB from them.
 
 ## Coding style
 - Keep changes simple, readable, and focused.

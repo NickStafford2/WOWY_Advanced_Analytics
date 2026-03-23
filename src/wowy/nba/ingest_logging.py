@@ -63,6 +63,16 @@ def _build_error_details(error: Exception) -> dict[str, object]:
             "season_scope": error.season,
             "season_type_scope": error.season_type,
             "failed_game_ids": error.failed_game_ids,
+            "failed_game_details": [
+                {
+                    "game_id": failure.game_id,
+                    "error_type": failure.error_type,
+                    "message": failure.message,
+                }
+                for failure in error.failed_game_details
+            ],
+            "failure_reason_counts": error.failure_reason_counts,
+            "failure_reason_examples": error.failure_reason_examples,
             "total_games": error.total_games,
             "failed_games": error.failed_games,
         }

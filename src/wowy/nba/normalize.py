@@ -28,19 +28,54 @@ def load_player_names_from_cache(source_data_dir: Path) -> dict[int, str]:
         payload = load_cached_payload(cache_path)
         if payload is None:
             continue
-        for result_set in payload["resultSets"]:
+        game_payload = payload.get("game")
+        if isinstance(game_payload, dict):
+            _append_live_player_names(player_names, game_payload)
+            continue
+        result_sets = payload.get("resultSets")
+        if isinstance(result_sets, dict):
+            result_set_iterable = [
+                {
+                    "headers": result_set["headers"],
+                    "rowSet": result_set["data"],
+                }
+                for result_set in result_sets.values()
+                if isinstance(result_set, dict)
+            ]
+        else:
+            result_set_iterable = result_sets or []
+        for result_set in result_set_iterable:
             headers = result_set["headers"]
-            if "PLAYER_ID" not in headers or "PLAYER_NAME" not in headers:
+            if "PLAYER_ID" in headers and "PLAYER_NAME" in headers:
+                player_stats_df = result_set_to_data_frame(result_set)
+                for player_id, player_name in zip(
+                    player_stats_df["PLAYER_ID"].tolist(),
+                    player_stats_df["PLAYER_NAME"].tolist(),
+                    strict=True,
+                ):
+                    if player_id is None or not player_name:
+                        continue
+                    player_names[int(player_id)] = str(player_name)
+                break
+            if "personId" not in headers:
                 continue
-            player_stats_df = result_set_to_data_frame(result_set)
-            for player_id, player_name in zip(
-                player_stats_df["PLAYER_ID"].tolist(),
-                player_stats_df["PLAYER_NAME"].tolist(),
+            player_stats_df = pd.DataFrame(result_set["rowSet"], columns=headers)
+            for player_id, first_name, family_name in zip(
+                player_stats_df["personId"].tolist(),
+                player_stats_df.get("firstName", pd.Series([""] * len(player_stats_df))).tolist(),
+                player_stats_df.get("familyName", pd.Series([""] * len(player_stats_df))).tolist(),
                 strict=True,
             ):
-                if player_id is None or not player_name:
+                if player_id is None:
                     continue
-                player_names[int(player_id)] = str(player_name)
+                player_name = " ".join(
+                    part
+                    for part in [str(first_name).strip(), str(family_name).strip()]
+                    if part
+                )
+                if not player_name:
+                    continue
+                player_names[int(player_id)] = player_name
             break
 
     return player_names
@@ -124,8 +159,7 @@ def normalize_box_score_payload(
 ) -> tuple[NormalizedGameRecord, list[NormalizedGamePlayerRecord]]:
     season = canonicalize_season_string(season)
     season_type = canonicalize_season_type(season_type)
-    player_stats_df = result_set_to_data_frame(box_score_payload["resultSets"][0])
-    team_stats_df = result_set_to_data_frame(box_score_payload["resultSets"][1])
+    player_stats_df, team_stats_df = extract_box_score_frames(box_score_payload)
 
     if player_stats_df.empty or team_stats_df.empty:
         raise ValueError(f"Box score is empty for game {game_id!r}")
@@ -187,6 +221,121 @@ def normalize_box_score_payload(
         opponent_team_id=opponent_team_id,
     )
     return game, normalized_players
+
+
+def extract_box_score_frames(box_score_payload: dict) -> tuple[pd.DataFrame, pd.DataFrame]:
+    game_payload = box_score_payload.get("game")
+    if isinstance(game_payload, dict):
+        return _extract_live_box_score_frames(game_payload)
+
+    result_sets = box_score_payload.get("resultSets")
+    if isinstance(result_sets, list):
+        named_sets = {
+            str(result_set.get("name", "")): result_set
+            for result_set in result_sets
+            if isinstance(result_set, dict)
+        }
+        if "PlayerStats" in named_sets and "TeamStats" in named_sets:
+            return (
+                result_set_to_data_frame(named_sets["PlayerStats"]),
+                result_set_to_data_frame(named_sets["TeamStats"]),
+            )
+        if len(result_sets) >= 2:
+            return (
+                result_set_to_data_frame(result_sets[0]),
+                result_set_to_data_frame(result_sets[1]),
+            )
+        return (
+            pd.DataFrame(),
+            pd.DataFrame(),
+        )
+    if isinstance(result_sets, dict):
+        return (
+            _normalize_v3_result_set_to_frame(result_sets["PlayerStats"]),
+            _normalize_v3_result_set_to_frame(result_sets["TeamStats"]),
+        )
+    raise ValueError("Box score payload is missing resultSets")
+
+
+def _normalize_v3_result_set_to_frame(result_set: dict) -> pd.DataFrame:
+    frame = pd.DataFrame(result_set["data"], columns=result_set["headers"])
+    rename_map = {
+        "gameId": "GAME_ID",
+        "teamId": "TEAM_ID",
+        "teamTricode": "TEAM_ABBREVIATION",
+        "personId": "PLAYER_ID",
+        "minutes": "MIN",
+        "plusMinusPoints": "PLUS_MINUS",
+        "points": "PTS",
+    }
+    if "firstName" in frame.columns or "familyName" in frame.columns:
+        player_names = (
+            frame.get("firstName", pd.Series([""] * len(frame))).fillna("").astype(str).str.strip()
+            + " "
+            + frame.get("familyName", pd.Series([""] * len(frame))).fillna("").astype(str).str.strip()
+        ).str.strip()
+        frame["PLAYER_NAME"] = player_names
+    return frame.rename(columns=rename_map)
+
+
+def _extract_live_box_score_frames(game_payload: dict) -> tuple[pd.DataFrame, pd.DataFrame]:
+    team_rows: list[dict[str, object]] = []
+    player_rows: list[dict[str, object]] = []
+
+    for team_key in ("homeTeam", "awayTeam"):
+        team_payload = game_payload.get(team_key)
+        if not isinstance(team_payload, dict):
+            continue
+        team_stats = team_payload.get("statistics", {})
+        team_rows.append(
+            {
+                "TEAM_ID": team_payload.get("teamId"),
+                "TEAM_ABBREVIATION": team_payload.get("teamTricode"),
+                "PTS": team_payload.get("score"),
+                "PLUS_MINUS": team_stats.get("plusMinusPoints"),
+            }
+        )
+        for player in team_payload.get("players", []):
+            if not isinstance(player, dict):
+                continue
+            player_rows.append(
+                {
+                    "TEAM_ID": team_payload.get("teamId"),
+                    "TEAM_ABBREVIATION": team_payload.get("teamTricode"),
+                    "PLAYER_ID": player.get("personId"),
+                    "PLAYER_NAME": _build_live_player_name(player),
+                    "MIN": player.get("statistics", {}).get("minutes"),
+                }
+            )
+
+    return pd.DataFrame(player_rows), pd.DataFrame(team_rows)
+
+
+def _append_live_player_names(player_names: dict[int, str], game_payload: dict) -> None:
+    for team_key in ("homeTeam", "awayTeam"):
+        team_payload = game_payload.get(team_key)
+        if not isinstance(team_payload, dict):
+            continue
+        for player in team_payload.get("players", []):
+            if not isinstance(player, dict):
+                continue
+            player_id = player.get("personId")
+            if player_id is None:
+                continue
+            player_name = _build_live_player_name(player)
+            if player_name:
+                player_names[int(player_id)] = player_name
+
+
+def _build_live_player_name(player: dict) -> str:
+    return " ".join(
+        part
+        for part in [
+            str(player.get("firstName", "")).strip(),
+            str(player.get("familyName", "")).strip(),
+        ]
+        if part
+    )
 
 
 def resolve_team_and_opponent_rows(
@@ -372,6 +521,8 @@ def parse_minutes_to_float(minutes: object) -> float | None:
     minute_text = str(minutes).strip()
     if not minute_text:
         return None
+    if minute_text.startswith("PT"):
+        return _parse_iso_duration_minutes(minute_text)
     if minute_text in {"0", "0:00", "0.0"}:
         return 0.0
     if ":" not in minute_text:
@@ -388,6 +539,34 @@ def parse_minutes_to_float(minutes: object) -> float | None:
         parsed_minutes = float(whole_minutes) + (float(seconds) / 60.0)
     except ValueError:
         return None
+    if not math.isfinite(parsed_minutes):
+        return None
+    return parsed_minutes
+
+
+def _parse_iso_duration_minutes(minute_text: str) -> float | None:
+    body = minute_text.removeprefix("PT")
+    if not body:
+        return None
+
+    minutes_value = 0.0
+    seconds_value = 0.0
+    if "M" in body:
+        minute_part, body = body.split("M", maxsplit=1)
+        if minute_part:
+            try:
+                minutes_value = float(minute_part)
+            except ValueError:
+                return None
+    if body.endswith("S"):
+        second_part = body[:-1]
+        if second_part:
+            try:
+                seconds_value = float(second_part)
+            except ValueError:
+                return None
+
+    parsed_minutes = minutes_value + (seconds_value / 60.0)
     if not math.isfinite(parsed_minutes):
         return None
     return parsed_minutes
