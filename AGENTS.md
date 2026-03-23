@@ -14,6 +14,8 @@
 - Any long-running script or CLI must show visible progress by default.
 - For multi-step or full-database/full-season jobs, include a status bar or staged progress indicator that makes it clear the process is advancing and roughly how much is done.
 - Do not ship long-running commands that appear silent or hung during normal execution.
+- Major ingest reliability problem: the NBA ingest scripts frequently fail mid-run, then succeed on rerun with no code changes. This is unacceptable. Treat repeated restart-to-progress behavior as a real bug to fix, not normal operation.
+- When working on ingest or scraping, prioritize durable retries, resume behavior, and clear failure reporting so full-season and multi-season runs do not require manual restarts to eventually finish.
 
 ## Coding style
 - Keep changes simple, readable, and focused.
