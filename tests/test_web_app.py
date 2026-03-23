@@ -16,6 +16,8 @@ from wowy.web.app import create_app
 from wowy.web.refresh_cli import main as refresh_cli_main
 from wowy.web.service import (
     RAWR_METRIC,
+    RefreshMetricStoreResult,
+    RefreshScopeResult,
     WOWY_SHRUNK_METRIC,
     WOWY_METRIC,
     build_scope_key,
@@ -224,6 +226,7 @@ def test_refresh_metric_store_skips_incomplete_rawr_seasons_without_scraping(
         "or repopulate DB."
     ) not in captured.out
     assert "2023-24: missing team-seasons: LAL" in captured.out
+    assert load_metric_store_metadata(player_metrics_db_path, "rawr", scope_key) is None
 
 
 def test_refresh_metric_store_warns_about_incomplete_rawr_seasons_even_when_cached(
@@ -342,9 +345,21 @@ def test_refresh_cli_refreshes_all_metrics_by_default(monkeypatch, tmp_path: Pat
         rawr_ridge_alpha: float,
         include_team_scopes: bool,
         progress,
-    ) -> None:
+    ) -> RefreshMetricStoreResult:
         calls.append(metric)
         progress(1, 1, "done")
+        return RefreshMetricStoreResult(
+            metric=metric,
+            scope_results=[
+                RefreshScopeResult(
+                    scope_key="teams=all-teams|season_type=Regular Season",
+                    scope_label="all-teams",
+                    row_count=1,
+                    status="built",
+                )
+            ],
+            warnings=[],
+        )
 
     monkeypatch.setattr("wowy.web.refresh_cli.refresh_metric_store", fake_refresh_metric_store)
 
@@ -358,6 +373,64 @@ def test_refresh_cli_refreshes_all_metrics_by_default(monkeypatch, tmp_path: Pat
     assert "refreshed wowy store" in captured.out
     assert "refreshed wowy_shrunk store" in captured.out
     assert "refreshed rawr store" in captured.out
+
+
+def test_refresh_cli_fails_for_empty_all_teams_rawr_store(
+    monkeypatch,
+    tmp_path: Path,
+    capsys,
+):
+    def fake_refresh_metric_store(
+        metric: str,
+        *,
+        season_type: str,
+        db_path: Path,
+        source_data_dir: Path,
+        rawr_ridge_alpha: float,
+        include_team_scopes: bool,
+        progress,
+    ) -> RefreshMetricStoreResult:
+        progress(1, 1, "empty all-teams")
+        if metric != RAWR_METRIC:
+            return RefreshMetricStoreResult(
+                metric=metric,
+                scope_results=[
+                    RefreshScopeResult(
+                        scope_key="teams=all-teams|season_type=Regular Season",
+                        scope_label="all-teams",
+                        row_count=5,
+                        status="built",
+                    )
+                ],
+                warnings=[],
+            )
+        return RefreshMetricStoreResult(
+            metric=metric,
+            scope_results=[
+                RefreshScopeResult(
+                    scope_key="teams=all-teams|season_type=Regular Season",
+                    scope_label="all-teams",
+                    row_count=0,
+                    status="empty",
+                )
+            ],
+            warnings=["2023-24: missing team-seasons: LAL"],
+            failure_message=(
+                "RAWR refresh produced no all-teams rows. "
+                "The normalized cache is incomplete, so the web store was not updated."
+            ),
+        )
+
+    monkeypatch.setattr("wowy.web.refresh_cli.refresh_metric_store", fake_refresh_metric_store)
+
+    exit_code = refresh_cli_main(
+        ["--player-metrics-db-path", str(tmp_path / "app" / "player_metrics.sqlite3")]
+    )
+    captured = capsys.readouterr()
+
+    assert exit_code == 1
+    assert "failed to refresh rawr store" in captured.out
+    assert "RAWR refresh produced no all-teams rows." in captured.out
 
 
 def test_wowy_shrunk_options_endpoint_returns_wowy_style_filters(

@@ -88,7 +88,7 @@ def main(argv: list[str] | None = None) -> int:
         ]
         for metric in refresh_metrics:
             print(f"refreshing {metric} web store at {args.player_metrics_db_path}")
-            refresh_metric_store(
+            result = refresh_metric_store(
                 metric,
                 season_type=season_type,
                 db_path=args.player_metrics_db_path,
@@ -96,6 +96,9 @@ def main(argv: list[str] | None = None) -> int:
                 rawr_ridge_alpha=args.rawr_ridge_alpha,
                 include_team_scopes=False,
             )
+            if not result.ok:
+                print(result.failure_message)
+                return 1
     app = create_app(
         source_data_dir=args.source_data_dir,
         player_metrics_db_path=args.player_metrics_db_path,

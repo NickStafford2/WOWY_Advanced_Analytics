@@ -22,6 +22,7 @@ from wowy.data.player_metrics_db import (
     MetricFullSpanSeriesRow,
     MetricScopeCatalogRow,
     PlayerSeasonMetricRow,
+    clear_metric_scope_store,
     load_metric_rows,
     load_metric_full_span_points_map,
     load_metric_full_span_series_rows,
@@ -45,6 +46,30 @@ class MetricDefinition:
     label: str
     build_version: str
     build_rows: BuildRowsFn
+
+
+@dataclass(frozen=True)
+class RefreshScopeResult:
+    scope_key: str
+    scope_label: str
+    row_count: int
+    status: str
+
+
+@dataclass(frozen=True)
+class RefreshMetricStoreResult:
+    metric: str
+    scope_results: list[RefreshScopeResult]
+    warnings: list[str]
+    failure_message: str | None = None
+
+    @property
+    def ok(self) -> bool:
+        return self.failure_message is None
+
+    @property
+    def total_rows(self) -> int:
+        return sum(scope.row_count for scope in self.scope_results)
 
 
 WOWY_METRIC = "wowy"
@@ -153,24 +178,25 @@ def _print_rawr_incomplete_season_warning(
     *,
     season_type: str,
     db_path: Path,
-) -> None:
+) -> list[str]:
     cached_team_seasons = list_cached_team_seasons(
         player_metrics_db_path=db_path,
         season_type=season_type,
     )
     candidate_seasons = sorted({team_season.season for team_season in cached_team_seasons})
     if not candidate_seasons:
-        return
+        return []
     issues = list_incomplete_rawr_seasons(
         seasons=candidate_seasons,
         season_type=season_type,
         player_metrics_db_path=db_path,
     )
     if not issues:
-        return
+        return []
     print("RAWR warning: skipped incomplete seasons")
     for issue in issues:
         print(f"  - {issue.season}: {issue.reason}")
+    return [f"{issue.season}: {issue.reason}" for issue in issues]
 
 
 def _build_wowy_shrunk_rows(
@@ -272,7 +298,7 @@ def refresh_metric_store(
     rawr_ridge_alpha: float = DEFAULT_RAWR_RIDGE_ALPHA,
     include_team_scopes: bool = True,
     progress: RefreshProgressFn | None = None,
-) -> None:
+) -> RefreshMetricStoreResult:
     season_type = canonicalize_season_type(season_type)
     definition = get_metric_definition(metric)
     source_fingerprint = build_normalized_cache_fingerprint(
@@ -287,12 +313,15 @@ def refresh_metric_store(
     team_scopes: list[list[str] | None] = [None]
     if include_team_scopes:
         team_scopes.extend([[team] for team in available_teams])
+    warnings: list[str] = []
+    scope_results: list[RefreshScopeResult] = []
+    failure_message: str | None = None
 
     for index, teams in enumerate(team_scopes):
         scope_key, team_filter = build_scope_key(teams=teams, season_type=season_type)
         scope_label = team_filter or "all-teams"
         if metric == RAWR_METRIC and teams is None:
-            _print_rawr_incomplete_season_warning(
+            warnings = _print_rawr_incomplete_season_warning(
                 season_type=season_type,
                 db_path=db_path,
             )
@@ -315,9 +344,18 @@ def refresh_metric_store(
             metadata is not None
             and metadata.source_fingerprint == source_fingerprint
             and metadata.build_version == build_version
+            and metadata.row_count > 0
         ):
             if progress is not None:
                 progress(index + 1, len(team_scopes), f"cached {scope_label}")
+            scope_results.append(
+                RefreshScopeResult(
+                    scope_key=scope_key,
+                    scope_label=scope_label,
+                    row_count=metadata.row_count,
+                    status="cached",
+                )
+            )
             continue
 
         rows = definition.build_rows(
@@ -329,27 +367,60 @@ def refresh_metric_store(
             teams=teams,
             rawr_ridge_alpha=rawr_ridge_alpha,
         )
-        replace_metric_rows(
-            db_path,
-            metric=definition.metric,
-            scope_key=scope_key,
-            metric_label=definition.label,
-            build_version=build_version,
-            source_fingerprint=source_fingerprint,
-            rows=rows,
+        should_fail_empty_rawr_scope = metric == RAWR_METRIC and teams is None and not rows
+        if should_fail_empty_rawr_scope:
+            clear_metric_scope_store(
+                db_path,
+                metric=definition.metric,
+                scope_key=scope_key,
+            )
+            status = "empty"
+            if progress is not None:
+                progress(index + 1, len(team_scopes), f"empty {scope_label}")
+        else:
+            replace_metric_rows(
+                db_path,
+                metric=definition.metric,
+                scope_key=scope_key,
+                metric_label=definition.label,
+                build_version=build_version,
+                source_fingerprint=source_fingerprint,
+                rows=rows,
+            )
+            _replace_metric_scope_rows(
+                db_path=db_path,
+                definition=definition,
+                scope_key=scope_key,
+                team_filter=team_filter,
+                season_type=season_type,
+                rows=rows,
+                available_teams=available_teams,
+                available_seasons=scope_seasons,
+            )
+            status = "built"
+            if progress is not None:
+                progress(index + 1, len(team_scopes), f"built {scope_label}")
+
+        scope_results.append(
+            RefreshScopeResult(
+                scope_key=scope_key,
+                scope_label=scope_label,
+                row_count=len(rows),
+                status=status,
+            )
         )
-        _replace_metric_scope_rows(
-            db_path=db_path,
-            definition=definition,
-            scope_key=scope_key,
-            team_filter=team_filter,
-            season_type=season_type,
-            rows=rows,
-            available_teams=available_teams,
-            available_seasons=scope_seasons,
-        )
-        if progress is not None:
-            progress(index + 1, len(team_scopes), f"built {scope_label}")
+        if should_fail_empty_rawr_scope:
+            failure_message = (
+                "RAWR refresh produced no all-teams rows. "
+                "The normalized cache is incomplete, so the web store was not updated."
+            )
+            break
+    return RefreshMetricStoreResult(
+        metric=metric,
+        scope_results=scope_results,
+        warnings=warnings,
+        failure_message=failure_message,
+    )
 
 
 def build_metric_player_seasons_payload(

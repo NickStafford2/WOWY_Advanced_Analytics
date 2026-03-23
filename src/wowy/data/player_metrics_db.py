@@ -264,6 +264,38 @@ def replace_metric_rows(
         connection.commit()
 
 
+def clear_metric_scope_store(
+    db_path: Path,
+    *,
+    metric: str,
+    scope_key: str,
+) -> None:
+    initialize_player_metrics_db(db_path)
+    with _connect(db_path) as connection:
+        connection.execute("BEGIN")
+        connection.execute(
+            "DELETE FROM metric_full_span_points WHERE metric = ? AND scope_key = ?",
+            (metric, scope_key),
+        )
+        connection.execute(
+            "DELETE FROM metric_full_span_series WHERE metric = ? AND scope_key = ?",
+            (metric, scope_key),
+        )
+        connection.execute(
+            "DELETE FROM metric_scope_catalog WHERE metric = ? AND scope_key = ?",
+            (metric, scope_key),
+        )
+        connection.execute(
+            "DELETE FROM metric_store_metadata_v2 WHERE metric = ? AND scope_key = ?",
+            (metric, scope_key),
+        )
+        connection.execute(
+            "DELETE FROM metric_player_season_values WHERE metric = ? AND scope_key = ?",
+            (metric, scope_key),
+        )
+        connection.commit()
+
+
 def load_metric_store_metadata(
     db_path: Path,
     metric: str,

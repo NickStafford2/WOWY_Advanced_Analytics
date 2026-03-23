@@ -70,7 +70,7 @@ def main(argv: list[str] | None = None) -> int:
     )
     for metric in metrics:
         progress_bar = TerminalProgressBar(f"Refresh {metric}", total=1)
-        refresh_metric_store(
+        result = refresh_metric_store(
             metric,
             season_type=args.season_type,
             db_path=args.player_metrics_db_path,
@@ -85,7 +85,14 @@ def main(argv: list[str] | None = None) -> int:
             ),
         )
         progress_bar.finish(detail="done")
-        print(f"refreshed {metric} store at {args.player_metrics_db_path}")
+        if not result.ok:
+            print(f"failed to refresh {metric} store at {args.player_metrics_db_path}")
+            print(result.failure_message)
+            return 1
+        print(
+            f"refreshed {metric} store at {args.player_metrics_db_path} "
+            f"({result.total_rows} rows)"
+        )
     return 0
 
 
