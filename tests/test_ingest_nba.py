@@ -8,12 +8,18 @@ import pandas as pd
 import pytest
 from requests import RequestException
 
+from scripts.cache_season_data import main as cache_season_data_main
 from wowy.nba.ingest import (
     build_team_season_artifacts,
     cache_team_season_data,
     extract_is_home,
     extract_opponent,
     load_player_names_from_cache,
+)
+from wowy.nba.errors import (
+    BoxScoreFetchError,
+    LeagueGamesFetchError,
+    TeamSeasonConsistencyError,
 )
 from wowy.nba.normalize import (
     extract_normalized_game_players,
@@ -553,7 +559,7 @@ def test_cache_team_season_data_resumes_from_cached_partial_source_data(
 
     db_path = tmp_path / "app" / "player_metrics.sqlite3"
 
-    with pytest.raises(RequestException):
+    with pytest.raises(BoxScoreFetchError, match="Failed to fetch box score for game 0002"):
         cache_team_season_data(
             "ATL",
             "2023-24",
@@ -698,13 +704,52 @@ def test_cache_team_season_data_raises_on_inconsistent_outputs(
         lambda *args: "wowy_data",
     )
 
-    with pytest.raises(ValueError, match="Inconsistent team-season cache"):
+    with pytest.raises(TeamSeasonConsistencyError, match="Inconsistent team-season cache"):
         cache_team_season_data(
             "BOS",
             "2023-24",
             source_data_dir=source_data_dir,
             player_metrics_db_path=tmp_path / "app" / "player_metrics.sqlite3",
         )
+
+
+def test_cache_season_script_reports_fetch_failures_without_mislabeling(
+    monkeypatch,
+    capsys,
+):
+    monkeypatch.setattr(
+        "scripts.cache_season_data.resolve_teams",
+        lambda team_codes: ["CLE"],
+    )
+
+    def fake_cache_team_season_data(**kwargs):
+        raise LeagueGamesFetchError(
+            message=(
+                "Failed to fetch league games for CLE 2002-03 Regular Season "
+                "after 3 attempts: JSONDecodeError: Expecting value"
+            ),
+            resource="league_games",
+            identifier="CLE:2002-03:Regular Season",
+            attempts=3,
+            last_error_type="JSONDecodeError",
+            last_error_message="Expecting value",
+            team="CLE",
+            season="2002-03",
+            season_type="Regular Season",
+        )
+
+    monkeypatch.setattr(
+        "scripts.cache_season_data.cache_team_season_data",
+        fake_cache_team_season_data,
+    )
+
+    exit_code = cache_season_data_main(["2002-03", "--teams", "CLE"])
+    captured = capsys.readouterr()
+
+    assert exit_code == 1
+    assert "failed fetch=JSONDecodeError" in captured.out
+    assert "Fetch failed for CLE 2002-03" in captured.err
+    assert "Validation failed for CLE 2002-03" not in captured.err
 
 
 def test_extract_matchup_fields_accept_requested_team_on_either_side() -> None:

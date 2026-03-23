@@ -9,6 +9,7 @@ from typing import Callable
 from nba_api.stats.endpoints import boxscoretraditionalv2, leaguegamefinder
 from requests import RequestException
 
+from wowy.nba.errors import BoxScoreFetchError, LeagueGamesFetchError
 from wowy.nba.seasons import canonicalize_season_string
 from wowy.nba.season_types import canonicalize_season_type
 
@@ -70,7 +71,21 @@ def load_or_fetch_league_games_with_source(
             time.sleep(LEAGUE_GAMES_RETRY_BACKOFF_SECONDS * attempt)
 
     if last_error is not None:
-        raise last_error
+        raise LeagueGamesFetchError(
+            message=(
+                f"Failed to fetch league games for {team_abbreviation} {season} "
+                f"{season_type} after {LEAGUE_GAMES_REQUEST_RETRIES} attempts: "
+                f"{type(last_error).__name__}: {last_error}"
+            ),
+            resource="league_games",
+            identifier=f"{team_abbreviation}:{season}:{season_type}",
+            attempts=LEAGUE_GAMES_REQUEST_RETRIES,
+            last_error_type=type(last_error).__name__,
+            last_error_message=str(last_error),
+            team=team_abbreviation,
+            season=season,
+            season_type=season_type,
+        ) from last_error
 
     raise RuntimeError(
         f"Failed to fetch league games for {team_abbreviation!r} in {season!r}"
@@ -127,7 +142,19 @@ def load_or_fetch_box_score_with_source(
             time.sleep(BOX_SCORE_RETRY_BACKOFF_SECONDS * attempt)
 
     if last_error is not None:
-        raise last_error
+        raise BoxScoreFetchError(
+            message=(
+                f"Failed to fetch box score for game {game_id} after "
+                f"{BOX_SCORE_REQUEST_RETRIES} attempts: "
+                f"{type(last_error).__name__}: {last_error}"
+            ),
+            resource="box_score",
+            identifier=game_id,
+            attempts=BOX_SCORE_REQUEST_RETRIES,
+            last_error_type=type(last_error).__name__,
+            last_error_message=str(last_error),
+            game_id=game_id,
+        ) from last_error
 
     raise RuntimeError(f"Failed to fetch box score for game {game_id!r}")
 

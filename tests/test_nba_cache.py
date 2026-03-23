@@ -20,6 +20,7 @@ from wowy.data.game_cache_db import (
     initialize_game_cache_db,
     replace_team_season_normalized_rows,
 )
+from wowy.nba.errors import BoxScoreFetchError, LeagueGamesFetchError
 from wowy.nba.models import NormalizedGamePlayerRecord, NormalizedGameRecord
 from wowy.nba.season_types import canonicalize_season_type
 
@@ -125,6 +126,38 @@ def test_load_or_fetch_league_games_retries_json_decode_error(
     assert sleeps == [0.6, 2.0, 0.6, 4.0, 0.6]
 
 
+def test_load_or_fetch_league_games_raises_typed_fetch_error_after_retries(
+    tmp_path: Path,
+    monkeypatch,
+):
+    calls: list[int] = []
+    sleeps: list[float] = []
+
+    class FakeLeagueGameFinder:
+        def __init__(self, **kwargs):
+            assert kwargs["timeout"] == LEAGUE_GAMES_REQUEST_TIMEOUT_SECONDS
+            calls.append(1)
+            raise json.JSONDecodeError("Expecting value", "", 0)
+
+    monkeypatch.setattr(
+        "wowy.nba.cache.leaguegamefinder.LeagueGameFinder",
+        FakeLeagueGameFinder,
+    )
+    monkeypatch.setattr("wowy.nba.cache.time.sleep", sleeps.append)
+
+    with pytest.raises(LeagueGamesFetchError, match="Failed to fetch league games"):
+        load_or_fetch_league_games_with_source(
+            team_id=1610612738,
+            team_abbreviation="BOS",
+            season="2023-24",
+            season_type="Regular Season",
+            source_data_dir=tmp_path,
+        )
+
+    assert len(calls) == 3
+    assert sleeps == [0.6, 2.0, 0.6, 4.0, 0.6]
+
+
 def test_load_or_fetch_box_score_reports_cache_source(tmp_path: Path, monkeypatch):
     calls: list[str] = []
 
@@ -186,6 +219,38 @@ def test_load_or_fetch_box_score_retries_request_exception(tmp_path: Path, monke
     assert source == "fetched"
     assert calls == ["0002", "0002", "0002", "0002"]
     assert sleeps == [0.6, 2.0, 0.6, 4.0, 0.6, 6.0, 0.6]
+
+
+def test_load_or_fetch_box_score_raises_typed_fetch_error_after_retries(
+    tmp_path: Path,
+    monkeypatch,
+):
+    calls: list[str] = []
+    sleeps: list[float] = []
+
+    class FakeBoxScoreTraditionalV2:
+        def __init__(self, game_id: str, timeout: int):
+            assert timeout == BOX_SCORE_REQUEST_TIMEOUT_SECONDS
+            calls.append(game_id)
+            raise RequestException("temporary timeout")
+
+        def get_dict(self):
+            raise AssertionError("unreachable")
+
+    monkeypatch.setattr(
+        "wowy.nba.cache.boxscoretraditionalv2.BoxScoreTraditionalV2",
+        FakeBoxScoreTraditionalV2,
+    )
+    monkeypatch.setattr("wowy.nba.cache.time.sleep", sleeps.append)
+
+    with pytest.raises(BoxScoreFetchError, match="Failed to fetch box score"):
+        load_or_fetch_box_score_with_source(
+            game_id="0002",
+            source_data_dir=tmp_path,
+        )
+
+    assert calls == ["0002", "0002", "0002", "0002", "0002"]
+    assert sleeps == [0.6, 2.0, 0.6, 4.0, 0.6, 6.0, 0.6, 8.0, 0.6]
 
 
 def test_canonicalize_season_type_accepts_common_aliases():

@@ -16,6 +16,7 @@ from wowy.nba.build_models import (
     TeamSeasonRunSummary,
 )
 from wowy.nba.cache import DEFAULT_SOURCE_DATA_DIR, load_or_fetch_league_games_with_source
+from wowy.nba.errors import TeamSeasonConsistencyError
 from wowy.nba.models import NormalizedGamePlayerRecord, NormalizedGameRecord
 from wowy.nba.normalize import (
     fetch_normalized_game_data_with_source,
@@ -233,8 +234,14 @@ def cache_team_season_data(
         result.artifacts.wowy_games,
     )
     if consistency != "ok":
-        raise ValueError(
-            f"Inconsistent team-season cache for {team_abbreviation.upper()} {season}: {consistency}"
+        raise TeamSeasonConsistencyError(
+            message=(
+                f"Inconsistent team-season cache for {team_abbreviation.upper()} "
+                f"{season}: {consistency}"
+            ),
+            team=team_abbreviation.upper(),
+            season=season,
+            reason=consistency,
         )
     return result.summary
 
