@@ -115,8 +115,7 @@ def test_summarize_validation_report_groups_similar_errors():
                 key="row-1",
                 message=(
                     "Normalized player row for game '0020301176' player_id=445 "
-                    "player_name='Wesley Person' source_path="
-                    "'data/source/nba/boxscores/0020301176_boxscoretraditionalv2.json' "
+                    "player_name='Wesley Person' "
                     "has invalid minutes nan"
                 ),
             ),
@@ -125,8 +124,7 @@ def test_summarize_validation_report_groups_similar_errors():
                 key="row-2",
                 message=(
                     "Normalized player row for game '0020301180' player_id=1442 "
-                    "player_name='Zeljko Rebraca' source_path="
-                    "'data/source/nba/boxscores/0020301180_boxscoretraditionalv2.json' "
+                    "player_name='Zeljko Rebraca' "
                     "has invalid minutes nan"
                 ),
             ),
@@ -175,16 +173,15 @@ def test_render_validation_summary_and_cli_show_top_error_trends(
     assert "Validating metric store relations" in captured.err
 
 
-def test_normalize_issue_message_replaces_embedded_ids_and_paths():
+def test_normalize_issue_message_replaces_embedded_ids():
     normalized = normalize_issue_message(
         "Normalized player row for game '0020301176' player_id=445 player_name='Wesley Person' "
-        "source_path='data/source/nba/boxscores/0020301176_boxscoretraditionalv2.json' "
         "has invalid minutes nan"
     )
 
     assert normalized == (
         "Normalized player row for game '<value>' player_id=<num> player_name='<value>' "
-        "source_path='<value>' has invalid minutes nan"
+        "has invalid minutes nan"
     )
 
 
@@ -197,6 +194,39 @@ def test_db_validation_cli_json_mode_omits_progress_output(tmp_path: Path, capsy
     assert exit_code == 0
     assert "\"ok\": true" in captured.out
     assert captured.err == ""
+
+
+def test_audit_player_metrics_db_reports_non_reciprocal_game_margins(tmp_path: Path):
+    db_path = _seed_valid_db(tmp_path)
+
+    replace_team_season_normalized_rows(
+        db_path,
+        team="LAL",
+        season="2023-24",
+        season_type="Regular Season",
+        games=[
+            game("0001", "2023-24", "2024-04-01", "LAL", "BOS", False, -7.0),
+        ],
+        game_players=[
+            player("0001", "LAL", 201, "Player 201", True, 48.0),
+            player("0001", "LAL", 202, "Player 202", True, 48.0),
+            player("0001", "LAL", 203, "Player 203", True, 48.0),
+            player("0001", "LAL", 204, "Player 204", True, 48.0),
+            player("0001", "LAL", 205, "Player 205", True, 48.0),
+        ],
+        source_path="test://LAL_2023-24",
+        source_snapshot="seed",
+        source_kind="test",
+    )
+
+    report = audit_player_metrics_db(db_path)
+
+    assert report.ok is False
+    assert any(
+        issue.table == "normalized_games"
+        and "paired game rows must have opposite margins" in issue.message
+        for issue in report.issues
+    )
 
 
 def _seed_valid_db(tmp_path: Path) -> Path:

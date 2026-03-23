@@ -150,7 +150,11 @@ def normalize_box_score_payload(
             f"No active players found for team {team_abbreviation!r} in game {game_id!r}"
         )
 
-    plus_minus = float(team_rows.iloc[0]["PLUS_MINUS"])
+    plus_minus = resolve_team_margin(
+        team_stats_df=team_stats_df,
+        team_abbreviation=team_abbreviation,
+        game_id=game_id,
+    )
     game = NormalizedGameRecord(
         game_id=game_id,
         season=season,
@@ -163,6 +167,65 @@ def normalize_box_score_payload(
         source=source,
     )
     return game, normalized_players
+
+
+def resolve_team_margin(
+    *,
+    team_stats_df: pd.DataFrame,
+    team_abbreviation: str,
+    game_id: str,
+) -> float:
+    team_rows = team_stats_df.loc[
+        team_stats_df["TEAM_ABBREVIATION"] == team_abbreviation,
+    ]
+    if team_rows.empty:
+        raise ValueError(
+            f"Team {team_abbreviation!r} not found in box score for game {game_id!r}"
+        )
+
+    plus_minus = parse_box_score_numeric_value(team_rows.iloc[0]["PLUS_MINUS"])
+    if plus_minus is not None:
+        return plus_minus
+
+    opponent_rows = team_stats_df.loc[
+        team_stats_df["TEAM_ABBREVIATION"] != team_abbreviation,
+    ]
+    if len(opponent_rows) != 1:
+        raise ValueError(
+            f"Could not derive margin from team stats for game {game_id!r}: "
+            f"expected one opponent row, found {len(opponent_rows)}"
+        )
+
+    team_points = parse_box_score_numeric_value(team_rows.iloc[0]["PTS"])
+    opponent_points = parse_box_score_numeric_value(opponent_rows.iloc[0]["PTS"])
+    if team_points is None or opponent_points is None:
+        raise ValueError(
+            f"Could not derive margin from team stats for game {game_id!r}: "
+            "missing team points"
+        )
+
+    return team_points - opponent_points
+
+
+def parse_box_score_numeric_value(value: object) -> float | None:
+    if value is None or isinstance(value, bool):
+        return None
+    if isinstance(value, int | float):
+        numeric_value = float(value)
+        if not math.isfinite(numeric_value):
+            return None
+        return numeric_value
+
+    text = str(value).strip()
+    if not text:
+        return None
+    try:
+        numeric_value = float(text)
+    except ValueError:
+        return None
+    if not math.isfinite(numeric_value):
+        return None
+    return numeric_value
 
 
 def extract_players_who_appeared(player_ids, minutes_played) -> set[int]:

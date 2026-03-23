@@ -538,6 +538,8 @@ def _validate_normalized_cache_relations(
                 )
             )
 
+    _validate_reciprocal_game_margins(game_rows, issues)
+
     game_scopes = set(games_by_scope)
     player_scopes = set(players_by_scope)
     load_scopes = {(row["team"], row["season"], row["season_type"]) for row in load_rows}
@@ -597,6 +599,82 @@ def _validate_normalized_cache_relations(
                 message="missing normalized_cache_loads row for existing normalized cache scope",
             )
         )
+
+
+def _validate_reciprocal_game_margins(
+    game_rows: list[sqlite3.Row],
+    issues: list[ValidationIssue],
+) -> None:
+    games_by_id: dict[tuple[str, str, str], list[NormalizedGameRecord]] = defaultdict(list)
+
+    for row in game_rows:
+        games_by_id[(row["season"], row["season_type"], row["game_id"])].append(
+            NormalizedGameRecord(
+                game_id=row["game_id"],
+                season=row["season"],
+                game_date=row["game_date"],
+                team=row["team"],
+                opponent=row["opponent"],
+                is_home=bool(row["is_home"]),
+                margin=row["margin"],
+                season_type=row["season_type"],
+                source=row["source"],
+            )
+        )
+
+    for key, games in games_by_id.items():
+        if len(games) != 2:
+            continue
+
+        first_game, second_game = games
+        if first_game.team != second_game.opponent or second_game.team != first_game.opponent:
+            issues.append(
+                ValidationIssue(
+                    table="normalized_games",
+                    key=(
+                        f"game_id={first_game.game_id!r},season={first_game.season!r},"
+                        f"season_type={first_game.season_type!r}"
+                    ),
+                    message="paired game rows must reference each other as opponents",
+                )
+            )
+        if first_game.is_home == second_game.is_home:
+            issues.append(
+                ValidationIssue(
+                    table="normalized_games",
+                    key=(
+                        f"game_id={first_game.game_id!r},season={first_game.season!r},"
+                        f"season_type={first_game.season_type!r}"
+                    ),
+                    message="paired game rows must have opposite home/away flags",
+                )
+            )
+        if first_game.game_date != second_game.game_date:
+            issues.append(
+                ValidationIssue(
+                    table="normalized_games",
+                    key=(
+                        f"game_id={first_game.game_id!r},season={first_game.season!r},"
+                        f"season_type={first_game.season_type!r}"
+                    ),
+                    message="paired game rows must have the same game date",
+                )
+            )
+        if first_game.margin != -second_game.margin:
+            issues.append(
+                ValidationIssue(
+                    table="normalized_games",
+                    key=(
+                        f"game_id={first_game.game_id!r},season={first_game.season!r},"
+                        f"season_type={first_game.season_type!r}"
+                    ),
+                    message=(
+                        "paired game rows must have opposite margins: "
+                        f"{first_game.team}={first_game.margin} "
+                        f"{second_game.team}={second_game.margin}"
+                    ),
+                )
+            )
 
 
 def _validate_metric_player_season_values_table(

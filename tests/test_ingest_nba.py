@@ -15,8 +15,12 @@ from wowy.nba.ingest import (
     extract_opponent,
     load_player_names_from_cache,
 )
-from wowy.nba.normalize import parse_minutes_to_float, played_in_game
-from wowy.nba.normalize import extract_normalized_game_players
+from wowy.nba.normalize import (
+    extract_normalized_game_players,
+    normalize_box_score_payload,
+    parse_minutes_to_float,
+    played_in_game,
+)
 from wowy.data.game_cache_db import (
     load_normalized_game_players_from_db,
     load_normalized_games_from_db,
@@ -773,3 +777,49 @@ def test_extract_normalized_game_players_treats_pandas_nan_minutes_as_did_not_pl
             minutes=None,
         )
     ]
+
+
+def test_normalize_box_score_payload_derives_margin_from_points_when_plus_minus_missing():
+    payload = {
+        "resultSets": [
+            {
+                "name": "PlayerStats",
+                "headers": [
+                    "TEAM_ABBREVIATION",
+                    "PLAYER_ID",
+                    "PLAYER_NAME",
+                    "MIN",
+                ],
+                "rowSet": [
+                    ["WAS", 1, "Player 1", "12:00"],
+                    ["WAS", 2, "Player 2", "12:00"],
+                    ["WAS", 3, "Player 3", "12:00"],
+                    ["WAS", 4, "Player 4", "12:00"],
+                    ["WAS", 5, "Player 5", "12:00"],
+                    ["NOH", 6, "Player 6", "12:00"],
+                ],
+            },
+            {
+                "name": "TeamStats",
+                "headers": ["TEAM_ABBREVIATION", "PTS", "PLUS_MINUS"],
+                "rowSet": [
+                    ["WAS", 98, None],
+                    ["NOH", 120, None],
+                ],
+            },
+        ]
+    }
+
+    game, players = normalize_box_score_payload(
+        box_score_payload=payload,
+        game_id="0020300778",
+        team_abbreviation="WAS",
+        season="2003-04",
+        game_date="2004-02-18",
+        opponent="NOH",
+        is_home=False,
+        season_type="Regular Season",
+    )
+
+    assert game.margin == -22.0
+    assert len(players) == 5

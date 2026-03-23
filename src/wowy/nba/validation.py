@@ -175,12 +175,9 @@ def _validate_normalized_game_player(
     *,
     expected_team: str,
 ) -> None:
-    source_path = (
-        f"data/source/nba/boxscores/{player.game_id}_boxscoretraditionalv2.json"
-    )
     player_ref = (
         f"game {player.game_id!r} player_id={player.player_id!r} "
-        f"player_name={player.player_name!r} source_path={source_path!r}"
+        f"player_name={player.player_name!r}"
     )
     if not player.game_id.strip():
         raise ValueError("Normalized player game_id must not be empty")
