@@ -11,6 +11,7 @@ from wowy.data.player_metrics_db import DEFAULT_PLAYER_METRICS_DB_PATH
 from wowy.nba.models import NormalizedGamePlayerRecord, NormalizedGameRecord
 from wowy.nba.seasons import canonicalize_season_string
 from wowy.nba.season_types import canonicalize_season_type
+from wowy.nba.team_identity import resolve_team_id
 from wowy.nba.team_seasons import TeamSeasonScope
 from wowy.nba.validation import validate_normalized_cache_batch
 
@@ -21,6 +22,7 @@ REGULAR_SEASON = "Regular Season"
 @dataclass(frozen=True)
 class NormalizedCacheLoadRow:
     team: str
+    team_id: int
     season: str
     season_type: str
     source_path: str
@@ -44,7 +46,9 @@ def initialize_game_cache_db(db_path: Path = DEFAULT_PLAYER_METRICS_DB_PATH) -> 
                 season TEXT NOT NULL,
                 game_date TEXT NOT NULL,
                 team TEXT NOT NULL,
+                team_id INTEGER NOT NULL,
                 opponent TEXT NOT NULL,
+                opponent_team_id INTEGER NOT NULL,
                 is_home INTEGER NOT NULL,
                 margin REAL NOT NULL,
                 season_type TEXT NOT NULL,
@@ -56,19 +60,20 @@ def initialize_game_cache_db(db_path: Path = DEFAULT_PLAYER_METRICS_DB_PATH) -> 
             ON normalized_games (game_id);
 
             CREATE INDEX IF NOT EXISTS idx_normalized_games_season_type_season_team
-            ON normalized_games (season_type, season, team);
+            ON normalized_games (season_type, season, team_id);
 
             CREATE INDEX IF NOT EXISTS idx_normalized_games_team_opponent_lookup
-            ON normalized_games (season_type, season, team, opponent);
+            ON normalized_games (season_type, season, team_id, opponent_team_id);
 
             CREATE INDEX IF NOT EXISTS idx_normalized_games_opponent_lookup
-            ON normalized_games (season_type, season, opponent, team);
+            ON normalized_games (season_type, season, opponent_team_id, team_id);
 
             CREATE TABLE IF NOT EXISTS normalized_game_players (
                 game_id TEXT NOT NULL,
                 season TEXT NOT NULL,
                 season_type TEXT NOT NULL,
                 team TEXT NOT NULL,
+                team_id INTEGER NOT NULL,
                 player_id INTEGER NOT NULL,
                 player_name TEXT NOT NULL,
                 appeared INTEGER NOT NULL,
@@ -83,10 +88,11 @@ def initialize_game_cache_db(db_path: Path = DEFAULT_PLAYER_METRICS_DB_PATH) -> 
             ON normalized_game_players (season, player_id);
 
             CREATE INDEX IF NOT EXISTS idx_normalized_game_players_season_type_season_team
-            ON normalized_game_players (season_type, season, team);
+            ON normalized_game_players (season_type, season, team_id);
 
             CREATE TABLE IF NOT EXISTS normalized_cache_loads (
                 team TEXT NOT NULL,
+                team_id INTEGER NOT NULL,
                 season TEXT NOT NULL,
                 season_type TEXT NOT NULL,
                 source_path TEXT NOT NULL,
@@ -111,6 +117,7 @@ def replace_team_season_normalized_rows(
     db_path: Path,
     *,
     team: str,
+    team_id: int | None = None,
     season: str,
     season_type: str,
     games: list[NormalizedGameRecord],
@@ -124,10 +131,17 @@ def replace_team_season_normalized_rows(
 ) -> None:
     initialize_game_cache_db(db_path)
     team = team.upper()
+    team_id = team_id or resolve_team_id(team)
     season = canonicalize_season_string(season)
     season_type = canonicalize_season_type(season_type)
+    games = [_with_resolved_game_identity(game) for game in games]
+    game_players = [
+        _with_resolved_player_identity(player, default_team=team)
+        for player in game_players
+    ]
     validate_normalized_cache_batch(
         team=team,
+        team_id=team_id,
         season=season,
         season_type=season_type,
         games=games,
@@ -140,16 +154,16 @@ def replace_team_season_normalized_rows(
         connection.execute(
             """
             DELETE FROM normalized_game_players
-            WHERE team = ? AND season = ? AND season_type = ?
+            WHERE (team = ? OR team_id = ?) AND season = ? AND season_type = ?
             """,
-            (team, season, season_type),
+            (team, team_id, season, season_type),
         )
         connection.execute(
             """
             DELETE FROM normalized_games
-            WHERE team = ? AND season = ? AND season_type = ?
+            WHERE (team = ? OR team_id = ?) AND season = ? AND season_type = ?
             """,
-            (team, season, season_type),
+            (team, team_id, season, season_type),
         )
         connection.executemany(
             """
@@ -158,12 +172,14 @@ def replace_team_season_normalized_rows(
                 season,
                 game_date,
                 team,
+                team_id,
                 opponent,
+                opponent_team_id,
                 is_home,
                 margin,
                 season_type,
                 source
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             """,
             [
                 (
@@ -171,7 +187,9 @@ def replace_team_season_normalized_rows(
                     game.season,
                     game.game_date,
                     game.team,
+                    game.team_id,
                     game.opponent,
+                    game.opponent_team_id,
                     int(game.is_home),
                     game.margin,
                     game.season_type,
@@ -187,11 +205,12 @@ def replace_team_season_normalized_rows(
                 season,
                 season_type,
                 team,
+                team_id,
                 player_id,
                 player_name,
                 appeared,
                 minutes
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
             """,
             [
                 (
@@ -199,6 +218,7 @@ def replace_team_season_normalized_rows(
                     season,
                     season_type,
                     player.team,
+                    player.team_id,
                     player.player_id,
                     player.player_name,
                     int(player.appeared),
@@ -211,6 +231,7 @@ def replace_team_season_normalized_rows(
             """
             INSERT INTO normalized_cache_loads (
                 team,
+                team_id,
                 season,
                 season_type,
                 source_path,
@@ -222,8 +243,9 @@ def replace_team_season_normalized_rows(
                 game_players_row_count,
                 expected_games_row_count,
                 skipped_games_row_count
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             ON CONFLICT(team, season, season_type) DO UPDATE SET
+                team_id = excluded.team_id,
                 source_path = excluded.source_path,
                 source_snapshot = excluded.source_snapshot,
                 source_kind = excluded.source_kind,
@@ -236,6 +258,7 @@ def replace_team_season_normalized_rows(
             """,
             (
                 team,
+                team_id,
                 season,
                 season_type,
                 source_path,
@@ -268,7 +291,9 @@ def load_normalized_games_from_db(
             season,
             game_date,
             team,
+            team_id,
             opponent,
+            opponent_team_id,
             is_home,
             margin,
             season_type,
@@ -305,7 +330,9 @@ def load_normalized_games_from_db(
             season=row["season"],
             game_date=row["game_date"],
             team=row["team"],
+            team_id=row["team_id"],
             opponent=row["opponent"],
+            opponent_team_id=row["opponent_team_id"],
             is_home=bool(row["is_home"]),
             margin=row["margin"],
             season_type=row["season_type"],
@@ -329,6 +356,7 @@ def load_normalized_game_players_from_db(
         SELECT
             game_id,
             team,
+            team_id,
             player_id,
             player_name,
             appeared,
@@ -363,6 +391,7 @@ def load_normalized_game_players_from_db(
         NormalizedGamePlayerRecord(
             game_id=row["game_id"],
             team=row["team"],
+            team_id=row["team_id"],
             player_id=row["player_id"],
             player_name=row["player_name"],
             appeared=bool(row["appeared"]),
@@ -386,6 +415,7 @@ def load_cache_load_row(
             """
             SELECT
                 team,
+                team_id,
                 season,
                 season_type,
                 source_path,
@@ -406,6 +436,7 @@ def load_cache_load_row(
         return None
     return NormalizedCacheLoadRow(
         team=row["team"],
+        team_id=row["team_id"],
         season=row["season"],
         season_type=row["season_type"],
         source_path=row["source_path"],
@@ -433,6 +464,7 @@ def list_cache_load_rows(
     query = """
         SELECT
             team,
+            team_id,
             season,
             season_type,
             source_path,
@@ -469,6 +501,7 @@ def list_cache_load_rows(
     return [
         NormalizedCacheLoadRow(
             team=row["team"],
+            team_id=row["team_id"],
             season=row["season"],
             season_type=row["season_type"],
             source_path=row["source_path"],
@@ -495,7 +528,7 @@ def list_cached_team_seasons_from_db(
     if season_type is not None:
         season_type = canonicalize_season_type(season_type)
     query = """
-        SELECT DISTINCT team, season
+        SELECT DISTINCT team, team_id, season
         FROM normalized_games
     """
     params: list[object] = []
@@ -506,7 +539,7 @@ def list_cached_team_seasons_from_db(
     with _connect(db_path) as connection:
         rows = connection.execute(query, params).fetchall()
     return [
-        TeamSeasonScope(team=row["team"], season=row["season"])
+        TeamSeasonScope(team=row["team"], team_id=row["team_id"], season=row["season"])
         for row in rows
     ]
 
@@ -522,6 +555,7 @@ def build_normalized_cache_fingerprint(
     query = """
         SELECT
             team,
+            team_id,
             season,
             season_type,
             source_path,
@@ -545,6 +579,7 @@ def build_normalized_cache_fingerprint(
         rows = connection.execute(query, params).fetchall()
     for row in rows:
         digest.update(row["team"].encode("utf-8"))
+        digest.update(str(row["team_id"]).encode("utf-8"))
         digest.update(row["season"].encode("utf-8"))
         digest.update(row["season_type"].encode("utf-8"))
         digest.update(row["source_path"].encode("utf-8"))
@@ -599,6 +634,40 @@ def _append_in_filter(
     return query, params
 
 
+def _with_resolved_game_identity(game: NormalizedGameRecord) -> NormalizedGameRecord:
+    team_id = game.team_id or resolve_team_id(game.team)
+    opponent_team_id = game.opponent_team_id or resolve_team_id(game.opponent)
+    return NormalizedGameRecord(
+        game_id=game.game_id,
+        season=game.season,
+        game_date=game.game_date,
+        team=game.team,
+        opponent=game.opponent,
+        is_home=game.is_home,
+        margin=game.margin,
+        season_type=game.season_type,
+        source=game.source,
+        team_id=team_id,
+        opponent_team_id=opponent_team_id,
+    )
+
+
+def _with_resolved_player_identity(
+    player: NormalizedGamePlayerRecord,
+    *,
+    default_team: str,
+) -> NormalizedGamePlayerRecord:
+    return NormalizedGamePlayerRecord(
+        game_id=player.game_id,
+        team=player.team,
+        player_id=player.player_id,
+        player_name=player.player_name,
+        appeared=player.appeared,
+        minutes=player.minutes,
+        team_id=player.team_id or resolve_team_id(player.team or default_team),
+    )
+
+
 def _migrate_cache_schema_if_needed(connection: sqlite3.Connection) -> None:
     normalized_games_pk = _primary_key_columns(connection, "normalized_games")
     normalized_players_pk = _primary_key_columns(connection, "normalized_game_players")
@@ -623,6 +692,25 @@ def _migrate_cache_schema_if_needed(connection: sqlite3.Connection) -> None:
         "season",
         "season_type",
     ]:
+        connection.executescript(
+            """
+            DROP TABLE IF EXISTS normalized_cache_loads;
+            DROP TABLE IF EXISTS normalized_game_players;
+            DROP TABLE IF EXISTS normalized_games;
+            """
+        )
+        return
+    required_columns = (
+        ("normalized_games", "team_id"),
+        ("normalized_games", "opponent_team_id"),
+        ("normalized_game_players", "team_id"),
+        ("normalized_cache_loads", "team_id"),
+    )
+    if any(
+        _table_exists(connection, table_name)
+        and not _table_has_column(connection, table_name, column_name)
+        for table_name, column_name in required_columns
+    ):
         connection.executescript(
             """
             DROP TABLE IF EXISTS normalized_cache_loads;

@@ -255,7 +255,9 @@ def _validate_normalized_games_table(
             season,
             game_date,
             team,
+            team_id,
             opponent,
+            opponent_team_id,
             is_home,
             margin,
             season_type,
@@ -288,11 +290,14 @@ def _validate_normalized_games_table(
             margin=row["margin"],
             season_type=row["season_type"],
             source=row["source"],
+            team_id=row["team_id"],
+            opponent_team_id=row["opponent_team_id"],
         )
         try:
             _validate_normalized_game(
                 game,
                 expected_team=game.team,
+                expected_team_id=game.team_id or 0,
                 expected_season=game.season,
                 expected_season_type=game.season_type,
             )
@@ -311,6 +316,7 @@ def _validate_normalized_game_players_table(
             season,
             season_type,
             team,
+            team_id,
             player_id,
             player_name,
             appeared,
@@ -354,9 +360,14 @@ def _validate_normalized_game_players_table(
             player_name=row["player_name"],
             appeared=bool(row["appeared"]),
             minutes=row["minutes"],
+            team_id=row["team_id"],
         )
         try:
-            _validate_normalized_game_player(player, expected_team=row["team"])
+            _validate_normalized_game_player(
+                player,
+                expected_team=row["team"],
+                expected_team_id=row["team_id"],
+            )
         except ValueError as exc:
             issues.append(
                 ValidationIssue(
@@ -375,6 +386,7 @@ def _validate_normalized_cache_loads_table(
         """
         SELECT
             team,
+            team_id,
             season,
             season_type,
             source_path,
@@ -392,6 +404,7 @@ def _validate_normalized_cache_loads_table(
         key = f"team={row['team']!r},season={row['season']!r},season_type={row['season_type']!r}"
         load_row = NormalizedCacheLoadRow(
             team=row["team"],
+            team_id=row["team_id"],
             season=row["season"],
             season_type=row["season_type"],
             source_path=row["source_path"],
@@ -409,6 +422,7 @@ def _validate_normalized_cache_loads_table(
                 raise ValueError("season_type must use canonical season type")
             _validate_required_text(load_row.team, "team")
             _canonical_team_abbreviation(load_row.team)
+            _validate_optional_non_negative_int(load_row.team_id, "team_id")
             _validate_required_text(load_row.source_path, "source_path")
             _validate_required_text(load_row.source_snapshot, "source_snapshot")
             _validate_required_text(load_row.source_kind, "source_kind")
@@ -440,7 +454,9 @@ def _validate_normalized_cache_relations(
             season,
             game_date,
             team,
+            team_id,
             opponent,
+            opponent_team_id,
             is_home,
             margin,
             season_type,
@@ -456,6 +472,7 @@ def _validate_normalized_cache_relations(
             season,
             season_type,
             team,
+            team_id,
             player_id,
             player_name,
             appeared,
@@ -468,6 +485,7 @@ def _validate_normalized_cache_relations(
         """
         SELECT
             team,
+            team_id,
             season,
             season_type,
             source_path,
@@ -481,11 +499,11 @@ def _validate_normalized_cache_relations(
         """
     ).fetchall()
 
-    games_by_scope: dict[tuple[str, str, str], list[NormalizedGameRecord]] = defaultdict(list)
-    players_by_scope: dict[tuple[str, str, str], list[NormalizedGamePlayerRecord]] = defaultdict(
+    games_by_scope: dict[tuple[int, str, str], list[NormalizedGameRecord]] = defaultdict(list)
+    players_by_scope: dict[tuple[int, str, str], list[NormalizedGamePlayerRecord]] = defaultdict(
         list
     )
-    game_key_scope_map: dict[tuple[str, str], tuple[str, str, str]] = {}
+    game_key_scope_map: dict[tuple[str, int], tuple[int, str, str]] = {}
 
     for row in game_rows:
         game = NormalizedGameRecord(
@@ -493,28 +511,31 @@ def _validate_normalized_cache_relations(
             season=row["season"],
             game_date=row["game_date"],
             team=row["team"],
+            team_id=row["team_id"],
             opponent=row["opponent"],
+            opponent_team_id=row["opponent_team_id"],
             is_home=bool(row["is_home"]),
             margin=row["margin"],
             season_type=row["season_type"],
             source=row["source"],
         )
-        scope = (game.team, game.season, game.season_type)
+        scope = (game.team_id or 0, game.season, game.season_type)
         games_by_scope[scope].append(game)
-        game_key_scope_map[(game.game_id, game.team)] = scope
+        game_key_scope_map[(game.game_id, game.team_id or 0)] = scope
 
     for row in player_rows:
         player = NormalizedGamePlayerRecord(
             game_id=row["game_id"],
             team=row["team"],
+            team_id=row["team_id"],
             player_id=row["player_id"],
             player_name=row["player_name"],
             appeared=bool(row["appeared"]),
             minutes=row["minutes"],
         )
-        scope = (row["team"], row["season"], row["season_type"])
+        scope = (row["team_id"], row["season"], row["season_type"])
         players_by_scope[scope].append(player)
-        game_scope = game_key_scope_map.get((player.game_id, player.team))
+        game_scope = game_key_scope_map.get((player.game_id, player.team_id or 0))
         if game_scope is None:
             issues.append(
                 ValidationIssue(
@@ -542,17 +563,25 @@ def _validate_normalized_cache_relations(
 
     game_scopes = set(games_by_scope)
     player_scopes = set(players_by_scope)
-    load_scopes = {(row["team"], row["season"], row["season_type"]) for row in load_rows}
+    load_scopes = {(row["team_id"], row["season"], row["season_type"]) for row in load_rows}
 
     for scope in sorted(game_scopes | player_scopes):
-        team, season, season_type = scope
+        team_id, season, season_type = scope
+        games_for_scope = games_by_scope.get(scope, [])
+        players_for_scope = players_by_scope.get(scope, [])
+        team = (
+            games_for_scope[0].team
+            if games_for_scope
+            else players_for_scope[0].team
+        )
         try:
             validate_normalized_cache_batch(
                 team=team,
+                team_id=team_id,
                 season=season,
                 season_type=season_type,
-                games=games_by_scope.get(scope, []),
-                game_players=players_by_scope.get(scope, []),
+                games=games_for_scope,
+                game_players=players_for_scope,
             )
         except ValueError as exc:
             issues.append(
@@ -564,10 +593,10 @@ def _validate_normalized_cache_relations(
             )
 
     for row in load_rows:
-        scope = (row["team"], row["season"], row["season_type"])
+        scope = (row["team_id"], row["season"], row["season_type"])
         game_count = len(games_by_scope.get(scope, []))
         player_count = len(players_by_scope.get(scope, []))
-        key = f"team={scope[0]!r},season={scope[1]!r},season_type={scope[2]!r}"
+        key = f"team_id={scope[0]!r},season={scope[1]!r},season_type={scope[2]!r}"
         if row["games_row_count"] != game_count:
             issues.append(
                 ValidationIssue(
@@ -614,7 +643,9 @@ def _validate_reciprocal_game_margins(
                 season=row["season"],
                 game_date=row["game_date"],
                 team=row["team"],
+                team_id=row["team_id"],
                 opponent=row["opponent"],
+                opponent_team_id=row["opponent_team_id"],
                 is_home=bool(row["is_home"]),
                 margin=row["margin"],
                 season_type=row["season_type"],
@@ -627,7 +658,10 @@ def _validate_reciprocal_game_margins(
             continue
 
         first_game, second_game = games
-        if first_game.team != second_game.opponent or second_game.team != first_game.opponent:
+        if (
+            first_game.identity_team != second_game.identity_opponent
+            or second_game.identity_team != first_game.identity_opponent
+        ):
             issues.append(
                 ValidationIssue(
                     table="normalized_games",

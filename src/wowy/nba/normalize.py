@@ -14,6 +14,7 @@ from wowy.nba.cache import (
 from wowy.nba.models import NormalizedGamePlayerRecord, NormalizedGameRecord
 from wowy.nba.seasons import canonicalize_season_string
 from wowy.nba.season_types import canonicalize_season_type
+from wowy.nba.team_identity import resolve_team_id
 
 
 def result_set_to_data_frame(result_set: dict) -> pd.DataFrame:
@@ -129,6 +130,71 @@ def normalize_box_score_payload(
     if player_stats_df.empty or team_stats_df.empty:
         raise ValueError(f"Box score is empty for game {game_id!r}")
 
+    team_row, opponent_row = resolve_team_and_opponent_rows(
+        team_stats_df=team_stats_df,
+        team_abbreviation=team_abbreviation,
+        game_id=game_id,
+    )
+    normalized_team_abbreviation = str(team_row["TEAM_ABBREVIATION"]).strip().upper()
+    normalized_opponent_abbreviation = (
+        str(opponent_row["TEAM_ABBREVIATION"]).strip().upper()
+        if opponent_row is not None
+        else opponent.upper()
+    )
+    team_id = parse_team_id(
+        team_row.get("TEAM_ID"),
+        label="team",
+        game_id=game_id,
+        team_abbreviation=normalized_team_abbreviation,
+    )
+    opponent_team_id = parse_team_id(
+        opponent_row.get("TEAM_ID") if opponent_row is not None else None,
+        label="opponent",
+        game_id=game_id,
+        team_abbreviation=normalized_opponent_abbreviation,
+    )
+
+    player_rows = player_stats_df.loc[
+        player_stats_df["TEAM_ABBREVIATION"] == normalized_team_abbreviation,
+    ]
+    normalized_players = extract_normalized_game_players(
+        game_id=game_id,
+        team_abbreviation=normalized_team_abbreviation,
+        team_id=team_id,
+        player_rows=player_rows,
+    )
+    if not any(player.appeared for player in normalized_players):
+        raise ValueError(
+            f"No active players found for team {normalized_team_abbreviation!r} in game {game_id!r}"
+        )
+
+    plus_minus = resolve_team_margin(
+        team_stats_df=team_stats_df,
+        team_abbreviation=normalized_team_abbreviation,
+        game_id=game_id,
+    )
+    game = NormalizedGameRecord(
+        game_id=game_id,
+        season=season,
+        game_date=game_date,
+        team=normalized_team_abbreviation,
+        opponent=normalized_opponent_abbreviation,
+        is_home=is_home,
+        margin=plus_minus,
+        season_type=season_type,
+        source=source,
+        team_id=team_id,
+        opponent_team_id=opponent_team_id,
+    )
+    return game, normalized_players
+
+
+def resolve_team_and_opponent_rows(
+    *,
+    team_stats_df: pd.DataFrame,
+    team_abbreviation: str,
+    game_id: str,
+):
     team_rows = team_stats_df.loc[
         team_stats_df["TEAM_ABBREVIATION"] == team_abbreviation,
     ]
@@ -137,36 +203,16 @@ def normalize_box_score_payload(
             f"Team {team_abbreviation!r} not found in box score for game {game_id!r}"
         )
 
-    player_rows = player_stats_df.loc[
-        player_stats_df["TEAM_ABBREVIATION"] == team_abbreviation,
+    opponent_rows = team_stats_df.loc[
+        team_stats_df["TEAM_ABBREVIATION"] != team_abbreviation,
     ]
-    normalized_players = extract_normalized_game_players(
-        game_id=game_id,
-        team_abbreviation=team_abbreviation,
-        player_rows=player_rows,
-    )
-    if not any(player.appeared for player in normalized_players):
+    if len(opponent_rows) > 1:
         raise ValueError(
-            f"No active players found for team {team_abbreviation!r} in game {game_id!r}"
+            f"Could not derive opponent row for game {game_id!r}: "
+            f"expected at most one opponent row, found {len(opponent_rows)}"
         )
 
-    plus_minus = resolve_team_margin(
-        team_stats_df=team_stats_df,
-        team_abbreviation=team_abbreviation,
-        game_id=game_id,
-    )
-    game = NormalizedGameRecord(
-        game_id=game_id,
-        season=season,
-        game_date=game_date,
-        team=team_abbreviation,
-        opponent=opponent,
-        is_home=is_home,
-        margin=plus_minus,
-        season_type=season_type,
-        source=source,
-    )
-    return game, normalized_players
+    return team_rows.iloc[0], (opponent_rows.iloc[0] if len(opponent_rows) == 1 else None)
 
 
 def resolve_team_margin(
@@ -244,6 +290,7 @@ def extract_players_who_appeared(player_ids, minutes_played) -> set[int]:
 def extract_normalized_game_players(
     game_id: str,
     team_abbreviation: str,
+    team_id: int | None,
     player_rows: pd.DataFrame,
 ) -> list[NormalizedGamePlayerRecord]:
     records: list[NormalizedGamePlayerRecord] = []
@@ -263,10 +310,31 @@ def extract_normalized_game_players(
                 player_name=str(row.get("PLAYER_NAME", "") or player_id),
                 appeared=played_in_game(minutes_raw),
                 minutes=minutes,
+                team_id=team_id,
             )
         )
 
     return records
+
+
+def parse_team_id(
+    value: object,
+    *,
+    label: str,
+    game_id: str,
+    team_abbreviation: str,
+) -> int:
+    if value is None:
+        return resolve_team_id(team_abbreviation)
+    try:
+        team_id = int(value)
+    except (TypeError, ValueError) as exc:
+        raise ValueError(
+            f"Invalid {label} TEAM_ID {value!r} in box score for game {game_id!r}"
+        ) from exc
+    if team_id <= 0:
+        raise ValueError(f"Invalid {label} TEAM_ID {value!r} in box score for game {game_id!r}")
+    return team_id
 
 
 def parse_player_id(value: object) -> int | None:

@@ -13,6 +13,8 @@ class RawrObservation:
     margin: float
     player_weights: dict[int, float]
     player_minutes: dict[int, float] | None = None
+    home_team_id: int | None = None
+    away_team_id: int | None = None
 
 
 @dataclass(frozen=True)

@@ -100,11 +100,17 @@ def fit_regression_model(
     )
     team_seasons = sorted(
         {
-            team_season_key(observation.home_team, observation.season)
+            team_season_key(
+                observation.home_team_id or observation.home_team,
+                observation.season,
+            )
             for observation in observations
         }
         | {
-            team_season_key(observation.away_team, observation.season)
+            team_season_key(
+                observation.away_team_id or observation.away_team,
+                observation.season,
+            )
             for observation in observations
         }
     )
@@ -139,8 +145,14 @@ def fit_regression_model(
     completed_steps = 0
 
     for observation in observations:
-        home_team_season = team_season_key(observation.home_team, observation.season)
-        away_team_season = team_season_key(observation.away_team, observation.season)
+        home_team_season = team_season_key(
+            observation.home_team_id or observation.home_team,
+            observation.season,
+        )
+        away_team_season = team_season_key(
+            observation.away_team_id or observation.away_team,
+            observation.season,
+        )
         accumulate_row(
             gram=gram,
             target=target,
@@ -228,8 +240,14 @@ def predict_margin(
         season=observation.season,
         player_weights=observation.player_weights,
         home_court_sign=1.0,
-        team_effect_key=team_season_key(observation.home_team, observation.season),
-        opponent_effect_key=team_season_key(observation.away_team, observation.season),
+        team_effect_key=team_season_key(
+            observation.home_team_id or observation.home_team,
+            observation.season,
+        ),
+        opponent_effect_key=team_season_key(
+            observation.away_team_id or observation.away_team,
+            observation.season,
+        ),
     )
     return sum(
         weight * coefficient
@@ -393,7 +411,7 @@ def accumulate_row(
     gram += np.outer(row, row)
 
 
-def team_season_key(team: str, season: str) -> str:
+def team_season_key(team: int | str, season: str) -> str:
     return f"{team}:{season}"
 
 

@@ -9,6 +9,7 @@ from wowy.apps.wowy.derive import derive_wowy_games
 from wowy.nba.models import NormalizedGamePlayerRecord, NormalizedGameRecord
 from wowy.nba.seasons import canonicalize_season_string
 from wowy.nba.season_types import canonicalize_season_type
+from wowy.nba.team_identity import resolve_team_id
 
 
 _TEAM_ABBREVIATION_PATTERN = re.compile(r"^[A-Z]{3}$")
@@ -18,17 +19,19 @@ _GAME_DATE_PATTERN = re.compile(r"^\d{4}-\d{2}-\d{2}$")
 def validate_normalized_cache_batch(
     *,
     team: str,
+    team_id: int | None,
     season: str,
     season_type: str,
     games: list[NormalizedGameRecord],
     game_players: list[NormalizedGamePlayerRecord],
 ) -> None:
     normalized_team = _canonical_team_abbreviation(team)
+    normalized_team_id = team_id or resolve_team_id(team)
     normalized_season = canonicalize_season_string(season)
     normalized_season_type = canonicalize_season_type(season_type)
 
-    game_keys: set[tuple[str, str]] = set()
-    players_by_game_key: dict[tuple[str, str], list[NormalizedGamePlayerRecord]] = (
+    game_keys: set[tuple[str, int | str]] = set()
+    players_by_game_key: dict[tuple[str, int | str], list[NormalizedGamePlayerRecord]] = (
         defaultdict(list)
     )
 
@@ -36,22 +39,27 @@ def validate_normalized_cache_batch(
         _validate_normalized_game(
             game,
             expected_team=normalized_team,
+            expected_team_id=normalized_team_id,
             expected_season=normalized_season,
             expected_season_type=normalized_season_type,
         )
-        game_key = (game.game_id, game.team)
+        game_key = (game.game_id, game.identity_team)
         if game_key in game_keys:
             raise ValueError(f"Duplicate normalized game row for {game_key!r}")
         game_keys.add(game_key)
 
     player_keys: set[tuple[str, str, int]] = set()
     for player in game_players:
-        _validate_normalized_game_player(player, expected_team=normalized_team)
-        player_key = (player.game_id, player.team, player.player_id)
+        _validate_normalized_game_player(
+            player,
+            expected_team=normalized_team,
+            expected_team_id=normalized_team_id,
+        )
+        player_key = (player.game_id, player.identity_team, player.player_id)
         if player_key in player_keys:
             raise ValueError(f"Duplicate normalized player row for {player_key!r}")
         player_keys.add(player_key)
-        players_by_game_key[(player.game_id, player.team)].append(player)
+        players_by_game_key[(player.game_id, player.identity_team)].append(player)
 
     if set(players_by_game_key) != game_keys:
         missing_players = sorted(game_keys - set(players_by_game_key))
@@ -93,11 +101,11 @@ def validate_team_season_records(
     game_players,
     wowy_games,
 ) -> str:
-    game_keys = [(game.game_id, game.team) for game in games]
+    game_keys = [(game.game_id, game.identity_team) for game in games]
     if len(set(game_keys)) != len(game_keys):
         return "dup_games"
 
-    player_keys = {(player.game_id, player.team) for player in game_players}
+    player_keys = {(player.game_id, player.identity_team) for player in game_players}
     if set(game_keys) - player_keys:
         return "missing_players"
 
@@ -106,8 +114,8 @@ def validate_team_season_records(
     except ValueError:
         return "invalid_players"
 
-    derived_by_key = {(game.game_id, game.team): game for game in derived_wowy_games}
-    wowy_by_key = {(game.game_id, game.team): game for game in wowy_games}
+    derived_by_key = {(game.game_id, game.team_id or game.team): game for game in derived_wowy_games}
+    wowy_by_key = {(game.game_id, game.team_id or game.team): game for game in wowy_games}
     if set(derived_by_key) != set(wowy_by_key):
         return "wowy_keys"
 
@@ -127,6 +135,7 @@ def _validate_normalized_game(
     game: NormalizedGameRecord,
     *,
     expected_team: str,
+    expected_team_id: int,
     expected_season: str,
     expected_season_type: str,
 ) -> None:
@@ -147,9 +156,22 @@ def _validate_normalized_game(
             f"Normalized game {game.game_id!r} has team {game.team!r}; "
             f"expected {expected_team!r}"
         )
+    if game.team_id is None or game.team_id != expected_team_id:
+        raise ValueError(
+            f"Normalized game {game.game_id!r} has team_id {game.team_id!r}; "
+            f"expected {expected_team_id!r}"
+        )
     if _canonical_team_abbreviation(game.opponent) == expected_team:
         raise ValueError(
             f"Normalized game {game.game_id!r} must not use the same team and opponent"
+        )
+    if game.opponent_team_id is None or game.opponent_team_id <= 0:
+        raise ValueError(
+            f"Normalized game {game.game_id!r} must have a positive opponent_team_id"
+        )
+    if game.opponent_team_id == expected_team_id:
+        raise ValueError(
+            f"Normalized game {game.game_id!r} must not use the same team_id and opponent_team_id"
         )
     if not _GAME_DATE_PATTERN.fullmatch(game.game_date):
         raise ValueError(
@@ -174,6 +196,7 @@ def _validate_normalized_game_player(
     player: NormalizedGamePlayerRecord,
     *,
     expected_team: str,
+    expected_team_id: int,
 ) -> None:
     player_ref = (
         f"game {player.game_id!r} player_id={player.player_id!r} "
@@ -185,6 +208,11 @@ def _validate_normalized_game_player(
         raise ValueError(
             f"Normalized player row for game {player.game_id!r} has team {player.team!r}; "
             f"expected {expected_team!r}"
+        )
+    if player.team_id is None or player.team_id != expected_team_id:
+        raise ValueError(
+            f"Normalized player row for game {player.game_id!r} has team_id {player.team_id!r}; "
+            f"expected {expected_team_id!r}"
         )
     if player.player_id <= 0:
         raise ValueError(

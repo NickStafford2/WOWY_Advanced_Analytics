@@ -14,6 +14,20 @@ class NormalizedGameRecord:
     margin: float
     season_type: str
     source: str
+    team_id: int | None = None
+    opponent_team_id: int | None = None
+
+    @property
+    def identity_team(self) -> int | str:
+        return self.team_id if self.team_id is not None else self.team
+
+    @property
+    def identity_opponent(self) -> int | str:
+        return (
+            self.opponent_team_id
+            if self.opponent_team_id is not None
+            else self.opponent
+        )
 
 
 @dataclass(frozen=True)
@@ -24,3 +38,8 @@ class NormalizedGamePlayerRecord:
     player_name: str
     appeared: bool
     minutes: float | None
+    team_id: int | None = None
+
+    @property
+    def identity_team(self) -> int | str:
+        return self.team_id if self.team_id is not None else self.team

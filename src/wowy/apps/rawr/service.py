@@ -17,6 +17,7 @@ from wowy.nba.models import NormalizedGamePlayerRecord, NormalizedGameRecord
 from wowy.data.game_cache_db import list_cache_load_rows
 from wowy.data.player_metrics_db import DEFAULT_PLAYER_METRICS_DB_PATH
 from wowy.nba.prepare import prepare_normalized_scope_records
+from wowy.nba.team_identity import resolve_team_id
 from wowy.nba.team_seasons import resolve_team_seasons
 from wowy.progress import TerminalProgressBar, print_status_box
 from wowy.shared.filters import validate_top_n_and_minutes
@@ -124,13 +125,13 @@ def filter_rawr_scope(
     if not teams and not seasons:
         return games, game_players
 
-    normalized_teams = {team.upper() for team in teams or []}
+    normalized_team_ids = {resolve_team_id(team) for team in teams or []}
     normalized_seasons = set(seasons or [])
     selected_game_ids = {
         game.game_id
         for game in games
         if (not normalized_seasons or game.season in normalized_seasons)
-        and (not normalized_teams or game.team in normalized_teams)
+        and (not normalized_team_ids or game.team_id in normalized_team_ids)
     }
     if not selected_game_ids:
         raise ValueError("No games matched the requested RAWR scope")
@@ -186,8 +187,10 @@ def run_rawr_records(
             for games_played in count_player_games(observations).values()
             if games_played >= min_games
         )
-        team_seasons = {f"{game.team}:{game.season}" for game in games} | {
-            f"{game.opponent}:{game.season}" for game in games
+        team_seasons = {
+            f"{game.team_id or game.team}:{game.season}" for game in games
+        } | {
+            f"{game.opponent_team_id or game.opponent}:{game.season}" for game in games
         }
         feature_count = 2 + player_count + (2 * len(team_seasons))
         total_steps = (

@@ -963,6 +963,7 @@ def test_extract_normalized_game_players_treats_pandas_nan_minutes_as_did_not_pl
     players = extract_normalized_game_players(
         game_id="0020301176",
         team_abbreviation="ATL",
+        team_id=None,
         player_rows=player_rows,
     )
 

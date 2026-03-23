@@ -16,6 +16,12 @@
 - Do not ship long-running commands that appear silent or hung during normal execution.
 - Major ingest reliability problem: the NBA ingest scripts frequently fail mid-run, then succeed on rerun with no code changes. This is unacceptable. Treat repeated restart-to-progress behavior as a real bug to fix, not normal operation.
 - When working on ingest or scraping, prioritize durable retries, resume behavior, and clear failure reporting so full-season and multi-season runs do not require manual restarts to eventually finish.
+- No bad, stale, partial, inferred, fallback, or incomplete data is allowed in `data/app/player_metrics.sqlite3`.
+- The database must be treated as a high-quality canonical store, not a best-effort cache.
+- Team identity must be determined by stable source team IDs, not by abbreviations or aliases.
+- If any database data is discovered to be wrong, stale, ambiguous, partially populated, or structurally invalid, stop and surface it immediately.
+- Do not keep using a bad database. Either repair/recalculate the affected scopes immediately or stop and report the exact invalid scopes.
+- Do not preserve legacy compatibility at the expense of data quality. Rebuild or recalculate bad data instead of adding workarounds that keep invalid rows alive.
 
 ## Coding style
 - Keep changes simple, readable, and focused.

@@ -73,7 +73,11 @@ def prepare_normalized_scope_records(
 
     if teams and include_opponents_for_team_scope:
         opponent_team_seasons = {
-            TeamSeasonScope(team=game.opponent, season=game.season)
+            TeamSeasonScope(
+                team=game.opponent,
+                team_id=game.opponent_team_id,
+                season=game.season,
+            )
             for game in _load_games_from_db(
                 requested_team_seasons,
                 season_type=season_type,
@@ -143,19 +147,19 @@ def _filter_records_to_team_seasons(
     team_seasons: list[TeamSeasonScope],
 ) -> tuple[list[NormalizedGameRecord], list[NormalizedGamePlayerRecord]]:
     allowed_team_seasons = {
-        (team_season.team, team_season.season)
+        (team_season.team_id or team_season.team, team_season.season)
         for team_season in team_seasons
     }
     filtered_games = [
         game
         for game in games
-        if (game.team, game.season) in allowed_team_seasons
+        if (game.identity_team, game.season) in allowed_team_seasons
     ]
-    allowed_game_teams = {(game.game_id, game.team) for game in filtered_games}
+    allowed_game_teams = {(game.game_id, game.identity_team) for game in filtered_games}
     filtered_game_players = [
         player
         for player in game_players
-        if (player.game_id, player.team) in allowed_game_teams
+        if (player.game_id, player.identity_team) in allowed_game_teams
     ]
     return filtered_games, filtered_game_players
 

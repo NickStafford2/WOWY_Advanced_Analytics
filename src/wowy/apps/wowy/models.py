@@ -10,6 +10,7 @@ class WowyGameRecord:
     team: str
     margin: float
     players: set[int]
+    team_id: int | None = None
 
 
 @dataclass(frozen=True)

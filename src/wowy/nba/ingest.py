@@ -23,6 +23,7 @@ from wowy.nba.normalize import (
     load_player_names_from_cache as load_cached_player_names,
     result_set_to_data_frame,
 )
+from wowy.nba.team_identity import canonical_team_lookup_abbreviation, resolve_team_id
 from wowy.nba.team_seasons import TeamSeasonScope
 from wowy.nba.validation import validate_team_season_records
 from wowy.nba.seasons import canonicalize_season_string
@@ -31,24 +32,12 @@ from wowy.nba.season_types import canonicalize_season_type
 
 ProgressFn = Callable[[dict], None]
 
-TEAM_ABBREVIATION_ALIASES = {
-    "CHH": "NOP",
-    "NJN": "BKN",
-    "NOH": "NOP",
-    "NOK": "NOP",
-    "SEA": "OKC",
-    "VAN": "MEM",
-    "WSB": "WAS",
-}
-
-
 def season_type_slug(season_type: str) -> str:
     return canonicalize_season_type(season_type).lower().replace(" ", "_")
 
 
 def resolve_team_lookup_abbreviation(team_abbreviation: str) -> str:
-    normalized = team_abbreviation.upper()
-    return TEAM_ABBREVIATION_ALIASES.get(normalized, normalized)
+    return canonical_team_lookup_abbreviation(team_abbreviation)
 
 
 def fetch_team_season_data(
@@ -205,6 +194,7 @@ def cache_team_season_data(
 ) -> TeamSeasonRunSummary:
     season = canonicalize_season_string(season)
     season_type = canonicalize_season_type(season_type)
+    team_id = resolve_team_id(team_abbreviation)
     normalized_games_source_path = (
         f"sqlite://normalized_games/"
         f"{team_abbreviation.upper()}_{season}_{season_type_slug(season_type)}"
@@ -220,6 +210,7 @@ def cache_team_season_data(
     replace_team_season_normalized_rows(
         player_metrics_db_path,
         team=team_abbreviation.upper(),
+        team_id=team_id,
         season=season,
         season_type=season_type,
         games=result.artifacts.normalized_games,

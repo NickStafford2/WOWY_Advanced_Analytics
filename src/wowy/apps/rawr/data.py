@@ -12,7 +12,7 @@ def build_rawr_observations(
     games: list[NormalizedGameRecord],
     game_players: list[NormalizedGamePlayerRecord],
 ) -> tuple[list[RawrObservation], dict[int, str]]:
-    player_minutes_by_game_team: dict[tuple[str, str], dict[int, float]] = defaultdict(
+    player_minutes_by_game_team: dict[tuple[str, int | str], dict[int, float]] = defaultdict(
         dict
     )
     player_names: dict[int, str] = {}
@@ -27,7 +27,7 @@ def build_rawr_observations(
                 f"Missing positive minutes for appeared player {player.player_id!r} "
                 f"in game {player.game_id!r} and team {player.team!r}"
             )
-        player_minutes_by_game_team[(player.game_id, player.team)][player.player_id] = (
+        player_minutes_by_game_team[(player.game_id, player.identity_team)][player.player_id] = (
             minutes
         )
 
@@ -52,10 +52,10 @@ def build_rawr_observations(
         home_game = home_games[0]
         away_game = away_games[0]
         home_player_minutes = player_minutes_by_game_team.get(
-            (game_id, home_game.team), {}
+            (game_id, home_game.identity_team), {}
         )
         away_player_minutes = player_minutes_by_game_team.get(
-            (game_id, away_game.team), {}
+            (game_id, away_game.identity_team), {}
         )
         if not home_player_minutes:
             raise ValueError(
@@ -82,6 +82,8 @@ def build_rawr_observations(
                 margin=home_game.margin,
                 player_weights=player_weights,
                 player_minutes=home_player_minutes | away_player_minutes,
+                home_team_id=home_game.team_id,
+                away_team_id=away_game.team_id,
             )
         )
 
