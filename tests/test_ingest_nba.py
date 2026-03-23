@@ -19,6 +19,7 @@ from wowy.nba.ingest import (
 from wowy.nba.errors import (
     BoxScoreFetchError,
     LeagueGamesFetchError,
+    PartialTeamSeasonError,
     TeamSeasonConsistencyError,
 )
 from wowy.nba.normalize import (
@@ -188,7 +189,7 @@ def test_cache_team_season_data_writes_normalized_outputs(
     assert player_names[1628401] == "Derrick White"
 
 
-def test_cache_team_season_data_skips_empty_box_scores(
+def test_cache_team_season_data_rejects_partial_team_season_on_empty_box_score(
     tmp_path: Path,
     monkeypatch,
 ):
@@ -274,12 +275,16 @@ def test_cache_team_season_data_skips_empty_box_scores(
     )
 
     db_path = tmp_path / "app" / "player_metrics.sqlite3"
-    cache_team_season_data(
-        "ATL",
-        "2023-24",
-        source_data_dir=source_data_dir,
-        player_metrics_db_path=db_path,
-    )
+    with pytest.raises(
+        PartialTeamSeasonError,
+        match="Incomplete team-season ingest for ATL 2023-24 Regular Season: 1/2 games failed normalization",
+    ):
+        cache_team_season_data(
+            "ATL",
+            "2023-24",
+            source_data_dir=source_data_dir,
+            player_metrics_db_path=db_path,
+        )
 
     games = load_normalized_games_from_db(
         db_path,
@@ -288,7 +293,7 @@ def test_cache_team_season_data_skips_empty_box_scores(
         seasons=["2023-24"],
     )
 
-    assert [(game.game_id, game.margin) for game in games] == [("0002", -5.0)]
+    assert games == []
 
 
 def test_build_team_season_artifacts_returns_normalized_and_derived_outputs(
@@ -376,6 +381,7 @@ def test_build_team_season_artifacts_returns_normalized_and_derived_outputs(
             "BOS",
             12.0,
             {1628369, 1627759, 1628401, 1629680, 1629641},
+            team_id=1610612738,
         ),
     ]
     assert result.summary.league_games_source == "fetched"
@@ -820,6 +826,62 @@ def test_cache_season_script_logs_consistency_failures_to_same_ingest_log(
     assert records[0]["failure_kind"] == "consistency_error"
     assert records[0]["error_type"] == "TeamSeasonConsistencyError"
     assert records[0]["reason"] == "wowy_data"
+
+
+def test_cache_season_script_logs_partial_scope_failures_to_same_ingest_log(
+    monkeypatch,
+    capsys,
+    tmp_path: Path,
+):
+    failure_log_path = tmp_path / "logs" / "ingest_failures.jsonl"
+    monkeypatch.setattr(
+        "scripts.cache_season_data.resolve_teams",
+        lambda team_codes: ["ATL"],
+    )
+
+    def fake_cache_team_season_data(**kwargs):
+        raise PartialTeamSeasonError(
+            message=(
+                "Incomplete team-season ingest for ATL 2023-24 Regular Season: "
+                "1/2 games failed normalization"
+            ),
+            team="ATL",
+            season="2023-24",
+            season_type="Regular Season",
+            failed_game_ids=["0001"],
+            total_games=2,
+            failed_games=1,
+        )
+
+    monkeypatch.setattr(
+        "scripts.cache_season_data.cache_team_season_data",
+        fake_cache_team_season_data,
+    )
+
+    exit_code = cache_season_data_main(
+        [
+            "2023-24",
+            "--teams",
+            "ATL",
+            "--failure-log-path",
+            str(failure_log_path),
+        ]
+    )
+    captured = capsys.readouterr()
+    records = [
+        json.loads(line)
+        for line in failure_log_path.read_text(encoding="utf-8").splitlines()
+    ]
+
+    assert exit_code == 1
+    assert "failed partial=1/2" in captured.out
+    assert "Incomplete cache for ATL 2023-24: 1/2 games failed normalization" in captured.err
+    assert len(records) == 1
+    assert records[0]["team"] == "ATL"
+    assert records[0]["season"] == "2023-24"
+    assert records[0]["failure_kind"] == "partial_scope_error"
+    assert records[0]["error_type"] == "PartialTeamSeasonError"
+    assert records[0]["failed_game_ids"] == ["0001"]
 
 
 def test_cache_season_script_defaults_to_all_seasons_when_season_is_omitted(

@@ -16,7 +16,7 @@ from wowy.nba.build_models import (
     TeamSeasonRunSummary,
 )
 from wowy.nba.cache import DEFAULT_SOURCE_DATA_DIR, load_or_fetch_league_games_with_source
-from wowy.nba.errors import TeamSeasonConsistencyError
+from wowy.nba.errors import PartialTeamSeasonError, TeamSeasonConsistencyError
 from wowy.nba.models import NormalizedGamePlayerRecord, NormalizedGameRecord
 from wowy.nba.normalize import (
     fetch_normalized_game_data_with_source,
@@ -109,6 +109,7 @@ def build_team_season_artifacts(
     fetched_box_scores = 0
     cached_box_scores = 0
     skipped_games = 0
+    failed_game_ids: list[str] = []
 
     unique_games_df = games_df.drop_duplicates(subset=["GAME_ID"])
     total_games = len(unique_games_df)
@@ -130,6 +131,7 @@ def build_team_season_artifacts(
             )
         except ValueError as exc:
             skipped_games += 1
+            failed_game_ids.append(game_id)
             if log is not None:
                 log(
                     f"skip game {game_id} {requested_team_abbreviation} {season} reason={exc}"
@@ -164,6 +166,21 @@ def build_team_season_artifacts(
                     "status": "ok",
                 }
             )
+
+    if failed_game_ids:
+        failed_games = len(failed_game_ids)
+        raise PartialTeamSeasonError(
+            message=(
+                f"Incomplete team-season ingest for {requested_team_abbreviation} {season} "
+                f"{season_type}: {failed_games}/{total_games} games failed normalization"
+            ),
+            team=requested_team_abbreviation,
+            season=season,
+            season_type=season_type,
+            failed_game_ids=failed_game_ids,
+            total_games=total_games,
+            failed_games=failed_games,
+        )
 
     artifacts = TeamSeasonArtifacts(
         normalized_games=normalized_games,

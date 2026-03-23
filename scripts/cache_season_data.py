@@ -10,7 +10,11 @@ from wowy.nba.ingest import (
     DEFAULT_SOURCE_DATA_DIR,
     cache_team_season_data,
 )
-from wowy.nba.errors import FetchError, TeamSeasonConsistencyError
+from wowy.nba.errors import (
+    FetchError,
+    PartialTeamSeasonError,
+    TeamSeasonConsistencyError,
+)
 from wowy.nba.ingest_logging import (
     DEFAULT_INGEST_FAILURE_LOG_PATH,
     append_ingest_failure_log,
@@ -160,6 +164,21 @@ def render_team_failed_line(
     write_status_line(line)
 
 
+def render_team_partial_failed_line(
+    team_index: int,
+    team_total: int,
+    team: str,
+    season: str,
+    failed_games: int,
+    total_games: int,
+) -> None:
+    line = (
+        f"  [{team_index:>2}/{team_total}] {team} {season} "
+        f"failed partial={failed_games}/{total_games}"
+    )
+    write_status_line(line)
+
+
 def render_team_validation_failed_line(
     team_index: int,
     team_total: int,
@@ -254,6 +273,30 @@ def main(argv: list[str] | None = None) -> int:
                 sys.stdout.write("\n")
                 sys.stderr.write(
                     f"Inconsistent cache for {team_code} {season}: {exc.reason}\n"
+                )
+                sys.stderr.flush()
+                return 1
+            except PartialTeamSeasonError as exc:
+                append_ingest_failure_log(
+                    team=team_code,
+                    season=season,
+                    season_type=season_type,
+                    failure_kind="partial_scope_error",
+                    error=exc,
+                    log_path=args.failure_log_path,
+                )
+                render_team_partial_failed_line(
+                    team_index=team_index,
+                    team_total=team_total,
+                    team=team_code,
+                    season=season,
+                    failed_games=exc.failed_games,
+                    total_games=exc.total_games,
+                )
+                sys.stdout.write("\n")
+                sys.stderr.write(
+                    f"Incomplete cache for {team_code} {season}: "
+                    f"{exc.failed_games}/{exc.total_games} games failed normalization\n"
                 )
                 sys.stderr.flush()
                 return 1

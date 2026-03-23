@@ -37,3 +37,13 @@ class TeamSeasonConsistencyError(NbaIngestError):
     team: str
     season: str
     reason: str
+
+
+@dataclass(frozen=True)
+class PartialTeamSeasonError(NbaIngestError):
+    team: str
+    season: str
+    season_type: str
+    failed_game_ids: list[str]
+    total_games: int
+    failed_games: int

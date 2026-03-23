@@ -5,7 +5,11 @@ from dataclasses import asdict, is_dataclass
 from datetime import UTC, datetime
 from pathlib import Path
 
-from wowy.nba.errors import FetchError, TeamSeasonConsistencyError
+from wowy.nba.errors import (
+    FetchError,
+    PartialTeamSeasonError,
+    TeamSeasonConsistencyError,
+)
 
 DEFAULT_INGEST_FAILURE_LOG_PATH = Path("data/logs/ingest_failures.jsonl")
 
@@ -52,6 +56,15 @@ def _build_error_details(error: Exception) -> dict[str, object]:
             "reason": error.reason,
             "team_scope": error.team,
             "season_scope": error.season,
+        }
+    if isinstance(error, PartialTeamSeasonError):
+        return {
+            "team_scope": error.team,
+            "season_scope": error.season,
+            "season_type_scope": error.season_type,
+            "failed_game_ids": error.failed_game_ids,
+            "total_games": error.total_games,
+            "failed_games": error.failed_games,
         }
     return {}
 
