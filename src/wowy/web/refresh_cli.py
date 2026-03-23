@@ -21,9 +21,12 @@ def build_parser() -> argparse.ArgumentParser:
     )
     parser.add_argument(
         "--metric",
-        default=WOWY_METRIC,
+        action="append",
         choices=[WOWY_METRIC, WOWY_SHRUNK_METRIC, RAWR_METRIC],
-        help="Metric to refresh into the SQLite store.",
+        help=(
+            "Metric to refresh into the SQLite store. "
+            "Repeat to refresh multiple metrics. Defaults to all metrics."
+        ),
     )
     parser.add_argument(
         "--season-type",
@@ -54,33 +57,35 @@ def build_parser() -> argparse.ArgumentParser:
 def main(argv: list[str] | None = None) -> int:
     parser = build_parser()
     args = parser.parse_args(argv)
+    metrics = args.metric or [WOWY_METRIC, WOWY_SHRUNK_METRIC, RAWR_METRIC]
     print_status_box(
         "Web Store Refresh",
         [
-            f"Metric: {args.metric}",
+            f"Metrics: {', '.join(metrics)}",
             "Refreshing cached player-season rows and full-span leaderboard"
             " slices used by the Flask and React web app.",
             "The progress bar below tracks each built team scope in the SQLite"
             " metric store.",
         ],
     )
-    progress_bar = TerminalProgressBar("Refresh", total=1)
-    refresh_metric_store(
-        args.metric,
-        season_type=args.season_type,
-        db_path=args.player_metrics_db_path,
-        source_data_dir=args.source_data_dir,
-        rawr_ridge_alpha=args.rawr_ridge_alpha,
-        include_team_scopes=False,
-        progress=lambda current, total, detail: _update_progress(
-            progress_bar,
-            current=current,
-            total=total,
-            detail=detail,
-        ),
-    )
-    progress_bar.finish(detail="done")
-    print(f"refreshed {args.metric} store at {args.player_metrics_db_path}")
+    for metric in metrics:
+        progress_bar = TerminalProgressBar(f"Refresh {metric}", total=1)
+        refresh_metric_store(
+            metric,
+            season_type=args.season_type,
+            db_path=args.player_metrics_db_path,
+            source_data_dir=args.source_data_dir,
+            rawr_ridge_alpha=args.rawr_ridge_alpha,
+            include_team_scopes=False,
+            progress=lambda current, total, detail, progress_bar=progress_bar: _update_progress(
+                progress_bar,
+                current=current,
+                total=total,
+                detail=detail,
+            ),
+        )
+        progress_bar.finish(detail="done")
+        print(f"refreshed {metric} store at {args.player_metrics_db_path}")
     return 0
 
 

@@ -13,7 +13,9 @@ from tests.support import (
 from wowy.data.game_cache_db import replace_team_season_normalized_rows
 from wowy.data.player_metrics_db import load_metric_rows, load_metric_store_metadata
 from wowy.web.app import create_app
+from wowy.web.refresh_cli import main as refresh_cli_main
 from wowy.web.service import (
+    RAWR_METRIC,
     WOWY_SHRUNK_METRIC,
     WOWY_METRIC,
     build_scope_key,
@@ -256,6 +258,36 @@ def test_refresh_metric_store_builds_wowy_shrunk_rows(
     assert all(abs(row.details["raw_wowy_score"]) > abs(row.value) for row in rows)
     assert all(row.details["raw_wowy_score"] * row.value >= 0 for row in rows)
     assert raw_rows == []
+
+
+def test_refresh_cli_refreshes_all_metrics_by_default(monkeypatch, tmp_path: Path, capsys):
+    calls: list[str] = []
+
+    def fake_refresh_metric_store(
+        metric: str,
+        *,
+        season_type: str,
+        db_path: Path,
+        source_data_dir: Path,
+        rawr_ridge_alpha: float,
+        include_team_scopes: bool,
+        progress,
+    ) -> None:
+        calls.append(metric)
+        progress(1, 1, "done")
+
+    monkeypatch.setattr("wowy.web.refresh_cli.refresh_metric_store", fake_refresh_metric_store)
+
+    exit_code = refresh_cli_main(
+        ["--player-metrics-db-path", str(tmp_path / "app" / "player_metrics.sqlite3")]
+    )
+    captured = capsys.readouterr()
+
+    assert exit_code == 0
+    assert calls == [WOWY_METRIC, WOWY_SHRUNK_METRIC, RAWR_METRIC]
+    assert "refreshed wowy store" in captured.out
+    assert "refreshed wowy_shrunk store" in captured.out
+    assert "refreshed rawr store" in captured.out
 
 
 def test_wowy_shrunk_options_endpoint_returns_wowy_style_filters(
