@@ -1,13 +1,10 @@
 # Models
 
-The project currently has two analysis paths.
+The project currently has two analysis paths, and both are game-level only.
 
 ## WOWY
 
-Input:
-
-- derived WOWY game records in the app database
-- one row per game from one team's perspective
+Input: derived WOWY game records in the app database, one row per game from one team's perspective.
 
 Score:
 
@@ -23,10 +20,7 @@ Notes:
 
 ## RAWR
 
-Input:
-
-- validated canonical games persisted in SQLite
-- validated canonical game-player rows persisted in SQLite
+Input: validated canonical games and canonical game-player rows persisted in SQLite.
 
 Model:
 
@@ -43,10 +37,6 @@ Notes:
 - `min-games` is a pre-fit inclusion rule
 - minute thresholds are output filters
 - this is not RAPM or a possession-level model
-
-## Shared scope
-
-Both paths are game-level only.
 
 Neither path currently models:
 

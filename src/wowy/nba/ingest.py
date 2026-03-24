@@ -3,7 +3,6 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Callable
 
-from wowy.apps.wowy.derive import derive_wowy_games
 from wowy.data.game_cache_db import replace_team_season_normalized_rows
 from wowy.data.player_metrics_db import DEFAULT_PLAYER_METRICS_DB_PATH
 from wowy.nba.build_models import (
@@ -29,10 +28,10 @@ from wowy.nba.models import (
     CanonicalGameRecord,
     CanonicalTeamSeasonBatch,
 )
-from wowy.nba.pipeline import (
+from wowy.nba.normalize import normalize_source_game
+from wowy.nba.parsers import (
     dedupe_schedule_games,
     load_player_names_from_cache as load_cached_player_names,
-    normalize_source_game,
     parse_box_score_payload,
     parse_league_schedule_payload,
 )
@@ -40,7 +39,7 @@ from wowy.nba.seasons import canonicalize_season_string
 from wowy.nba.season_types import canonicalize_season_type
 from wowy.nba.team_identity import resolve_team_id
 from wowy.nba.validation import (
-    validate_canonical_team_season_batch,
+    derive_validated_wowy_games,
     validate_team_season_records,
 )
 
@@ -220,12 +219,12 @@ def build_team_season_artifacts(
         games=canonical_games,
         game_players=canonical_game_players,
     )
-    validate_canonical_team_season_batch(batch)
+    wowy_games = derive_validated_wowy_games(batch)
 
     artifacts = TeamSeasonArtifacts(
         canonical_games=canonical_games,
         canonical_game_players=canonical_game_players,
-        wowy_games=derive_wowy_games(canonical_games, canonical_game_players),
+        wowy_games=wowy_games,
     )
     summary = TeamSeasonRunSummary(
         team=requested_team,

@@ -4,28 +4,12 @@ Python project for experimenting with historical basketball impact metrics. Desi
 
 ## Overview
 
-The repository currently has two analysis paths built on game-level NBA data stored in SQLite:
+This repo has two game-level analysis paths backed by SQLite:
 
-- WOWY baseline on derived game records loaded from the app database
-- RAWR on canonical game and player rows persisted in the app database
+- WOWY: a simple with/without baseline on derived game records
+- RAWR: a ridge regression on validated canonical game and player rows
 
-The current web app goal is player comparison over the full cached history.
-The primary WOWY web ranking is the strongest multi-season WOWY profile across that full history, with team filters used only to restrict the underlying game sample when requested.
-Supporting stats like minutes and with/without counts are context for the ranked players, not the main ranking signal.
-
-WOWY is a simple presence model:
-
-`wowy_score = average margin when player played - average margin when player did not play`
-
-RAWR, short for Real Adjusted WOWY Regression, is a separate game-level model with:
-
-- intercept
-- home-court term
-- player coefficients
-- team-season terms
-- opponent team-season terms
-
-Player features are minute-weighted. Ridge regularization stabilizes the fit.
+The current web app goal is player comparison across the full cached history span. The primary WOWY leaderboard should surface the strongest multi-season player profiles; team filters only narrow the sampled games.
 
 ## Commands
 
@@ -97,34 +81,21 @@ poetry run python scripts/cache_all_seasons.py --start-year 2024 --first-year 20
 
 Runtime analysis and the web app only depend on two live project data stores: the source cache under `data/source` and the SQLite app store under `data/app`.
 
-Source cache quality rules:
+NBA ingest rules:
 
-- Empty box score payloads are invalid source data and must not be normalized or preserved.
-- If a cached box score is empty, discard it for that scope and refetch instead of rebuilding the DB from bad source data.
-- Newer NBA games may return empty `BoxScoreTraditionalV2` payloads. Ingest now retries with `BoxScoreTraditionalV3` before treating the game as a failure.
-- Ingest is a strict pipeline: fetch raw payloads, parse source rows, normalize canonical records, validate the canonical batch once, then persist SQLite rows.
-- Source-shape anomalies are rejected during parsing unless they match an explicit known source category.
-- Team identity is determined from source team IDs and reconciled centrally with abbreviation handling.
+- Empty cached payloads are invalid and must be refetched, not normalized.
+- `BoxScoreTraditionalV2` can be empty for newer games; ingest retries with `BoxScoreTraditionalV3`.
+- Team identity is keyed by stable source team IDs, with abbreviation aliases reconciled centrally.
+
+Implementation details for ingest stages and module boundaries live in [docs/architecture.md](docs/architecture.md).
 
 ## Output notes
 
-WOWY output includes player name or id, minute summaries, with/without samples, average margins, and score.
-
-For the web app, treat the primary WOWY ranking differently from a pooled all-games with/without estimate:
-
-- Primary web ranking: multi-season WOWY profile across the full cached history span
-- Supporting web columns: minutes, with/without samples, average margins, and other context
-- Non-goal: replacing the main leaderboard with noisy pooled with/without rankings that push role players with tiny samples above long-term stars
+WOWY output includes player id or name, minute context, with/without samples, average margins, and score.
 
 RAWR output includes observation count, fitted player count, intercept, home-court estimate, and ranked player coefficients.
 
-## Interpretation
-
-WOWY is a baseline, not an adjusted impact metric.
-
-The RAWR rating is more adjusted than WOWY, but it is still a coarse game-level model rather than a possession-level RAPM implementation.
-
-More detail:
+## More detail
 
 - [docs/models.md](docs/models.md)
 - [docs/architecture.md](docs/architecture.md)

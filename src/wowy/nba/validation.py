@@ -25,6 +25,14 @@ _GAME_DATE_PATTERN = re.compile(r"^\d{4}-\d{2}-\d{2}$")
 
 
 def validate_canonical_team_season_batch(batch: CanonicalTeamSeasonBatch) -> None:
+    _derive_and_validate_canonical_team_season_batch(batch)
+
+
+def derive_validated_wowy_games(batch: CanonicalTeamSeasonBatch):
+    return _derive_and_validate_canonical_team_season_batch(batch)
+
+
+def _derive_and_validate_canonical_team_season_batch(batch: CanonicalTeamSeasonBatch):
     game_keys: set[tuple[str, int]] = set()
     players_by_game_key: dict[tuple[str, int], list[CanonicalGamePlayerRecord]] = defaultdict(list)
 
@@ -82,6 +90,7 @@ def validate_canonical_team_season_batch(batch: CanonicalTeamSeasonBatch) -> Non
     wowy_games = derive_wowy_games(batch.games, batch.game_players)
     if validate_team_season_records(batch.games, batch.game_players, wowy_games) != "ok":
         raise ValueError("Canonical team-season consistency check failed")
+    return wowy_games
 
 
 def validate_normalized_cache_batch(

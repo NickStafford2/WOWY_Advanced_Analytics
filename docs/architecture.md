@@ -16,10 +16,21 @@ This layer is responsible for getting source data into the local SQLite cache us
 
 The ingest flow is intentionally split into stages:
 
-- parse raw source payloads into source-shaped rows
-- normalize those into canonical basketball records
+- fetch raw payloads into `data/source`
+- parse raw payloads into source models
+- normalize source models into canonical records
 - validate the canonical team-season batch once
 - persist validated rows to SQLite
+
+Current module split:
+
+- `cache.py`: fetch and cached payload management
+- `parsers.py`: raw payload to source-model parsing
+- `source_rules.py`: known source-row classifications and raw numeric/minutes parsing
+- `normalize.py`: source-model to canonical-record normalization
+- `ingest.py`: team-season orchestration, failure aggregation, persistence handoff
+- `validation.py`: canonical batch invariants and post-normalization consistency checks
+- `team_identity.py`: stable team ID and alias reconciliation
 
 Team identity reconciliation and historical alias handling should stay centralized in this layer rather than being repeated across parse, normalize, validation, and DB code.
 
