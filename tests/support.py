@@ -3,15 +3,15 @@ from __future__ import annotations
 from typing import TypeAlias
 
 import wowy.data.game_cache_db as game_cache_db
-from wowy.nba.models import CanonicalGamePlayerRecord, CanonicalGameRecord
+from wowy.nba.models import NormalizedGamePlayerRecord, NormalizedGameRecord
 from wowy.nba.team_identity import resolve_team_id
 
 
 TeamSeasonSeed: TypeAlias = tuple[
     str,
     str,
-    list[CanonicalGameRecord],
-    list[CanonicalGamePlayerRecord],
+    list[NormalizedGameRecord],
+    list[NormalizedGamePlayerRecord],
 ]
 
 
@@ -25,8 +25,9 @@ def game(
     margin: float,
     season_type: str = "Regular Season",
     source: str = "nba_api",
-) -> CanonicalGameRecord:
-    return CanonicalGameRecord(
+) -> NormalizedGameRecord:
+    team_id = resolve_team_id(team, game_date=game_date)
+    return NormalizedGameRecord(
         game_id=game_id,
         season=season,
         game_date=game_date,
@@ -36,6 +37,8 @@ def game(
         margin=margin,
         season_type=season_type,
         source=source,
+        team_id=team_id,
+        opponent_team_id=resolve_team_id(opponent, game_date=game_date),
     )
 
 
@@ -46,14 +49,15 @@ def player(
     player_name: str,
     appeared: bool,
     minutes: float | None,
-) -> CanonicalGamePlayerRecord:
-    return CanonicalGamePlayerRecord(
+) -> NormalizedGamePlayerRecord:
+    return NormalizedGamePlayerRecord(
         game_id=game_id,
         team=team,
         player_id=player_id,
         player_name=player_name,
         appeared=appeared,
         minutes=minutes,
+        team_id=resolve_team_id(team),
     )
 
 

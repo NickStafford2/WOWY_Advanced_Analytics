@@ -9,12 +9,7 @@ from pathlib import Path
 
 from wowy.data.player_metrics_db import DEFAULT_PLAYER_METRICS_DB_PATH
 from wowy.nba.ingest.validation import validate_normalized_cache_batch
-from wowy.nba.models import (
-    CanonicalGamePlayerRecord,
-    CanonicalGameRecord,
-    NormalizedGamePlayerRecord,
-    NormalizedGameRecord,
-)
+from wowy.nba.models import NormalizedGamePlayerRecord, NormalizedGameRecord
 from wowy.nba.seasons import canonicalize_season_string
 from wowy.nba.season_types import canonicalize_season_type
 from wowy.nba.team_identity import (
@@ -138,8 +133,8 @@ def replace_team_season_normalized_rows(
     team_id: int,
     season: str,
     season_type: str,
-    games: list[CanonicalGameRecord] | list[NormalizedGameRecord],
-    game_players: list[CanonicalGamePlayerRecord] | list[NormalizedGamePlayerRecord],
+    games: list[NormalizedGameRecord],
+    game_players: list[NormalizedGamePlayerRecord],
     source_path: str,
     source_snapshot: str,
     source_kind: str,
@@ -154,15 +149,6 @@ def replace_team_season_normalized_rows(
         raise ValueError(f"team_id must be positive for normalized cache writes: {team_id!r}")
     canonical_team = resolve_team_identity_from_id_and_season(team_id, season).abbreviation
     season_type = canonicalize_season_type(season_type)
-    games = [_to_normalized_game_record(game) for game in games]
-    game_players = [
-        _to_normalized_game_player_record(
-            player,
-            default_team=canonical_team,
-            season=season,
-        )
-        for player in game_players
-    ]
     validate_normalized_cache_batch(
         team=canonical_team,
         team_id=team_id,
@@ -716,46 +702,6 @@ def _resolve_team_ids(
     if unresolved_teams:
         resolve_team_id(unresolved_teams[0], season=seasons[0])
     return sorted(resolved_team_ids)
-
-
-def _to_normalized_game_record(
-    game: CanonicalGameRecord | NormalizedGameRecord,
-) -> NormalizedGameRecord:
-    team_id = game.team_id or resolve_team_id(game.team, game_date=game.game_date)
-    opponent_team_id = (
-        game.opponent_team_id or resolve_team_id(game.opponent, game_date=game.game_date)
-    )
-    return NormalizedGameRecord(
-        game_id=game.game_id,
-        season=game.season,
-        game_date=game.game_date,
-        team=game.team,
-        opponent=game.opponent,
-        is_home=game.is_home,
-        margin=game.margin,
-        season_type=game.season_type,
-        source=game.source,
-        team_id=team_id,
-        opponent_team_id=opponent_team_id,
-    )
-
-
-def _to_normalized_game_player_record(
-    player: CanonicalGamePlayerRecord | NormalizedGamePlayerRecord,
-    *,
-    default_team: str,
-    season: str,
-) -> NormalizedGamePlayerRecord:
-    player_team = player.team or default_team
-    return NormalizedGamePlayerRecord(
-        game_id=player.game_id,
-        team=player_team,
-        player_id=player.player_id,
-        player_name=player.player_name,
-        appeared=player.appeared,
-        minutes=player.minutes,
-        team_id=player.team_id or resolve_team_id(player_team, season=season),
-    )
 
 
 def _upsert_team_history_for_scope(

@@ -4,10 +4,9 @@ from pathlib import Path
 
 import pytest
 
-from wowy.nba.models import CanonicalGamePlayerRecord, CanonicalGameRecord
 from wowy.nba.seasons import canonicalize_season_string
 from wowy.nba.team_seasons import TeamSeasonScope, list_cached_team_seasons
-from tests.support import seed_db_from_team_seasons
+from tests.support import game, player, seed_db_from_team_seasons
 
 
 def test_canonicalize_season_string_accepts_single_year_input():
@@ -31,27 +30,10 @@ def test_list_cached_team_seasons_returns_db_rows(
                 "BOS",
                 "2014-15",
                 [
-                    CanonicalGameRecord(
-                        game_id="1",
-                        season="2014-15",
-                        game_date="2015-04-01",
-                        team="BOS",
-                        opponent="ATL",
-                        is_home=True,
-                        margin=5.0,
-                        season_type="Regular Season",
-                        source="nba_api",
-                    )
+                    game("1", "2014-15", "2015-04-01", "BOS", "ATL", True, 5.0)
                 ],
                 [
-                    CanonicalGamePlayerRecord(
-                        game_id="1",
-                        team="BOS",
-                        player_id=101,
-                        player_name="Player 101",
-                        appeared=True,
-                        minutes=34.0,
-                    )
+                    player("1", "BOS", 101, "Player 101", True, 34.0)
                 ],
             )
         ],
@@ -74,54 +56,20 @@ def test_list_cached_team_seasons_returns_multiple_db_rows(
                 "BOS",
                 "2014-15",
                 [
-                    CanonicalGameRecord(
-                        game_id="1",
-                        season="2014-15",
-                        game_date="2015-04-01",
-                        team="BOS",
-                        opponent="ATL",
-                        is_home=True,
-                        margin=5.0,
-                        season_type="Regular Season",
-                        source="nba_api",
-                    )
+                    game("1", "2014-15", "2015-04-01", "BOS", "ATL", True, 5.0)
                 ],
                 [
-                    CanonicalGamePlayerRecord(
-                        game_id="1",
-                        team="BOS",
-                        player_id=101,
-                        player_name="Player 101",
-                        appeared=True,
-                        minutes=34.0,
-                    )
+                    player("1", "BOS", 101, "Player 101", True, 34.0)
                 ],
             ),
             (
                 "LAL",
                 "2015-16",
                 [
-                    CanonicalGameRecord(
-                        game_id="2",
-                        season="2015-16",
-                        game_date="2016-04-01",
-                        team="LAL",
-                        opponent="BOS",
-                        is_home=True,
-                        margin=2.0,
-                        season_type="Regular Season",
-                        source="nba_api",
-                    )
+                    game("2", "2015-16", "2016-04-01", "LAL", "BOS", True, 2.0)
                 ],
                 [
-                    CanonicalGamePlayerRecord(
-                        game_id="2",
-                        team="LAL",
-                        player_id=24,
-                        player_name="Player 24",
-                        appeared=True,
-                        minutes=36.0,
-                    )
+                    player("2", "LAL", 24, "Player 24", True, 36.0)
                 ],
             ),
         ],
