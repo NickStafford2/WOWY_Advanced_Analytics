@@ -126,3 +126,78 @@ def test_load_player_names_from_cache_reads_valid_payloads_only(tmp_path: Path) 
     (boxscores_dir / "0002_boxscoretraditionalv2.json").write_text("{", encoding="utf-8")
 
     assert load_player_names_from_cache(tmp_path) == {1: "Mike Miller"}
+
+
+def test_load_player_names_from_cache_discards_empty_and_unparseable_payloads(
+    tmp_path: Path,
+) -> None:
+    boxscores_dir = tmp_path / "boxscores"
+    boxscores_dir.mkdir(parents=True, exist_ok=True)
+    empty_path = boxscores_dir / "0001_boxscoretraditionalv2.json"
+    empty_path.write_text(
+        json.dumps(
+            {
+                "resultSets": [
+                    {
+                        "name": "PlayerStats",
+                        "headers": ["GAME_ID", "TEAM_ID", "TEAM_ABBREVIATION", "PLAYER_ID", "PLAYER_NAME", "MIN"],
+                        "rowSet": [],
+                    },
+                    {
+                        "name": "TeamStats",
+                        "headers": ["TEAM_ID", "TEAM_ABBREVIATION", "PLUS_MINUS", "PTS"],
+                        "rowSet": [],
+                    },
+                ]
+            }
+        ),
+        encoding="utf-8",
+    )
+    invalid_path = boxscores_dir / "0002_boxscoretraditionalv2.json"
+    invalid_path.write_text(
+        json.dumps(
+            {
+                "resultSets": [
+                    {
+                        "name": "PlayerStats",
+                        "headers": ["GAME_ID", "TEAM_ID", "TEAM_ABBREVIATION", "PLAYER_ID", "PLAYER_NAME", "MIN"],
+                        "rowSet": [["0002", 1610612763, "MEM", 2, "Broken Player", "12:00"]],
+                    },
+                    {
+                        "name": "TeamStats",
+                        "headers": ["TEAM_ID", "TEAM_ABBREVIATION", "PLUS_MINUS"],
+                        "rowSet": [[1610612763, "MEM", "not-a-number"]],
+                    },
+                ]
+            }
+        ),
+        encoding="utf-8",
+    )
+    valid_path = boxscores_dir / "0003_boxscoretraditionalv2.json"
+    valid_path.write_text(
+        json.dumps(
+            {
+                "resultSets": [
+                    {
+                        "name": "PlayerStats",
+                        "headers": ["GAME_ID", "TEAM_ID", "TEAM_ABBREVIATION", "PLAYER_ID", "PLAYER_NAME", "MIN"],
+                        "rowSet": [["0003", 1610612763, "MEM", 3, "Good Player", "12:00"]],
+                    },
+                    {
+                        "name": "TeamStats",
+                        "headers": ["TEAM_ID", "TEAM_ABBREVIATION", "PLUS_MINUS", "PTS"],
+                        "rowSet": [[1610612763, "MEM", 5, 100], [1610612738, "BOS", -5, 95]],
+                    },
+                ]
+            }
+        ),
+        encoding="utf-8",
+    )
+    logs: list[str] = []
+
+    assert load_player_names_from_cache(tmp_path, log=logs.append) == {3: "Good Player"}
+    assert not empty_path.exists()
+    assert not invalid_path.exists()
+    assert valid_path.exists()
+    assert any("cache discard" in message and "invalid_or_empty_payload" in message for message in logs)
+    assert any("cache discard" in message and "unparseable_box_score_payload" in message for message in logs)

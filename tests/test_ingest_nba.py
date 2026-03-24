@@ -150,6 +150,63 @@ def test_ingest_team_season_cached_only_rejects_empty_cached_box_score(
     assert not (boxscores_dir / "0001_boxscoretraditionalv2.json").exists()
 
 
+def test_ingest_team_season_groups_partial_failures_by_stable_reason(
+    tmp_path: Path,
+) -> None:
+    team_season_dir = tmp_path / "team_seasons"
+    team_season_dir.mkdir(parents=True, exist_ok=True)
+    (team_season_dir / "BOS_2023-24_regular_season_leaguegamefinder.json").write_text(
+        """
+        {
+          "resultSets": [
+            {
+              "headers": ["GAME_ID", "GAME_DATE", "MATCHUP", "TEAM_ID", "TEAM_ABBREVIATION"],
+              "rowSet": [
+                ["0001", "2024-01-01", "BOS vs. LAL", 1610612738, "BOS"],
+                ["0002", "2024-01-03", "BOS vs. NYK", 1610612738, "BOS"]
+              ]
+            }
+          ]
+        }
+        """.strip(),
+        encoding="utf-8",
+    )
+    boxscores_dir = tmp_path / "boxscores"
+    boxscores_dir.mkdir(parents=True, exist_ok=True)
+    for game_id in ("0001", "0002"):
+        (boxscores_dir / f"{game_id}_boxscoretraditionalv2.json").write_text(
+            """
+            {
+              "resultSets": [
+                {"name": "PlayerStats", "headers": ["A"], "rowSet": []},
+                {"name": "TeamStats", "headers": ["B"], "rowSet": []}
+              ]
+            }
+            """.strip(),
+            encoding="utf-8",
+        )
+
+    with pytest.raises(PartialTeamSeasonError) as exc_info:
+        ingest_team_season(
+            team_abbreviation="BOS",
+            season="2023-24",
+            source_data_dir=tmp_path,
+            log=None,
+            cached_only=True,
+        )
+
+    assert exc_info.value.failed_game_ids == ["0001", "0002"]
+    assert exc_info.value.failure_reason_counts == {
+        "ValueError: Missing valid cached box score payload for game <game_id>": 2
+    }
+    assert exc_info.value.failure_reason_examples == {
+        "ValueError: Missing valid cached box score payload for game <game_id>": [
+            "0001",
+            "0002",
+        ]
+    }
+
+
 def test_ingest_team_season_cached_only_rejects_empty_cached_league_games(
     tmp_path: Path,
 ) -> None:

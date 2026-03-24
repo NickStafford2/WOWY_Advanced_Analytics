@@ -264,6 +264,15 @@ def load_cached_payload(
     return _load_cached_payload(cache_path, validator=validator, log=log)
 
 
+def discard_invalid_cached_payload(
+    cache_path: Path,
+    *,
+    reason: str,
+    log: LogFn | None = None,
+) -> None:
+    _discard_invalid_cached_payload(cache_path, reason=reason, log=log)
+
+
 def _load_cached_payload(
     cache_path: Path,
     *,

@@ -1,8 +1,13 @@
 from __future__ import annotations
 
 from pathlib import Path
+from typing import Callable
 
-from wowy.nba.ingest.cache import load_cached_payload
+from wowy.nba.ingest.cache import (
+    _box_score_payload_is_empty,
+    discard_invalid_cached_payload,
+    load_cached_payload,
+)
 from wowy.nba.seasons import canonicalize_season_string
 from wowy.nba.season_types import canonicalize_season_type
 from wowy.nba.source_models import (
@@ -23,16 +28,29 @@ from wowy.nba.ingest.source_rules import (
 from wowy.nba.team_identity import resolve_source_team_identity
 
 
-def load_player_names_from_cache(source_data_dir: Path) -> dict[int, str]:
+def load_player_names_from_cache(
+    source_data_dir: Path,
+    log: Callable[[str], None] | None = None,
+) -> dict[int, str]:
     player_names: dict[int, str] = {}
     for cache_path in sorted((source_data_dir / "boxscores").glob("*.json")):
-        payload = load_cached_payload(cache_path)
+        payload = load_cached_payload(
+            cache_path,
+            validator=lambda cached_payload: not _box_score_payload_is_empty(cached_payload),
+            log=log,
+        )
         if payload is None:
             continue
-        parsed_box_score = parse_box_score_payload(
-            payload,
-            game_id=cache_path.stem.split("_", maxsplit=1)[0],
-        )
+        game_id = cache_path.stem.split("_", maxsplit=1)[0]
+        try:
+            parsed_box_score = parse_box_score_payload(payload, game_id=game_id)
+        except ValueError as exc:
+            discard_invalid_cached_payload(
+                cache_path,
+                reason=f"unparseable_box_score_payload={exc}",
+                log=log,
+            )
+            continue
         for player in parsed_box_score.players:
             if player.player_id is None or not player.player_name.strip():
                 continue

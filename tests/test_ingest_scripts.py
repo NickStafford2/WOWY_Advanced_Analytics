@@ -77,3 +77,14 @@ def test_cache_all_seasons_continues_after_season_failure(monkeypatch, capsys):
     assert calls == ["2024-25", "2023-24"]
     assert "Season caching failed for 2023-24 with exit status 1." in captured.err
     assert "Completed with failures in 1/2 seasons: 2023-24" in captured.err
+
+
+def test_filtered_log_only_emits_actionable_cache_messages(capsys):
+    cache_season_data.filtered_log("api box_score 0001 attempt=1")
+    cache_season_data.filtered_log("cache discard path=foo reason=invalid_or_empty_payload")
+    cache_season_data.filtered_log("cache skip path=bar reason=unparseable_box_score_payload")
+
+    captured = capsys.readouterr()
+    assert "api box_score" not in captured.err
+    assert "cache discard path=foo reason=invalid_or_empty_payload" in captured.err
+    assert "cache skip path=bar reason=unparseable_box_score_payload" in captured.err

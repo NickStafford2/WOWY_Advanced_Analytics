@@ -125,8 +125,15 @@ def render_progress_line(
     write_status_line(line)
 
 
-def quiet_log(_: str) -> None:
-    return None
+def filtered_log(message: str) -> None:
+    if not _should_emit_log_message(message):
+        return
+    sys.stderr.write(f"{message}\n")
+    sys.stderr.flush()
+
+
+def _should_emit_log_message(message: str) -> bool:
+    return message.startswith("cache discard") or message.startswith("cache skip")
 
 
 def write_status_line(line: str) -> None:
@@ -241,7 +248,7 @@ def main(argv: list[str] | None = None) -> int:
                     season_type=season_type,
                     source_data_dir=DEFAULT_SOURCE_DATA_DIR,
                     player_metrics_db_path=args.player_metrics_db_path,
-                    log=quiet_log,
+                    log=filtered_log,
                     progress=lambda payload, team_index=team_index: render_progress_line(
                         team_index,
                         team_total,

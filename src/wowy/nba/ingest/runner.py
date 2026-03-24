@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import re
 from pathlib import Path
 from typing import Callable
 
@@ -383,8 +384,14 @@ def _record_game_failure(
         message=str(exc),
     )
     failed_game_details.append(failure)
-    reason_key = f"{failure.error_type}: {failure.message}"
+    reason_key = _summarize_game_failure_reason(failure)
     failure_reason_counts[reason_key] = failure_reason_counts.get(reason_key, 0) + 1
     failure_reason_examples.setdefault(reason_key, [])
     if len(failure_reason_examples[reason_key]) < 5:
         failure_reason_examples[reason_key].append(game_id)
+
+
+def _summarize_game_failure_reason(failure: GameNormalizationFailure) -> str:
+    message = failure.message.split("; nba_api_", maxsplit=1)[0]
+    message = re.sub(r"game ['\"][^'\"]+['\"]", "game <game_id>", message)
+    return f"{failure.error_type}: {message}"
