@@ -480,6 +480,78 @@ def test_classify_source_player_row_names_known_skip_patterns() -> None:
     assert classify_source_player_row(inactive_blank_status) == INACTIVE_PLAYER_STATUS_ROW
 
 
+def test_classify_source_player_row_treats_historical_out_status_as_inactive() -> None:
+    inactive_out_status = SourceBoxScorePlayer(
+        game_id="0001",
+        team_id=1610612763,
+        team_abbreviation="MEM",
+        player_id=2002,
+        player_name="Out Player",
+        minutes_raw=None,
+        raw_row={
+            "PLAYER_ID": 2002,
+            "PLAYER_NAME": "Out Player",
+            "MIN": None,
+            "COMMENT": "OUT - Sore Right Groin",
+            "AST": None,
+            "BLK": None,
+            "DREB": None,
+            "FG3A": None,
+            "FG3M": None,
+            "FG3_PCT": None,
+            "FGA": None,
+            "FGM": None,
+            "FG_PCT": None,
+            "FTA": None,
+            "FTM": None,
+            "FT_PCT": None,
+            "OREB": None,
+            "PF": None,
+            "PLUS_MINUS": None,
+            "PTS": None,
+            "REB": None,
+            "STL": None,
+            "TO": None,
+        },
+    )
+    inactive_out_no_space_status = SourceBoxScorePlayer(
+        game_id="0001",
+        team_id=1610612763,
+        team_abbreviation="MEM",
+        player_id=2003,
+        player_name="Out No Space Player",
+        minutes_raw=None,
+        raw_row={
+            "PLAYER_ID": 2003,
+            "PLAYER_NAME": "Out No Space Player",
+            "MIN": None,
+            "COMMENT": "OUT- Sore Right Ankle",
+            "AST": None,
+            "BLK": None,
+            "DREB": None,
+            "FG3A": None,
+            "FG3M": None,
+            "FG3_PCT": None,
+            "FGA": None,
+            "FGM": None,
+            "FG_PCT": None,
+            "FTA": None,
+            "FTM": None,
+            "FT_PCT": None,
+            "OREB": None,
+            "PF": None,
+            "PLUS_MINUS": None,
+            "PTS": None,
+            "REB": None,
+            "STL": None,
+            "TO": None,
+        },
+    )
+
+    assert classify_source_player_row(inactive_out_status) == INACTIVE_PLAYER_STATUS_ROW
+    assert classify_source_player_row(inactive_out_no_space_status) == INACTIVE_PLAYER_STATUS_ROW
+
+
 def test_classify_source_team_row_defaults_to_canonical_team_source_row() -> None:
     team_row = SourceBoxScoreTeam(
         team_id=1610612763,
@@ -812,6 +884,50 @@ def test_parse_box_score_payload_skips_historical_inactive_status_rows_with_null
         (2, "Inactive DNT", None),
         (3, "Inactive Make Trip", None),
         (10, "Opp", "48:00"),
+    ]
+
+
+def test_parse_box_score_payload_skips_historical_out_status_rows_with_null_minutes() -> None:
+    box_score = parse_box_score_payload(
+        {
+            "resultSets": [
+                {
+                    "name": "PlayerStats",
+                    "headers": [
+                        "GAME_ID",
+                        "TEAM_ID",
+                        "TEAM_ABBREVIATION",
+                        "PLAYER_ID",
+                        "PLAYER_NAME",
+                        "COMMENT",
+                        "MIN",
+                        "PTS",
+                    ],
+                    "rowSet": [
+                        ["0001", 1610612751, "NJN", 1, "Active Net", "", "38:40", 25],
+                        ["0001", 1610612751, "NJN", 2734, "Devin Harris", "OUT - Sore Right Groin", None, None],
+                        ["0001", 1610612764, "WAS", 2406, "Caron Butler", "OUT- Sore Right Ankle", None, None],
+                        ["0001", 1610612764, "WAS", 10, "Opp", "", "35:00", 18],
+                    ],
+                },
+                {
+                    "name": "TeamStats",
+                    "headers": ["TEAM_ID", "TEAM_ABBREVIATION", "PLUS_MINUS", "PTS"],
+                    "rowSet": [
+                        [1610612751, "NJN", -14, 90],
+                        [1610612764, "WAS", 14, 104],
+                    ],
+                },
+            ]
+        },
+        game_id="0001",
+    )
+
+    assert [(player.player_id, player.player_name, player.minutes_raw) for player in box_score.players] == [
+        (1, "Active Net", "38:40"),
+        (2734, "Devin Harris", None),
+        (2406, "Caron Butler", None),
+        (10, "Opp", "35:00"),
     ]
 
 

@@ -247,6 +247,7 @@ def _is_known_inactive_status(minute_text: str) -> bool:
         "DN MAKE TRIP",
         "NWT",
         "DID NOT",
+        "OUT",
         "NOT WITH TEAM",
         "SUSPENDED",
         "INACTIVE",

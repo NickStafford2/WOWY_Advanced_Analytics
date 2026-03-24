@@ -54,6 +54,50 @@ def test_parse_box_score_payload_accepts_live_game_shape() -> None:
     assert box_score.players[0].team_abbreviation == "MEM"
 
 
+def test_parse_box_score_payload_prefers_live_minutes_calculated() -> None:
+    box_score = parse_box_score_payload(
+        {
+            "game": {
+                "homeTeam": {
+                    "teamId": 1610612763,
+                    "teamTricode": "MEM",
+                    "score": 100,
+                    "statistics": {"plusMinusPoints": 5},
+                    "players": [
+                        {
+                            "personId": 1,
+                            "firstName": "Mike",
+                            "familyName": "Miller",
+                            "statistics": {
+                                "minutes": "PT30M15S",
+                                "minutesCalculated": "PT31M",
+                            },
+                        }
+                    ],
+                },
+                "awayTeam": {
+                    "teamId": 1610612738,
+                    "teamTricode": "BOS",
+                    "score": 95,
+                    "statistics": {"plusMinusPoints": -5},
+                    "players": [
+                        {
+                            "personId": 10,
+                            "firstName": "Paul",
+                            "familyName": "Pierce",
+                            "statistics": {"minutes": "PT32M00S"},
+                        }
+                    ],
+                },
+            }
+        },
+        game_id="0001",
+    )
+
+    assert box_score.players[0].minutes_raw == "PT31M"
+    assert box_score.players[1].minutes_raw == "PT32M00S"
+
+
 def test_parse_box_score_payload_uses_alias_keys_in_v3_rows() -> None:
     box_score = parse_box_score_payload(
         {

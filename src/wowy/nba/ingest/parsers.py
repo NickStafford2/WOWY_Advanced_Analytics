@@ -200,6 +200,10 @@ def _parse_live_box_score_payload(game_payload: dict, *, game_id: str) -> Source
         for player_payload in team_payload.get("players", []):
             if not isinstance(player_payload, dict):
                 continue
+            statistics = player_payload.get("statistics", {})
+            minutes_raw = None
+            if isinstance(statistics, dict):
+                minutes_raw = statistics.get("minutesCalculated") or statistics.get("minutes")
             players.append(
                 SourceBoxScorePlayer(
                     game_id=game_id,
@@ -207,7 +211,7 @@ def _parse_live_box_score_payload(game_payload: dict, *, game_id: str) -> Source
                     team_abbreviation=_optional_text(team_payload, "teamTricode"),
                     player_id=_optional_int(player_payload, "personId"),
                     player_name=_build_live_player_name(player_payload),
-                    minutes_raw=player_payload.get("statistics", {}).get("minutes"),
+                    minutes_raw=minutes_raw,
                     raw_row=dict(player_payload),
                 )
             )
