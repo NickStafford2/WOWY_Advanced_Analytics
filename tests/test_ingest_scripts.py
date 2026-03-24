@@ -6,7 +6,11 @@ import pytest
 
 from scripts import cache_all_seasons, cache_season_data
 from wowy.nba.build_models import TeamSeasonRunSummary
-from wowy.nba.errors import BoxScoreFetchError
+from wowy.nba.errors import (
+    BoxScoreFetchError,
+    GameNormalizationFailure,
+    PartialTeamSeasonError,
+)
 
 
 def test_cache_season_data_continues_after_team_failure(monkeypatch, capsys):
@@ -108,3 +112,56 @@ def test_cache_season_data_skips_requested_team_not_active_in_season(monkeypatch
     assert exit_code == 0
     assert called is False
     assert "CHA 2002-03 skipped not-active-in-season" in captured.out
+
+
+def test_render_partial_failure_details_includes_short_per_game_examples() -> None:
+    error = PartialTeamSeasonError(
+        message="partial",
+        team="NYK",
+        season="2006-07",
+        season_type="Regular Season",
+        failed_game_ids=["0020600382", "0020600368"],
+        total_games=82,
+        failed_games=2,
+        failed_game_details=[
+            GameNormalizationFailure(
+                game_id="0020600382",
+                error_type="ValueError",
+                message=(
+                    'Unparseable MIN value; nba_api_box_score_player_row='
+                    '{"COMMENT": "OUT - Sprained ankle", "MIN": null, '
+                    '"PLAYER_NAME": "David Newble", "TEAM_ABBREVIATION": "CHI"}'
+                ),
+            ),
+            GameNormalizationFailure(
+                game_id="0020600368",
+                error_type="ValueError",
+                message=(
+                    'Unparseable MIN value; nba_api_box_score_player_row='
+                    '{"MIN": "bogus", "PLAYER_NAME": "Example Player", '
+                    '"TEAM_ABBREVIATION": "CHA"}'
+                ),
+            ),
+        ],
+        failure_reason_counts={"ValueError: Unparseable MIN value": 2},
+        failure_reason_examples={
+            "ValueError: Unparseable MIN value": ["0020600382", "0020600368"],
+        },
+    )
+
+    rendered = cache_season_data.render_partial_failure_details(error)
+
+    assert "Failure reasons:" in rendered
+    assert "  - 2 games: ValueError: Unparseable MIN value" in rendered
+    assert (
+        "    0020600382: Unparseable MIN value "
+        "(player='David Newble', min=None, comment='OUT - Sprained ankle', team_abbreviation='CHI')"
+        in rendered
+    )
+    assert (
+        "    0020600368: Unparseable MIN value "
+        "(player='Example Player', min='bogus', team_abbreviation='CHA')"
+        in rendered
+    )
+    assert "examples=" not in rendered
+    assert "nba_api_box_score_player_row" not in rendered

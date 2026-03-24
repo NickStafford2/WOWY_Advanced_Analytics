@@ -175,7 +175,14 @@ def _parse_iso_duration_minutes(minute_text: str) -> float | None:
 def _is_skip_player_row(row: SourceBoxScorePlayer) -> bool:
     if row.player_id not in {None, 0}:
         return False
-    return row.player_name.strip() == "" and row.minutes_raw in {None, "", 0, "0", "0:00", "0.0"}
+    return row.player_name.strip() == "" and row.minutes_raw in {
+        None,
+        "",
+        0,
+        "0",
+        "0:00",
+        "0.0",
+    }
 
 
 def _is_player_did_not_play_placeholder(row: SourceBoxScorePlayer) -> bool:
@@ -245,9 +252,13 @@ def _is_known_inactive_status(minute_text: str) -> bool:
         "DND",
         "DNT",
         "DN MAKE TRIP",
+        "MWT",
         "NWT",
         "DID NOT",
+        "WILL NOT PLAY",
         "OUT",
+        "INJ",
+        "NBA SUSPENSION",
         "NOT WITH TEAM",
         "SUSPENDED",
         "INACTIVE",
