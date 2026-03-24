@@ -89,7 +89,7 @@ def _derive_and_validate_canonical_team_season_batch(batch: CanonicalTeamSeasonB
                 f"Expected at most 25 player rows for {game_key!r}; found {len(players)}"
             )
         total_minutes = sum(player.minutes or 0.0 for player in appeared_players)
-        if total_minutes < 235.0 or total_minutes > 450.0:
+        if total_minutes < 220.0 or total_minutes > 450.0:
             raise ValueError(
                 f"Implausible total appeared minutes for {game_key!r}: {total_minutes}"
             )

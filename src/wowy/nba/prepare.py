@@ -23,6 +23,7 @@ def prepare_wowy_game_records(
     teams: list[str] | None,
     seasons: list[str] | None,
     *,
+    team_ids: list[int] | None = None,
     season_type: str = "Regular Season",
     source_data_dir: Path = DEFAULT_SOURCE_DATA_DIR,
     player_metrics_db_path: Path = DEFAULT_PLAYER_METRICS_DB_PATH,
@@ -31,6 +32,7 @@ def prepare_wowy_game_records(
     games, game_players = prepare_canonical_scope_records(
         teams=teams,
         seasons=seasons,
+        team_ids=team_ids,
         season_type=season_type,
         source_data_dir=source_data_dir,
         player_metrics_db_path=player_metrics_db_path,
@@ -44,6 +46,7 @@ def prepare_canonical_scope_records(
     teams: list[str] | None,
     seasons: list[str] | None,
     *,
+    team_ids: list[int] | None = None,
     season_type: str = "Regular Season",
     source_data_dir: Path = DEFAULT_SOURCE_DATA_DIR,
     player_metrics_db_path: Path = DEFAULT_PLAYER_METRICS_DB_PATH,
@@ -54,6 +57,7 @@ def prepare_canonical_scope_records(
     team_seasons = resolve_team_seasons(
         teams,
         seasons,
+        team_ids=team_ids,
         player_metrics_db_path=player_metrics_db_path,
         season_type=season_type,
     )
@@ -71,7 +75,7 @@ def prepare_canonical_scope_records(
             log=log,
         )
 
-    if teams and include_opponents_for_team_scope:
+    if (teams or team_ids) and include_opponents_for_team_scope:
         opponent_team_seasons = {
             TeamSeasonScope(
                 team=game.opponent,

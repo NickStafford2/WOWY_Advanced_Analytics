@@ -30,6 +30,7 @@ from wowy.data.player_metrics_db import (
     load_metric_store_metadata,
     replace_metric_scope_store,
 )
+from wowy.nba.team_history import official_continuity_label_for_team_id
 from wowy.nba.team_seasons import list_cached_team_seasons
 from wowy.nba.season_types import canonicalize_season_type
 
@@ -535,6 +536,7 @@ def build_cached_metric_export_table_rows(
 def build_custom_wowy_leaderboard_payload(
     *,
     teams: list[str] | None,
+    team_ids: list[int] | None,
     seasons: list[str] | None,
     season_type: str,
     top_n: int,
@@ -547,6 +549,7 @@ def build_custom_wowy_leaderboard_payload(
 ) -> dict[str, Any]:
     records = prepare_wowy_player_season_records(
         teams=teams,
+        team_ids=team_ids,
         seasons=seasons,
         season_type=season_type,
         source_data_dir=source_data_dir,
@@ -569,6 +572,7 @@ def build_custom_wowy_leaderboard_payload(
 def build_custom_wowy_shrunk_leaderboard_payload(
     *,
     teams: list[str] | None,
+    team_ids: list[int] | None,
     seasons: list[str] | None,
     season_type: str,
     top_n: int,
@@ -581,6 +585,7 @@ def build_custom_wowy_shrunk_leaderboard_payload(
 ) -> dict[str, Any]:
     records = prepare_wowy_player_season_records(
         teams=teams,
+        team_ids=team_ids,
         seasons=seasons,
         season_type=season_type,
         source_data_dir=source_data_dir,
@@ -632,6 +637,7 @@ def build_custom_wowy_shrunk_leaderboard_payload(
 def build_custom_rawr_leaderboard_payload(
     *,
     teams: list[str] | None,
+    team_ids: list[int] | None,
     seasons: list[str] | None,
     season_type: str,
     top_n: int,
@@ -644,6 +650,7 @@ def build_custom_rawr_leaderboard_payload(
 ) -> dict[str, Any]:
     records = prepare_rawr_player_season_records(
         teams=teams,
+        team_ids=team_ids,
         seasons=seasons,
         season_type=season_type,
         source_data_dir=source_data_dir,
@@ -670,6 +677,7 @@ def build_custom_metric_export_table_rows(
     metric: str,
     *,
     teams: list[str] | None,
+    team_ids: list[int] | None,
     seasons: list[str] | None,
     season_type: str,
     source_data_dir: Path,
@@ -684,6 +692,7 @@ def build_custom_metric_export_table_rows(
     if metric == WOWY_METRIC:
         records = prepare_wowy_player_season_records(
             teams=teams,
+            team_ids=team_ids,
             seasons=seasons,
             season_type=season_type,
             source_data_dir=source_data_dir,
@@ -718,6 +727,7 @@ def build_custom_metric_export_table_rows(
     if metric == WOWY_SHRUNK_METRIC:
         records = prepare_wowy_player_season_records(
             teams=teams,
+            team_ids=team_ids,
             seasons=seasons,
             season_type=season_type,
             source_data_dir=source_data_dir,
@@ -758,6 +768,7 @@ def build_custom_metric_export_table_rows(
     if metric == RAWR_METRIC:
         records = prepare_rawr_player_season_records(
             teams=teams,
+            team_ids=team_ids,
             seasons=seasons,
             season_type=season_type,
             source_data_dir=source_data_dir,
@@ -809,7 +820,19 @@ def build_metric_options_payload(
         "metric": catalog_row.metric,
         "metric_label": catalog_row.metric_label,
         "available_teams": catalog_row.available_teams,
+        "team_options": _build_team_options(
+            db_path=db_path,
+            season_type=catalog_row.season_type,
+            available_teams=catalog_row.available_teams,
+            available_seasons=catalog_row.available_seasons,
+        ),
         "available_seasons": catalog_row.available_seasons,
+        "available_teams_by_season": _build_available_teams_by_season(
+            db_path=db_path,
+            season_type=catalog_row.season_type,
+            available_teams=catalog_row.available_teams,
+            available_seasons=catalog_row.available_seasons,
+        ),
         "filters": build_metric_default_filters_payload(
             metric,
             teams=sorted({team.upper() for team in teams or []}) or None,
@@ -822,11 +845,13 @@ def build_metric_default_filters_payload(
     metric: str,
     *,
     teams: list[str] | None,
+    team_ids: list[int] | None = None,
     season_type: str,
 ) -> dict[str, Any]:
     season_type = canonicalize_season_type(season_type)
     payload = {
         "team": teams,
+        "team_id": team_ids,
         "season_type": season_type,
         "min_average_minutes": 30.0,
         "min_total_minutes": 600.0,
@@ -841,6 +866,70 @@ def build_metric_default_filters_payload(
         payload["ridge_alpha"] = DEFAULT_RAWR_RIDGE_ALPHA
         return payload
     raise ValueError(f"Unknown metric: {metric}")
+
+
+def _build_team_options(
+    *,
+    db_path: Path,
+    season_type: str,
+    available_teams: list[str],
+    available_seasons: list[str],
+) -> list[dict[str, Any]]:
+    available_team_set = set(available_teams)
+    available_season_set = set(available_seasons)
+    seasons_by_team_id: dict[int, set[str]] = {}
+
+    for team_season in list_cached_team_seasons(
+        player_metrics_db_path=db_path,
+        season_type=season_type,
+    ):
+        if team_season.team_id is None:
+            continue
+        if team_season.team not in available_team_set:
+            continue
+        if team_season.season not in available_season_set:
+            continue
+        seasons_by_team_id.setdefault(team_season.team_id, set()).add(team_season.season)
+
+    return [
+        {
+            "team_id": team_id,
+            "label": official_continuity_label_for_team_id(team_id),
+            "available_seasons": [
+                season for season in available_seasons if season in seasons_by_team_id[team_id]
+            ],
+        }
+        for team_id in sorted(seasons_by_team_id, key=official_continuity_label_for_team_id)
+    ]
+
+
+def _build_available_teams_by_season(
+    *,
+    db_path: Path,
+    season_type: str,
+    available_teams: list[str],
+    available_seasons: list[str],
+) -> dict[str, list[str]]:
+    available_team_set = set(available_teams)
+    available_season_set = set(available_seasons)
+    teams_by_season: dict[str, set[str]] = {
+        season: set() for season in available_seasons
+    }
+
+    for team_season in list_cached_team_seasons(
+        player_metrics_db_path=db_path,
+        season_type=season_type,
+    ):
+        if team_season.season not in available_season_set:
+            continue
+        if team_season.team not in available_team_set:
+            continue
+        teams_by_season.setdefault(team_season.season, set()).add(team_season.team)
+
+    return {
+        season: [team for team in available_teams if team in teams_by_season.get(season, set())]
+        for season in available_seasons
+    }
 
 
 def build_metric_span_chart_payload(

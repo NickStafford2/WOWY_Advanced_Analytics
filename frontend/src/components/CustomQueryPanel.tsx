@@ -1,9 +1,15 @@
 import type { ChangeEvent } from 'react'
 
+export type TeamOption = {
+  team_id: number
+  label: string
+  available_seasons: string[]
+}
+
 export type CustomFilters = {
   startSeason: string
   endSeason: string
-  teams: string[]
+  teams: number[]
   topN: number
   minGames: number
   ridgeAlpha: number
@@ -25,7 +31,7 @@ export type CustomNumberField =
 type CustomQueryPanelProps = {
   customFilters: CustomFilters
   availableSeasons: string[]
-  availableTeams: string[]
+  availableTeams: TeamOption[]
   isBootstrapping: boolean
   isLoading: boolean
   isRawrMetric: boolean
@@ -33,7 +39,7 @@ type CustomQueryPanelProps = {
   onStartSeasonChange: (season: string) => void
   onEndSeasonChange: (season: string) => void
   onToggleAllTeams: () => void
-  onToggleTeam: (team: string) => void
+  onToggleTeam: (teamId: number) => void
   onNumberChange: (field: CustomNumberField, event: ChangeEvent<HTMLInputElement>) => void
   onRunQuery: () => void
 }
@@ -194,16 +200,19 @@ export function CustomQueryPanel({
               All
             </button>
             {availableTeams.map((team) => {
-              const isSelected = customFilters.teams.includes(team)
+              const isSelected = customFilters.teams.includes(team.team_id)
               return (
-                <label key={team} className={isSelected ? 'team-chip is-selected' : 'team-chip'}>
+                <label
+                  key={team.team_id}
+                  className={isSelected ? 'team-chip is-selected' : 'team-chip'}
+                >
                   <input
                     type="checkbox"
                     checked={isSelected}
-                    onChange={() => onToggleTeam(team)}
+                    onChange={() => onToggleTeam(team.team_id)}
                     disabled={isBootstrapping || isLoading}
                   />
-                  <span>{team}</span>
+                  <span>{team.label}</span>
                 </label>
               )
             })}

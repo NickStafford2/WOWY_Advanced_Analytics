@@ -3,7 +3,7 @@ import type { ChangeEvent, CSSProperties, Dispatch, SetStateAction } from 'react
 import { LeaderboardChart } from './components/LeaderboardChart'
 import type { SpanSeries } from './components/LeaderboardChart'
 import { CustomQueryPanel } from './components/CustomQueryPanel'
-import type { CustomFilters, CustomNumberField } from './components/CustomQueryPanel'
+import type { CustomFilters, CustomNumberField, TeamOption } from './components/CustomQueryPanel'
 import { ResultsTable } from './components/ResultsTable'
 import type { ResultsTableRow } from './components/ResultsTable'
 import './App.css'
@@ -49,7 +49,9 @@ type MetricOptionsPayload = {
   metric: MetricId
   metric_label: string
   available_teams: string[]
+  team_options: TeamOption[]
   available_seasons: string[]
+  available_teams_by_season?: Record<string, string[]>
   filters: MetricFilters
 }
 
@@ -84,7 +86,7 @@ function App() {
   const [mode, setMode] = useState<AppMode>('cached')
   const [metricLabel, setMetricLabel] = useState('WOWY')
   const [metricFilters, setMetricFilters] = useState<MetricFilters>(defaultMetricFilters('wowy'))
-  const [availableTeams, setAvailableTeams] = useState<string[]>([])
+  const [teamOptions, setTeamOptions] = useState<TeamOption[]>([])
   const [availableSeasons, setAvailableSeasons] = useState<string[]>([])
   const [leaderboard, setLeaderboard] = useState<LeaderboardPayload | null>(null)
   const [cachedFilters, setCachedFilters] = useState<CachedFilters>({
@@ -189,14 +191,16 @@ function App() {
       const defaultEndSeason = payload.available_seasons[payload.available_seasons.length - 1] || ''
       setMetricLabel(payload.metric_label)
       setMetricFilters(payload.filters)
-      setAvailableTeams(payload.available_teams)
+      setTeamOptions(payload.team_options)
       setAvailableSeasons(payload.available_seasons)
       setCachedFilters((current) => ({
         ...current,
         topN: current.topN || payload.filters.top_n,
       }))
       setCustomFilters((current) => {
-        const nextTeams = current.teams.filter((team) => payload.available_teams.includes(team))
+        const nextTeams = current.teams.filter((teamId) =>
+          payload.team_options.some((teamOption) => teamOption.team_id === teamId),
+        )
         return {
           ...current,
           startSeason: payload.available_seasons.includes(current.startSeason)
@@ -205,7 +209,10 @@ function App() {
           endSeason: payload.available_seasons.includes(current.endSeason)
             ? current.endSeason
             : defaultEndSeason,
-          teams: nextTeams.length > 0 ? nextTeams : [...payload.available_teams],
+          teams:
+            nextTeams.length > 0
+              ? nextTeams
+              : payload.team_options.map((teamOption) => teamOption.team_id),
           topN: current.topN || payload.filters.top_n,
           minGames: payload.filters.min_games ?? current.minGames,
           ridgeAlpha: payload.filters.ridge_alpha ?? current.ridgeAlpha,
@@ -282,7 +289,7 @@ function App() {
     }
 
     for (const team of customFilters.teams) {
-      params.append('team', team)
+      params.append('team_id', String(team))
     }
     for (const season of seasonSpan(customFilters.startSeason, customFilters.endSeason, availableSeasons)) {
       params.append('season', season)
@@ -315,6 +322,21 @@ function App() {
     : 'No seasons loaded'
   const isRawrMetric = metric === 'rawr'
   const isWowyStyleMetric = !isRawrMetric
+  const availableCustomTeams = useMemo(
+    () =>
+      buildAvailableTeamsForSeasonSpan({
+        startSeason: customFilters.startSeason,
+        endSeason: customFilters.endSeason,
+        availableSeasons,
+        teamOptions,
+      }),
+    [
+      customFilters.endSeason,
+      customFilters.startSeason,
+      availableSeasons,
+      teamOptions,
+    ],
+  )
   const metricDescription =
     metric === 'wowy'
       ? 'Cross-season on/off impact from with-and-without samples.'
@@ -324,7 +346,7 @@ function App() {
   const chartStatusLabel =
     mode === 'cached' ? `Loading cached ${metricLabel} leaders...` : `Running ${metricLabel} query...`
   const allTeamsSelected =
-    availableTeams.length > 0 && customFilters.teams.length === availableTeams.length
+    availableCustomTeams.length > 0 && customFilters.teams.length === availableCustomTeams.length
   const exportUrl = buildExportUrl({
     metric,
     mode,
@@ -336,6 +358,20 @@ function App() {
   const pageShellStyle = {
     '--header-offset': `${headerHeight}px`,
   } as CSSProperties
+
+  useEffect(() => {
+    setCustomFilters((current) => {
+      const availableTeamIds = new Set(availableCustomTeams.map((team) => team.team_id))
+      const nextTeams = current.teams.filter((team) => availableTeamIds.has(team))
+      if (nextTeams.length === current.teams.length) {
+        return current
+      }
+      return {
+        ...current,
+        teams: nextTeams,
+      }
+    })
+  }, [availableCustomTeams])
 
   return (
     <main className="page-shell" style={pageShellStyle}>
@@ -400,7 +436,7 @@ function App() {
           <CustomQueryPanel
             customFilters={customFilters}
             availableSeasons={availableSeasons}
-            availableTeams={availableTeams}
+            availableTeams={availableCustomTeams}
             isBootstrapping={isBootstrapping}
             isLoading={isLoading}
             isRawrMetric={isRawrMetric}
@@ -411,7 +447,7 @@ function App() {
             onEndSeasonChange={(season) =>
               setCustomFilters((current) => ({ ...current, endSeason: season }))
             }
-            onToggleAllTeams={() => toggleAllCustomTeams(setCustomFilters, availableTeams)}
+            onToggleAllTeams={() => toggleAllCustomTeams(setCustomFilters, availableCustomTeams)}
             onToggleTeam={(team) => toggleCustomTeam(setCustomFilters, team)}
             onNumberChange={(field, event) => updateCustomNumber(setCustomFilters, field, event)}
             onRunQuery={() => void runCustomQuery()}
@@ -671,23 +707,26 @@ function buildLoadingPhases(
 
 function toggleCustomTeam(
   setCustomFilters: Dispatch<SetStateAction<CustomFilters>>,
-  team: string,
+  teamId: number,
 ) {
   setCustomFilters((current) => ({
     ...current,
-    teams: current.teams.includes(team)
-      ? current.teams.filter((currentTeam) => currentTeam !== team)
-      : [...current.teams, team],
+    teams: current.teams.includes(teamId)
+      ? current.teams.filter((currentTeam) => currentTeam !== teamId)
+      : [...current.teams, teamId],
   }))
 }
 
 function toggleAllCustomTeams(
   setCustomFilters: Dispatch<SetStateAction<CustomFilters>>,
-  availableTeams: string[],
+  availableTeams: TeamOption[],
 ) {
   setCustomFilters((current) => ({
     ...current,
-    teams: current.teams.length === availableTeams.length ? [] : [...availableTeams],
+    teams:
+      current.teams.length === availableTeams.length
+        ? []
+        : availableTeams.map((team) => team.team_id),
   }))
 }
 
@@ -768,12 +807,32 @@ function buildExportUrl({
     params.set('min_games_without', String(customFilters.minGamesWithout))
   }
   for (const team of customFilters.teams) {
-    params.append('team', team)
+    params.append('team_id', String(team))
   }
   for (const season of seasonSpan(customFilters.startSeason, customFilters.endSeason, availableSeasons)) {
     params.append('season', season)
   }
   return `/api/metrics/${metric}/custom-query.csv?${params.toString()}`
+}
+
+function buildAvailableTeamsForSeasonSpan({
+  startSeason,
+  endSeason,
+  availableSeasons,
+  teamOptions,
+}: {
+  startSeason: string
+  endSeason: string
+  availableSeasons: string[]
+  teamOptions: TeamOption[]
+}): TeamOption[] {
+  const seasonsInScope = seasonSpan(startSeason, endSeason, availableSeasons)
+  if (seasonsInScope.length === 0) {
+    return []
+  }
+  return teamOptions.filter((teamOption) =>
+    teamOption.available_seasons.some((season) => seasonsInScope.includes(season)),
+  )
 }
 
 async function fetchJson(url: string): Promise<unknown> {

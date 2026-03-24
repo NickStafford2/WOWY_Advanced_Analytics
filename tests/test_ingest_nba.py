@@ -975,6 +975,86 @@ def test_parse_box_score_payload_skips_historical_out_status_rows_with_null_minu
     ]
 
 
+def test_normalize_source_game_skips_inactive_status_rows_with_missing_name_and_id() -> None:
+    schedule = parse_league_schedule_payload(
+        {
+            "resultSets": [
+                {
+                    "headers": ["GAME_ID", "GAME_DATE", "MATCHUP", "TEAM_ID", "TEAM_ABBREVIATION"],
+                    "rowSet": [["0001", "2003-03-10", "MEM vs. BOS", 1610612763, "MEM"]],
+                },
+            ]
+        },
+        requested_team="MEM",
+        season="2002-03",
+        season_type="Regular Season",
+    )
+    box_score = parse_box_score_payload(
+        {
+            "resultSets": [
+                {
+                    "name": "PlayerStats",
+                    "headers": [
+                        "GAME_ID",
+                        "TEAM_ID",
+                        "TEAM_ABBREVIATION",
+                        "PLAYER_ID",
+                        "PLAYER_NAME",
+                        "MIN",
+                        "COMMENT",
+                        "AST",
+                        "BLK",
+                        "DREB",
+                        "FG3A",
+                        "FG3M",
+                        "FG3_PCT",
+                        "FGA",
+                        "FGM",
+                        "FG_PCT",
+                        "FTA",
+                        "FTM",
+                        "FT_PCT",
+                        "OREB",
+                        "PF",
+                        "PLUS_MINUS",
+                        "PTS",
+                        "REB",
+                        "STL",
+                        "TO",
+                    ],
+                    "rowSet": [
+                        ["0001", 1610612763, "MEM", None, None, None, "DND-SYNCOPE (FAINTED)", None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None],
+                        ["0001", 1610612763, "MEM", 1, "P1", "48:00", "", None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None],
+                        ["0001", 1610612763, "MEM", 2, "P2", "48:00", "", None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None],
+                        ["0001", 1610612763, "MEM", 3, "P3", "48:00", "", None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None],
+                        ["0001", 1610612763, "MEM", 4, "P4", "48:00", "", None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None],
+                        ["0001", 1610612763, "MEM", 5, "P5", "48:00", "", None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None],
+                        ["0001", 1610612738, "BOS", 10, "Opp", "48:00", "", None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None],
+                    ],
+                },
+                {
+                    "name": "TeamStats",
+                    "headers": ["TEAM_ID", "TEAM_ABBREVIATION", "PLUS_MINUS", "PTS"],
+                    "rowSet": [
+                        [1610612763, "MEM", 5, 100],
+                        [1610612738, "BOS", -5, 95],
+                    ],
+                },
+            ]
+        },
+        game_id="0001",
+    )
+
+    _game, players = normalize_source_game(
+        schedule_game=schedule.games[0],
+        box_score=box_score,
+        season="2002-03",
+        season_type="Regular Season",
+    )
+
+    assert [player.player_id for player in players] == [1, 2, 3, 4, 5]
+
+
 def test_parse_league_schedule_payload_raises_with_raw_row_for_conflicting_team_identity() -> None:
     with pytest.raises(
         ValueError,

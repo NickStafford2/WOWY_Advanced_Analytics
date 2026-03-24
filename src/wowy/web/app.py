@@ -41,6 +41,18 @@ def _parse_optional_float(raw_value: str | None, default: float) -> float:
     return float(raw_value)
 
 
+def _parse_positive_int_list(raw_values: list[str]) -> list[int] | None:
+    if not raw_values:
+        return None
+    parsed_values: list[int] = []
+    for raw_value in raw_values:
+        value = int(raw_value)
+        if value <= 0:
+            raise ValueError("team_id values must be positive integers")
+        parsed_values.append(value)
+    return parsed_values
+
+
 def create_app(
     *,
     source_data_dir: Path = DEFAULT_SOURCE_DATA_DIR,
@@ -213,6 +225,7 @@ def _build_metric_player_seasons_payload(
     payload["filters"] = _build_filters_payload(
         metric=metric,
         teams=teams,
+        team_ids=None,
         seasons=seasons,
         season_type=season_type,
         min_sample_size=request.args.get("min_games_with")
@@ -252,6 +265,7 @@ def _build_metric_span_chart_payload(
     payload["filters"] = _build_filters_payload(
         metric=metric,
         teams=teams,
+        team_ids=None,
         seasons=seasons,
         season_type=season_type,
         min_sample_size=request.args.get("min_games_with")
@@ -297,6 +311,7 @@ def _build_cached_metric_leaderboard_payload(
     payload["filters"] = _build_filters_payload(
         metric=metric,
         teams=teams,
+        team_ids=None,
         seasons=seasons,
         season_type=season_type,
         min_sample_size=request.args.get("min_games_with")
@@ -326,11 +341,12 @@ def _build_metric_custom_query_payload(
     season_type = canonicalize_season_type(
         request.args.get("season_type", "Regular Season")
     )
-    teams = request.args.getlist("team") or None
+    team_ids = _parse_positive_int_list(request.args.getlist("team_id"))
     seasons = _parse_request_seasons(request)
     if metric == WOWY_METRIC:
         payload = build_custom_wowy_leaderboard_payload(
-            teams=teams,
+            teams=None,
+            team_ids=team_ids,
             seasons=seasons,
             season_type=season_type,
             top_n=filter_values["top_n"],
@@ -343,7 +359,8 @@ def _build_metric_custom_query_payload(
         )
     elif metric == WOWY_SHRUNK_METRIC:
         payload = build_custom_wowy_shrunk_leaderboard_payload(
-            teams=teams,
+            teams=None,
+            team_ids=team_ids,
             seasons=seasons,
             season_type=season_type,
             top_n=filter_values["top_n"],
@@ -356,7 +373,8 @@ def _build_metric_custom_query_payload(
         )
     elif metric == RAWR_METRIC:
         payload = build_custom_rawr_leaderboard_payload(
-            teams=teams,
+            teams=None,
+            team_ids=team_ids,
             seasons=seasons,
             season_type=season_type,
             top_n=filter_values["top_n"],
@@ -371,7 +389,8 @@ def _build_metric_custom_query_payload(
         raise ValueError(f"Unknown metric: {metric}")
     payload["filters"] = _build_filters_payload(
         metric=metric,
-        teams=teams,
+        teams=None,
+        team_ids=team_ids,
         seasons=seasons,
         season_type=season_type,
         min_sample_size=request.args.get("min_games_with")
@@ -433,11 +452,12 @@ def _build_metric_custom_query_csv(
     season_type = canonicalize_season_type(
         request.args.get("season_type", "Regular Season")
     )
-    teams = request.args.getlist("team") or None
+    team_ids = _parse_positive_int_list(request.args.getlist("team_id"))
     seasons = _parse_request_seasons(request)
     metric_label, table_rows = build_custom_metric_export_table_rows(
         metric,
-        teams=teams,
+        teams=None,
+        team_ids=team_ids,
         seasons=seasons,
         season_type=season_type,
         source_data_dir=source_data_dir,
@@ -546,6 +566,7 @@ def _build_filters_payload(
     *,
     metric: str,
     teams: list[str] | None,
+    team_ids: list[int] | None,
     seasons: list[str] | None,
     season_type: str,
     min_sample_size: str | None,
@@ -558,10 +579,12 @@ def _build_filters_payload(
     defaults = build_metric_default_filters_payload(
         metric,
         teams=teams,
+        team_ids=team_ids,
         season_type=season_type,
     )
     payload = {
         "team": teams,
+        "team_id": team_ids,
         "season": seasons,
         "season_type": season_type,
         "min_average_minutes": _parse_optional_float(

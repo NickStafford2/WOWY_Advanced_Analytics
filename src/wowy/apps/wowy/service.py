@@ -120,11 +120,13 @@ def load_player_minute_stats(
     season_type: str = "Regular Season",
     source_data_dir: Path | None = None,
     player_metrics_db_path: Path = DEFAULT_PLAYER_METRICS_DB_PATH,
+    team_ids: list[int] | None = None,
 ) -> dict[int, tuple[float, float]]:
     """Build minute summaries from the DB-backed normalized cache."""
     _games, game_players = prepare_canonical_scope_records(
         teams=teams,
         seasons=seasons,
+        team_ids=team_ids,
         season_type=season_type,
         source_data_dir=source_data_dir or Path("data/source/nba"),
         player_metrics_db_path=player_metrics_db_path,
@@ -140,6 +142,7 @@ def load_player_season_minute_stats(
     season_type: str = "Regular Season",
     source_data_dir: Path | None = None,
     player_metrics_db_path: Path = DEFAULT_PLAYER_METRICS_DB_PATH,
+    team_ids: list[int] | None = None,
 ) -> dict[tuple[str, int], tuple[float, float]]:
     totals: dict[tuple[str, int], float] = {}
     counts: dict[tuple[str, int], int] = {}
@@ -147,6 +150,7 @@ def load_player_season_minute_stats(
     games, game_players = prepare_canonical_scope_records(
         teams=teams,
         seasons=seasons,
+        team_ids=team_ids,
         season_type=season_type,
         source_data_dir=source_data_dir or Path("data/source/nba"),
         player_metrics_db_path=player_metrics_db_path,
@@ -383,6 +387,7 @@ def prepare_wowy_player_season_records(
     min_games_with: int,
     min_games_without: int,
     player_metrics_db_path: Path = DEFAULT_PLAYER_METRICS_DB_PATH,
+    team_ids: list[int] | None = None,
     min_average_minutes: float | None = None,
     min_total_minutes: float | None = None,
     load_player_names_fn: LoadPlayerNamesFn = load_player_names_from_cache,
@@ -396,6 +401,7 @@ def prepare_wowy_player_season_records(
     games, player_names = prepare_wowy_game_records(
         teams=teams,
         seasons=seasons,
+        team_ids=team_ids,
         season_type=season_type,
         source_data_dir=source_data_dir,
         player_metrics_db_path=player_metrics_db_path,
@@ -404,6 +410,7 @@ def prepare_wowy_player_season_records(
     player_season_minute_stats = load_player_season_minute_stats(
         teams=teams,
         seasons=seasons,
+        team_ids=team_ids,
         season_type=season_type,
         source_data_dir=source_data_dir,
         player_metrics_db_path=player_metrics_db_path,

@@ -119,11 +119,16 @@ def filter_rawr_scope(
     game_players,
     teams: list[str] | None,
     seasons: list[str] | None,
+    team_ids: list[int] | None = None,
 ):
     if not teams and not seasons:
-        return games, game_players
+        if not team_ids:
+            return games, game_players
 
-    normalized_team_ids = {resolve_team_id(team) for team in teams or []}
+    normalized_team_ids = (
+        {int(team_id) for team_id in team_ids or [] if int(team_id) > 0}
+        or {resolve_team_id(team) for team in teams or []}
+    )
     normalized_seasons = set(seasons or [])
     selected_game_ids = {
         game.game_id
@@ -354,12 +359,14 @@ def select_complete_rawr_scope_seasons(
     *,
     teams: list[str] | None,
     seasons: list[str] | None,
+    team_ids: list[int] | None,
     season_type: str,
     player_metrics_db_path: Path,
 ) -> list[str]:
     team_seasons = resolve_team_seasons(
         teams,
         seasons,
+        team_ids=team_ids,
         player_metrics_db_path=player_metrics_db_path,
         season_type=season_type,
     )
@@ -408,6 +415,7 @@ def prepare_rawr_player_season_records(
     *,
     teams: list[str] | None,
     seasons: list[str] | None,
+    team_ids: list[int] | None = None,
     season_type: str,
     source_data_dir: Path,
     min_games: int,
@@ -431,6 +439,7 @@ def prepare_rawr_player_season_records(
     team_seasons = resolve_team_seasons(
         teams,
         seasons,
+        team_ids=team_ids,
         player_metrics_db_path=player_metrics_db_path,
         season_type=season_type,
     )
@@ -441,6 +450,7 @@ def prepare_rawr_player_season_records(
         select_complete_rawr_scope_seasons(
             teams=teams,
             seasons=seasons,
+            team_ids=team_ids,
             season_type=season_type,
             player_metrics_db_path=player_metrics_db_path,
         )
@@ -466,6 +476,7 @@ def prepare_rawr_player_season_records(
                 game_players,
                 teams=sorted(set(teams_by_season[season])),
                 seasons=[season],
+                team_ids=team_ids,
             )
         except ValueError as exc:
             if str(exc) == "No games matched the requested RAWR scope":
@@ -541,6 +552,7 @@ def prepare_and_run_rawr(args) -> str:
     complete_seasons = select_complete_rawr_scope_seasons(
         teams=args.team,
         seasons=args.season,
+        team_ids=None,
         season_type=args.season_type,
         player_metrics_db_path=getattr(
             args,

@@ -10,8 +10,19 @@ from tests.support import (
     player,
     seed_db_from_team_seasons,
 )
-from wowy.data.game_cache_db import replace_team_season_normalized_rows
-from wowy.data.player_metrics_db import load_metric_rows, load_metric_store_metadata
+from wowy.data.game_cache_db import (
+    build_normalized_cache_fingerprint,
+    replace_team_season_normalized_rows,
+)
+from wowy.data.player_metrics_db import (
+    MetricFullSpanPointRow,
+    MetricFullSpanSeriesRow,
+    MetricScopeCatalogRow,
+    PlayerSeasonMetricRow,
+    load_metric_rows,
+    load_metric_store_metadata,
+    replace_metric_scope_store,
+)
 from wowy.web.app import create_app
 from wowy.web.refresh_cli import main as refresh_cli_main
 from wowy.web.service import (
@@ -158,6 +169,41 @@ def _wowy_two_season_seed() -> list[TeamSeasonSeed]:
                 player("4", "BOS", 103, "Player 103", True, 30.0),
                 player("5", "BOS", 101, "Player 101", True, 33.0),
                 player("6", "BOS", 103, "Player 103", True, 30.0),
+            ],
+        ),
+    ]
+
+
+def _wowy_historical_continuity_seed() -> list[TeamSeasonSeed]:
+    return [
+        (
+            "NOH",
+            "2002-03",
+            [
+                game("10", "2002-03", "2003-04-01", "NOH", "BOS", True, 10.0),
+                game("11", "2002-03", "2003-04-03", "NOH", "MIL", False, -5.0),
+                game("12", "2002-03", "2003-04-05", "NOH", "LAL", True, 4.0),
+            ],
+            [
+                player("10", "NOH", 301, "Player 301", True, 36.0),
+                player("10", "NOH", 302, "Player 302", True, 30.0),
+                player("11", "NOH", 302, "Player 302", True, 30.0),
+                player("12", "NOH", 301, "Player 301", True, 34.0),
+            ],
+        ),
+        (
+            "NOP",
+            "2013-14",
+            [
+                game("13", "2013-14", "2014-04-01", "NOP", "LAL", True, 8.0),
+                game("14", "2013-14", "2014-04-03", "NOP", "NYK", False, -2.0),
+                game("15", "2013-14", "2014-04-05", "NOP", "BOS", True, 1.0),
+            ],
+            [
+                player("13", "NOP", 301, "Player 301", True, 35.0),
+                player("13", "NOP", 303, "Player 303", True, 29.0),
+                player("14", "NOP", 301, "Player 301", True, 33.0),
+                player("15", "NOP", 303, "Player 303", True, 29.0),
             ],
         ),
     ]
@@ -461,9 +507,18 @@ def test_wowy_shrunk_options_endpoint_returns_wowy_style_filters(
         "metric": "wowy_shrunk",
         "metric_label": "WOWY Shrunk",
         "available_teams": ["BOS", "NYK"],
+        "team_options": [
+            {"team_id": 1610612738, "label": "BOS", "available_seasons": ["2022-23", "2023-24"]},
+            {"team_id": 1610612752, "label": "NYK", "available_seasons": ["2023-24"]},
+        ],
         "available_seasons": ["2022-23", "2023-24"],
+        "available_teams_by_season": {
+            "2022-23": ["BOS"],
+            "2023-24": ["BOS", "NYK"],
+        },
         "filters": {
             "team": ["BOS"],
+            "team_id": None,
             "season_type": "Regular Season",
             "min_games_with": 15,
             "min_games_without": 2,
@@ -542,9 +597,19 @@ def test_rawr_options_endpoint_returns_metric_specific_filters(
         "metric": "rawr",
         "metric_label": "RAWR",
         "available_teams": ["BOS", "LAL", "MIL", "NYK"],
+        "team_options": [
+            {"team_id": 1610612738, "label": "BOS", "available_seasons": ["2023-24"]},
+            {"team_id": 1610612747, "label": "LAL", "available_seasons": ["2023-24"]},
+            {"team_id": 1610612749, "label": "MIL", "available_seasons": ["2023-24"]},
+            {"team_id": 1610612752, "label": "NYK", "available_seasons": ["2023-24"]},
+        ],
         "available_seasons": ["2023-24"],
+        "available_teams_by_season": {
+            "2023-24": ["BOS", "LAL", "MIL", "NYK"],
+        },
         "filters": {
             "team": ["BOS"],
+            "team_id": None,
             "season_type": "Regular Season",
             "min_games": 35,
             "ridge_alpha": 10.0,
@@ -584,6 +649,7 @@ def test_rawr_player_seasons_endpoint_accepts_metric_specific_filters(
     assert payload["metric_label"] == "RAWR"
     assert payload["filters"] == {
         "team": None,
+        "team_id": None,
         "season": None,
         "season_type": "Regular Season",
         "min_games": 1,
@@ -681,7 +747,7 @@ def test_rawr_custom_query_endpoint_recalculates_requested_span(
     response = client.get(
         "/api/metrics/rawr/custom-query",
         query_string={
-            "team": "BOS",
+            "team_id": "1610612738",
             "season": ["2023-24"],
             "top_n": "3",
             "min_games": "1",
@@ -697,7 +763,8 @@ def test_rawr_custom_query_endpoint_recalculates_requested_span(
     assert payload["metric_label"] == "RAWR"
     assert payload["mode"] == "custom"
     assert payload["filters"] == {
-        "team": ["BOS"],
+        "team": None,
+        "team_id": [1610612738],
         "season": ["2023-24"],
         "season_type": "Regular Season",
         "min_games": 1,
@@ -772,7 +839,7 @@ def test_rawr_custom_query_skips_seasons_without_qualifying_players(
     response = client.get(
         "/api/metrics/rawr/custom-query",
         query_string={
-            "team": "BOS",
+            "team_id": "1610612738",
             "season": ["2023-24", "2024-25"],
             "top_n": "3",
             "min_games": "2",
@@ -785,7 +852,8 @@ def test_rawr_custom_query_skips_seasons_without_qualifying_players(
     assert response.status_code == 200
     payload = response.get_json()
     assert payload["mode"] == "custom"
-    assert payload["filters"]["team"] == ["BOS"]
+    assert payload["filters"]["team"] is None
+    assert payload["filters"]["team_id"] == [1610612738]
     assert payload["filters"]["ridge_alpha"] == 3.0
     assert payload["span"] == {
         "start_season": "2023-24",
@@ -819,9 +887,18 @@ def test_wowy_options_endpoint_returns_cached_teams_and_seasons(
         "metric": "wowy",
         "metric_label": "WOWY",
         "available_teams": ["BOS", "NYK"],
+        "team_options": [
+            {"team_id": 1610612738, "label": "BOS", "available_seasons": ["2022-23", "2023-24"]},
+            {"team_id": 1610612752, "label": "NYK", "available_seasons": ["2023-24"]},
+        ],
         "available_seasons": ["2022-23", "2023-24"],
+        "available_teams_by_season": {
+            "2022-23": ["BOS"],
+            "2023-24": ["BOS", "NYK"],
+        },
         "filters": {
             "team": ["BOS"],
+            "team_id": None,
             "season_type": "Regular Season",
             "min_games_with": 15,
             "min_games_without": 2,
@@ -866,6 +943,7 @@ def test_wowy_player_seasons_endpoint_returns_rows_from_cache(
         "metric_label": "WOWY",
         "filters": {
             "team": ["BOS"],
+            "team_id": None,
             "season": None,
             "season_type": "Regular Season",
             "min_games_with": 1,
@@ -1120,7 +1198,7 @@ def test_wowy_custom_query_endpoint_recalculates_requested_span(
     response = client.get(
         "/api/wowy/custom-query",
         query_string={
-            "team": "BOS",
+            "team_id": "1610612738",
             "season": ["2022-23"],
             "top_n": "5",
             "min_games_with": "1",
@@ -1133,6 +1211,8 @@ def test_wowy_custom_query_endpoint_recalculates_requested_span(
     assert response.status_code == 200
     payload = response.get_json()
     assert payload["mode"] == "custom"
+    assert payload["filters"]["team"] is None
+    assert payload["filters"]["team_id"] == [1610612738]
     assert payload["span"] == {
         "start_season": "2022-23",
         "end_season": "2022-23",
@@ -1190,7 +1270,7 @@ def test_rawr_custom_query_csv_exports_all_players_ignoring_top_n(
     response = client.get(
         "/api/metrics/rawr/custom-query.csv",
         query_string={
-            "team": "BOS",
+            "team_id": "1610612738",
             "season": ["2023-24"],
             "top_n": "1",
             "min_games": "1",
@@ -1225,3 +1305,139 @@ def test_rawr_custom_query_csv_exports_all_players_ignoring_top_n(
         "Player 201",
         "Player 202",
     }
+
+
+def test_wowy_options_endpoint_returns_team_id_team_options_for_frontend(
+    tmp_path: Path,
+    monkeypatch,
+):
+    monkeypatch.setattr(
+        "wowy.nba.prepare.load_player_names_from_cache",
+        lambda _: {301: "Player 301", 302: "Player 302", 303: "Player 303"},
+    )
+    player_metrics_db_path = tmp_path / "app" / "player_metrics.sqlite3"
+    seed_db_from_team_seasons(player_metrics_db_path, _wowy_historical_continuity_seed())
+    scope_key, _team_filter = build_scope_key(
+        teams=None,
+        season_type="Regular Season",
+    )
+    replace_metric_scope_store(
+        player_metrics_db_path,
+        metric=WOWY_METRIC,
+        scope_key=scope_key,
+        metric_label="WOWY",
+        build_version="test-options",
+        source_fingerprint=build_normalized_cache_fingerprint(
+            player_metrics_db_path,
+            season_type="Regular Season",
+        ),
+        rows=[
+            PlayerSeasonMetricRow(
+                metric=WOWY_METRIC,
+                metric_label="WOWY",
+                scope_key=scope_key,
+                team_filter="",
+                season_type="Regular Season",
+                season="2002-03",
+                player_id=301,
+                player_name="Player 301",
+                value=1.0,
+                sample_size=1,
+                secondary_sample_size=1,
+                average_minutes=36.0,
+                total_minutes=36.0,
+                details={},
+            )
+        ],
+        catalog_row=MetricScopeCatalogRow(
+            metric=WOWY_METRIC,
+            scope_key=scope_key,
+            metric_label="WOWY",
+            team_filter="",
+            season_type="Regular Season",
+            available_seasons=["2002-03", "2013-14"],
+            available_teams=["NOH", "NOP"],
+            full_span_start_season="2002-03",
+            full_span_end_season="2013-14",
+            updated_at="2026-03-24T00:00:00+00:00",
+        ),
+        series_rows=[
+            MetricFullSpanSeriesRow(
+                metric=WOWY_METRIC,
+                scope_key=scope_key,
+                player_id=301,
+                player_name="Player 301",
+                span_average_value=1.0,
+                season_count=1,
+                rank_order=1,
+            )
+        ],
+        point_rows=[
+            MetricFullSpanPointRow(
+                metric=WOWY_METRIC,
+                scope_key=scope_key,
+                player_id=301,
+                season="2002-03",
+                value=1.0,
+            )
+        ],
+    )
+
+    app = create_app(
+        source_data_dir=tmp_path / "source",
+        player_metrics_db_path=player_metrics_db_path,
+    )
+    client = app.test_client()
+
+    response = client.get("/api/wowy/options")
+
+    assert response.status_code == 200
+    payload = response.get_json()
+    assert payload["team_options"] == [
+        {"team_id": 1610612740, "label": "NOP", "available_seasons": ["2002-03", "2013-14"]},
+    ]
+
+
+def test_wowy_custom_query_endpoint_accepts_team_id_for_historical_multi_season_scope(
+    tmp_path: Path,
+    monkeypatch,
+):
+    monkeypatch.setattr(
+        "wowy.nba.prepare.load_player_names_from_cache",
+        lambda _: {301: "Player 301", 302: "Player 302", 303: "Player 303"},
+    )
+    seed_db_from_team_seasons(
+        tmp_path / "app" / "player_metrics.sqlite3",
+        _wowy_historical_continuity_seed(),
+    )
+
+    app = create_app(
+        source_data_dir=tmp_path / "source",
+        player_metrics_db_path=tmp_path / "app" / "player_metrics.sqlite3",
+    )
+    client = app.test_client()
+
+    response = client.get(
+        "/api/wowy/custom-query",
+        query_string={
+            "team_id": "1610612740",
+            "season": ["2002-03", "2013-14"],
+            "top_n": "5",
+            "min_games_with": "1",
+            "min_games_without": "1",
+            "min_average_minutes": "0",
+            "min_total_minutes": "0",
+        },
+    )
+
+    assert response.status_code == 200
+    payload = response.get_json()
+    assert payload["filters"]["team"] is None
+    assert payload["filters"]["team_id"] == [1610612740]
+    assert payload["span"] == {
+        "start_season": "2002-03",
+        "end_season": "2013-14",
+        "available_seasons": ["2002-03", "2013-14"],
+        "top_n": 5,
+    }
+    assert {row["player_id"] for row in payload["table_rows"]} == {301, 302, 303}

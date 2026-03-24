@@ -141,6 +141,15 @@ def test_classify_source_player_row_names_all_known_skip_patterns() -> None:
         minutes_raw=None,
         raw_row={"COMMENT": "DN Make Trip - Oral surgery"},
     )
+    inactive_missing_name_and_id = SourceBoxScorePlayer(
+        game_id="0001",
+        team_id=1610612763,
+        team_abbreviation="MEM",
+        player_id=None,
+        player_name="",
+        minutes_raw=None,
+        raw_row={"COMMENT": "DND-SYNCOPE (FAINTED)"},
+    )
     canonical = SourceBoxScorePlayer(
         game_id="0001",
         team_id=1610612763,
@@ -157,6 +166,7 @@ def test_classify_source_player_row_names_all_known_skip_patterns() -> None:
     assert classify_source_player_row(inactive_blank_status) == INACTIVE_PLAYER_STATUS_ROW
     assert classify_source_player_row(inactive_dnt) == INACTIVE_PLAYER_STATUS_ROW
     assert classify_source_player_row(inactive_make_trip) == INACTIVE_PLAYER_STATUS_ROW
+    assert classify_source_player_row(inactive_missing_name_and_id) == INACTIVE_PLAYER_STATUS_ROW
     assert classify_source_player_row(canonical) == CANONICAL_PLAYER_SOURCE_ROW
 
 

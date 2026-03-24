@@ -8,6 +8,20 @@ from wowy.nba.seasons import canonicalize_season_string
 
 @dataclass(frozen=True)
 class TeamHistoryEntry:
+    """
+    One time-bounded public identity of a franchise.
+
+    This is not just a "brand name". It is the specific team identity used in a
+    real historical window:
+
+    - abbreviation used in that era
+    - NBA/source team_id used for rows in that era
+    - season range where that identity was active
+
+    A franchise usually has multiple TeamHistoryEntry values because the same
+    continuity can appear under different public identities over time.
+    """
+
     abbreviation: str
     team_id: int
     franchise_id: str
@@ -101,16 +115,23 @@ for entries in _TEAM_HISTORY_BY_ID.values():
     entries.sort(key=lambda entry: (entry.season_start, entry.season_end or 9999))
 
 for entries in _TEAM_HISTORY_BY_ID.values():
-    latest_entry = max(entries, key=lambda entry: (entry.season_end or 9999, entry.season_start))
+    latest_entry = max(
+        entries, key=lambda entry: (entry.season_end or 9999, entry.season_start)
+    )
     lookup_abbreviation = latest_entry.lookup_abbreviation or latest_entry.abbreviation
-    _TEAM_ID_BY_LOOKUP_ABBREVIATION.setdefault(lookup_abbreviation, latest_entry.team_id)
+    _TEAM_ID_BY_LOOKUP_ABBREVIATION.setdefault(
+        lookup_abbreviation, latest_entry.team_id
+    )
 
 
 def normalize_team_abbreviation(team_abbreviation: str) -> str:
     normalized = team_abbreviation.strip().upper()
     if not normalized:
         raise ValueError(f"Unknown NBA team abbreviation: {team_abbreviation!r}")
-    if normalized not in _LOOKUP_ABBREVIATION_BY_CODE and normalized not in _TEAM_ID_BY_LOOKUP_ABBREVIATION:
+    if (
+        normalized not in _LOOKUP_ABBREVIATION_BY_CODE
+        and normalized not in _TEAM_ID_BY_LOOKUP_ABBREVIATION
+    ):
         raise ValueError(f"Unknown NBA team abbreviation: {team_abbreviation!r}")
     return normalized
 
@@ -217,7 +238,9 @@ def team_is_active_for_season(team_abbreviation: str, season: str) -> bool:
     return True
 
 
-def list_team_history_entries_for_abbreviation(team_abbreviation: str) -> list[TeamHistoryEntry]:
+def list_team_history_entries_for_abbreviation(
+    team_abbreviation: str,
+) -> list[TeamHistoryEntry]:
     normalized = normalize_team_abbreviation(team_abbreviation)
     return list(_TEAM_HISTORY_BY_ABBREVIATION.get(normalized, []))
 
@@ -228,3 +251,14 @@ def resolve_team_id_for_lookup(team_abbreviation: str) -> int:
     if team_id is None:
         raise ValueError(f"Unknown NBA team abbreviation: {team_abbreviation!r}")
     return team_id
+
+
+def official_continuity_label_for_team_id(team_id: int) -> str:
+    entries = _TEAM_HISTORY_BY_ID.get(team_id)
+    if not entries:
+        raise ValueError(f"Unknown NBA team id: {team_id!r}")
+    latest_entry = max(
+        entries,
+        key=lambda entry: (entry.season_end or 9999, entry.season_start),
+    )
+    return latest_entry.lookup_abbreviation or latest_entry.abbreviation

@@ -639,6 +639,82 @@ def test_resolve_team_seasons_keeps_original_hornets_historical_scope(tmp_path: 
     ]
 
 
+def test_resolve_team_seasons_accepts_team_id_for_historical_multi_season_scope(tmp_path: Path):
+    db_path = tmp_path / "app" / "player_metrics.sqlite3"
+
+    replace_team_season_normalized_rows(
+        db_path,
+        team="NOH",
+        season="2002-03",
+        season_type="Regular Season",
+        games=[
+            CanonicalGameRecord(
+                game_id="0001",
+                season="2002-03",
+                game_date="2003-04-01",
+                team="NOH",
+                opponent="BOS",
+                is_home=True,
+                margin=3.0,
+                season_type="Regular Season",
+                source="nba_api",
+            )
+        ],
+        game_players=[
+            CanonicalGamePlayerRecord("0001", "NOH", 101, "Player 101", True, 48.0),
+            CanonicalGamePlayerRecord("0001", "NOH", 102, "Player 102", True, 48.0),
+            CanonicalGamePlayerRecord("0001", "NOH", 103, "Player 103", True, 48.0),
+            CanonicalGamePlayerRecord("0001", "NOH", 104, "Player 104", True, 48.0),
+            CanonicalGamePlayerRecord("0001", "NOH", 105, "Player 105", True, 48.0),
+        ],
+        source_path="sqlite://normalized_games/NOH_2002-03_regular_season",
+        source_snapshot="test",
+        source_kind="unit-test",
+    )
+    replace_team_season_normalized_rows(
+        db_path,
+        team="NOP",
+        season="2013-14",
+        season_type="Regular Season",
+        games=[
+            CanonicalGameRecord(
+                game_id="0002",
+                season="2013-14",
+                game_date="2014-04-01",
+                team="NOP",
+                opponent="LAL",
+                is_home=True,
+                margin=2.0,
+                season_type="Regular Season",
+                source="nba_api",
+            )
+        ],
+        game_players=[
+            CanonicalGamePlayerRecord("0002", "NOP", 102, "Player 102", True, 48.0),
+            CanonicalGamePlayerRecord("0002", "NOP", 103, "Player 103", True, 48.0),
+            CanonicalGamePlayerRecord("0002", "NOP", 104, "Player 104", True, 48.0),
+            CanonicalGamePlayerRecord("0002", "NOP", 105, "Player 105", True, 48.0),
+            CanonicalGamePlayerRecord("0002", "NOP", 106, "Player 106", True, 48.0),
+        ],
+        source_path="sqlite://normalized_games/NOP_2013-14_regular_season",
+        source_snapshot="test",
+        source_kind="unit-test",
+    )
+
+    resolved = resolve_team_seasons(
+        teams=None,
+        seasons=["2002-03", "2013-14"],
+        team_ids=[1610612740],
+        player_metrics_db_path=db_path,
+        season_type="Regular Season",
+    )
+
+    assert resolved == [
+        TeamSeasonScope(team="NOH", season="2002-03", team_id=1610612740),
+        TeamSeasonScope(team="NOP", season="2013-14", team_id=1610612740),
+    ]
+
+
 def test_load_cache_load_row_uses_season_scoped_original_hornets_identity(tmp_path: Path):
     db_path = tmp_path / "app" / "player_metrics.sqlite3"
 
