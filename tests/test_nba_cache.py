@@ -630,6 +630,46 @@ def test_replace_team_season_normalized_rows_rejects_non_canonical_or_implausibl
         )
 
 
+def test_replace_team_season_normalized_rows_rejects_historically_wrong_team_label(
+    tmp_path: Path,
+) -> None:
+    db_path = tmp_path / "app" / "player_metrics.sqlite3"
+
+    with pytest.raises(ValueError, match="Canonical game '0001' has team 'NOP'; expected 'NOH'"):
+        replace_team_season_normalized_rows(
+            db_path,
+            team="NOP",
+            team_id=1610612740,
+            season="2002-03",
+            season_type="Regular Season",
+            games=[
+                CanonicalGameRecord(
+                    game_id="0001",
+                    season="2002-03",
+                    game_date="2003-03-10",
+                    team="NOP",
+                    opponent="BOS",
+                    opponent_team_id=1610612738,
+                    is_home=True,
+                    margin=8.0,
+                    season_type="Regular Season",
+                    source="nba_api",
+                    team_id=1610612740,
+                )
+            ],
+            game_players=[
+                CanonicalGamePlayerRecord("0001", "NOP", 101, "Player 101", True, 48.0, team_id=1610612740),
+                CanonicalGamePlayerRecord("0001", "NOP", 102, "Player 102", True, 48.0, team_id=1610612740),
+                CanonicalGamePlayerRecord("0001", "NOP", 103, "Player 103", True, 48.0, team_id=1610612740),
+                CanonicalGamePlayerRecord("0001", "NOP", 104, "Player 104", True, 48.0, team_id=1610612740),
+                CanonicalGamePlayerRecord("0001", "NOP", 105, "Player 105", True, 48.0, team_id=1610612740),
+            ],
+            source_path="sqlite://normalized_games/NOP_2002-03_regular_season",
+            source_snapshot="test",
+            source_kind="unit-test",
+        )
+
+
 def test_replace_team_season_normalized_rows_rejects_opponent_label_mismatch(
     tmp_path: Path,
 ) -> None:

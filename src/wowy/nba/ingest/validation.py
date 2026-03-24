@@ -15,7 +15,8 @@ from wowy.nba.seasons import canonicalize_season_string
 from wowy.nba.season_types import canonicalize_season_type
 from wowy.nba.team_identity import (
     resolve_team_id,
-    resolve_team_identity_from_id,
+    resolve_team_identity_from_id_and_season,
+    resolve_team_identity_from_id_and_date,
 )
 
 
@@ -32,6 +33,13 @@ def derive_validated_wowy_games(batch: CanonicalTeamSeasonBatch):
 
 
 def _derive_and_validate_canonical_team_season_batch(batch: CanonicalTeamSeasonBatch):
+    expected_batch_identity = resolve_team_identity_from_id_and_season(batch.team_id, batch.season)
+    if batch.team != expected_batch_identity.abbreviation:
+        raise ValueError(
+            f"Canonical batch team {batch.team!r} does not match team_id {batch.team_id!r} "
+            f"for season {batch.season!r}; expected {expected_batch_identity.abbreviation!r}"
+        )
+
     game_keys: set[tuple[str, int]] = set()
     players_by_game_key: dict[tuple[str, int], list[CanonicalGamePlayerRecord]] = defaultdict(list)
 
@@ -103,7 +111,7 @@ def validate_normalized_cache_batch(
 ) -> None:
     batch = CanonicalTeamSeasonBatch(
         team=_canonical_team_abbreviation(team),
-        team_id=team_id or resolve_team_id(team),
+        team_id=team_id or resolve_team_id(team, season=season),
         season=canonicalize_season_string(season),
         season_type=canonicalize_season_type(season_type),
         games=games,
@@ -191,13 +199,21 @@ def _validate_canonical_game(
         raise ValueError(
             f"Canonical game {game.game_id!r} must not use the same team and opponent"
         )
-    if (
-        resolve_team_identity_from_id(game.opponent_team_id).team_id
-        != resolve_team_id(game.opponent, season=game.season)
-    ):
+    expected_team_identity = resolve_team_identity_from_id_and_date(expected_team_id, game.game_date)
+    if game.team != expected_team_identity.abbreviation:
+        raise ValueError(
+            f"Canonical game {game.game_id!r} has team {game.team!r}; "
+            f"expected historical abbreviation {expected_team_identity.abbreviation!r}"
+        )
+    expected_opponent_identity = resolve_team_identity_from_id_and_date(
+        game.opponent_team_id,
+        game.game_date,
+    )
+    if game.opponent != expected_opponent_identity.abbreviation:
         raise ValueError(
             f"Canonical game {game.game_id!r} opponent {game.opponent!r} "
-            f"does not match opponent_team_id {game.opponent_team_id!r}"
+            f"does not match opponent_team_id {game.opponent_team_id!r} "
+            f"for {game.game_date!r}"
         )
     if not _GAME_DATE_PATTERN.fullmatch(game.game_date):
         raise ValueError(f"Canonical game {game.game_id!r} has invalid date {game.game_date!r}")

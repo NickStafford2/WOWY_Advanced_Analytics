@@ -69,7 +69,7 @@ def resolve_team_seasons(
                 target_teams = [
                     TeamSeasonScope(
                         team=team.upper(),
-                        team_id=resolve_team_id(team),
+                        team_id=resolve_team_id(team, season=normalized_seasons[0]),
                         season=normalized_seasons[0],
                     )
                     for team in teams or []
@@ -79,7 +79,7 @@ def resolve_team_seasons(
             target_teams = cached_team_seasons or [
                 TeamSeasonScope(
                     team=team,
-                    team_id=resolve_team_id(team),
+                    team_id=resolve_team_id(team, season=normalized_seasons[0]),
                     season=normalized_seasons[0],
                 )
                 for team in list_expected_team_abbreviations_for_season(normalized_seasons[0])

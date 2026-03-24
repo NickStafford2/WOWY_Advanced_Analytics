@@ -32,10 +32,14 @@ def normalize_source_game(
         team_abbreviation=team_stat.team_abbreviation,
         fallback_team_id=schedule_game.team_id,
         fallback_abbreviation=schedule_game.team_abbreviation,
+        season=season,
+        game_date=schedule_game.game_date,
     )
     opponent_identity = resolve_source_team_identity(
         team_id=opponent_stat.team_id,
         team_abbreviation=opponent_stat.team_abbreviation,
+        season=season,
+        game_date=schedule_game.game_date,
     )
 
     player_rows = [

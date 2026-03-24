@@ -15,7 +15,6 @@ from wowy.nba.season_types import canonicalize_season_type
 from wowy.nba.team_identity import (
     canonical_team_lookup_abbreviation,
     resolve_team_id,
-    resolve_team_identity,
     resolve_team_identity_from_id_and_season,
 )
 from wowy.nba.team_seasons import TeamSeasonScope
@@ -146,19 +145,20 @@ def replace_team_season_normalized_rows(
     initialize_game_cache_db(db_path)
     team = team.upper()
     season = canonicalize_season_string(season)
-    team_id = team_id or resolve_team_id(team)
+    team_id = team_id or resolve_team_id(team, season=season)
+    canonical_team = resolve_team_identity_from_id_and_season(team_id, season).abbreviation
     season_type = canonicalize_season_type(season_type)
     games = [_with_resolved_game_identity(game) for game in games]
     game_players = [
         _with_resolved_player_identity(
             player,
-            default_team=team,
+            default_team=canonical_team,
             season=season,
         )
         for player in game_players
     ]
     validate_normalized_cache_batch(
-        team=team,
+        team=canonical_team,
         team_id=team_id,
         season=season,
         season_type=season_type,
@@ -172,7 +172,7 @@ def replace_team_season_normalized_rows(
         _upsert_team_history_for_scope(
             connection,
             team_id=team_id,
-            team=team,
+            team=canonical_team,
             season=season,
         )
         _upsert_team_history_for_games(connection, games)
@@ -682,8 +682,10 @@ def _resolve_team_ids(teams: list[str] | None) -> list[int]:
 
 
 def _with_resolved_game_identity(game: CanonicalGameRecord) -> CanonicalGameRecord:
-    team_id = game.team_id or resolve_team_id(game.team, season=game.season)
-    opponent_team_id = game.opponent_team_id or resolve_team_id(game.opponent, season=game.season)
+    team_id = game.team_id or resolve_team_id(game.team, game_date=game.game_date)
+    opponent_team_id = (
+        game.opponent_team_id or resolve_team_id(game.opponent, game_date=game.game_date)
+    )
     return CanonicalGameRecord(
         game_id=game.game_id,
         season=game.season,
@@ -724,12 +726,12 @@ def _upsert_team_history_for_scope(
     team: str,
     season: str,
 ) -> None:
-    try:
-        identity = resolve_team_identity(team, season=season)
-    except ValueError:
-        identity = resolve_team_identity_from_id_and_season(team_id, season)
-    if identity.team_id != team_id:
-        identity = resolve_team_identity_from_id_and_season(team_id, season)
+    identity = resolve_team_identity_from_id_and_season(team_id, season)
+    if team.strip().upper() != identity.abbreviation:
+        raise ValueError(
+            f"Team history label {team!r} does not match team_id {team_id!r} "
+            f"for season {season!r}; expected {identity.abbreviation!r}"
+        )
     connection.execute(
         """
         INSERT INTO team_history (

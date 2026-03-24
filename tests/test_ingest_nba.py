@@ -818,7 +818,7 @@ def test_parse_box_score_payload_skips_historical_inactive_status_rows_with_null
 def test_parse_league_schedule_payload_raises_with_raw_row_for_conflicting_team_identity() -> None:
     with pytest.raises(
         ValueError,
-        match='Conflicting source team identity values: TEAM_ID=1610612763 TEAM_ABBREVIATION=\'LAL\'; nba_api_league_schedule_row=',
+        match='Conflicting source team identity values: TEAM_ABBREVIATION=\'LAL\' expected=\'MEM\' for TEAM_ID=1610612763; nba_api_league_schedule_row=',
     ):
         parse_league_schedule_payload(
             {
@@ -830,6 +830,26 @@ def test_parse_league_schedule_payload_raises_with_raw_row_for_conflicting_team_
                 ]
             },
             requested_team="MEM",
+            season="2002-03",
+            season_type="Regular Season",
+        )
+
+
+def test_parse_league_schedule_payload_rejects_historically_wrong_team_label() -> None:
+    with pytest.raises(
+        ValueError,
+        match='TEAM_ABBREVIATION=\'NOP\' expected=\'NOH\' for TEAM_ID=1610612740',
+    ):
+        parse_league_schedule_payload(
+            {
+                "resultSets": [
+                    {
+                        "headers": ["GAME_ID", "GAME_DATE", "MATCHUP", "TEAM_ID", "TEAM_ABBREVIATION"],
+                        "rowSet": [["0001", "2003-03-10", "NOP vs. BOS", 1610612740, "NOP"]],
+                    }
+                ]
+            },
+            requested_team="NOP",
             season="2002-03",
             season_type="Regular Season",
         )

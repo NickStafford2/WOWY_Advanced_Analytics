@@ -77,6 +77,8 @@ def parse_league_schedule_payload(
             resolve_source_team_identity(
                 team_id=team_id,
                 team_abbreviation=team_abbreviation,
+                season=season,
+                game_date=game_date,
             )
         except ValueError as exc:
             raise ValueError(

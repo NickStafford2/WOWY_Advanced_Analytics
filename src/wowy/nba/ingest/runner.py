@@ -87,7 +87,7 @@ def ingest_team_season(
     season = canonicalize_season_string(season)
     season_type = canonicalize_season_type(season_type)
     requested_team = team_abbreviation.strip().upper()
-    requested_team_id = resolve_team_id(requested_team)
+    requested_team_id = resolve_team_id(requested_team, season=season)
 
     league_games_payload, league_games_source = _load_team_season_payload(
         team_abbreviation=requested_team,
@@ -264,7 +264,7 @@ def cache_team_season_data(
         progress=progress,
         cached_only=cached_only,
     )
-    team_id = resolve_team_id(team_abbreviation)
+    team_id = resolve_team_id(team_abbreviation, season=season)
     normalized_games_source_path = (
         f"sqlite://normalized_games/"
         f"{team_abbreviation.upper()}_{season}_{season_type_slug(season_type)}"
