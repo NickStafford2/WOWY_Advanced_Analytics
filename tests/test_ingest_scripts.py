@@ -58,6 +58,7 @@ def test_cache_season_data_continues_after_team_failure(monkeypatch, capsys):
     assert exit_code == 1
     assert calls == ["BOS", "LAL"]
     assert logged_failures == [("BOS", "fetch_error")]
+    assert "ERROR: season cache finished with 1 failed team-seasons" in captured.err
     assert "Completed with failures across 1 team-seasons: fetch_error=1" in captured.err
     assert "Failed scopes: BOS 2023-24" in captured.err
 

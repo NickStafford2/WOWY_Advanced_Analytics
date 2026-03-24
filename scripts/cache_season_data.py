@@ -462,13 +462,20 @@ def _render_failure_summary(
     failure_counts: dict[str, int],
     failed_scopes: list[str],
 ) -> None:
+    total_failures = len(failed_scopes)
     summary = ", ".join(
         f"{kind}={count}" for kind, count in sorted(failure_counts.items())
     )
     scope_preview = ", ".join(failed_scopes[:10])
     suffix = "" if len(failed_scopes) <= 10 else ", ..."
+    banner = "!" * 72
+    sys.stderr.write(f"{banner}\n")
     sys.stderr.write(
-        f"Completed with failures across {len(failed_scopes)} team-seasons: {summary}\n"
+        f"ERROR: season cache finished with {total_failures} failed team-seasons\n"
+    )
+    sys.stderr.write(f"{banner}\n")
+    sys.stderr.write(
+        f"Completed with failures across {total_failures} team-seasons: {summary}\n"
     )
     sys.stderr.write(f"Failed scopes: {scope_preview}{suffix}\n")
     sys.stderr.flush()
