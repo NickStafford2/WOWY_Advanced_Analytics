@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import pytest
 
-from wowy.nba.normalize import extract_is_home, extract_opponent, normalize_source_game
+from wowy.nba.ingest.normalize import extract_is_home, extract_opponent, normalize_source_game
 from wowy.nba.source_models import (
     SourceBoxScore,
     SourceBoxScorePlayer,

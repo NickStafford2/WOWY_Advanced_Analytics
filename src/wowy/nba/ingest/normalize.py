@@ -4,7 +4,7 @@ from wowy.nba.models import CanonicalGamePlayerRecord, CanonicalGameRecord
 from wowy.nba.seasons import canonicalize_season_string
 from wowy.nba.season_types import canonicalize_season_type
 from wowy.nba.source_models import SourceBoxScore, SourceBoxScorePlayer, SourceBoxScoreTeam, SourceLeagueGame
-from wowy.nba.source_rules import (
+from wowy.nba.ingest.source_rules import (
     classify_source_player_row,
     format_source_row,
     format_source_rows,

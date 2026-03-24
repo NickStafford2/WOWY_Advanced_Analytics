@@ -13,7 +13,7 @@ from wowy.nba.seasons import canonicalize_season_string
 from wowy.nba.season_types import canonicalize_season_type
 from wowy.nba.team_identity import resolve_team_id
 from wowy.nba.team_seasons import TeamSeasonScope
-from wowy.nba.validation import validate_normalized_cache_batch
+from wowy.nba.ingest.validation import validate_normalized_cache_batch
 
 GAME_CACHE_BUILD_VERSION = "normalized-cache-v1"
 REGULAR_SEASON = "Regular Season"

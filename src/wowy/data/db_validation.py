@@ -28,7 +28,7 @@ from wowy.nba.models import CanonicalGamePlayerRecord, CanonicalGameRecord
 from wowy.nba.seasons import canonicalize_season_string
 from wowy.nba.season_types import canonicalize_season_type
 from wowy.nba.team_identity import resolve_team_id
-from wowy.nba.validation import (
+from wowy.nba.ingest.validation import (
     _canonical_team_abbreviation,
     _validate_canonical_game,
     _validate_canonical_game_player,

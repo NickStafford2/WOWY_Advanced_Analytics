@@ -5,7 +5,7 @@ from pathlib import Path
 
 import pytest
 
-from wowy.nba.parsers import (
+from wowy.nba.ingest.parsers import (
     load_player_names_from_cache,
     parse_box_score_payload,
     parse_league_schedule_payload,

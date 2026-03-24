@@ -24,12 +24,13 @@ The ingest flow is intentionally split into stages:
 
 Current module split:
 
-- `cache.py`: fetch and cached payload management
-- `parsers.py`: raw payload to source-model parsing
-- `source_rules.py`: known source-row classifications and raw numeric/minutes parsing
-- `normalize.py`: source-model to canonical-record normalization
-- `ingest.py`: team-season orchestration, failure aggregation, persistence handoff
-- `validation.py`: canonical batch invariants and post-normalization consistency checks
+- `ingest/cache.py`: fetch and cached payload management
+- `ingest/parsers.py`: raw payload to source-model parsing
+- `ingest/source_rules.py`: known source-row classifications and raw numeric/minutes parsing
+- `ingest/normalize.py`: source-model to canonical-record normalization
+- `ingest/runner.py`: team-season orchestration, failure aggregation, persistence handoff
+- `ingest/validation.py`: canonical batch invariants and post-normalization consistency checks
+- `ingest/__init__.py`: public ingest package entrypoint
 - `team_identity.py`: stable team ID and alias reconciliation
 
 Team identity reconciliation and historical alias handling should stay centralized in this layer rather than being repeated across parse, normalize, validation, and DB code.

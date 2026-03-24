@@ -6,14 +6,14 @@ import pytest
 
 from wowy.nba.errors import PartialTeamSeasonError
 from wowy.nba.ingest import build_team_season_artifacts
-from wowy.nba.normalize import normalize_source_game
-from wowy.nba.parsers import (
+from wowy.nba.ingest.normalize import normalize_source_game
+from wowy.nba.ingest.parsers import (
     dedupe_schedule_games,
     parse_box_score_payload,
     parse_league_schedule_payload,
 )
 from wowy.nba.source_models import SourceBoxScorePlayer, SourceBoxScoreTeam, SourceLeagueGame
-from wowy.nba.source_rules import (
+from wowy.nba.ingest.source_rules import (
     CANONICAL_SCHEDULE_SOURCE_ROW,
     CANONICAL_TEAM_SOURCE_ROW,
     INACTIVE_PLAYER_STATUS_ROW,

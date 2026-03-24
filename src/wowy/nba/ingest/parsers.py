@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from wowy.nba.cache import load_cached_payload
+from wowy.nba.ingest.cache import load_cached_payload
 from wowy.nba.seasons import canonicalize_season_string
 from wowy.nba.season_types import canonicalize_season_type
 from wowy.nba.source_models import (
@@ -12,7 +12,7 @@ from wowy.nba.source_models import (
     SourceLeagueGame,
     SourceLeagueSchedule,
 )
-from wowy.nba.source_rules import (
+from wowy.nba.ingest.source_rules import (
     classify_source_player_row,
     classify_source_schedule_row,
     classify_source_team_row,

@@ -5,7 +5,7 @@ import math
 import pytest
 
 from wowy.nba.source_models import SourceBoxScorePlayer, SourceBoxScoreTeam
-from wowy.nba.source_rules import (
+from wowy.nba.ingest.source_rules import (
     CANONICAL_PLAYER_SOURCE_ROW,
     CANONICAL_SCHEDULE_SOURCE_ROW,
     CANONICAL_TEAM_SOURCE_ROW,
