@@ -21,7 +21,6 @@ from wowy.nba.ingest_logging import (
 )
 from wowy.nba.seasons import canonicalize_season_string
 from wowy.nba.season_types import canonicalize_season_type
-from wowy.nba.team_seasons import TeamSeasonScope
 
 
 _LAST_STATUS_LINE_LENGTH = 0
@@ -228,11 +227,13 @@ def main(argv: list[str] | None = None) -> int:
     team_codes = resolve_teams(args.teams)
     team_total = len(team_codes)
     season_count = len(seasons)
+    failure_counts: dict[str, int] = {}
+    failed_scopes: list[str] = []
     for season_index, season in enumerate(seasons, start=1):
         if season_count > 1:
             print(f"[{season_index}/{season_count}] caching {season}")
         for team_index, team_code in enumerate(team_codes, start=1):
-            team_season = TeamSeasonScope(team=team_code, season=season)
+            team_season_scope = f"{team_code} {season}"
             try:
                 summary = cache_team_season_data(
                     team_abbreviation=team_code,
@@ -248,6 +249,12 @@ def main(argv: list[str] | None = None) -> int:
                     ),
                 )
             except FetchError as exc:
+                _record_failure(
+                    failure_counts,
+                    failed_scopes,
+                    failure_kind="fetch_error",
+                    scope=team_season_scope,
+                )
                 append_ingest_failure_log(
                     team=team_code,
                     season=season,
@@ -266,8 +273,14 @@ def main(argv: list[str] | None = None) -> int:
                 sys.stdout.write("\n")
                 sys.stderr.write(f"Fetch failed for {team_code} {season}: {exc}\n")
                 sys.stderr.flush()
-                return 1
+                continue
             except TeamSeasonConsistencyError as exc:
+                _record_failure(
+                    failure_counts,
+                    failed_scopes,
+                    failure_kind="consistency_error",
+                    scope=team_season_scope,
+                )
                 append_ingest_failure_log(
                     team=team_code,
                     season=season,
@@ -288,8 +301,14 @@ def main(argv: list[str] | None = None) -> int:
                     f"Inconsistent cache for {team_code} {season}: {exc.reason}\n"
                 )
                 sys.stderr.flush()
-                return 1
+                continue
             except PartialTeamSeasonError as exc:
+                _record_failure(
+                    failure_counts,
+                    failed_scopes,
+                    failure_kind="partial_scope_error",
+                    scope=team_season_scope,
+                )
                 append_ingest_failure_log(
                     team=team_code,
                     season=season,
@@ -313,8 +332,14 @@ def main(argv: list[str] | None = None) -> int:
                 )
                 sys.stderr.write(f"{render_partial_failure_details(exc)}\n")
                 sys.stderr.flush()
-                return 1
+                continue
             except ValueError as exc:
+                _record_failure(
+                    failure_counts,
+                    failed_scopes,
+                    failure_kind="validation_error",
+                    scope=team_season_scope,
+                )
                 append_ingest_failure_log(
                     team=team_code,
                     season=season,
@@ -334,10 +359,44 @@ def main(argv: list[str] | None = None) -> int:
                     f"Validation failed for {team_code} {season}: {exc}\n"
                 )
                 sys.stderr.flush()
-                return 1
+                continue
             render_team_complete_line(team_index, team_total, summary)
             sys.stdout.write("\n")
+    if failure_counts:
+        _render_failure_summary(
+            failure_counts=failure_counts,
+            failed_scopes=failed_scopes,
+        )
+        return 1
     return 0
+
+
+def _record_failure(
+    failure_counts: dict[str, int],
+    failed_scopes: list[str],
+    *,
+    failure_kind: str,
+    scope: str,
+) -> None:
+    failure_counts[failure_kind] = failure_counts.get(failure_kind, 0) + 1
+    failed_scopes.append(scope)
+
+
+def _render_failure_summary(
+    *,
+    failure_counts: dict[str, int],
+    failed_scopes: list[str],
+) -> None:
+    summary = ", ".join(
+        f"{kind}={count}" for kind, count in sorted(failure_counts.items())
+    )
+    scope_preview = ", ".join(failed_scopes[:10])
+    suffix = "" if len(failed_scopes) <= 10 else ", ..."
+    sys.stderr.write(
+        f"Completed with failures across {len(failed_scopes)} team-seasons: {summary}\n"
+    )
+    sys.stderr.write(f"Failed scopes: {scope_preview}{suffix}\n")
+    sys.stderr.flush()
 
 
 def run(argv: list[str] | None = None) -> int:

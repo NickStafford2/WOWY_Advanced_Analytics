@@ -45,6 +45,24 @@ def test_load_cached_payload_ignores_corrupt_json(tmp_path: Path):
     assert load_cached_payload(cache_path) is None
 
 
+def test_load_cached_payload_discards_corrupt_json_file(tmp_path: Path):
+    cache_path = tmp_path / "cache" / "payload.json"
+    cache_path.parent.mkdir(parents=True, exist_ok=True)
+    cache_path.write_text('{"value": ', encoding="utf-8")
+
+    assert load_cached_payload(cache_path) is None
+    assert not cache_path.exists()
+
+
+def test_load_cached_payload_discards_non_object_json_file(tmp_path: Path):
+    cache_path = tmp_path / "cache" / "payload.json"
+    cache_path.parent.mkdir(parents=True, exist_ok=True)
+    cache_path.write_text('["not", "an", "object"]', encoding="utf-8")
+
+    assert load_cached_payload(cache_path) is None
+    assert not cache_path.exists()
+
+
 def test_load_or_fetch_league_games_retries_and_caches(tmp_path: Path, monkeypatch):
     calls: list[int] = []
     sleeps: list[float] = []
@@ -158,6 +176,49 @@ def test_load_or_fetch_league_games_raises_typed_fetch_error_after_retries(
 
     assert len(calls) == 3
     assert sleeps == [0.6, 2.0, 0.6, 4.0, 0.6]
+
+
+def test_load_or_fetch_league_games_discards_empty_cached_payload_and_refetches(
+    tmp_path: Path,
+    monkeypatch,
+):
+    cache_path = league_games_cache_path(
+        team_abbreviation="BOS",
+        season="2023-24",
+        season_type="Regular Season",
+        source_data_dir=tmp_path,
+    )
+    write_cached_payload(cache_path, {"resultSets": [{"headers": ["GAME_ID"], "rowSet": []}]})
+
+    calls: list[int] = []
+
+    class FakeLeagueGameFinder:
+        def __init__(self, **kwargs):
+            assert kwargs["timeout"] == LEAGUE_GAMES_REQUEST_TIMEOUT_SECONDS
+            calls.append(1)
+
+        def get_dict(self):
+            return {"resultSets": [{"headers": ["GAME_ID"], "rowSet": [["0003"]]}]}
+
+    monkeypatch.setattr(
+        "wowy.nba.ingest.cache.leaguegamefinder.LeagueGameFinder",
+        FakeLeagueGameFinder,
+    )
+    monkeypatch.setattr("wowy.nba.ingest.cache.time.sleep", lambda _: None)
+
+    payload, source = load_or_fetch_league_games_with_source(
+        team_id=1610612738,
+        team_abbreviation="BOS",
+        season="2023-24",
+        season_type="Regular Season",
+        source_data_dir=tmp_path,
+        log=None,
+    )
+
+    assert source == "fetched"
+    assert payload["resultSets"][0]["rowSet"] == [["0003"]]
+    assert calls == [1]
+    assert json.loads(cache_path.read_text(encoding="utf-8")) == payload
 
 
 def test_load_or_fetch_box_score_reports_cache_source(tmp_path: Path, monkeypatch):
@@ -392,6 +453,49 @@ def test_load_or_fetch_box_score_raises_typed_fetch_error_after_retries(
 
     assert calls == ["0002", "0002", "0002", "0002", "0002"]
     assert sleeps == [0.6, 2.0, 0.6, 4.0, 0.6, 6.0, 0.6, 8.0, 0.6]
+
+
+def test_load_or_fetch_box_score_discards_empty_cached_payload_and_refetches(
+    tmp_path: Path,
+    monkeypatch,
+):
+    cache_path = tmp_path / "boxscores" / "0009_boxscoretraditionalv2.json"
+    write_cached_payload(
+        cache_path,
+        {
+            "resultSets": [
+                {"name": "PlayerStats", "headers": ["A"], "rowSet": []},
+                {"name": "TeamStats", "headers": ["B"], "rowSet": []},
+            ]
+        },
+    )
+
+    calls: list[str] = []
+
+    class FakeBoxScoreTraditionalV2:
+        def __init__(self, game_id: str, timeout: int):
+            assert timeout == BOX_SCORE_REQUEST_TIMEOUT_SECONDS
+            calls.append(game_id)
+
+        def get_dict(self):
+            return {"resultSets": [{"headers": ["A"], "rowSet": [[1]]}]}
+
+    monkeypatch.setattr(
+        "wowy.nba.ingest.cache.boxscoretraditionalv2.BoxScoreTraditionalV2",
+        FakeBoxScoreTraditionalV2,
+    )
+    monkeypatch.setattr("wowy.nba.ingest.cache.time.sleep", lambda _: None)
+
+    payload, source = load_or_fetch_box_score_with_source(
+        game_id="0009",
+        source_data_dir=tmp_path,
+        log=None,
+    )
+
+    assert source == "fetched"
+    assert payload["resultSets"][0]["rowSet"] == [[1]]
+    assert calls == ["0009"]
+    assert json.loads(cache_path.read_text(encoding="utf-8")) == payload
 
 
 def test_canonicalize_season_type_accepts_common_aliases():

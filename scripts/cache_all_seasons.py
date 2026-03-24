@@ -80,31 +80,40 @@ def main(argv: list[str] | None = None) -> int:
 
     seasons = build_season_strings(args.start_year, args.first_year)
     total = len(seasons)
+    failed_seasons: list[str] = []
     for index, season in enumerate(seasons, start=1):
         print(f"[{index}/{total}] caching {season}")
-        subprocess.run(
-            build_command(
-                season=season,
-                season_type=args.season_type,
-                teams=args.teams,
-                skip_combine=args.skip_combine,
-            ),
-            check=True,
-        )
+        try:
+            subprocess.run(
+                build_command(
+                    season=season,
+                    season_type=args.season_type,
+                    teams=args.teams,
+                    skip_combine=args.skip_combine,
+                ),
+                check=True,
+            )
+        except subprocess.CalledProcessError as exc:
+            failed_seasons.append(season)
+            sys.stderr.write(
+                f"Season caching failed for {season} with exit status {exc.returncode}.\n"
+            )
+            sys.stderr.flush()
+            continue
 
+    if failed_seasons:
+        sys.stderr.write(
+            f"Completed with failures in {len(failed_seasons)}/{total} seasons: "
+            f"{', '.join(failed_seasons)}\n"
+        )
+        sys.stderr.flush()
+        return 1
     return 0
 
 
 def run(argv: list[str] | None = None) -> int:
     try:
         return main(argv)
-    except subprocess.CalledProcessError as exc:
-        sys.stderr.write(
-            f"Season caching failed for command {' '.join(exc.cmd)} "
-            f"with exit status {exc.returncode}.\n"
-        )
-        sys.stderr.flush()
-        return exc.returncode
     except KeyboardInterrupt:
         sys.stderr.write("\nInterrupted. Shutting down cleanly.\n")
         sys.stderr.flush()

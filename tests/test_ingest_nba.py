@@ -104,6 +104,84 @@ def test_latest_cached_scope_is_explicitly_reported_if_partial() -> None:
         return
 
 
+def test_ingest_team_season_cached_only_rejects_empty_cached_box_score(
+    tmp_path: Path,
+) -> None:
+    team_season_dir = tmp_path / "team_seasons"
+    team_season_dir.mkdir(parents=True, exist_ok=True)
+    (team_season_dir / "BOS_2023-24_regular_season_leaguegamefinder.json").write_text(
+        """
+        {
+          "resultSets": [
+            {
+              "headers": ["GAME_ID", "GAME_DATE", "MATCHUP", "TEAM_ID", "TEAM_ABBREVIATION"],
+              "rowSet": [["0001", "2024-01-01", "BOS vs. LAL", 1610612738, "BOS"]]
+            }
+          ]
+        }
+        """.strip(),
+        encoding="utf-8",
+    )
+    boxscores_dir = tmp_path / "boxscores"
+    boxscores_dir.mkdir(parents=True, exist_ok=True)
+    (boxscores_dir / "0001_boxscoretraditionalv2.json").write_text(
+        """
+        {
+          "resultSets": [
+            {"name": "PlayerStats", "headers": ["A"], "rowSet": []},
+            {"name": "TeamStats", "headers": ["B"], "rowSet": []}
+          ]
+        }
+        """.strip(),
+        encoding="utf-8",
+    )
+
+    with pytest.raises(PartialTeamSeasonError) as exc_info:
+        ingest_team_season(
+            team_abbreviation="BOS",
+            season="2023-24",
+            source_data_dir=tmp_path,
+            log=None,
+            cached_only=True,
+        )
+
+    assert exc_info.value.failed_game_ids == ["0001"]
+    assert "Missing valid cached box score payload" in exc_info.value.failed_game_details[0].message
+    assert not (boxscores_dir / "0001_boxscoretraditionalv2.json").exists()
+
+
+def test_ingest_team_season_cached_only_rejects_empty_cached_league_games(
+    tmp_path: Path,
+) -> None:
+    team_season_dir = tmp_path / "team_seasons"
+    team_season_dir.mkdir(parents=True, exist_ok=True)
+    league_games_path = team_season_dir / "BOS_2023-24_regular_season_leaguegamefinder.json"
+    league_games_path.write_text(
+        """
+        {
+          "resultSets": [
+            {
+              "headers": ["GAME_ID", "GAME_DATE", "MATCHUP", "TEAM_ID", "TEAM_ABBREVIATION"],
+              "rowSet": []
+            }
+          ]
+        }
+        """.strip(),
+        encoding="utf-8",
+    )
+
+    with pytest.raises(ValueError, match="Missing valid cached league games payload"):
+        ingest_team_season(
+            team_abbreviation="BOS",
+            season="2023-24",
+            source_data_dir=tmp_path,
+            log=None,
+            cached_only=True,
+        )
+
+    assert not league_games_path.exists()
+
+
 def test_normalize_source_game_skips_sentinel_player_id_zero_rows() -> None:
     schedule = parse_league_schedule_payload(
         {

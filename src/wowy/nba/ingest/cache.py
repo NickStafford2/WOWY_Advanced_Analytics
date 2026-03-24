@@ -28,6 +28,7 @@ BOX_SCORE_RETRY_BACKOFF_SECONDS = 2.0
 BOX_SCORE_REQUEST_DELAY_SECONDS = 0.6
 BOX_SCORE_REQUEST_TIMEOUT_SECONDS = 60
 LogFn = Callable[[str], None]
+PayloadValidator = Callable[[dict], bool]
 
 
 def load_or_fetch_league_games_with_source(
@@ -46,7 +47,11 @@ def load_or_fetch_league_games_with_source(
         season_type=season_type,
         source_data_dir=source_data_dir,
     )
-    cached_payload = load_cached_payload(cache_path)
+    cached_payload = load_cached_payload(
+        cache_path,
+        validator=_league_games_payload_is_valid,
+        log=log,
+    )
     if cached_payload is not None:
         return cached_payload, "cached"
 
@@ -67,9 +72,14 @@ def load_or_fetch_league_games_with_source(
                 timeout=LEAGUE_GAMES_REQUEST_TIMEOUT_SECONDS,
             )
             payload = finder.get_dict()
+            if not _league_games_payload_is_valid(payload):
+                raise ValueError(
+                    f"League games endpoint returned empty data for "
+                    f"{team_abbreviation} {season} {season_type}"
+                )
             write_cached_payload(cache_path, payload)
             return payload, "fetched"
-        except (json.JSONDecodeError, RequestException) as exc:
+        except (json.JSONDecodeError, RequestException, ValueError) as exc:
             last_error = exc
             if attempt == LEAGUE_GAMES_REQUEST_RETRIES:
                 break
@@ -122,10 +132,12 @@ def load_or_fetch_box_score_with_source(
     log: LogFn | None = print,
 ) -> tuple[dict, str]:
     for cache_path in box_score_cache_paths(game_id, source_data_dir=source_data_dir):
-        cached_payload = load_cached_payload(cache_path)
+        cached_payload = load_cached_payload(
+            cache_path,
+            validator=lambda payload: not _box_score_payload_is_empty(payload),
+            log=log,
+        )
         if cached_payload is None:
-            continue
-        if _box_score_payload_is_empty(cached_payload):
             continue
         return cached_payload, "cached"
 
@@ -174,20 +186,13 @@ def load_or_fetch_box_score_with_source(
                 v3_payload,
             )
             return v3_payload, "fetched"
-        except (json.JSONDecodeError, RequestException) as exc:
-            last_error = exc
-            if attempt == BOX_SCORE_REQUEST_RETRIES:
-                break
-            time.sleep(BOX_SCORE_RETRY_BACKOFF_SECONDS * attempt)
-        except ValueError as exc:
+        except (json.JSONDecodeError, RequestException, ValueError) as exc:
             last_error = exc
             if attempt == BOX_SCORE_REQUEST_RETRIES:
                 break
             time.sleep(BOX_SCORE_RETRY_BACKOFF_SECONDS * attempt)
 
     if last_error is not None:
-        if isinstance(last_error, ValueError):
-            raise last_error
         raise BoxScoreFetchError(
             message=(
                 f"Failed to fetch box score for game {game_id} after "
@@ -250,15 +255,51 @@ def box_score_cache_paths(game_id: str, source_data_dir: Path) -> tuple[Path, Pa
     )
 
 
-def load_cached_payload(cache_path: Path) -> dict | None:
+def load_cached_payload(
+    cache_path: Path,
+    *,
+    validator: PayloadValidator | None = None,
+    log: LogFn | None = None,
+) -> dict | None:
+    return _load_cached_payload(cache_path, validator=validator, log=log)
+
+
+def _load_cached_payload(
+    cache_path: Path,
+    *,
+    validator: PayloadValidator | None = None,
+    log: LogFn | None = None,
+) -> dict | None:
     if not cache_path.exists():
         return None
 
     try:
         with open(cache_path, "r", encoding="utf-8") as f:
-            return json.load(f)
-    except json.JSONDecodeError:
+            payload = json.load(f)
+    except (json.JSONDecodeError, OSError) as exc:
+        _discard_invalid_cached_payload(
+            cache_path,
+            reason=f"{type(exc).__name__}: {exc}",
+            log=log,
+        )
         return None
+
+    if not isinstance(payload, dict):
+        _discard_invalid_cached_payload(
+            cache_path,
+            reason=f"invalid_payload_type={type(payload).__name__}",
+            log=log,
+        )
+        return None
+
+    if validator is not None and not validator(payload):
+        _discard_invalid_cached_payload(
+            cache_path,
+            reason="invalid_or_empty_payload",
+            log=log,
+        )
+        return None
+    return payload
 
 
 def write_cached_payload(cache_path: Path, payload: dict) -> None:
@@ -301,3 +342,46 @@ def _box_score_payload_is_empty(payload: dict) -> bool:
         team_rows = result_sets.get("TeamStats", {}).get("data", [])
         return len(player_rows) == 0 or len(team_rows) == 0
     return True
+
+
+def _league_games_payload_is_valid(payload: dict) -> bool:
+    result_sets = payload.get("resultSets")
+    if isinstance(result_sets, list):
+        for result_set in result_sets:
+            if not isinstance(result_set, dict):
+                continue
+            row_set = result_set.get("rowSet", [])
+            if len(row_set) > 0:
+                return True
+        return False
+    if isinstance(result_sets, dict):
+        for result_set in result_sets.values():
+            if not isinstance(result_set, dict):
+                continue
+            if len(result_set.get("rowSet", [])) > 0:
+                return True
+            if len(result_set.get("data", [])) > 0:
+                return True
+        return False
+    return False
+
+
+def _discard_invalid_cached_payload(
+    cache_path: Path,
+    *,
+    reason: str,
+    log: LogFn | None,
+) -> None:
+    try:
+        cache_path.unlink()
+    except FileNotFoundError:
+        return
+    except OSError as exc:
+        if log is not None:
+            log(
+                f"cache discard failed path={cache_path} "
+                f"reason={reason} unlink_error={type(exc).__name__}: {exc}"
+            )
+        return
+    if log is not None:
+        log(f"cache discard path={cache_path} reason={reason}")

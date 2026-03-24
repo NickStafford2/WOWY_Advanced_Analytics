@@ -12,6 +12,8 @@ from wowy.nba.build_models import (
 )
 from wowy.nba.ingest.cache import (
     DEFAULT_SOURCE_DATA_DIR,
+    _box_score_payload_is_empty,
+    _league_games_payload_is_valid,
     box_score_cache_paths,
     league_games_cache_path,
     load_cached_payload,
@@ -330,9 +332,13 @@ def _load_team_season_payload(
         season_type=season_type,
         source_data_dir=source_data_dir,
     )
-    cached_payload = load_cached_payload(cache_path)
+    cached_payload = load_cached_payload(
+        cache_path,
+        validator=_league_games_payload_is_valid,
+        log=log,
+    )
     if cached_payload is None:
-        raise ValueError(f"Missing cached league games payload: {cache_path}")
+        raise ValueError(f"Missing valid cached league games payload: {cache_path}")
     return cached_payload, "cached"
 
 
@@ -351,10 +357,14 @@ def _load_box_score_payload(
         )
 
     for cache_path in box_score_cache_paths(game_id, source_data_dir=source_data_dir):
-        cached_payload = load_cached_payload(cache_path)
+        cached_payload = load_cached_payload(
+            cache_path,
+            validator=lambda payload: not _box_score_payload_is_empty(payload),
+            log=log,
+        )
         if cached_payload is not None:
             return cached_payload, "cached"
-    raise ValueError(f"Missing cached box score payload for game {game_id!r}")
+    raise ValueError(f"Missing valid cached box score payload for game {game_id!r}")
 
 
 def _record_game_failure(
