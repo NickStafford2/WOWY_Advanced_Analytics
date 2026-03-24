@@ -8,8 +8,8 @@ from pathlib import Path
 from wowy.data.player_metrics_db import DEFAULT_PLAYER_METRICS_DB_PATH
 
 
-DEFAULT_START_YEAR = 2024
-DEFAULT_FIRST_YEAR = 2016
+DEFAULT_START_YEAR = 2025
+DEFAULT_FIRST_YEAR = 2001
 
 
 def build_parser() -> argparse.ArgumentParser:
