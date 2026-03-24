@@ -4,8 +4,6 @@ import argparse
 import sys
 from pathlib import Path
 
-from nba_api.stats.static import teams as nba_teams
-
 from wowy.nba.ingest import (
     DEFAULT_SOURCE_DATA_DIR,
     cache_team_season_data,
@@ -21,6 +19,10 @@ from wowy.nba.ingest_logging import (
 )
 from wowy.nba.seasons import canonicalize_season_string
 from wowy.nba.season_types import canonicalize_season_type
+from wowy.nba.team_identity import (
+    list_expected_team_abbreviations_for_season,
+    team_is_active_for_season,
+)
 
 
 _LAST_STATUS_LINE_LENGTH = 0
@@ -99,10 +101,10 @@ def build_season_strings(start_year: int, first_year: int) -> list[str]:
     return [season_string(year) for year in range(start_year, first_year - 1, -1)]
 
 
-def resolve_teams(team_codes: list[str] | None) -> list[str]:
+def resolve_teams(team_codes: list[str] | None, season: str) -> list[str]:
     if team_codes:
         return [team_code.upper() for team_code in team_codes]
-    return sorted(team["abbreviation"] for team in nba_teams.get_teams())
+    return list_expected_team_abbreviations_for_season(season)
 
 
 def render_progress_line(
@@ -222,6 +224,17 @@ def render_team_fetch_failed_line(
     write_status_line(line)
 
 
+def render_team_skipped_line(
+    team_index: int,
+    team_total: int,
+    team: str,
+    season: str,
+    reason: str,
+) -> None:
+    line = f"  [{team_index:>2}/{team_total}] {team} {season} skipped {reason}"
+    write_status_line(line)
+
+
 def main(argv: list[str] | None = None) -> int:
     parser = build_parser()
     args = parser.parse_args(argv)
@@ -231,16 +244,26 @@ def main(argv: list[str] | None = None) -> int:
     else:
         seasons = [canonicalize_season_string(args.season)]
 
-    team_codes = resolve_teams(args.teams)
-    team_total = len(team_codes)
     season_count = len(seasons)
     failure_counts: dict[str, int] = {}
     failed_scopes: list[str] = []
     for season_index, season in enumerate(seasons, start=1):
         if season_count > 1:
             print(f"[{season_index}/{season_count}] caching {season}")
+        team_codes = resolve_teams(args.teams, season)
+        team_total = len(team_codes)
         for team_index, team_code in enumerate(team_codes, start=1):
             team_season_scope = f"{team_code} {season}"
+            if not team_is_active_for_season(team_code, season):
+                render_team_skipped_line(
+                    team_index=team_index,
+                    team_total=team_total,
+                    team=team_code,
+                    season=season,
+                    reason="not-active-in-season",
+                )
+                sys.stdout.write("\n")
+                continue
             try:
                 summary = cache_team_season_data(
                     team_abbreviation=team_code,

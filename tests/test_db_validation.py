@@ -49,7 +49,7 @@ def test_audit_player_metrics_db_reports_normalized_cache_count_mismatch(tmp_pat
             """
             UPDATE normalized_cache_loads
             SET games_row_count = 99
-            WHERE team = 'BOS' AND season = '2023-24' AND season_type = 'Regular Season'
+            WHERE team_id = 1610612738 AND season = '2023-24' AND season_type = 'Regular Season'
             """
         )
         connection.commit()
@@ -154,7 +154,7 @@ def test_render_validation_summary_and_cli_show_top_error_trends(
             """
             UPDATE normalized_cache_loads
             SET games_row_count = 99
-            WHERE team = 'BOS' AND season = '2023-24' AND season_type = 'Regular Season'
+            WHERE team_id = 1610612738 AND season = '2023-24' AND season_type = 'Regular Season'
             """
         )
         connection.commit()

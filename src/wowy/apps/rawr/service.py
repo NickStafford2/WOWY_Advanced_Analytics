@@ -3,8 +3,6 @@ from __future__ import annotations
 from pathlib import Path
 from dataclasses import dataclass
 
-from nba_api.stats.static import teams as nba_teams
-
 from wowy.apps.rawr.analysis import fit_player_rawr, tune_ridge_alpha
 from wowy.apps.rawr.data import build_rawr_observations, count_player_games
 from wowy.apps.rawr.formatting import format_rawr_results
@@ -17,7 +15,7 @@ from wowy.nba.models import CanonicalGamePlayerRecord, CanonicalGameRecord
 from wowy.data.game_cache_db import list_cache_load_rows
 from wowy.data.player_metrics_db import DEFAULT_PLAYER_METRICS_DB_PATH
 from wowy.nba.prepare import prepare_canonical_scope_records
-from wowy.nba.team_identity import resolve_team_id
+from wowy.nba.team_identity import list_expected_team_abbreviations_for_season, resolve_team_id
 from wowy.nba.team_seasons import resolve_team_seasons
 from wowy.progress import TerminalProgressBar, print_status_box
 from wowy.shared.filters import validate_top_n_and_minutes
@@ -250,8 +248,8 @@ class RawrSeasonCompletenessIssue:
     reason: str
 
 
-def list_expected_rawr_teams_for_season(_season: str) -> list[str]:
-    return sorted(team["abbreviation"] for team in nba_teams.get_teams())
+def list_expected_rawr_teams_for_season(season: str) -> list[str]:
+    return list_expected_team_abbreviations_for_season(season)
 
 
 def list_incomplete_rawr_seasons(

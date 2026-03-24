@@ -14,7 +14,6 @@ from wowy.nba.models import (
 from wowy.nba.seasons import canonicalize_season_string
 from wowy.nba.season_types import canonicalize_season_type
 from wowy.nba.team_identity import (
-    canonical_team_lookup_abbreviation,
     resolve_team_id,
     resolve_team_identity_from_id,
 )
@@ -194,7 +193,7 @@ def _validate_canonical_game(
         )
     if (
         resolve_team_identity_from_id(game.opponent_team_id).team_id
-        != resolve_team_id(game.opponent)
+        != resolve_team_id(game.opponent, season=game.season)
     ):
         raise ValueError(
             f"Canonical game {game.game_id!r} opponent {game.opponent!r} "
@@ -268,4 +267,4 @@ def _canonical_team_abbreviation(value: str) -> str:
     team = value.strip().upper()
     if not _TEAM_ABBREVIATION_PATTERN.fullmatch(team):
         raise ValueError(f"Invalid team abbreviation {value!r}")
-    return canonical_team_lookup_abbreviation(team)
+    return team

@@ -27,7 +27,11 @@ from wowy.data.player_metrics_db import (
 from wowy.nba.models import CanonicalGamePlayerRecord, CanonicalGameRecord
 from wowy.nba.seasons import canonicalize_season_string
 from wowy.nba.season_types import canonicalize_season_type
-from wowy.nba.team_identity import resolve_team_id
+from wowy.nba.team_identity import (
+    canonical_team_lookup_abbreviation,
+    resolve_team_history_entry,
+    resolve_team_id,
+)
 from wowy.nba.ingest.validation import (
     _canonical_team_abbreviation,
     _validate_canonical_game,
@@ -107,6 +111,7 @@ def audit_player_metrics_db(
     initialize_game_cache_db(db_path)
     issues: list[ValidationIssue] = []
     steps = (
+        ("team history", _validate_team_history_table),
         ("normalized games", _validate_normalized_games_table),
         ("normalized game players", _validate_normalized_game_players_table),
         ("normalized cache loads", _validate_normalized_cache_loads_table),
@@ -124,30 +129,33 @@ def audit_player_metrics_db(
 
     with _connect_player_metrics_db(db_path) as connection:
         current_step = 1
+        report_progress("Validating team history")
+        _validate_team_history_table(connection, issues)
+        current_step = 2
         report_progress("Validating normalized games")
         _validate_normalized_games_table(connection, issues)
-        current_step = 2
+        current_step = 3
         report_progress("Validating normalized game players")
         _validate_normalized_game_players_table(connection, issues)
-        current_step = 3
+        current_step = 4
         report_progress("Validating normalized cache loads")
         _validate_normalized_cache_loads_table(connection, issues)
-        current_step = 4
+        current_step = 5
         report_progress("Validating normalized cache relations")
         _validate_normalized_cache_relations(connection, issues)
-        current_step = 5
+        current_step = 6
         report_progress("Validating metric player season values")
         metric_row_groups, metadata_rows = _validate_metric_player_season_values_table(
             connection,
             issues,
         )
-        current_step = 6
+        current_step = 7
         report_progress("Validating metric scope catalog")
         catalog_rows = _validate_metric_scope_catalog_table(connection, issues)
-        current_step = 7
+        current_step = 8
         report_progress("Validating metric full span tables")
         full_span_groups = _validate_metric_full_span_tables(connection, issues)
-        current_step = 8
+        current_step = 9
         report_progress("Validating metric store relations")
         _validate_metric_store_relations(
             connection=connection,
@@ -254,19 +262,25 @@ def _validate_normalized_games_table(
     rows = connection.execute(
         """
         SELECT
-            game_id,
-            season,
-            game_date,
-            team,
-            team_id,
-            opponent,
-            opponent_team_id,
-            is_home,
-            margin,
-            season_type,
-            source
-        FROM normalized_games
-        ORDER BY season_type, season, team, game_id
+            game.game_id,
+            game.season,
+            game.game_date,
+            team_history.abbreviation AS team,
+            game.team_id,
+            opponent_history.abbreviation AS opponent,
+            game.opponent_team_id,
+            game.is_home,
+            game.margin,
+            game.season_type,
+            game.source
+        FROM normalized_games AS game
+        JOIN team_history
+          ON team_history.team_id = game.team_id
+         AND team_history.season = game.season
+        JOIN team_history AS opponent_history
+          ON opponent_history.team_id = game.opponent_team_id
+         AND opponent_history.season = game.season
+        ORDER BY game.season_type, game.season, team_history.abbreviation, game.game_id
         """
     ).fetchall()
     for row in rows:
@@ -315,17 +329,20 @@ def _validate_normalized_game_players_table(
     rows = connection.execute(
         """
         SELECT
-            game_id,
-            season,
-            season_type,
-            team,
-            team_id,
-            player_id,
-            player_name,
-            appeared,
-            minutes
-        FROM normalized_game_players
-        ORDER BY season_type, season, team, game_id, player_id
+            player.game_id,
+            player.season,
+            player.season_type,
+            team_history.abbreviation AS team,
+            player.team_id,
+            player.player_id,
+            player.player_name,
+            player.appeared,
+            player.minutes
+        FROM normalized_game_players AS player
+        JOIN team_history
+          ON team_history.team_id = player.team_id
+         AND team_history.season = player.season
+        ORDER BY player.season_type, player.season, team_history.abbreviation, player.game_id, player.player_id
         """
     ).fetchall()
     for row in rows:
@@ -388,19 +405,24 @@ def _validate_normalized_cache_loads_table(
     rows = connection.execute(
         """
         SELECT
-            team,
-            team_id,
-            season,
-            season_type,
-            source_path,
-            source_snapshot,
-            source_kind,
-            build_version,
-            refreshed_at,
-            games_row_count,
-            game_players_row_count
-        FROM normalized_cache_loads
-        ORDER BY season_type, season, team_id
+            team_history.abbreviation AS team,
+            load.team_id,
+            load.season,
+            load.season_type,
+            load.source_path,
+            load.source_snapshot,
+            load.source_kind,
+            load.build_version,
+            load.refreshed_at,
+            load.games_row_count,
+            load.game_players_row_count,
+            load.expected_games_row_count,
+            load.skipped_games_row_count
+        FROM normalized_cache_loads AS load
+        JOIN team_history
+          ON team_history.team_id = load.team_id
+         AND team_history.season = load.season
+        ORDER BY load.season_type, load.season, load.team_id
         """
     ).fetchall()
     for row in rows:
@@ -428,7 +450,7 @@ def _validate_normalized_cache_loads_table(
             _validate_optional_non_negative_int(load_row.team_id, "team_id")
             if load_row.team_id is None or load_row.team_id <= 0:
                 raise ValueError("team_id must be a positive integer")
-            if resolve_team_id(load_row.team) != load_row.team_id:
+            if resolve_team_id(load_row.team, season=load_row.season) != load_row.team_id:
                 raise ValueError("team_id does not match team abbreviation identity")
             _validate_required_text(load_row.source_path, "source_path")
             _validate_required_text(load_row.source_snapshot, "source_snapshot")
@@ -457,52 +479,64 @@ def _validate_normalized_cache_relations(
     game_rows = connection.execute(
         """
         SELECT
-            game_id,
-            season,
-            game_date,
-            team,
-            team_id,
-            opponent,
-            opponent_team_id,
-            is_home,
-            margin,
-            season_type,
-            source
-        FROM normalized_games
-        ORDER BY season_type, season, team, game_id
+            game.game_id,
+            game.season,
+            game.game_date,
+            team_history.abbreviation AS team,
+            game.team_id,
+            opponent_history.abbreviation AS opponent,
+            game.opponent_team_id,
+            game.is_home,
+            game.margin,
+            game.season_type,
+            game.source
+        FROM normalized_games AS game
+        JOIN team_history
+          ON team_history.team_id = game.team_id
+         AND team_history.season = game.season
+        JOIN team_history AS opponent_history
+          ON opponent_history.team_id = game.opponent_team_id
+         AND opponent_history.season = game.season
+        ORDER BY game.season_type, game.season, team_history.abbreviation, game.game_id
         """
     ).fetchall()
     player_rows = connection.execute(
         """
         SELECT
-            game_id,
-            season,
-            season_type,
-            team,
-            team_id,
-            player_id,
-            player_name,
-            appeared,
-            minutes
-        FROM normalized_game_players
-        ORDER BY season_type, season, team, game_id, player_id
+            player.game_id,
+            player.season,
+            player.season_type,
+            team_history.abbreviation AS team,
+            player.team_id,
+            player.player_id,
+            player.player_name,
+            player.appeared,
+            player.minutes
+        FROM normalized_game_players AS player
+        JOIN team_history
+          ON team_history.team_id = player.team_id
+         AND team_history.season = player.season
+        ORDER BY player.season_type, player.season, team_history.abbreviation, player.game_id, player.player_id
         """
     ).fetchall()
     load_rows = connection.execute(
         """
         SELECT
-            team,
-            team_id,
-            season,
-            season_type,
-            source_path,
-            source_snapshot,
-            source_kind,
-            build_version,
-            refreshed_at,
-            games_row_count,
-            game_players_row_count
-        FROM normalized_cache_loads
+            team_history.abbreviation AS team,
+            load.team_id,
+            load.season,
+            load.season_type,
+            load.source_path,
+            load.source_snapshot,
+            load.source_kind,
+            load.build_version,
+            load.refreshed_at,
+            load.games_row_count,
+            load.game_players_row_count
+        FROM normalized_cache_loads AS load
+        JOIN team_history
+          ON team_history.team_id = load.team_id
+         AND team_history.season = load.season
         """
     ).fetchall()
 
@@ -714,6 +748,51 @@ def _validate_reciprocal_game_margins(
                         f"{first_game.team}={first_game.margin} "
                         f"{second_game.team}={second_game.margin}"
                     ),
+                )
+            )
+
+
+def _validate_team_history_table(
+    connection: sqlite3.Connection,
+    issues: list[ValidationIssue],
+) -> None:
+    rows = connection.execute(
+        """
+        SELECT
+            team_id,
+            season,
+            abbreviation,
+            franchise_id,
+            lookup_abbreviation
+        FROM team_history
+        ORDER BY season, abbreviation
+        """
+    ).fetchall()
+    for row in rows:
+        key = f"team_id={row['team_id']!r},season={row['season']!r}"
+        try:
+            season = canonicalize_season_string(row["season"])
+            _validate_required_text(row["abbreviation"], "abbreviation")
+            _validate_required_text(row["franchise_id"], "franchise_id")
+            _validate_required_text(row["lookup_abbreviation"], "lookup_abbreviation")
+            _canonical_team_abbreviation(row["abbreviation"])
+            _canonical_team_abbreviation(row["lookup_abbreviation"])
+            _validate_optional_non_negative_int(row["team_id"], "team_id")
+            if row["team_id"] is None or row["team_id"] <= 0:
+                raise ValueError("team_id must be a positive integer")
+            history_entry = resolve_team_history_entry(row["abbreviation"], season=season)
+            if history_entry.team_id != row["team_id"]:
+                raise ValueError("team_id does not match historical team identity")
+            if history_entry.franchise_id != row["franchise_id"]:
+                raise ValueError("franchise_id does not match historical team identity")
+            if canonical_team_lookup_abbreviation(row["abbreviation"]) != row["lookup_abbreviation"]:
+                raise ValueError("lookup_abbreviation does not match historical team identity")
+        except ValueError as exc:
+            issues.append(
+                ValidationIssue(
+                    table="team_history",
+                    key=key,
+                    message=str(exc),
                 )
             )
 
@@ -1119,20 +1198,23 @@ def _load_normalized_cache_state(
     rows = connection.execute(
         """
         SELECT
-            team,
-            team_id,
-            season,
-            season_type,
-            source_path,
-            source_snapshot,
-            source_kind,
-            build_version,
-            games_row_count,
-            game_players_row_count,
-            expected_games_row_count,
-            skipped_games_row_count
-        FROM normalized_cache_loads
-        ORDER BY season_type, season, team_id
+            team_history.abbreviation AS team,
+            load.team_id,
+            load.season,
+            load.season_type,
+            load.source_path,
+            load.source_snapshot,
+            load.source_kind,
+            load.build_version,
+            load.games_row_count,
+            load.game_players_row_count,
+            load.expected_games_row_count,
+            load.skipped_games_row_count
+        FROM normalized_cache_loads AS load
+        JOIN team_history
+          ON team_history.team_id = load.team_id
+         AND team_history.season = load.season
+        ORDER BY load.season_type, load.season, load.team_id
         """
     ).fetchall()
     counts: dict[str, int] = Counter()

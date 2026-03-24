@@ -3,12 +3,14 @@ from __future__ import annotations
 from dataclasses import dataclass
 from pathlib import Path
 
-from nba_api.stats.static import teams as nba_teams
-
 from wowy.data.player_metrics_db import DEFAULT_PLAYER_METRICS_DB_PATH
 from wowy.nba.seasons import canonicalize_season_string
 from wowy.nba.season_types import canonicalize_season_type
-from wowy.nba.team_identity import resolve_team_id
+from wowy.nba.team_identity import (
+    list_expected_team_abbreviations_for_season,
+    resolve_team_id,
+    team_is_active_for_season,
+)
 
 
 @dataclass(frozen=True, order=True)
@@ -71,15 +73,16 @@ def resolve_team_seasons(
                         season=normalized_seasons[0],
                     )
                     for team in teams or []
+                    if team_is_active_for_season(team, normalized_seasons[0])
                 ]
         else:
             target_teams = cached_team_seasons or [
                 TeamSeasonScope(
-                    team=str(team["abbreviation"]),
-                    team_id=int(team["id"]),
+                    team=team,
+                    team_id=resolve_team_id(team),
                     season=normalized_seasons[0],
                 )
-                for team in nba_teams.get_teams()
+                for team in list_expected_team_abbreviations_for_season(normalized_seasons[0])
             ]
         return sorted(
             TeamSeasonScope(

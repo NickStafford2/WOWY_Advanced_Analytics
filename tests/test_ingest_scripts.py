@@ -45,7 +45,8 @@ def test_cache_season_data_continues_after_team_failure(monkeypatch, capsys):
         "append_ingest_failure_log",
         lambda **kwargs: logged_failures.append((kwargs["team"], kwargs["failure_kind"])),
     )
-    monkeypatch.setattr(cache_season_data, "resolve_teams", lambda teams: ["BOS", "LAL"])
+    monkeypatch.setattr(cache_season_data, "resolve_teams", lambda teams, season: ["BOS", "LAL"])
+    monkeypatch.setattr(cache_season_data, "team_is_active_for_season", lambda team, season: True)
 
     exit_code = cache_season_data.main(["2023-24"])
 
@@ -88,3 +89,22 @@ def test_filtered_log_only_emits_actionable_cache_messages(capsys):
     assert "api box_score" not in captured.err
     assert "cache discard path=foo reason=invalid_or_empty_payload" in captured.err
     assert "cache skip path=bar reason=unparseable_box_score_payload" in captured.err
+
+
+def test_cache_season_data_skips_requested_team_not_active_in_season(monkeypatch, capsys):
+    called = False
+
+    def fake_cache_team_season_data(**_kwargs):
+        nonlocal called
+        called = True
+        raise AssertionError("inactive team-season should not be fetched")
+
+    monkeypatch.setattr(cache_season_data, "cache_team_season_data", fake_cache_team_season_data)
+    monkeypatch.setattr(cache_season_data, "team_is_active_for_season", lambda team, season: False)
+
+    exit_code = cache_season_data.main(["2002-03", "--teams", "CHA"])
+
+    captured = capsys.readouterr()
+    assert exit_code == 0
+    assert called is False
+    assert "CHA 2002-03 skipped not-active-in-season" in captured.out
