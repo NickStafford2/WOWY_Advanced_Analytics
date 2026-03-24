@@ -60,7 +60,7 @@ def fetch_team_season_data(
     progress: ProgressFn | None = None,
     cached_only: bool = False,
 ) -> tuple[list[CanonicalGameRecord], list[CanonicalGamePlayerRecord]]:
-    result = build_team_season_artifacts(
+    result = ingest_team_season(
         team_abbreviation=team_abbreviation,
         season=season,
         season_type=season_type,
@@ -72,7 +72,7 @@ def fetch_team_season_data(
     return result.artifacts.canonical_games, result.artifacts.canonical_game_players
 
 
-def build_team_season_artifacts(
+def ingest_team_season(
     team_abbreviation: str,
     season: str,
     season_type: str = "Regular Season",
@@ -252,7 +252,7 @@ def cache_team_season_data(
 ) -> TeamSeasonRunSummary:
     season = canonicalize_season_string(season)
     season_type = canonicalize_season_type(season_type)
-    result = build_team_season_artifacts(
+    result = ingest_team_season(
         team_abbreviation=team_abbreviation,
         season=season,
         season_type=season_type,

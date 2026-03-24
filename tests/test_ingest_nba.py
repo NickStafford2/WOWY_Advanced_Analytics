@@ -5,7 +5,7 @@ from pathlib import Path
 import pytest
 
 from wowy.nba.errors import PartialTeamSeasonError
-from wowy.nba.ingest import build_team_season_artifacts
+from wowy.nba.ingest import ingest_team_season
 from wowy.nba.ingest.normalize import normalize_source_game
 from wowy.nba.ingest.parsers import (
     dedupe_schedule_games,
@@ -58,9 +58,9 @@ def _latest_cached_scope() -> tuple[str, str] | None:
 
 
 @pytest.mark.parametrize(("team", "season"), _sample_cached_team_seasons())
-def test_build_team_season_artifacts_from_cached_nba_source(team: str, season: str) -> None:
+def test_ingest_team_season_from_cached_nba_source(team: str, season: str) -> None:
     try:
-        result = build_team_season_artifacts(
+        result = ingest_team_season(
             team_abbreviation=team,
             season=season,
             source_data_dir=SOURCE_DATA_DIR,
@@ -91,7 +91,7 @@ def test_latest_cached_scope_is_explicitly_reported_if_partial() -> None:
 
     team, season = latest_scope
     try:
-        build_team_season_artifacts(
+        ingest_team_season(
             team_abbreviation=team,
             season=season,
             source_data_dir=SOURCE_DATA_DIR,
