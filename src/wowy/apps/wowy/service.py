@@ -13,7 +13,7 @@ from wowy.apps.wowy.models import (
 from wowy.data.player_metrics_db import DEFAULT_PLAYER_METRICS_DB_PATH
 from wowy.nba.ingest import load_player_names_from_cache
 from wowy.nba.prepare import (
-    prepare_normalized_scope_records,
+    prepare_canonical_scope_records,
     prepare_wowy_game_records,
 )
 from wowy.progress import TerminalProgressBar, print_status_box
@@ -122,7 +122,7 @@ def load_player_minute_stats(
     player_metrics_db_path: Path = DEFAULT_PLAYER_METRICS_DB_PATH,
 ) -> dict[int, tuple[float, float]]:
     """Build minute summaries from the DB-backed normalized cache."""
-    _games, game_players = prepare_normalized_scope_records(
+    _games, game_players = prepare_canonical_scope_records(
         teams=teams,
         seasons=seasons,
         season_type=season_type,
@@ -144,7 +144,7 @@ def load_player_season_minute_stats(
     totals: dict[tuple[str, int], float] = {}
     counts: dict[tuple[str, int], int] = {}
 
-    games, game_players = prepare_normalized_scope_records(
+    games, game_players = prepare_canonical_scope_records(
         teams=teams,
         seasons=seasons,
         season_type=season_type,

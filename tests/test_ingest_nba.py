@@ -1,1393 +1,690 @@
 from __future__ import annotations
 
-import json
-import math
 from pathlib import Path
 
-import pandas as pd
 import pytest
-from requests import RequestException
 
-from scripts.cache_season_data import main as cache_season_data_main
-from wowy.nba.ingest import (
-    build_team_season_artifacts,
-    cache_team_season_data,
-    extract_is_home,
-    extract_opponent,
-    load_player_names_from_cache,
+from wowy.nba.errors import PartialTeamSeasonError
+from wowy.nba.ingest import build_team_season_artifacts
+from wowy.nba.pipeline import (
+    PLAYER_DID_NOT_PLAY_PLACEHOLDER,
+    CANONICAL_TEAM_SOURCE_ROW,
+    CANONICAL_SCHEDULE_SOURCE_ROW,
+    INACTIVE_PLAYER_STATUS_ROW,
+    classify_source_player_row,
+    classify_source_schedule_row,
+    classify_source_team_row,
+    dedupe_schedule_games,
+    normalize_source_game,
+    parse_box_score_payload,
+    parse_league_schedule_payload,
 )
-from wowy.nba.errors import (
-    BoxScoreFetchError,
-    LeagueGamesFetchError,
-    PartialTeamSeasonError,
-    TeamSeasonConsistencyError,
-)
-from wowy.nba.normalize import (
-    extract_normalized_game_players,
-    normalize_box_score_payload,
-    parse_minutes_to_float,
-    played_in_game,
-)
-from wowy.data.game_cache_db import (
-    load_normalized_game_players_from_db,
-    load_normalized_games_from_db,
-)
-from wowy.apps.wowy.models import WowyGameRecord
-from wowy.nba.models import NormalizedGamePlayerRecord, NormalizedGameRecord
-from wowy.nba.validation import validate_normalized_cache_batch
+from wowy.nba.source_models import SourceBoxScorePlayer, SourceBoxScoreTeam, SourceLeagueGame
 
 
-def test_cache_team_season_data_writes_normalized_outputs(
-    tmp_path: Path,
-    monkeypatch,
-):
-    source_data_dir = tmp_path / "source-data"
+SOURCE_DATA_DIR = Path("data/source/nba")
 
-    monkeypatch.setattr(
-        "wowy.nba.ingest.teams.find_team_by_abbreviation",
-        lambda abbreviation: {"id": 1610612738, "abbreviation": "BOS"},
-    )
 
-    class FakeLeagueGameFinder:
-        def __init__(self, **kwargs):
-            assert kwargs["team_id_nullable"] == "1610612738"
-            assert kwargs["season_nullable"] == "2023-24"
-            assert kwargs["season_type_nullable"] == "Regular Season"
-
-        def get_dict(self):
-            return {
-                "resultSets": [
-                    {
-                        "headers": ["GAME_ID", "GAME_DATE", "MATCHUP"],
-                        "rowSet": [
-                            ["0001", "2024-04-01", "BOS vs. LAL"],
-                            ["0001", "2024-04-01", "BOS vs. LAL"],
-                            ["0002", "2024-04-03", "BOS @ LAL"],
-                        ],
-                    }
-                ]
-            }
-
-    class FakeBoxScoreTraditionalV2:
-        def __init__(self, game_id: str, timeout: int | None = None):
-            self.game_id = game_id
-
-        def get_dict(self):
-            if self.game_id == "0001":
-                return {
-                    "resultSets": [
-                        {
-                            "headers": [
-                                "TEAM_ABBREVIATION",
-                                "PLAYER_ID",
-                                "PLAYER_NAME",
-                                "MIN",
-                            ],
-                            "rowSet": [
-                                ["BOS", 1628369, "Jayson Tatum", "35:12"],
-                                ["BOS", 1627759, "Jaylen Brown", "34:01"],
-                                ["BOS", 1628401, "Derrick White", "55:00"],
-                                ["BOS", 1629680, "Al Horford", "55:00"],
-                                ["BOS", 1629641, "Kristaps Porzingis", "60:47"],
-                                ["BOS", 999999, "Deep Bench", "0:00"],
-                                ["LAL", 200000, "Opponent Player", "33:44"],
-                            ],
-                        },
-                        {
-                            "headers": ["TEAM_ABBREVIATION", "PLUS_MINUS"],
-                            "rowSet": [["BOS", 12], ["LAL", -12]],
-                        },
-                    ]
-                }
-
-            return {
-                "resultSets": [
-                    {
-                        "headers": [
-                            "TEAM_ABBREVIATION",
-                            "PLAYER_ID",
-                            "PLAYER_NAME",
-                            "MIN",
-                        ],
-                        "rowSet": [
-                            ["BOS", 1628369, "Jayson Tatum", "36:00"],
-                            ["BOS", 1628401, "Derrick White", "30:15"],
-                            ["BOS", 1627759, "Jaylen Brown", "48:00"],
-                            ["BOS", 1629680, "Al Horford", "60:00"],
-                            ["BOS", 1629641, "Kristaps Porzingis", "65:00"],
-                            ["LAL", 200000, "Opponent Player", "31:02"],
-                        ],
-                    },
-                    {
-                        "headers": ["TEAM_ABBREVIATION", "PLUS_MINUS"],
-                        "rowSet": [["BOS", -5], ["LAL", 5]],
-                    },
-                ]
-            }
-
-    class FakeBoxScoreTraditionalV3:
-        def __init__(self, game_id: str, timeout: int | None = None):
-            self.game_id = game_id
-
-        def get_dict(self):
-            if self.game_id == "0001":
-                return {
-                    "resultSets": {
-                        "PlayerStats": {"headers": ["personId"], "data": []},
-                        "TeamStats": {"headers": ["teamId"], "data": []},
-                    }
-                }
-            raise AssertionError("unexpected v3 fallback for non-empty test game")
-
-    class FakeLiveBoxScore:
-        def __init__(self, game_id: str, timeout: int | None = None):
-            self.game_id = game_id
-
-        def get_dict(self):
-            if self.game_id == "0001":
-                return {
-                    "game": {
-                        "homeTeam": {"players": [], "statistics": {}},
-                        "awayTeam": {"players": [], "statistics": {}},
-                    }
-                }
-            raise AssertionError("unexpected live fallback for non-empty test game")
-
-    class FakeLiveBoxScore:
-        def __init__(self, game_id: str, timeout: int | None = None):
-            self.game_id = game_id
-
-        def get_dict(self):
-            if self.game_id == "0001":
-                return {
-                    "game": {
-                        "homeTeam": {"players": [], "statistics": {}},
-                        "awayTeam": {"players": [], "statistics": {}},
-                    }
-                }
-            raise AssertionError("unexpected live fallback for non-empty test game")
-
-    class FakeLiveBoxScore:
-        def __init__(self, game_id: str, timeout: int | None = None):
-            self.game_id = game_id
-
-        def get_dict(self):
-            if self.game_id == "0001":
-                return {
-                    "game": {
-                        "homeTeam": {"players": [], "statistics": {}},
-                        "awayTeam": {"players": [], "statistics": {}},
-                    }
-                }
-            raise AssertionError("unexpected live fallback for non-empty test game")
-
-    monkeypatch.setattr(
-        "wowy.nba.cache.leaguegamefinder.LeagueGameFinder",
-        FakeLeagueGameFinder,
-    )
-    monkeypatch.setattr(
-        "wowy.nba.cache.boxscoretraditionalv2.BoxScoreTraditionalV2",
-        FakeBoxScoreTraditionalV2,
-    )
-    monkeypatch.setattr(
-        "wowy.nba.cache.boxscoretraditionalv3.BoxScoreTraditionalV3",
-        FakeBoxScoreTraditionalV3,
-    )
-    monkeypatch.setattr("wowy.nba.cache.live_boxscore.BoxScore", FakeLiveBoxScore)
-
-    db_path = tmp_path / "app" / "player_metrics.sqlite3"
-    cache_team_season_data(
-        "BOS",
-        "2023-24",
-        source_data_dir=source_data_dir,
-        player_metrics_db_path=db_path,
-    )
-
-    normalized_games = load_normalized_games_from_db(
-        db_path,
-        season_type="Regular Season",
-        teams=["BOS"],
-        seasons=["2023-24"],
-    )
-    normalized_game_players = load_normalized_game_players_from_db(
-        db_path,
-        season_type="Regular Season",
-        teams=["BOS"],
-        seasons=["2023-24"],
-    )
-
-    assert [game.margin for game in normalized_games] == [12.0, -5.0]
-    assert [game.game_date for game in normalized_games] == ["2024-04-01", "2024-04-03"]
-    assert [game.opponent for game in normalized_games] == ["LAL", "LAL"]
-    assert [game.is_home for game in normalized_games] == [True, False]
-    assert [player.player_id for player in normalized_game_players] == [
-        999999,
-        1627759,
-        1628369,
-        1628401,
-        1629641,
-        1629680,
-        1627759,
-        1628369,
-        1628401,
-        1629641,
-        1629680,
+def _sample_cached_team_seasons() -> list[tuple[str, str]]:
+    cache_paths = sorted(SOURCE_DATA_DIR.glob("team_seasons/*_regular_season_leaguegamefinder.json"))
+    assert cache_paths, "Expected cached NBA team-season payloads under data/source/nba/team_seasons"
+    latest_season = max(path.stem.split("_", maxsplit=2)[1] for path in cache_paths)
+    cache_paths = [
+        path
+        for path in cache_paths
+        if path.stem.split("_", maxsplit=2)[1] != latest_season
     ]
-    assert normalized_game_players[2].minutes == 35.2
-    assert normalized_game_players[0].appeared is False
-
-    team_season_cache = (
-        source_data_dir
-        / "team_seasons/BOS_2023-24_regular_season_leaguegamefinder.json"
-    )
-    box_score_cache = source_data_dir / "boxscores/0001_boxscoretraditionalv2.json"
-
-    assert team_season_cache.exists()
-    assert box_score_cache.exists()
-    assert json.loads(team_season_cache.read_text(encoding="utf-8"))["resultSets"]
-
-    player_names = load_player_names_from_cache(source_data_dir)
-    assert player_names[1628369] == "Jayson Tatum"
-    assert player_names[1628401] == "Derrick White"
+    sample_indices = sorted({0, len(cache_paths) // 2, len(cache_paths) - 1})
+    samples: list[tuple[str, str]] = []
+    for index in sample_indices:
+        stem = cache_paths[index].stem.removesuffix("_leaguegamefinder")
+        team, season, _season_type_slug = stem.split("_", maxsplit=2)
+        samples.append((team, season))
+    return samples
 
 
-def test_cache_team_season_data_rejects_partial_team_season_on_empty_box_score(
-    tmp_path: Path,
-    monkeypatch,
-):
-    source_data_dir = tmp_path / "source-data"
-
-    monkeypatch.setattr(
-        "wowy.nba.ingest.teams.find_team_by_abbreviation",
-        lambda abbreviation: {"id": 1610612737, "abbreviation": "ATL"},
-    )
-
-    class FakeLeagueGameFinder:
-        def __init__(self, **kwargs):
-            pass
-
-        def get_dict(self):
-            return {
-                "resultSets": [
-                    {
-                        "headers": ["GAME_ID", "GAME_DATE", "MATCHUP"],
-                        "rowSet": [
-                            ["0001", "2024-04-01", "ATL vs. MIL"],
-                            ["0002", "2024-04-03", "ATL vs. BOS"],
-                        ],
-                    }
-                ]
-            }
-
-    class FakeBoxScoreTraditionalV2:
-        def __init__(self, game_id: str, timeout: int | None = None):
-            self.game_id = game_id
-
-        def get_dict(self):
-            if self.game_id == "0001":
-                return {
-                    "resultSets": [
-                        {
-                            "headers": [
-                                "TEAM_ABBREVIATION",
-                                "PLAYER_ID",
-                                "PLAYER_NAME",
-                                "MIN",
-                            ],
-                            "rowSet": [],
-                        },
-                        {
-                            "headers": ["TEAM_ABBREVIATION", "PLUS_MINUS"],
-                            "rowSet": [],
-                        },
-                    ]
-                }
-
-            return {
-                "resultSets": [
-                    {
-                        "headers": [
-                            "TEAM_ABBREVIATION",
-                            "PLAYER_ID",
-                            "PLAYER_NAME",
-                            "MIN",
-                        ],
-                        "rowSet": [
-                            ["ATL", 101, "Player 101", "36:00"],
-                            ["ATL", 102, "Player 102", "30:15"],
-                            ["ATL", 103, "Player 103", "48:00"],
-                            ["ATL", 104, "Player 104", "60:00"],
-                            ["ATL", 105, "Player 105", "65:00"],
-                        ],
-                    },
-                    {
-                        "headers": ["TEAM_ABBREVIATION", "PLUS_MINUS"],
-                        "rowSet": [["ATL", -5]],
-                    },
-                ]
-            }
-
-    class FakeBoxScoreTraditionalV3:
-        def __init__(self, game_id: str, timeout: int | None = None):
-            self.game_id = game_id
-
-        def get_dict(self):
-            if self.game_id == "0001":
-                return {
-                    "resultSets": {
-                        "PlayerStats": {"headers": ["personId"], "data": []},
-                        "TeamStats": {"headers": ["teamId"], "data": []},
-                    }
-                }
-            raise AssertionError("unexpected v3 fallback for non-empty test game")
-
-    class FakeLiveBoxScore:
-        def __init__(self, game_id: str, timeout: int | None = None):
-            self.game_id = game_id
-
-        def get_dict(self):
-            if self.game_id == "0001":
-                return {
-                    "game": {
-                        "homeTeam": {"players": [], "statistics": {}},
-                        "awayTeam": {"players": [], "statistics": {}},
-                    }
-                }
-            raise AssertionError("unexpected live fallback for non-empty test game")
-
-    monkeypatch.setattr(
-        "wowy.nba.cache.leaguegamefinder.LeagueGameFinder",
-        FakeLeagueGameFinder,
-    )
-    monkeypatch.setattr(
-        "wowy.nba.cache.boxscoretraditionalv2.BoxScoreTraditionalV2",
-        FakeBoxScoreTraditionalV2,
-    )
-    monkeypatch.setattr(
-        "wowy.nba.cache.boxscoretraditionalv3.BoxScoreTraditionalV3",
-        FakeBoxScoreTraditionalV3,
-    )
-    monkeypatch.setattr("wowy.nba.cache.live_boxscore.BoxScore", FakeLiveBoxScore)
-
-    db_path = tmp_path / "app" / "player_metrics.sqlite3"
-    with pytest.raises(
-        PartialTeamSeasonError,
-        match="Incomplete team-season ingest for ATL 2023-24 Regular Season: 1/2 games failed normalization",
-    ):
-        cache_team_season_data(
-            "ATL",
-            "2023-24",
-            source_data_dir=source_data_dir,
-            player_metrics_db_path=db_path,
-        )
-
-    games = load_normalized_games_from_db(
-        db_path,
-        season_type="Regular Season",
-        teams=["ATL"],
-        seasons=["2023-24"],
-    )
-
-    assert games == []
-
-
-def test_build_team_season_artifacts_returns_normalized_and_derived_outputs(
-    tmp_path: Path,
-    monkeypatch,
-):
-    source_data_dir = tmp_path / "source-data"
-
-    monkeypatch.setattr(
-        "wowy.nba.ingest.teams.find_team_by_abbreviation",
-        lambda abbreviation: {"id": 1610612738, "abbreviation": "BOS"},
-    )
-
-    class FakeLeagueGameFinder:
-        def __init__(self, **kwargs):
-            pass
-
-        def get_dict(self):
-            return {
-                "resultSets": [
-                    {
-                        "headers": ["GAME_ID", "GAME_DATE", "MATCHUP"],
-                        "rowSet": [["0001", "2024-04-01", "BOS vs. LAL"]],
-                    }
-                ]
-            }
-
-    class FakeBoxScoreTraditionalV2:
-        def __init__(self, game_id: str, timeout: int | None = None):
-            self.game_id = game_id
-
-        def get_dict(self):
-            return {
-                "resultSets": [
-                    {
-                        "headers": [
-                            "TEAM_ABBREVIATION",
-                            "PLAYER_ID",
-                            "PLAYER_NAME",
-                            "MIN",
-                        ],
-                        "rowSet": [
-                            ["BOS", 1628369, "Jayson Tatum", "35:12"],
-                            ["BOS", 1627759, "Jaylen Brown", "34:01"],
-                            ["BOS", 1628401, "Derrick White", "55:00"],
-                            ["BOS", 1629680, "Al Horford", "55:00"],
-                            ["BOS", 1629641, "Kristaps Porzingis", "60:47"],
-                            ["LAL", 200000, "Opponent Player", "33:44"],
-                        ],
-                    },
-                    {
-                        "headers": ["TEAM_ABBREVIATION", "PLUS_MINUS"],
-                        "rowSet": [["BOS", 12], ["LAL", -12]],
-                    },
-                ]
-            }
-
-    monkeypatch.setattr(
-        "wowy.nba.cache.leaguegamefinder.LeagueGameFinder",
-        FakeLeagueGameFinder,
-    )
-    monkeypatch.setattr(
-        "wowy.nba.cache.boxscoretraditionalv2.BoxScoreTraditionalV2",
-        FakeBoxScoreTraditionalV2,
-    )
-
-    result = build_team_season_artifacts(
-        "BOS",
-        "2023-24",
-        source_data_dir=source_data_dir,
-    )
-
-    assert [game.game_id for game in result.artifacts.normalized_games] == ["0001"]
-    assert [player.player_id for player in result.artifacts.normalized_game_players] == [
-        1628369,
-        1627759,
-        1628401,
-        1629680,
-        1629641,
-    ]
-    assert result.artifacts.wowy_games == [
-        WowyGameRecord(
-            "0001",
-            "2023-24",
-            "BOS",
-            12.0,
-            {1628369, 1627759, 1628401, 1629680, 1629641},
-            team_id=1610612738,
-        ),
-    ]
-    assert result.summary.league_games_source == "fetched"
-    assert result.summary.fetched_box_scores == 1
-    assert result.summary.cached_box_scores == 0
-    assert result.summary.processed_games == 1
-    assert result.summary.skipped_games == 0
-
-
-def test_build_team_season_artifacts_supports_historical_team_aliases(
-    tmp_path: Path,
-    monkeypatch,
-):
-    source_data_dir = tmp_path / "source-data"
-    lookup_calls: list[str] = []
-    load_calls: list[tuple[int, str, str]] = []
-    normalize_calls: list[str] = []
-
-    def fake_find_team_by_abbreviation(abbreviation: str):
-        lookup_calls.append(abbreviation)
-        if abbreviation == "BKN":
-            return {"id": 1610612751, "abbreviation": "BKN"}
+def _latest_cached_scope() -> tuple[str, str] | None:
+    cache_paths = sorted(SOURCE_DATA_DIR.glob("team_seasons/*_regular_season_leaguegamefinder.json"))
+    if not cache_paths:
         return None
+    latest_path = max(cache_paths, key=lambda path: path.stem.split("_", maxsplit=2)[1])
+    team, season, _season_type_slug = latest_path.stem.removesuffix("_leaguegamefinder").split(
+        "_",
+        maxsplit=2,
+    )
+    return team, season
 
-    def fake_load_or_fetch_league_games_with_source(
-        *,
-        team_id: int,
-        team_abbreviation: str,
-        season: str,
-        season_type: str,
-        source_data_dir: Path,
-        log,
-    ):
-        load_calls.append((team_id, team_abbreviation, season))
-        return (
-            {
-                "resultSets": [
-                    {
-                        "headers": ["GAME_ID", "GAME_DATE", "MATCHUP"],
-                        "rowSet": [["0001", "2010-04-01", "NJN vs. BOS"]],
-                    }
-                ]
-            },
-            "fetched",
+
+@pytest.mark.parametrize(("team", "season"), _sample_cached_team_seasons())
+def test_build_team_season_artifacts_from_cached_nba_source(team: str, season: str) -> None:
+    try:
+        result = build_team_season_artifacts(
+            team_abbreviation=team,
+            season=season,
+            source_data_dir=SOURCE_DATA_DIR,
+            log=None,
+            cached_only=True,
         )
+    except PartialTeamSeasonError as exc:
+        assert exc.failed_games > 0
+        assert exc.failed_games <= exc.total_games
+        assert exc.failed_game_details
+        assert "nba_api_" in exc.failed_game_details[0].message
+        return
 
-    def fake_fetch_normalized_game_data_with_source(
-        *,
-        game_id: str,
-        team_abbreviation: str,
-        season: str,
-        game_date: str,
-        opponent: str,
-        is_home: bool,
-        season_type: str,
-        source_data_dir: Path,
-        log,
-    ):
-        normalize_calls.append(team_abbreviation)
-        return (
-            NormalizedGameRecord(
-                game_id=game_id,
-                season=season,
-                game_date=game_date,
-                team=team_abbreviation,
-                opponent=opponent,
-                is_home=is_home,
-                margin=5.0,
-                season_type=season_type,
-                source="nba_api",
-            ),
-            [
-                NormalizedGamePlayerRecord(
-                    game_id=game_id,
-                    team=team_abbreviation,
-                    player_id=101,
-                    player_name="Player 101",
-                    appeared=True,
-                    minutes=36.0,
-                )
-            ],
-            "fetched",
+    assert result.summary.league_games_source == "cached"
+    assert result.summary.total_games > 0
+    assert result.summary.processed_games == result.summary.total_games
+    assert result.summary.fetched_box_scores == 0
+    assert result.summary.cached_box_scores == result.summary.total_games
+    assert len(result.artifacts.canonical_games) == result.summary.total_games
+    assert len(result.artifacts.wowy_games) == len(result.artifacts.canonical_games)
+    assert len(result.artifacts.canonical_game_players) > len(result.artifacts.canonical_games) * 5
+
+
+def test_latest_cached_scope_is_explicitly_reported_if_partial() -> None:
+    latest_scope = _latest_cached_scope()
+    if latest_scope is None:
+        pytest.skip("No cached NBA team-season payloads found")
+
+    team, season = latest_scope
+    try:
+        build_team_season_artifacts(
+            team_abbreviation=team,
+            season=season,
+            source_data_dir=SOURCE_DATA_DIR,
+            log=None,
+            cached_only=True,
         )
-
-    monkeypatch.setattr(
-        "wowy.nba.ingest.teams.find_team_by_abbreviation",
-        fake_find_team_by_abbreviation,
-    )
-    monkeypatch.setattr(
-        "wowy.nba.ingest.load_or_fetch_league_games_with_source",
-        fake_load_or_fetch_league_games_with_source,
-    )
-    monkeypatch.setattr(
-        "wowy.nba.ingest.fetch_normalized_game_data_with_source",
-        fake_fetch_normalized_game_data_with_source,
-    )
-
-    result = build_team_season_artifacts(
-        "NJN",
-        "2009-10",
-        source_data_dir=source_data_dir,
-    )
-
-    assert lookup_calls == ["BKN"]
-    assert load_calls == [(1610612751, "NJN", "2009-10")]
-    assert normalize_calls == ["NJN"]
-    assert result.summary.team == "NJN"
-    assert result.artifacts.normalized_games[0].team == "NJN"
+    except PartialTeamSeasonError as exc:
+        assert exc.failed_games > 0
+        assert exc.failed_games < exc.total_games
+        return
 
 
-def test_cache_team_season_data_resumes_from_cached_partial_source_data(
-    tmp_path: Path,
-    monkeypatch,
-):
-    source_data_dir = tmp_path / "source-data"
-    boxscore_calls: list[str] = []
-
-    monkeypatch.setattr(
-        "wowy.nba.ingest.teams.find_team_by_abbreviation",
-        lambda abbreviation: {"id": 1610612737, "abbreviation": "ATL"},
-    )
-
-    class FakeLeagueGameFinder:
-        def __init__(self, **kwargs):
-            pass
-
-        def get_dict(self):
-            return {
-                "resultSets": [
-                    {
-                        "headers": ["GAME_ID", "GAME_DATE", "MATCHUP"],
-                        "rowSet": [
-                            ["0001", "2024-04-01", "ATL vs. MIL"],
-                            ["0002", "2024-04-03", "ATL vs. BOS"],
-                        ],
-                    }
-                ]
-            }
-
-    class FakeBoxScoreTraditionalV2:
-        def __init__(self, game_id: str, timeout: int | None = None):
-            self.game_id = game_id
-            boxscore_calls.append(game_id)
-
-        def get_dict(self):
-            if self.game_id == "0001":
-                return {
-                    "resultSets": [
-                        {
-                            "headers": [
-                                "TEAM_ABBREVIATION",
-                                "PLAYER_ID",
-                                "PLAYER_NAME",
-                                "MIN",
-                            ],
-                            "rowSet": [
-                                ["ATL", 101, "Player 101", "36:00"],
-                                ["ATL", 102, "Player 102", "30:15"],
-                                ["ATL", 103, "Player 103", "48:00"],
-                                ["ATL", 104, "Player 104", "60:00"],
-                                ["ATL", 105, "Player 105", "65:00"],
-                            ],
-                        },
-                        {
-                            "headers": ["TEAM_ABBREVIATION", "PLUS_MINUS"],
-                            "rowSet": [["ATL", 7]],
-                        },
-                    ]
+def test_normalize_source_game_skips_sentinel_player_id_zero_rows() -> None:
+    schedule = parse_league_schedule_payload(
+        {
+            "resultSets": [
+                {
+                    "headers": ["GAME_ID", "GAME_DATE", "MATCHUP", "TEAM_ID", "TEAM_ABBREVIATION"],
+                    "rowSet": [["0001", "2003-03-10", "MEM vs. BOS", 1610612763, "MEM"]],
                 }
-            raise RequestException("temporary failure")
-
-    monkeypatch.setattr(
-        "wowy.nba.cache.leaguegamefinder.LeagueGameFinder",
-        FakeLeagueGameFinder,
-    )
-    monkeypatch.setattr(
-        "wowy.nba.cache.boxscoretraditionalv2.BoxScoreTraditionalV2",
-        FakeBoxScoreTraditionalV2,
-    )
-    monkeypatch.setattr("wowy.nba.cache.time.sleep", lambda _: None)
-
-    db_path = tmp_path / "app" / "player_metrics.sqlite3"
-
-    with pytest.raises(BoxScoreFetchError, match="Failed to fetch box score for game 0002"):
-        cache_team_season_data(
-            "ATL",
-            "2023-24",
-            source_data_dir=source_data_dir,
-            player_metrics_db_path=db_path,
-        )
-
-    assert boxscore_calls == ["0001", "0002", "0002", "0002", "0002", "0002"]
-    assert (source_data_dir / "boxscores/0001_boxscoretraditionalv2.json").exists()
-
-    class RecoveryBoxScoreTraditionalV2:
-        def __init__(self, game_id: str, timeout: int | None = None):
-            self.game_id = game_id
-            boxscore_calls.append(f"recovery:{game_id}")
-
-        def get_dict(self):
-            return {
-                "resultSets": [
-                    {
-                        "headers": [
-                            "TEAM_ABBREVIATION",
-                            "PLAYER_ID",
-                            "PLAYER_NAME",
-                            "MIN",
-                        ],
-                        "rowSet": [
-                            ["ATL", 201, "Player 201", "36:00"],
-                            ["ATL", 202, "Player 202", "30:15"],
-                            ["ATL", 203, "Player 203", "48:00"],
-                            ["ATL", 204, "Player 204", "60:00"],
-                            ["ATL", 205, "Player 205", "65:00"],
-                        ],
-                    },
-                    {
-                        "headers": ["TEAM_ABBREVIATION", "PLUS_MINUS"],
-                        "rowSet": [["ATL", -5]],
-                    },
-                ]
-            }
-
-    monkeypatch.setattr(
-        "wowy.nba.cache.boxscoretraditionalv2.BoxScoreTraditionalV2",
-        RecoveryBoxScoreTraditionalV2,
-    )
-
-    summary = cache_team_season_data(
-        "ATL",
-        "2023-24",
-        source_data_dir=source_data_dir,
-        player_metrics_db_path=db_path,
-    )
-
-    games = load_normalized_games_from_db(
-        db_path,
-        season_type="Regular Season",
-        teams=["ATL"],
-        seasons=["2023-24"],
-    )
-
-    assert boxscore_calls == [
-        "0001",
-        "0002",
-        "0002",
-        "0002",
-        "0002",
-        "0002",
-        "recovery:0002",
-    ]
-    assert summary.league_games_source == "cached"
-    assert summary.fetched_box_scores == 1
-    assert summary.cached_box_scores == 1
-    assert summary.processed_games == 2
-    assert summary.skipped_games == 0
-    assert [(game.game_id, game.margin) for game in games] == [("0001", 7.0), ("0002", -5.0)]
-
-
-def test_cache_team_season_data_raises_on_inconsistent_outputs(
-    tmp_path: Path,
-    monkeypatch,
-):
-    source_data_dir = tmp_path / "source-data"
-
-    monkeypatch.setattr(
-        "wowy.nba.ingest.teams.find_team_by_abbreviation",
-        lambda abbreviation: {"id": 1610612738, "abbreviation": "BOS"},
-    )
-
-    class FakeLeagueGameFinder:
-        def __init__(self, **kwargs):
-            pass
-
-        def get_dict(self):
-            return {
-                "resultSets": [
-                    {
-                        "headers": ["GAME_ID", "GAME_DATE", "MATCHUP"],
-                        "rowSet": [["0001", "2024-04-01", "BOS vs. LAL"]],
-                    }
-                ]
-            }
-
-    class FakeBoxScoreTraditionalV2:
-        def __init__(self, game_id: str, timeout: int | None = None):
-            self.game_id = game_id
-
-        def get_dict(self):
-            return {
-                "resultSets": [
-                    {
-                        "headers": [
-                            "TEAM_ABBREVIATION",
-                            "PLAYER_ID",
-                            "PLAYER_NAME",
-                            "MIN",
-                        ],
-                        "rowSet": [
-                            ["BOS", 1628369, "Jayson Tatum", "35:12"],
-                            ["BOS", 1627759, "Jaylen Brown", "34:01"],
-                            ["BOS", 1628401, "Derrick White", "55:00"],
-                            ["BOS", 1629680, "Al Horford", "55:00"],
-                            ["BOS", 1629641, "Kristaps Porzingis", "60:47"],
-                            ["LAL", 200000, "Opponent Player", "33:44"],
-                        ],
-                    },
-                    {
-                        "headers": ["TEAM_ABBREVIATION", "PLUS_MINUS"],
-                        "rowSet": [["BOS", 12], ["LAL", -12]],
-                    },
-                ]
-            }
-
-    monkeypatch.setattr(
-        "wowy.nba.cache.leaguegamefinder.LeagueGameFinder",
-        FakeLeagueGameFinder,
-    )
-    monkeypatch.setattr(
-        "wowy.nba.cache.boxscoretraditionalv2.BoxScoreTraditionalV2",
-        FakeBoxScoreTraditionalV2,
-    )
-    monkeypatch.setattr(
-        "wowy.nba.ingest.validate_team_season_records",
-        lambda *args: "wowy_data",
-    )
-
-    with pytest.raises(TeamSeasonConsistencyError, match="Inconsistent team-season cache"):
-        cache_team_season_data(
-            "BOS",
-            "2023-24",
-            source_data_dir=source_data_dir,
-            player_metrics_db_path=tmp_path / "app" / "player_metrics.sqlite3",
-        )
-
-
-def test_cache_season_script_reports_fetch_failures_without_mislabeling(
-    monkeypatch,
-    capsys,
-    tmp_path: Path,
-):
-    failure_log_path = tmp_path / "logs" / "ingest_failures.jsonl"
-    monkeypatch.setattr(
-        "scripts.cache_season_data.resolve_teams",
-        lambda team_codes: ["CLE"],
-    )
-
-    def fake_cache_team_season_data(**kwargs):
-        raise LeagueGamesFetchError(
-            message=(
-                "Failed to fetch league games for CLE 2002-03 Regular Season "
-                "after 3 attempts: JSONDecodeError: Expecting value"
-            ),
-            resource="league_games",
-            identifier="CLE:2002-03:Regular Season",
-            attempts=3,
-            last_error_type="JSONDecodeError",
-            last_error_message="Expecting value",
-            team="CLE",
-            season="2002-03",
-            season_type="Regular Season",
-        )
-
-    monkeypatch.setattr(
-        "scripts.cache_season_data.cache_team_season_data",
-        fake_cache_team_season_data,
-    )
-
-    exit_code = cache_season_data_main(
-        [
-            "2002-03",
-            "--teams",
-            "CLE",
-            "--failure-log-path",
-            str(failure_log_path),
-        ]
-    )
-    captured = capsys.readouterr()
-    records = [
-        json.loads(line)
-        for line in failure_log_path.read_text(encoding="utf-8").splitlines()
-    ]
-
-    assert exit_code == 1
-    assert "failed fetch=JSONDecodeError" in captured.out
-    assert "Fetch failed for CLE 2002-03" in captured.err
-    assert "Validation failed for CLE 2002-03" not in captured.err
-    assert len(records) == 1
-    assert records[0]["team"] == "CLE"
-    assert records[0]["season"] == "2002-03"
-    assert records[0]["failure_kind"] == "fetch_error"
-    assert records[0]["error_type"] == "LeagueGamesFetchError"
-    assert records[0]["last_error_type"] == "JSONDecodeError"
-
-
-def test_cache_season_script_logs_consistency_failures_to_same_ingest_log(
-    monkeypatch,
-    capsys,
-    tmp_path: Path,
-):
-    failure_log_path = tmp_path / "logs" / "ingest_failures.jsonl"
-    monkeypatch.setattr(
-        "scripts.cache_season_data.resolve_teams",
-        lambda team_codes: ["DET"],
-    )
-
-    def fake_cache_team_season_data(**kwargs):
-        raise TeamSeasonConsistencyError(
-            message="Inconsistent team-season cache for DET 2002-03: wowy_data",
-            team="DET",
-            season="2002-03",
-            reason="wowy_data",
-        )
-
-    monkeypatch.setattr(
-        "scripts.cache_season_data.cache_team_season_data",
-        fake_cache_team_season_data,
-    )
-
-    exit_code = cache_season_data_main(
-        [
-            "2002-03",
-            "--teams",
-            "DET",
-            "--failure-log-path",
-            str(failure_log_path),
-        ]
-    )
-    captured = capsys.readouterr()
-    records = [
-        json.loads(line)
-        for line in failure_log_path.read_text(encoding="utf-8").splitlines()
-    ]
-
-    assert exit_code == 1
-    assert "failed consistency=wowy_data" in captured.out
-    assert "Inconsistent cache for DET 2002-03: wowy_data" in captured.err
-    assert len(records) == 1
-    assert records[0]["team"] == "DET"
-    assert records[0]["season"] == "2002-03"
-    assert records[0]["failure_kind"] == "consistency_error"
-    assert records[0]["error_type"] == "TeamSeasonConsistencyError"
-    assert records[0]["reason"] == "wowy_data"
-
-
-def test_cache_season_script_logs_partial_scope_failures_to_same_ingest_log(
-    monkeypatch,
-    capsys,
-    tmp_path: Path,
-):
-    failure_log_path = tmp_path / "logs" / "ingest_failures.jsonl"
-    monkeypatch.setattr(
-        "scripts.cache_season_data.resolve_teams",
-        lambda team_codes: ["ATL"],
-    )
-
-    def fake_cache_team_season_data(**kwargs):
-        raise PartialTeamSeasonError(
-            message=(
-                "Incomplete team-season ingest for ATL 2023-24 Regular Season: "
-                "1/2 games failed normalization"
-            ),
-            team="ATL",
-            season="2023-24",
-            season_type="Regular Season",
-            failed_game_ids=["0001"],
-            total_games=2,
-            failed_games=1,
-        )
-
-    monkeypatch.setattr(
-        "scripts.cache_season_data.cache_team_season_data",
-        fake_cache_team_season_data,
-    )
-
-    exit_code = cache_season_data_main(
-        [
-            "2023-24",
-            "--teams",
-            "ATL",
-            "--failure-log-path",
-            str(failure_log_path),
-        ]
-    )
-    captured = capsys.readouterr()
-    records = [
-        json.loads(line)
-        for line in failure_log_path.read_text(encoding="utf-8").splitlines()
-    ]
-
-    assert exit_code == 1
-    assert "failed partial=1/2" in captured.out
-    assert "Incomplete cache for ATL 2023-24: 1/2 games failed normalization" in captured.err
-    assert len(records) == 1
-    assert records[0]["team"] == "ATL"
-    assert records[0]["season"] == "2023-24"
-    assert records[0]["failure_kind"] == "partial_scope_error"
-    assert records[0]["error_type"] == "PartialTeamSeasonError"
-    assert records[0]["failed_game_ids"] == ["0001"]
-
-
-def test_cache_season_script_defaults_to_all_seasons_when_season_is_omitted(
-    monkeypatch,
-    capsys,
-) -> None:
-    calls: list[tuple[str, str]] = []
-
-    monkeypatch.setattr(
-        "scripts.cache_season_data.resolve_teams",
-        lambda team_codes: ["BOS"],
-    )
-
-    class Summary:
-        def __init__(self, season: str):
-            self.team = "BOS"
-            self.season = season
-            self.processed_games = 82
-            self.total_games = 82
-            self.league_games_source = "cached"
-            self.fetched_box_scores = 0
-            self.cached_box_scores = 82
-            self.skipped_games = 0
-
-    def fake_cache_team_season_data(**kwargs):
-        calls.append((kwargs["team_abbreviation"], kwargs["season"]))
-        return Summary(kwargs["season"])
-
-    monkeypatch.setattr(
-        "scripts.cache_season_data.cache_team_season_data",
-        fake_cache_team_season_data,
-    )
-
-    exit_code = cache_season_data_main(
-        ["--start-year", "2024", "--first-year", "2023", "--teams", "BOS"]
-    )
-    captured = capsys.readouterr()
-
-    assert exit_code == 0
-    assert calls == [("BOS", "2024-25"), ("BOS", "2023-24")]
-    assert "[1/2] caching 2024-25" in captured.out
-    assert "[2/2] caching 2023-24" in captured.out
-
-
-def test_cache_season_script_can_run_all_seasons_range(
-    monkeypatch,
-    capsys,
-) -> None:
-    calls: list[tuple[str, str]] = []
-
-    monkeypatch.setattr(
-        "scripts.cache_season_data.resolve_teams",
-        lambda team_codes: ["BOS"],
-    )
-
-    class Summary:
-        def __init__(self, season: str):
-            self.team = "BOS"
-            self.season = season
-            self.processed_games = 82
-            self.total_games = 82
-            self.league_games_source = "cached"
-            self.fetched_box_scores = 0
-            self.cached_box_scores = 82
-            self.skipped_games = 0
-
-    def fake_cache_team_season_data(**kwargs):
-        calls.append((kwargs["team_abbreviation"], kwargs["season"]))
-        return Summary(kwargs["season"])
-
-    monkeypatch.setattr(
-        "scripts.cache_season_data.cache_team_season_data",
-        fake_cache_team_season_data,
-    )
-
-    exit_code = cache_season_data_main(
-        ["--all-seasons", "--start-year", "2024", "--first-year", "2023", "--teams", "BOS"]
-    )
-    captured = capsys.readouterr()
-
-    assert exit_code == 0
-    assert calls == [("BOS", "2024-25"), ("BOS", "2023-24")]
-    assert "[1/2] caching 2024-25" in captured.out
-    assert "[2/2] caching 2023-24" in captured.out
-
-
-def test_extract_matchup_fields_accept_requested_team_on_either_side() -> None:
-    home_row = {"GAME_ID": "0001", "MATCHUP": "MIA @ WAS"}
-    away_row = {"GAME_ID": "0002", "MATCHUP": "WAS @ MIA"}
-
-    assert extract_opponent(home_row, "WAS") == "MIA"
-    assert extract_is_home(home_row, "WAS") is True
-    assert extract_opponent(away_row, "WAS") == "MIA"
-    assert extract_is_home(away_row, "WAS") is False
-
-
-def test_extract_matchup_fields_accept_historical_team_aliases() -> None:
-    home_row = {"GAME_ID": "0003", "MATCHUP": "NJN @ ATL"}
-    away_row = {"GAME_ID": "0004", "MATCHUP": "ATL vs. NJN"}
-
-    assert extract_opponent(home_row, "BKN") == "ATL"
-    assert extract_is_home(home_row, "BKN") is False
-    assert extract_opponent(away_row, "BKN") == "ATL"
-    assert extract_is_home(away_row, "BKN") is False
-
-
-@pytest.mark.parametrize(
-    ("minutes", "expected"),
-    [
-        ("35:12", True),
-        ("12", True),
-        ("0", False),
-        ("0:00", False),
-        ("00:00", False),
-        ("0.0", False),
-        ("", False),
-        (None, False),
-        ("DNP", False),
-        ("DND", False),
-        ("NWT", False),
-    ],
-)
-def test_played_in_game_handles_numeric_and_status_values(
-    minutes: object,
-    expected: bool,
-):
-    assert played_in_game(minutes) is expected
-
-
-def test_parse_minutes_to_float_returns_none_for_status_text():
-    assert parse_minutes_to_float("DNP") is None
-
-
-def test_parse_minutes_to_float_accepts_iso_duration_values():
-    assert parse_minutes_to_float("PT29M03.00S") == pytest.approx(29.05)
-
-
-@pytest.mark.parametrize("minutes", [math.nan, "nan", float("inf"), "-inf"])
-def test_parse_minutes_to_float_returns_none_for_non_finite_values(minutes: object):
-    assert parse_minutes_to_float(minutes) is None
-
-
-def test_extract_normalized_game_players_treats_pandas_nan_minutes_as_did_not_play():
-    player_rows = pd.DataFrame(
-        [
-            {
-                "TEAM_ABBREVIATION": "ATL",
-                "PLAYER_ID": 445,
-                "PLAYER_NAME": "Wesley Person",
-                "MIN": math.nan,
-            }
-        ]
-    )
-
-    players = extract_normalized_game_players(
-        game_id="0020301176",
-        team_abbreviation="ATL",
-        team_id=None,
-        player_rows=player_rows,
-    )
-
-    assert players == [
-        NormalizedGamePlayerRecord(
-            game_id="0020301176",
-            team="ATL",
-            player_id=445,
-            player_name="Wesley Person",
-            appeared=False,
-            minutes=None,
-        )
-    ]
-
-
-def test_normalize_box_score_payload_derives_margin_from_points_when_plus_minus_missing():
-    payload = {
-        "resultSets": [
-            {
-                "name": "PlayerStats",
-                "headers": [
-                    "TEAM_ABBREVIATION",
-                    "PLAYER_ID",
-                    "PLAYER_NAME",
-                    "MIN",
-                ],
-                "rowSet": [
-                    ["WAS", 1, "Player 1", "12:00"],
-                    ["WAS", 2, "Player 2", "12:00"],
-                    ["WAS", 3, "Player 3", "12:00"],
-                    ["WAS", 4, "Player 4", "12:00"],
-                    ["WAS", 5, "Player 5", "12:00"],
-                    ["NOH", 6, "Player 6", "12:00"],
-                ],
-            },
-            {
-                "name": "TeamStats",
-                "headers": ["TEAM_ABBREVIATION", "PTS", "PLUS_MINUS"],
-                "rowSet": [
-                    ["WAS", 98, None],
-                    ["NOH", 120, None],
-                ],
-            },
-        ]
-    }
-
-    game, players = normalize_box_score_payload(
-        box_score_payload=payload,
-        game_id="0020300778",
-        team_abbreviation="WAS",
-        season="2003-04",
-        game_date="2004-02-18",
-        opponent="NOH",
-        is_home=False,
+            ]
+        },
+        requested_team="MEM",
+        season="2002-03",
         season_type="Regular Season",
     )
-
-    assert game.margin == -22.0
-    assert len(players) == 5
-
-
-def test_normalize_box_score_payload_accepts_v3_result_set_shape():
-    payload = {
-        "resultSets": {
-            "PlayerStats": {
-                "headers": [
-                    "gameId",
-                    "teamId",
-                    "teamTricode",
-                    "personId",
-                    "firstName",
-                    "familyName",
-                    "minutes",
-                ],
-                "data": [
-                    ["0001", 1610612737, "ATL", 101, "Test", "Player", "12:00"],
-                    ["0001", 1610612738, "BOS", 201, "Other", "Player", "11:00"],
-                ],
-            },
-            "TeamStats": {
-                "headers": [
-                    "gameId",
-                    "teamId",
-                    "teamTricode",
-                    "points",
-                    "plusMinusPoints",
-                ],
-                "data": [
-                    ["0001", 1610612737, "ATL", 110, 5],
-                    ["0001", 1610612738, "BOS", 105, -5],
-                ],
-            },
-        }
-    }
-
-    game, players = normalize_box_score_payload(
-        box_score_payload=payload,
+    box_score = parse_box_score_payload(
+        {
+            "resultSets": [
+                {
+                    "name": "PlayerStats",
+                    "headers": ["GAME_ID", "TEAM_ID", "TEAM_ABBREVIATION", "PLAYER_ID", "PLAYER_NAME", "MIN"],
+                    "rowSet": [
+                        ["0001", 1610612763, "MEM", 0, None, None],
+                        ["0001", 1610612763, "MEM", 1, "P1", "48:00"],
+                        ["0001", 1610612763, "MEM", 2, "P2", "48:00"],
+                        ["0001", 1610612763, "MEM", 3, "P3", "48:00"],
+                        ["0001", 1610612763, "MEM", 4, "P4", "48:00"],
+                        ["0001", 1610612763, "MEM", 5, "P5", "48:00"],
+                        ["0001", 1610612738, "BOS", 10, "Opp", "48:00"],
+                    ],
+                },
+                {
+                    "name": "TeamStats",
+                    "headers": ["TEAM_ID", "TEAM_ABBREVIATION", "PLUS_MINUS", "PTS"],
+                    "rowSet": [
+                        [1610612763, "MEM", 5, 100],
+                        [1610612738, "BOS", -5, 95],
+                    ],
+                },
+            ]
+        },
         game_id="0001",
-        team_abbreviation="ATL",
-        season="2025-26",
-        game_date="2025-10-22",
-        opponent="BOS",
-        is_home=True,
-        season_type="Regular Season",
     )
 
-    assert game.team == "ATL"
-    assert game.opponent == "BOS"
-    assert game.team_id == 1610612737
-    assert game.opponent_team_id == 1610612738
-    assert game.margin == 5.0
-    assert [(player.player_id, player.player_name, player.minutes) for player in players] == [
-        (101, "Test Player", 12.0)
-    ]
-
-
-def test_normalize_box_score_payload_accepts_live_box_score_shape():
-    payload = {
-        "game": {
-            "homeTeam": {
-                "teamId": 1610612737,
-                "teamTricode": "ATL",
-                "score": 122,
-                "statistics": {"plusMinusPoints": 14},
-                "players": [
-                    {
-                        "personId": 101,
-                        "firstName": "Test",
-                        "familyName": "Player",
-                        "statistics": {"minutes": "PT29M03.00S"},
-                    }
-                ],
-            },
-            "awayTeam": {
-                "teamId": 1610612749,
-                "teamTricode": "MIL",
-                "score": 108,
-                "statistics": {"plusMinusPoints": -14},
-                "players": [
-                    {
-                        "personId": 201,
-                        "firstName": "Other",
-                        "familyName": "Player",
-                        "statistics": {"minutes": "PT31M00.00S"},
-                    }
-                ],
-            },
-        }
-    }
-
-    game, players = normalize_box_score_payload(
-        box_score_payload=payload,
-        game_id="0022500970",
-        team_abbreviation="ATL",
-        season="2025-26",
-        game_date="2026-03-14",
-        opponent="MIL",
-        is_home=True,
-        season_type="Regular Season",
-    )
-
-    assert game.team == "ATL"
-    assert game.opponent == "MIL"
-    assert game.team_id == 1610612737
-    assert game.opponent_team_id == 1610612749
-    assert game.margin == 14.0
-    assert [(player.player_id, player.player_name, player.minutes) for player in players] == [
-        (101, "Test Player", pytest.approx(29.05))
-    ]
-
-
-def test_normalize_box_score_payload_accepts_historical_team_aliases():
-    payload = {
-        "resultSets": [
-            {
-                "name": "PlayerStats",
-                "headers": [
-                    "TEAM_ABBREVIATION",
-                    "PLAYER_ID",
-                    "PLAYER_NAME",
-                    "MIN",
-                ],
-                "rowSet": [
-                    ["NJN", 101, "Test Player", "32:00"],
-                    ["ATL", 201, "Opponent Player", "31:00"],
-                ],
-            },
-            {
-                "name": "TeamStats",
-                "headers": ["TEAM_ABBREVIATION", "TEAM_ID", "PLUS_MINUS"],
-                "rowSet": [
-                    ["NJN", 1610612751, 7],
-                    ["ATL", 1610612737, -7],
-                ],
-            },
-        ]
-    }
-
-    game, players = normalize_box_score_payload(
-        box_score_payload=payload,
-        game_id="0020200008",
-        team_abbreviation="BKN",
+    game, players = normalize_source_game(
+        schedule_game=schedule.games[0],
+        box_score=box_score,
         season="2002-03",
-        game_date="2002-10-30",
-        opponent="ATL",
-        is_home=True,
         season_type="Regular Season",
     )
 
-    assert game.team == "NJN"
-    assert game.opponent == "ATL"
-    assert game.team_id == 1610612751
-    assert game.opponent_team_id == 1610612737
-    assert game.margin == 7.0
-    assert [(player.player_id, player.player_name, player.minutes) for player in players] == [
-        (101, "Test Player", 32.0)
+    assert game.team_id == 1610612763
+    assert [player.player_id for player in players] == [1, 2, 3, 4, 5]
+
+
+def test_normalize_source_game_skips_player_did_not_play_placeholder_rows() -> None:
+    schedule = parse_league_schedule_payload(
+        {
+            "resultSets": [
+                {
+                    "headers": ["GAME_ID", "GAME_DATE", "MATCHUP", "TEAM_ID", "TEAM_ABBREVIATION"],
+                    "rowSet": [["0001", "2003-03-10", "MEM vs. BOS", 1610612763, "MEM"]],
+                }
+            ]
+        },
+        requested_team="MEM",
+        season="2002-03",
+        season_type="Regular Season",
+    )
+    box_score = parse_box_score_payload(
+        {
+            "resultSets": [
+                {
+                    "name": "PlayerStats",
+                    "headers": [
+                        "GAME_ID",
+                        "TEAM_ID",
+                        "TEAM_ABBREVIATION",
+                        "PLAYER_ID",
+                        "PLAYER_NAME",
+                        "MIN",
+                        "COMMENT",
+                        "AST",
+                        "BLK",
+                        "DREB",
+                        "FG3A",
+                        "FG3M",
+                        "FG3_PCT",
+                        "FGA",
+                        "FGM",
+                        "FG_PCT",
+                        "FTA",
+                        "FTM",
+                        "FT_PCT",
+                        "OREB",
+                        "PF",
+                        "PLUS_MINUS",
+                        "PTS",
+                        "REB",
+                        "STL",
+                        "TO",
+                    ],
+                    "rowSet": [
+                        ["0001", 1610612763, "MEM", 1337, None, None, " ", None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None],
+                        ["0001", 1610612763, "MEM", 1, "P1", "48:00", "", None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None],
+                        ["0001", 1610612763, "MEM", 2, "P2", "48:00", "", None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None],
+                        ["0001", 1610612763, "MEM", 3, "P3", "48:00", "", None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None],
+                        ["0001", 1610612763, "MEM", 4, "P4", "48:00", "", None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None],
+                        ["0001", 1610612763, "MEM", 5, "P5", "48:00", "", None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None],
+                        ["0001", 1610612738, "BOS", 10, "Opp", "48:00", "", None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None],
+                    ],
+                },
+                {
+                    "name": "TeamStats",
+                    "headers": ["TEAM_ID", "TEAM_ABBREVIATION", "PLUS_MINUS", "PTS"],
+                    "rowSet": [
+                        [1610612763, "MEM", 5, 100],
+                        [1610612738, "BOS", -5, 95],
+                    ],
+                },
+            ]
+        },
+        game_id="0001",
+    )
+
+    game, players = normalize_source_game(
+        schedule_game=schedule.games[0],
+        box_score=box_score,
+        season="2002-03",
+        season_type="Regular Season",
+    )
+
+    assert game.team_id == 1610612763
+    assert [player.player_id for player in players] == [1, 2, 3, 4, 5]
+
+
+def test_classify_source_player_row_names_known_skip_patterns() -> None:
+    placeholder = SourceBoxScorePlayer(
+        game_id="0001",
+        team_id=1610612763,
+        team_abbreviation="MEM",
+        player_id=1337,
+        player_name="",
+        minutes_raw=None,
+        raw_row={
+            "PLAYER_ID": 1337,
+            "PLAYER_NAME": None,
+            "MIN": None,
+            "COMMENT": " ",
+            "AST": None,
+            "BLK": None,
+            "DREB": None,
+            "FG3A": None,
+            "FG3M": None,
+            "FG3_PCT": None,
+            "FGA": None,
+            "FGM": None,
+            "FG_PCT": None,
+            "FTA": None,
+            "FTM": None,
+            "FT_PCT": None,
+            "OREB": None,
+            "PF": None,
+            "PLUS_MINUS": None,
+            "PTS": None,
+            "REB": None,
+            "STL": None,
+            "TO": None,
+        },
+    )
+    inactive = SourceBoxScorePlayer(
+        game_id="0001",
+        team_id=1610612763,
+        team_abbreviation="MEM",
+        player_id=2001,
+        player_name="Inactive Player",
+        minutes_raw=None,
+        raw_row={
+            "PLAYER_ID": 2001,
+            "PLAYER_NAME": "Inactive Player",
+            "MIN": None,
+            "COMMENT": "DNP - Coach's Decision",
+            "AST": None,
+            "BLK": None,
+            "DREB": None,
+            "FG3A": None,
+            "FG3M": None,
+            "FG3_PCT": None,
+            "FGA": None,
+            "FGM": None,
+            "FG_PCT": None,
+            "FTA": None,
+            "FTM": None,
+            "FT_PCT": None,
+            "OREB": None,
+            "PF": None,
+            "PLUS_MINUS": None,
+            "PTS": None,
+            "REB": None,
+            "STL": None,
+            "TO": None,
+        },
+    )
+
+    assert classify_source_player_row(placeholder) == PLAYER_DID_NOT_PLAY_PLACEHOLDER
+    assert classify_source_player_row(inactive) == INACTIVE_PLAYER_STATUS_ROW
+
+
+def test_classify_source_team_row_defaults_to_canonical_team_source_row() -> None:
+    team_row = SourceBoxScoreTeam(
+        team_id=1610612763,
+        team_abbreviation="MEM",
+        plus_minus_raw=5,
+        points_raw=100,
+        raw_row={
+            "TEAM_ID": 1610612763,
+            "TEAM_ABBREVIATION": "MEM",
+            "PLUS_MINUS": 5,
+            "PTS": 100,
+        },
+    )
+
+    assert classify_source_team_row(team_row) == CANONICAL_TEAM_SOURCE_ROW
+
+
+def test_classify_source_schedule_row_defaults_to_canonical_schedule_source_row() -> None:
+    schedule_row = {
+        "GAME_ID": "0001",
+        "GAME_DATE": "2003-03-10",
+        "MATCHUP": "MEM vs. BOS",
+        "TEAM_ID": 1610612763,
+        "TEAM_ABBREVIATION": "MEM",
+    }
+
+    assert classify_source_schedule_row(schedule_row) == CANONICAL_SCHEDULE_SOURCE_ROW
+
+
+def test_dedupe_schedule_games_raises_on_conflicting_duplicate_rows() -> None:
+    with pytest.raises(ValueError, match="Conflicting duplicate schedule rows for game '0001'"):
+        dedupe_schedule_games(
+            [
+                SourceLeagueGame(
+                    game_id="0001",
+                    game_date="2003-03-10",
+                    matchup="MEM vs. BOS",
+                    team_id=1610612763,
+                    team_abbreviation="MEM",
+                    raw_row={
+                        "GAME_ID": "0001",
+                        "GAME_DATE": "2003-03-10",
+                        "MATCHUP": "MEM vs. BOS",
+                        "TEAM_ID": 1610612763,
+                        "TEAM_ABBREVIATION": "MEM",
+                    },
+                ),
+                SourceLeagueGame(
+                    game_id="0001",
+                    game_date="2003-03-11",
+                    matchup="MEM @ BOS",
+                    team_id=1610612763,
+                    team_abbreviation="MEM",
+                    raw_row={
+                        "GAME_ID": "0001",
+                        "GAME_DATE": "2003-03-11",
+                        "MATCHUP": "MEM @ BOS",
+                        "TEAM_ID": 1610612763,
+                        "TEAM_ABBREVIATION": "MEM",
+                    },
+                ),
+            ]
+        )
+
+
+def test_normalize_source_game_skips_inactive_player_status_rows() -> None:
+    schedule = parse_league_schedule_payload(
+        {
+            "resultSets": [
+                {
+                    "headers": ["GAME_ID", "GAME_DATE", "MATCHUP", "TEAM_ID", "TEAM_ABBREVIATION"],
+                    "rowSet": [["0001", "2003-03-10", "MEM vs. BOS", 1610612763, "MEM"]],
+                }
+            ]
+        },
+        requested_team="MEM",
+        season="2002-03",
+        season_type="Regular Season",
+    )
+    box_score = parse_box_score_payload(
+        {
+            "resultSets": [
+                {
+                    "name": "PlayerStats",
+                    "headers": [
+                        "GAME_ID",
+                        "TEAM_ID",
+                        "TEAM_ABBREVIATION",
+                        "PLAYER_ID",
+                        "PLAYER_NAME",
+                        "MIN",
+                        "COMMENT",
+                        "AST",
+                        "BLK",
+                        "DREB",
+                        "FG3A",
+                        "FG3M",
+                        "FG3_PCT",
+                        "FGA",
+                        "FGM",
+                        "FG_PCT",
+                        "FTA",
+                        "FTM",
+                        "FT_PCT",
+                        "OREB",
+                        "PF",
+                        "PLUS_MINUS",
+                        "PTS",
+                        "REB",
+                        "STL",
+                        "TO",
+                    ],
+                    "rowSet": [
+                        ["0001", 1610612763, "MEM", 1337, "Inactive Player", None, "DNP - Coach's Decision", None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None],
+                        ["0001", 1610612763, "MEM", 1, "P1", "48:00", "", None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None],
+                        ["0001", 1610612763, "MEM", 2, "P2", "48:00", "", None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None],
+                        ["0001", 1610612763, "MEM", 3, "P3", "48:00", "", None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None],
+                        ["0001", 1610612763, "MEM", 4, "P4", "48:00", "", None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None],
+                        ["0001", 1610612763, "MEM", 5, "P5", "48:00", "", None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None],
+                        ["0001", 1610612738, "BOS", 10, "Opp", "48:00", "", None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None],
+                    ],
+                },
+                {
+                    "name": "TeamStats",
+                    "headers": ["TEAM_ID", "TEAM_ABBREVIATION", "PLUS_MINUS", "PTS"],
+                    "rowSet": [
+                        [1610612763, "MEM", 5, 100],
+                        [1610612738, "BOS", -5, 95],
+                    ],
+                },
+            ]
+        },
+        game_id="0001",
+    )
+
+    game, players = normalize_source_game(
+        schedule_game=schedule.games[0],
+        box_score=box_score,
+        season="2002-03",
+        season_type="Regular Season",
+    )
+
+    assert game.team_id == 1610612763
+    assert [player.player_id for player in players] == [1, 2, 3, 4, 5]
+
+
+def test_parse_box_score_payload_accepts_v3_result_set_shape() -> None:
+    box_score = parse_box_score_payload(
+        {
+            "resultSets": {
+                "PlayerStats": {
+                    "headers": [
+                        "gameId",
+                        "teamId",
+                        "teamTricode",
+                        "personId",
+                        "firstName",
+                        "familyName",
+                        "minutes",
+                    ],
+                    "data": [
+                        ["0001", 1610612737, "ATL", 101, "Test", "Player", "12:00"],
+                        ["0001", 1610612738, "BOS", 201, "Other", "Player", "DNP - COACH'S DECISION"],
+                    ],
+                },
+                "TeamStats": {
+                    "headers": [
+                        "gameId",
+                        "teamId",
+                        "teamTricode",
+                        "points",
+                        "plusMinusPoints",
+                    ],
+                    "data": [
+                        ["0001", 1610612737, "ATL", 110, 5],
+                        ["0001", 1610612738, "BOS", 105, -5],
+                    ],
+                },
+            }
+        },
+        game_id="0001",
+    )
+
+    assert [(player.player_id, player.player_name, player.minutes_raw) for player in box_score.players] == [
+        (101, "Test Player", "12:00"),
+        (201, "Other Player", "DNP - COACH'S DECISION"),
+    ]
+    assert [(team.team_id, team.team_abbreviation, team.points_raw) for team in box_score.teams] == [
+        (1610612737, "ATL", 110),
+        (1610612738, "BOS", 105),
     ]
 
 
-def test_validate_normalized_cache_batch_accepts_historical_team_aliases():
-    games = [
-        NormalizedGameRecord(
-            game_id="0020200008",
+def test_parse_box_score_payload_raises_with_raw_row_for_blank_player_name() -> None:
+    with pytest.raises(ValueError, match='Missing PLAYER_NAME; nba_api_box_score_player_row=.*"PLAYER_ID": 1'):
+        parse_box_score_payload(
+            {
+                "resultSets": [
+                    {
+                        "name": "PlayerStats",
+                        "headers": ["GAME_ID", "TEAM_ID", "TEAM_ABBREVIATION", "PLAYER_ID", "PLAYER_NAME", "MIN"],
+                        "rowSet": [
+                            ["0001", 1610612763, "MEM", 1, "", "48:00"],
+                            ["0001", 1610612738, "BOS", 10, "Opp", "48:00"],
+                        ],
+                    },
+                    {
+                        "name": "TeamStats",
+                        "headers": ["TEAM_ID", "TEAM_ABBREVIATION", "PLUS_MINUS", "PTS"],
+                        "rowSet": [
+                            [1610612763, "MEM", 5, 100],
+                            [1610612738, "BOS", -5, 95],
+                        ],
+                    },
+                ]
+            },
+            game_id="0001",
+        )
+
+
+def test_parse_box_score_payload_raises_with_raw_row_for_unparseable_minutes() -> None:
+    with pytest.raises(ValueError, match='Unparseable MIN value; nba_api_box_score_player_row=.*"MIN": "bogus"'):
+        parse_box_score_payload(
+            {
+                "resultSets": [
+                    {
+                        "name": "PlayerStats",
+                        "headers": ["GAME_ID", "TEAM_ID", "TEAM_ABBREVIATION", "PLAYER_ID", "PLAYER_NAME", "MIN"],
+                        "rowSet": [
+                            ["0001", 1610612763, "MEM", 1, "P1", "bogus"],
+                            ["0001", 1610612738, "BOS", 10, "Opp", "48:00"],
+                        ],
+                    },
+                    {
+                        "name": "TeamStats",
+                        "headers": ["TEAM_ID", "TEAM_ABBREVIATION", "PLUS_MINUS", "PTS"],
+                        "rowSet": [
+                            [1610612763, "MEM", 5, 100],
+                            [1610612738, "BOS", -5, 95],
+                        ],
+                    },
+                ]
+            },
+            game_id="0001",
+        )
+
+
+def test_parse_box_score_payload_raises_with_raw_row_for_missing_minutes_outside_known_skip_category() -> None:
+    with pytest.raises(ValueError, match='Unparseable MIN value; nba_api_box_score_player_row=.*"PTS": 12'):
+        parse_box_score_payload(
+            {
+                "resultSets": [
+                    {
+                        "name": "PlayerStats",
+                        "headers": [
+                            "GAME_ID",
+                            "TEAM_ID",
+                            "TEAM_ABBREVIATION",
+                            "PLAYER_ID",
+                            "PLAYER_NAME",
+                            "MIN",
+                            "PTS",
+                        ],
+                        "rowSet": [
+                            ["0001", 1610612763, "MEM", 1, "P1", None, 12],
+                            ["0001", 1610612738, "BOS", 10, "Opp", "48:00", 10],
+                        ],
+                    },
+                    {
+                        "name": "TeamStats",
+                        "headers": ["TEAM_ID", "TEAM_ABBREVIATION", "PLUS_MINUS", "PTS"],
+                        "rowSet": [
+                            [1610612763, "MEM", 5, 100],
+                            [1610612738, "BOS", -5, 95],
+                        ],
+                    },
+                ]
+            },
+            game_id="0001",
+        )
+
+
+def test_parse_league_schedule_payload_raises_with_raw_row_for_conflicting_team_identity() -> None:
+    with pytest.raises(
+        ValueError,
+        match='Conflicting source team identity values: TEAM_ID=1610612763 TEAM_ABBREVIATION=\'LAL\'; nba_api_league_schedule_row=',
+    ):
+        parse_league_schedule_payload(
+            {
+                "resultSets": [
+                    {
+                        "headers": ["GAME_ID", "GAME_DATE", "MATCHUP", "TEAM_ID", "TEAM_ABBREVIATION"],
+                        "rowSet": [["0001", "2003-03-10", "MEM vs. BOS", 1610612763, "LAL"]],
+                    }
+                ]
+            },
+            requested_team="MEM",
             season="2002-03",
-            game_date="2002-10-30",
-            team="NJN",
-            opponent="ATL",
-            is_home=True,
-            margin=7.0,
             season_type="Regular Season",
-            source="nba_api",
-            team_id=1610612751,
-            opponent_team_id=1610612737,
         )
-    ]
-    players = [
-        NormalizedGamePlayerRecord(
-            game_id="0020200008",
-            team="NJN",
-            player_id=101 + index,
-            player_name=f"Player {index}",
-            appeared=True,
-            minutes=47.0,
-            team_id=1610612751,
-        )
-        for index in range(5)
-    ]
 
-    validate_normalized_cache_batch(
-        team="BKN",
-        team_id=1610612751,
+
+def test_parse_box_score_payload_raises_with_raw_row_for_conflicting_player_team_identity() -> None:
+    with pytest.raises(
+        ValueError,
+        match='Conflicting source team identity values: TEAM_ID=1610612763 TEAM_ABBREVIATION=\'LAL\'',
+    ):
+        parse_box_score_payload(
+            {
+                "resultSets": [
+                    {
+                        "name": "PlayerStats",
+                        "headers": ["GAME_ID", "TEAM_ID", "TEAM_ABBREVIATION", "PLAYER_ID", "PLAYER_NAME", "MIN"],
+                        "rowSet": [
+                            ["0001", 1610612763, "LAL", 1, "P1", "48:00"],
+                            ["0001", 1610612738, "BOS", 10, "Opp", "48:00"],
+                        ],
+                    },
+                    {
+                        "name": "TeamStats",
+                        "headers": ["TEAM_ID", "TEAM_ABBREVIATION", "PLUS_MINUS", "PTS"],
+                        "rowSet": [
+                            [1610612763, "MEM", 5, 100],
+                            [1610612738, "BOS", -5, 95],
+                        ],
+                    },
+                ]
+            },
+            game_id="0001",
+        )
+
+
+def test_parse_box_score_payload_raises_with_raw_values_for_conflicting_team_identity() -> None:
+    schedule = parse_league_schedule_payload(
+        {
+            "resultSets": [
+                {
+                    "headers": ["GAME_ID", "GAME_DATE", "MATCHUP", "TEAM_ID", "TEAM_ABBREVIATION"],
+                    "rowSet": [["0001", "2003-03-10", "MEM vs. BOS", 1610612763, "MEM"]],
+                }
+            ]
+        },
+        requested_team="MEM",
         season="2002-03",
         season_type="Regular Season",
-        games=games,
-        game_players=players,
     )
+    assert schedule.games[0].team_id == 1610612763
+
+    with pytest.raises(
+        ValueError,
+        match="Conflicting source team identity values: TEAM_ID=1610612738 TEAM_ABBREVIATION='LAL'",
+    ):
+        parse_box_score_payload(
+            {
+                "resultSets": [
+                    {
+                        "name": "PlayerStats",
+                        "headers": ["GAME_ID", "TEAM_ID", "TEAM_ABBREVIATION", "PLAYER_ID", "PLAYER_NAME", "MIN"],
+                        "rowSet": [
+                            ["0001", 1610612763, "MEM", 1, "P1", "48:00"],
+                            ["0001", 1610612763, "MEM", 2, "P2", "48:00"],
+                            ["0001", 1610612763, "MEM", 3, "P3", "48:00"],
+                            ["0001", 1610612763, "MEM", 4, "P4", "48:00"],
+                            ["0001", 1610612763, "MEM", 5, "P5", "48:00"],
+                            ["0001", 1610612738, "BOS", 10, "Opp", "48:00"],
+                        ],
+                    },
+                    {
+                        "name": "TeamStats",
+                        "headers": ["TEAM_ID", "TEAM_ABBREVIATION", "PLUS_MINUS", "PTS"],
+                        "rowSet": [
+                            [1610612763, "MEM", 5, 100],
+                            [1610612738, "LAL", -5, 95],
+                        ],
+                    },
+                ]
+            },
+            game_id="0001",
+        )

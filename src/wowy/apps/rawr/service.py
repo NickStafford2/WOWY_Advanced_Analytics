@@ -13,10 +13,10 @@ from wowy.apps.rawr.models import (
     RawrPlayerSeasonRecord,
     RawrResult,
 )
-from wowy.nba.models import NormalizedGamePlayerRecord, NormalizedGameRecord
+from wowy.nba.models import CanonicalGamePlayerRecord, CanonicalGameRecord
 from wowy.data.game_cache_db import list_cache_load_rows
 from wowy.data.player_metrics_db import DEFAULT_PLAYER_METRICS_DB_PATH
-from wowy.nba.prepare import prepare_normalized_scope_records
+from wowy.nba.prepare import prepare_canonical_scope_records
 from wowy.nba.team_identity import resolve_team_id
 from wowy.nba.team_seasons import resolve_team_seasons
 from wowy.progress import TerminalProgressBar, print_status_box
@@ -144,8 +144,8 @@ def filter_rawr_scope(
 
 
 def run_rawr_records(
-    games: list[NormalizedGameRecord],
-    game_players: list[NormalizedGamePlayerRecord],
+    games: list[CanonicalGameRecord],
+    game_players: list[CanonicalGamePlayerRecord],
     min_games: int,
     ridge_alpha: float = 1.0,
     shrinkage_mode: str = "uniform",
@@ -452,7 +452,7 @@ def prepare_rawr_player_season_records(
     for season in sorted(teams_by_season):
         if season not in complete_seasons:
             continue
-        games, game_players = prepare_normalized_scope_records(
+        games, game_players = prepare_canonical_scope_records(
             teams=sorted(set(teams_by_season[season])),
             seasons=[season],
             season_type=season_type,
@@ -557,7 +557,7 @@ def prepare_and_run_rawr(args) -> str:
     print(
         f"[1/3] preparing RAWR inputs for {format_scope(args.team, args.season)}"
     )
-    games, game_players = prepare_normalized_scope_records(
+    games, game_players = prepare_canonical_scope_records(
         teams=args.team,
         seasons=complete_seasons,
         season_type=args.season_type,

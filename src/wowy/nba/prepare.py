@@ -15,8 +15,8 @@ from wowy.nba.ingest import (
     DEFAULT_SOURCE_DATA_DIR,
     load_player_names_from_cache,
 )
+from wowy.nba.models import CanonicalGamePlayerRecord, CanonicalGameRecord
 from wowy.nba.team_seasons import TeamSeasonScope, resolve_team_seasons
-from wowy.nba.models import NormalizedGamePlayerRecord, NormalizedGameRecord
 
 
 def prepare_wowy_game_records(
@@ -28,7 +28,7 @@ def prepare_wowy_game_records(
     player_metrics_db_path: Path = DEFAULT_PLAYER_METRICS_DB_PATH,
     log=print,
 ) -> tuple[list[WowyGameRecord], dict[int, str]]:
-    games, game_players = prepare_normalized_scope_records(
+    games, game_players = prepare_canonical_scope_records(
         teams=teams,
         seasons=seasons,
         season_type=season_type,
@@ -40,7 +40,7 @@ def prepare_wowy_game_records(
     return derive_wowy_games(games, game_players), load_player_names_from_cache(source_data_dir)
 
 
-def prepare_normalized_scope_records(
+def prepare_canonical_scope_records(
     teams: list[str] | None,
     seasons: list[str] | None,
     *,
@@ -50,7 +50,7 @@ def prepare_normalized_scope_records(
     include_opponents_for_team_scope: bool = True,
     require_cached_only: bool = False,
     log=print,
-) -> tuple[list[NormalizedGameRecord], list[NormalizedGamePlayerRecord]]:
+) -> tuple[list[CanonicalGameRecord], list[CanonicalGamePlayerRecord]]:
     team_seasons = resolve_team_seasons(
         teams,
         seasons,
@@ -124,7 +124,7 @@ def _load_games_from_db(
     *,
     season_type: str,
     player_metrics_db_path: Path,
-) -> list[NormalizedGameRecord]:
+) -> list[CanonicalGameRecord]:
     games = load_normalized_games_from_db(
         player_metrics_db_path,
         season_type=season_type,
@@ -142,10 +142,10 @@ def _load_games_from_db(
 
 
 def _filter_records_to_team_seasons(
-    games: list[NormalizedGameRecord],
-    game_players: list[NormalizedGamePlayerRecord],
+    games: list[CanonicalGameRecord],
+    game_players: list[CanonicalGamePlayerRecord],
     team_seasons: list[TeamSeasonScope],
-) -> tuple[list[NormalizedGameRecord], list[NormalizedGamePlayerRecord]]:
+) -> tuple[list[CanonicalGameRecord], list[CanonicalGamePlayerRecord]]:
     allowed_team_seasons = {
         (team_season.team_id or team_season.team, team_season.season)
         for team_season in team_seasons

@@ -7,7 +7,7 @@ Python project for experimenting with historical basketball impact metrics. Desi
 The repository currently has two analysis paths built on game-level NBA data stored in SQLite:
 
 - WOWY baseline on derived game records loaded from the app database
-- RAWR on normalized game and player rows loaded from the app database
+- RAWR on canonical game and player rows persisted in the app database
 
 The current web app goal is player comparison over the full cached history.
 The primary WOWY web ranking is the strongest multi-season WOWY profile across that full history, with team filters used only to restrict the underlying game sample when requested.
@@ -102,6 +102,9 @@ Source cache quality rules:
 - Empty box score payloads are invalid source data and must not be normalized or preserved.
 - If a cached box score is empty, discard it for that scope and refetch instead of rebuilding the DB from bad source data.
 - Newer NBA games may return empty `BoxScoreTraditionalV2` payloads. Ingest now retries with `BoxScoreTraditionalV3` before treating the game as a failure.
+- Ingest is a strict pipeline: fetch raw payloads, parse source rows, normalize canonical records, validate the canonical batch once, then persist SQLite rows.
+- Source-shape anomalies are rejected during parsing unless they match an explicit known source category.
+- Team identity is determined from source team IDs and reconciled centrally with abbreviation handling.
 
 ## Output notes
 

@@ -8,7 +8,7 @@ from datetime import UTC, datetime
 from pathlib import Path
 
 from wowy.data.player_metrics_db import DEFAULT_PLAYER_METRICS_DB_PATH
-from wowy.nba.models import NormalizedGamePlayerRecord, NormalizedGameRecord
+from wowy.nba.models import CanonicalGamePlayerRecord, CanonicalGameRecord
 from wowy.nba.seasons import canonicalize_season_string
 from wowy.nba.season_types import canonicalize_season_type
 from wowy.nba.team_identity import resolve_team_id
@@ -120,8 +120,8 @@ def replace_team_season_normalized_rows(
     team_id: int | None = None,
     season: str,
     season_type: str,
-    games: list[NormalizedGameRecord],
-    game_players: list[NormalizedGamePlayerRecord],
+    games: list[CanonicalGameRecord],
+    game_players: list[CanonicalGamePlayerRecord],
     source_path: str,
     source_snapshot: str,
     source_kind: str,
@@ -283,7 +283,7 @@ def load_normalized_games_from_db(
     teams: list[str] | None = None,
     seasons: list[str] | None = None,
     game_ids: list[str] | None = None,
-) -> list[NormalizedGameRecord]:
+) -> list[CanonicalGameRecord]:
     initialize_game_cache_db(db_path)
     season_type = canonicalize_season_type(season_type)
     query = """
@@ -326,7 +326,7 @@ def load_normalized_games_from_db(
     with _connect(db_path) as connection:
         rows = connection.execute(query, params).fetchall()
     return [
-        NormalizedGameRecord(
+        CanonicalGameRecord(
             game_id=row["game_id"],
             season=row["season"],
             game_date=row["game_date"],
@@ -350,7 +350,7 @@ def load_normalized_game_players_from_db(
     teams: list[str] | None = None,
     seasons: list[str] | None = None,
     game_ids: list[str] | None = None,
-) -> list[NormalizedGamePlayerRecord]:
+) -> list[CanonicalGamePlayerRecord]:
     initialize_game_cache_db(db_path)
     season_type = canonicalize_season_type(season_type)
     query = """
@@ -389,7 +389,7 @@ def load_normalized_game_players_from_db(
     with _connect(db_path) as connection:
         rows = connection.execute(query, params).fetchall()
     return [
-        NormalizedGamePlayerRecord(
+        CanonicalGamePlayerRecord(
             game_id=row["game_id"],
             team=row["team"],
             team_id=row["team_id"],
@@ -642,10 +642,10 @@ def _resolve_team_ids(teams: list[str] | None) -> list[int]:
     return [resolve_team_id(team) for team in teams]
 
 
-def _with_resolved_game_identity(game: NormalizedGameRecord) -> NormalizedGameRecord:
+def _with_resolved_game_identity(game: CanonicalGameRecord) -> CanonicalGameRecord:
     team_id = game.team_id or resolve_team_id(game.team)
     opponent_team_id = game.opponent_team_id or resolve_team_id(game.opponent)
-    return NormalizedGameRecord(
+    return CanonicalGameRecord(
         game_id=game.game_id,
         season=game.season,
         game_date=game.game_date,
@@ -661,11 +661,11 @@ def _with_resolved_game_identity(game: NormalizedGameRecord) -> NormalizedGameRe
 
 
 def _with_resolved_player_identity(
-    player: NormalizedGamePlayerRecord,
+    player: CanonicalGamePlayerRecord,
     *,
     default_team: str,
-) -> NormalizedGamePlayerRecord:
-    return NormalizedGamePlayerRecord(
+) -> CanonicalGamePlayerRecord:
+    return CanonicalGamePlayerRecord(
         game_id=player.game_id,
         team=player.team,
         player_id=player.player_id,

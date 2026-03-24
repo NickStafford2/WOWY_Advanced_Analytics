@@ -4,7 +4,7 @@ from pathlib import Path
 
 import pytest
 
-from wowy.nba.models import NormalizedGamePlayerRecord, NormalizedGameRecord
+from wowy.nba.models import CanonicalGamePlayerRecord, CanonicalGameRecord
 from wowy.nba.seasons import canonicalize_season_string
 from wowy.nba.team_seasons import TeamSeasonScope, list_cached_team_seasons
 from tests.support import seed_db_from_team_seasons
@@ -31,7 +31,7 @@ def test_list_cached_team_seasons_returns_db_rows(
                 "BOS",
                 "2014-15",
                 [
-                    NormalizedGameRecord(
+                    CanonicalGameRecord(
                         game_id="1",
                         season="2014-15",
                         game_date="2015-04-01",
@@ -44,7 +44,7 @@ def test_list_cached_team_seasons_returns_db_rows(
                     )
                 ],
                 [
-                    NormalizedGamePlayerRecord(
+                    CanonicalGamePlayerRecord(
                         game_id="1",
                         team="BOS",
                         player_id=101,
@@ -74,7 +74,7 @@ def test_list_cached_team_seasons_returns_multiple_db_rows(
                 "BOS",
                 "2014-15",
                 [
-                    NormalizedGameRecord(
+                    CanonicalGameRecord(
                         game_id="1",
                         season="2014-15",
                         game_date="2015-04-01",
@@ -87,7 +87,7 @@ def test_list_cached_team_seasons_returns_multiple_db_rows(
                     )
                 ],
                 [
-                    NormalizedGamePlayerRecord(
+                    CanonicalGamePlayerRecord(
                         game_id="1",
                         team="BOS",
                         player_id=101,
@@ -101,7 +101,7 @@ def test_list_cached_team_seasons_returns_multiple_db_rows(
                 "LAL",
                 "2015-16",
                 [
-                    NormalizedGameRecord(
+                    CanonicalGameRecord(
                         game_id="2",
                         season="2015-16",
                         game_date="2016-04-01",
@@ -114,7 +114,7 @@ def test_list_cached_team_seasons_returns_multiple_db_rows(
                     )
                 ],
                 [
-                    NormalizedGamePlayerRecord(
+                    CanonicalGamePlayerRecord(
                         game_id="2",
                         team="LAL",
                         player_id=24,

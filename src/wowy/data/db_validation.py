@@ -24,14 +24,14 @@ from wowy.data.player_metrics_db import (
     _validate_optional_non_negative_int,
     _validate_required_text,
 )
-from wowy.nba.models import NormalizedGamePlayerRecord, NormalizedGameRecord
+from wowy.nba.models import CanonicalGamePlayerRecord, CanonicalGameRecord
 from wowy.nba.seasons import canonicalize_season_string
 from wowy.nba.season_types import canonicalize_season_type
 from wowy.nba.team_identity import resolve_team_id
 from wowy.nba.validation import (
     _canonical_team_abbreviation,
-    _validate_normalized_game,
-    _validate_normalized_game_player,
+    _validate_canonical_game,
+    _validate_canonical_game_player,
     validate_normalized_cache_batch,
 )
 
@@ -283,7 +283,7 @@ def _validate_normalized_games_table(
                 )
             )
             continue
-        game = NormalizedGameRecord(
+        game = CanonicalGameRecord(
             game_id=row["game_id"],
             season=row["season"],
             game_date=row["game_date"],
@@ -297,7 +297,7 @@ def _validate_normalized_games_table(
             opponent_team_id=row["opponent_team_id"],
         )
         try:
-            _validate_normalized_game(
+            _validate_canonical_game(
                 game,
                 expected_team=game.team,
                 expected_team_id=game.team_id or 0,
@@ -356,7 +356,7 @@ def _validate_normalized_game_players_table(
                 )
             )
             continue
-        player = NormalizedGamePlayerRecord(
+        player = CanonicalGamePlayerRecord(
             game_id=row["game_id"],
             team=row["team"],
             player_id=row["player_id"],
@@ -366,7 +366,7 @@ def _validate_normalized_game_players_table(
             team_id=row["team_id"],
         )
         try:
-            _validate_normalized_game_player(
+            _validate_canonical_game_player(
                 player,
                 expected_team=row["team"],
                 expected_team_id=row["team_id"],
@@ -506,14 +506,14 @@ def _validate_normalized_cache_relations(
         """
     ).fetchall()
 
-    games_by_scope: dict[tuple[int, str, str], list[NormalizedGameRecord]] = defaultdict(list)
-    players_by_scope: dict[tuple[int, str, str], list[NormalizedGamePlayerRecord]] = defaultdict(
+    games_by_scope: dict[tuple[int, str, str], list[CanonicalGameRecord]] = defaultdict(list)
+    players_by_scope: dict[tuple[int, str, str], list[CanonicalGamePlayerRecord]] = defaultdict(
         list
     )
     game_key_scope_map: dict[tuple[str, int], tuple[int, str, str]] = {}
 
     for row in game_rows:
-        game = NormalizedGameRecord(
+        game = CanonicalGameRecord(
             game_id=row["game_id"],
             season=row["season"],
             game_date=row["game_date"],
@@ -531,7 +531,7 @@ def _validate_normalized_cache_relations(
         game_key_scope_map[(game.game_id, game.team_id or 0)] = scope
 
     for row in player_rows:
-        player = NormalizedGamePlayerRecord(
+        player = CanonicalGamePlayerRecord(
             game_id=row["game_id"],
             team=row["team"],
             team_id=row["team_id"],
@@ -641,11 +641,11 @@ def _validate_reciprocal_game_margins(
     game_rows: list[sqlite3.Row],
     issues: list[ValidationIssue],
 ) -> None:
-    games_by_id: dict[tuple[str, str, str], list[NormalizedGameRecord]] = defaultdict(list)
+    games_by_id: dict[tuple[str, str, str], list[CanonicalGameRecord]] = defaultdict(list)
 
     for row in game_rows:
         games_by_id[(row["season"], row["season_type"], row["game_id"])].append(
-            NormalizedGameRecord(
+            CanonicalGameRecord(
                 game_id=row["game_id"],
                 season=row["season"],
                 game_date=row["game_date"],

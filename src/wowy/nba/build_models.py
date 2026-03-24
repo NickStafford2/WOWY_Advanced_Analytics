@@ -3,13 +3,13 @@ from __future__ import annotations
 from dataclasses import dataclass
 
 from wowy.apps.wowy.models import WowyGameRecord
-from wowy.nba.models import NormalizedGamePlayerRecord, NormalizedGameRecord
+from wowy.nba.models import CanonicalGamePlayerRecord, CanonicalGameRecord
 
 
 @dataclass(frozen=True)
 class TeamSeasonArtifacts:
-    normalized_games: list[NormalizedGameRecord]
-    normalized_game_players: list[NormalizedGamePlayerRecord]
+    canonical_games: list[CanonicalGameRecord]
+    canonical_game_players: list[CanonicalGamePlayerRecord]
     wowy_games: list[WowyGameRecord]
 
 

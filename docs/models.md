@@ -18,15 +18,15 @@ Notes:
 - uses whole-game participation only
 - does not use substitutions or lineup stints
 - does not use minutes in the score itself
-- can use minutes for output filtering when running from cache-managed normalized inputs
+- can use minutes for output filtering when running from cache-managed canonical inputs
 - should be treated as a simple baseline
 
 ## RAWR
 
 Input:
 
-- normalized games in SQLite
-- normalized game-player rows in SQLite
+- validated canonical games persisted in SQLite
+- validated canonical game-player rows persisted in SQLite
 
 Model:
 

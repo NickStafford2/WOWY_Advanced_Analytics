@@ -4,7 +4,7 @@ from dataclasses import dataclass
 
 
 @dataclass(frozen=True)
-class NormalizedGameRecord:
+class CanonicalGameRecord:
     game_id: str
     season: str
     game_date: str
@@ -31,7 +31,7 @@ class NormalizedGameRecord:
 
 
 @dataclass(frozen=True)
-class NormalizedGamePlayerRecord:
+class CanonicalGamePlayerRecord:
     game_id: str
     team: str
     player_id: int
@@ -43,3 +43,13 @@ class NormalizedGamePlayerRecord:
     @property
     def identity_team(self) -> int | str:
         return self.team_id if self.team_id is not None else self.team
+
+
+@dataclass(frozen=True)
+class CanonicalTeamSeasonBatch:
+    team: str
+    team_id: int
+    season: str
+    season_type: str
+    games: list[CanonicalGameRecord]
+    game_players: list[CanonicalGamePlayerRecord]

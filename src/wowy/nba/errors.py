@@ -3,7 +3,7 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 
 
-@dataclass(frozen=True)
+@dataclass
 class NbaIngestError(Exception):
     message: str
 
@@ -11,7 +11,7 @@ class NbaIngestError(Exception):
         return self.message
 
 
-@dataclass(frozen=True)
+@dataclass
 class FetchError(NbaIngestError):
     resource: str
     identifier: str
@@ -20,19 +20,19 @@ class FetchError(NbaIngestError):
     last_error_message: str
 
 
-@dataclass(frozen=True)
+@dataclass
 class LeagueGamesFetchError(FetchError):
     team: str
     season: str
     season_type: str
 
 
-@dataclass(frozen=True)
+@dataclass
 class BoxScoreFetchError(FetchError):
     game_id: str
 
 
-@dataclass(frozen=True)
+@dataclass
 class TeamSeasonConsistencyError(NbaIngestError):
     team: str
     season: str
@@ -46,7 +46,7 @@ class GameNormalizationFailure:
     message: str
 
 
-@dataclass(frozen=True)
+@dataclass
 class PartialTeamSeasonError(NbaIngestError):
     team: str
     season: str

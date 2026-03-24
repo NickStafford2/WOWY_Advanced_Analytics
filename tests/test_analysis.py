@@ -27,7 +27,7 @@ from wowy.apps.wowy.models import (
     WowyPlayerSeasonRecord,
     WowyPlayerStats,
 )
-from wowy.nba.models import NormalizedGamePlayerRecord, NormalizedGameRecord
+from wowy.nba.models import CanonicalGamePlayerRecord, CanonicalGameRecord
 from tests.support import seed_db_from_team_seasons
 
 
@@ -283,7 +283,7 @@ def test_prepare_wowy_player_season_records_uses_db_without_file_fixture_dirs(
                 "BOS",
                 "2022-23",
                 [
-                    NormalizedGameRecord(
+                    CanonicalGameRecord(
                         "1",
                         "2022-23",
                         "2023-04-01",
@@ -294,7 +294,7 @@ def test_prepare_wowy_player_season_records_uses_db_without_file_fixture_dirs(
                         "Regular Season",
                         "nba_api",
                     ),
-                    NormalizedGameRecord(
+                    CanonicalGameRecord(
                         "2",
                         "2022-23",
                         "2023-04-03",
@@ -305,7 +305,7 @@ def test_prepare_wowy_player_season_records_uses_db_without_file_fixture_dirs(
                         "Regular Season",
                         "nba_api",
                     ),
-                    NormalizedGameRecord(
+                    CanonicalGameRecord(
                         "3",
                         "2022-23",
                         "2023-04-05",
@@ -318,10 +318,10 @@ def test_prepare_wowy_player_season_records_uses_db_without_file_fixture_dirs(
                     ),
                 ],
                 [
-                    NormalizedGamePlayerRecord("1", "BOS", 101, "Player 101", True, 34.0),
-                    NormalizedGamePlayerRecord("1", "BOS", 102, "Player 102", True, 31.0),
-                    NormalizedGamePlayerRecord("2", "BOS", 102, "Player 102", True, 31.0),
-                    NormalizedGamePlayerRecord("3", "BOS", 101, "Player 101", True, 34.0),
+                    CanonicalGamePlayerRecord("1", "BOS", 101, "Player 101", True, 34.0),
+                    CanonicalGamePlayerRecord("1", "BOS", 102, "Player 102", True, 31.0),
+                    CanonicalGamePlayerRecord("2", "BOS", 102, "Player 102", True, 31.0),
+                    CanonicalGamePlayerRecord("3", "BOS", 101, "Player 101", True, 34.0),
                 ],
             )
         ],
