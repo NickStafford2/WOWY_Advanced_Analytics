@@ -25,6 +25,7 @@ from wowy.data.game_cache_db import (
 from wowy.nba.errors import BoxScoreFetchError, LeagueGamesFetchError
 from wowy.nba.models import CanonicalGamePlayerRecord, CanonicalGameRecord
 from wowy.nba.season_types import canonicalize_season_type
+from wowy.nba.team_seasons import TeamSeasonScope, resolve_team_seasons
 
 
 def test_write_cached_payload_writes_json_atomically(tmp_path: Path):
@@ -591,6 +592,182 @@ def test_team_id_authoritative_reads_match_historical_alias_scopes(tmp_path: Pat
     assert load_row is not None
     assert load_row.team == "NJN"
     assert load_row.team_id == 1610612751
+
+
+def test_resolve_team_seasons_keeps_original_hornets_historical_scope(tmp_path: Path):
+    db_path = tmp_path / "app" / "player_metrics.sqlite3"
+
+    replace_team_season_normalized_rows(
+        db_path,
+        team="CHH",
+        season="2001-02",
+        season_type="Regular Season",
+        games=[
+            CanonicalGameRecord(
+                game_id="0001",
+                season="2001-02",
+                game_date="2002-04-01",
+                team="CHH",
+                opponent="DET",
+                is_home=True,
+                margin=3.0,
+                season_type="Regular Season",
+                source="nba_api",
+            )
+        ],
+        game_players=[
+            CanonicalGamePlayerRecord("0001", "CHH", 101, "Player 101", True, 48.0),
+            CanonicalGamePlayerRecord("0001", "CHH", 102, "Player 102", True, 48.0),
+            CanonicalGamePlayerRecord("0001", "CHH", 103, "Player 103", True, 48.0),
+            CanonicalGamePlayerRecord("0001", "CHH", 104, "Player 104", True, 48.0),
+            CanonicalGamePlayerRecord("0001", "CHH", 105, "Player 105", True, 48.0),
+        ],
+        source_path="sqlite://normalized_games/CHH_2001-02_regular_season",
+        source_snapshot="test",
+        source_kind="unit-test",
+    )
+
+    resolved = resolve_team_seasons(
+        teams=["CHH"],
+        seasons=["2001-02"],
+        player_metrics_db_path=db_path,
+        season_type="Regular Season",
+    )
+
+    assert resolved == [
+        TeamSeasonScope(team="CHH", season="2001-02", team_id=1610612766)
+    ]
+
+
+def test_load_cache_load_row_uses_season_scoped_original_hornets_identity(tmp_path: Path):
+    db_path = tmp_path / "app" / "player_metrics.sqlite3"
+
+    replace_team_season_normalized_rows(
+        db_path,
+        team="CHH",
+        season="2001-02",
+        season_type="Regular Season",
+        games=[
+            CanonicalGameRecord(
+                game_id="0001",
+                season="2001-02",
+                game_date="2002-04-01",
+                team="CHH",
+                opponent="DET",
+                is_home=True,
+                margin=3.0,
+                season_type="Regular Season",
+                source="nba_api",
+            )
+        ],
+        game_players=[
+            CanonicalGamePlayerRecord("0001", "CHH", 101, "Player 101", True, 48.0),
+            CanonicalGamePlayerRecord("0001", "CHH", 102, "Player 102", True, 48.0),
+            CanonicalGamePlayerRecord("0001", "CHH", 103, "Player 103", True, 48.0),
+            CanonicalGamePlayerRecord("0001", "CHH", 104, "Player 104", True, 48.0),
+            CanonicalGamePlayerRecord("0001", "CHH", 105, "Player 105", True, 48.0),
+        ],
+        source_path="sqlite://normalized_games/CHH_2001-02_regular_season",
+        source_snapshot="test",
+        source_kind="unit-test",
+    )
+
+    games = load_normalized_games_from_db(
+        db_path,
+        season_type="Regular Season",
+        teams=["CHH"],
+        seasons=["2001-02"],
+    )
+    load_row = load_cache_load_row(
+        db_path,
+        team="CHH",
+        season="2001-02",
+        season_type="Regular Season",
+    )
+
+    assert [(game.game_id, game.team, game.team_id) for game in games] == [
+        ("0001", "CHH", 1610612766)
+    ]
+    assert load_row is not None
+    assert load_row.team == "CHH"
+    assert load_row.team_id == 1610612766
+
+
+def test_load_normalized_games_handles_historical_team_filters_across_multiple_seasons(
+    tmp_path: Path,
+):
+    db_path = tmp_path / "app" / "player_metrics.sqlite3"
+
+    replace_team_season_normalized_rows(
+        db_path,
+        team="CHH",
+        season="2001-02",
+        season_type="Regular Season",
+        games=[
+            CanonicalGameRecord(
+                game_id="0001",
+                season="2001-02",
+                game_date="2002-04-01",
+                team="CHH",
+                opponent="DET",
+                is_home=True,
+                margin=3.0,
+                season_type="Regular Season",
+                source="nba_api",
+            )
+        ],
+        game_players=[
+            CanonicalGamePlayerRecord("0001", "CHH", 101, "Player 101", True, 48.0),
+            CanonicalGamePlayerRecord("0001", "CHH", 102, "Player 102", True, 48.0),
+            CanonicalGamePlayerRecord("0001", "CHH", 103, "Player 103", True, 48.0),
+            CanonicalGamePlayerRecord("0001", "CHH", 104, "Player 104", True, 48.0),
+            CanonicalGamePlayerRecord("0001", "CHH", 105, "Player 105", True, 48.0),
+        ],
+        source_path="sqlite://normalized_games/CHH_2001-02_regular_season",
+        source_snapshot="test",
+        source_kind="unit-test",
+    )
+    replace_team_season_normalized_rows(
+        db_path,
+        team="NOH",
+        season="2002-03",
+        season_type="Regular Season",
+        games=[
+            CanonicalGameRecord(
+                game_id="0002",
+                season="2002-03",
+                game_date="2003-03-10",
+                team="NOH",
+                opponent="BOS",
+                is_home=True,
+                margin=8.0,
+                season_type="Regular Season",
+                source="nba_api",
+            )
+        ],
+        game_players=[
+            CanonicalGamePlayerRecord("0002", "NOH", 201, "Player 201", True, 48.0),
+            CanonicalGamePlayerRecord("0002", "NOH", 202, "Player 202", True, 48.0),
+            CanonicalGamePlayerRecord("0002", "NOH", 203, "Player 203", True, 48.0),
+            CanonicalGamePlayerRecord("0002", "NOH", 204, "Player 204", True, 48.0),
+            CanonicalGamePlayerRecord("0002", "NOH", 205, "Player 205", True, 48.0),
+        ],
+        source_path="sqlite://normalized_games/NOH_2002-03_regular_season",
+        source_snapshot="test",
+        source_kind="unit-test",
+    )
+
+    games = load_normalized_games_from_db(
+        db_path,
+        season_type="Regular Season",
+        teams=["CHH", "NOH"],
+        seasons=["2001-02", "2002-03"],
+    )
+
+    assert [(game.game_id, game.season, game.team, game.team_id) for game in games] == [
+        ("0001", "2001-02", "CHH", 1610612766),
+        ("0002", "2002-03", "NOH", 1610612740),
+    ]
 
 
 def test_replace_team_season_normalized_rows_rejects_non_canonical_or_implausible_data(

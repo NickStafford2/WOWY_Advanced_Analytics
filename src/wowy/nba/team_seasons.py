@@ -41,14 +41,22 @@ def resolve_team_seasons(
     player_metrics_db_path: Path = DEFAULT_PLAYER_METRICS_DB_PATH,
     season_type: str | None = None,
 ) -> list[TeamSeasonScope]:
-    normalized_team_ids = (
-        {resolve_team_id(team) for team in teams}
-        if teams
-        else None
-    )
     normalized_seasons = (
         [canonicalize_season_string(season) for season in seasons]
         if seasons
+        else None
+    )
+    normalized_team_ids = (
+        (
+            {
+                resolve_team_id(team, season=season)
+                for team in teams
+                for season in normalized_seasons
+            }
+            if normalized_seasons
+            else {resolve_team_id(team) for team in teams}
+        )
+        if teams
         else None
     )
     if season_type is not None:

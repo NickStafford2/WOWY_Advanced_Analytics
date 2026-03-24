@@ -329,7 +329,10 @@ def load_normalized_games_from_db(
         query,
         params,
         column="game.team_id",
-        values=_resolve_team_ids(teams),
+        values=_resolve_team_ids(
+            teams,
+            seasons=[canonicalize_season_string(season) for season in seasons or []],
+        ),
     )
     query, params = _append_in_filter(
         query,
@@ -395,7 +398,10 @@ def load_normalized_game_players_from_db(
         query,
         params,
         column="player.team_id",
-        values=_resolve_team_ids(teams),
+        values=_resolve_team_ids(
+            teams,
+            seasons=[canonicalize_season_string(season) for season in seasons or []],
+        ),
     )
     query, params = _append_in_filter(
         query,
@@ -437,7 +443,7 @@ def load_cache_load_row(
     initialize_game_cache_db(db_path)
     season = canonicalize_season_string(season)
     season_type = canonicalize_season_type(season_type)
-    team_id = resolve_team_id(team)
+    team_id = resolve_team_id(team, season=season)
     with _connect(db_path) as connection:
         row = connection.execute(
             """
@@ -527,7 +533,10 @@ def list_cache_load_rows(
         query,
         params,
         column="load.team_id",
-        values=_resolve_team_ids(teams),
+        values=_resolve_team_ids(
+            teams,
+            seasons=[canonicalize_season_string(season) for season in seasons or []],
+        ),
     )
     query += " ORDER BY load.season, load.team_id"
     with _connect(db_path) as connection:
@@ -675,10 +684,32 @@ def _append_in_filter(
     return query, params
 
 
-def _resolve_team_ids(teams: list[str] | None) -> list[int]:
+def _resolve_team_ids(
+    teams: list[str] | None,
+    *,
+    seasons: list[str] | None = None,
+) -> list[int]:
     if not teams:
         return []
-    return [resolve_team_id(team) for team in teams]
+    if not seasons:
+        return [resolve_team_id(team) for team in teams]
+    resolved_team_ids: set[int] = set()
+    unresolved_teams: list[str] = []
+
+    for team in teams:
+        resolved_for_team = False
+        for season in seasons:
+            try:
+                resolved_team_ids.add(resolve_team_id(team, season=season))
+            except ValueError:
+                continue
+            resolved_for_team = True
+        if not resolved_for_team:
+            unresolved_teams.append(team)
+
+    if unresolved_teams:
+        resolve_team_id(unresolved_teams[0], season=seasons[0])
+    return sorted(resolved_team_ids)
 
 
 def _with_resolved_game_identity(game: CanonicalGameRecord) -> CanonicalGameRecord:
