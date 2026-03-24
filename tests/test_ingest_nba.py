@@ -762,6 +762,59 @@ def test_parse_box_score_payload_raises_with_raw_row_for_missing_minutes_outside
         )
 
 
+def test_parse_box_score_payload_skips_historical_inactive_status_rows_with_null_minutes() -> None:
+    box_score = parse_box_score_payload(
+        {
+            "resultSets": [
+                {
+                    "name": "PlayerStats",
+                    "headers": [
+                        "GAME_ID",
+                        "TEAM_ID",
+                        "TEAM_ABBREVIATION",
+                        "PLAYER_ID",
+                        "PLAYER_NAME",
+                        "COMMENT",
+                        "MIN",
+                        "PTS",
+                    ],
+                    "rowSet": [
+                        ["0001", 1610612763, "MEM", 1, "Active Player", "", "48:00", 12],
+                        ["0001", 1610612763, "MEM", 2, "Inactive DNT", "DNT - Sore back", None, None],
+                        [
+                            "0001",
+                            1610612763,
+                            "MEM",
+                            3,
+                            "Inactive Make Trip",
+                            "DN Make Trip - Oral surgery",
+                            None,
+                            None,
+                        ],
+                        ["0001", 1610612738, "BOS", 10, "Opp", "", "48:00", 10],
+                    ],
+                },
+                {
+                    "name": "TeamStats",
+                    "headers": ["TEAM_ID", "TEAM_ABBREVIATION", "PLUS_MINUS", "PTS"],
+                    "rowSet": [
+                        [1610612763, "MEM", 5, 100],
+                        [1610612738, "BOS", -5, 95],
+                    ],
+                },
+            ]
+        },
+        game_id="0001",
+    )
+
+    assert [(player.player_id, player.player_name, player.minutes_raw) for player in box_score.players] == [
+        (1, "Active Player", "48:00"),
+        (2, "Inactive DNT", None),
+        (3, "Inactive Make Trip", None),
+        (10, "Opp", "48:00"),
+    ]
+
+
 def test_parse_league_schedule_payload_raises_with_raw_row_for_conflicting_team_identity() -> None:
     with pytest.raises(
         ValueError,

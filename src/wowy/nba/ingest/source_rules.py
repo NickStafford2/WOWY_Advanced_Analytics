@@ -243,6 +243,8 @@ def _is_known_inactive_status(minute_text: str) -> bool:
     inactive_prefixes = (
         "DNP",
         "DND",
+        "DNT",
+        "DN MAKE TRIP",
         "NWT",
         "DID NOT",
         "NOT WITH TEAM",

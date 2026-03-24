@@ -28,6 +28,8 @@ from wowy.nba.ingest.source_rules import (
         ("12.5", 12.5),
         ("0:00", 0.0),
         ("DNP - Coach's Decision", None),
+        ("DNT - Sore back", None),
+        ("DN Make Trip - Oral surgery", None),
         (None, None),
         ("bad", None),
     ],
@@ -121,6 +123,24 @@ def test_classify_source_player_row_names_all_known_skip_patterns() -> None:
             "TO": None,
         },
     )
+    inactive_dnt = SourceBoxScorePlayer(
+        game_id="0001",
+        team_id=1610612763,
+        team_abbreviation="MEM",
+        player_id=2003,
+        player_name="Inactive DNT",
+        minutes_raw=None,
+        raw_row={"COMMENT": "DNT - Sore back"},
+    )
+    inactive_make_trip = SourceBoxScorePlayer(
+        game_id="0001",
+        team_id=1610612763,
+        team_abbreviation="MEM",
+        player_id=2004,
+        player_name="Inactive Make Trip",
+        minutes_raw=None,
+        raw_row={"COMMENT": "DN Make Trip - Oral surgery"},
+    )
     canonical = SourceBoxScorePlayer(
         game_id="0001",
         team_id=1610612763,
@@ -135,6 +155,8 @@ def test_classify_source_player_row_names_all_known_skip_patterns() -> None:
     assert classify_source_player_row(placeholder) == PLAYER_DID_NOT_PLAY_PLACEHOLDER
     assert classify_source_player_row(inactive) == INACTIVE_PLAYER_STATUS_ROW
     assert classify_source_player_row(inactive_blank_status) == INACTIVE_PLAYER_STATUS_ROW
+    assert classify_source_player_row(inactive_dnt) == INACTIVE_PLAYER_STATUS_ROW
+    assert classify_source_player_row(inactive_make_trip) == INACTIVE_PLAYER_STATUS_ROW
     assert classify_source_player_row(canonical) == CANONICAL_PLAYER_SOURCE_ROW
 
 
