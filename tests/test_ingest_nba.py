@@ -441,9 +441,43 @@ def test_classify_source_player_row_names_known_skip_patterns() -> None:
             "TO": None,
         },
     )
+    inactive_blank_status = SourceBoxScorePlayer(
+        game_id="0001",
+        team_id=1610612763,
+        team_abbreviation="MEM",
+        player_id=1628418,
+        player_name="Thomas Bryant",
+        minutes_raw=None,
+        raw_row={
+            "PLAYER_ID": 1628418,
+            "PLAYER_NAME": "Thomas Bryant",
+            "MIN": None,
+            "COMMENT": "",
+            "AST": None,
+            "BLK": None,
+            "DREB": None,
+            "FG3A": None,
+            "FG3M": None,
+            "FG3_PCT": None,
+            "FGA": None,
+            "FGM": None,
+            "FG_PCT": None,
+            "FTA": None,
+            "FTM": None,
+            "FT_PCT": None,
+            "OREB": None,
+            "PF": None,
+            "PLUS_MINUS": None,
+            "PTS": None,
+            "REB": None,
+            "STL": None,
+            "TO": None,
+        },
+    )
 
     assert classify_source_player_row(placeholder) == PLAYER_DID_NOT_PLAY_PLACEHOLDER
     assert classify_source_player_row(inactive) == INACTIVE_PLAYER_STATUS_ROW
+    assert classify_source_player_row(inactive_blank_status) == INACTIVE_PLAYER_STATUS_ROW
 
 
 def test_classify_source_team_row_defaults_to_canonical_team_source_row() -> None:

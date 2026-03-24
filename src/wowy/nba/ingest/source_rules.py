@@ -206,6 +206,8 @@ def _is_inactive_player_status_row(row: SourceBoxScorePlayer) -> bool:
     comment = str(row.raw_row.get("COMMENT", "")).strip()
     if minute_text and _is_known_inactive_status(minute_text):
         return True
+    if minute_text == "" and comment == "":
+        return True
     if not comment:
         return False
     return _is_known_inactive_status(comment)
