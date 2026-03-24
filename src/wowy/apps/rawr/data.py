@@ -3,18 +3,16 @@ from __future__ import annotations
 from collections import defaultdict
 
 from wowy.apps.rawr.models import RawrObservation
-from wowy.nba.models import CanonicalGamePlayerRecord, CanonicalGameRecord
+from wowy.nba.models import NormalizedGamePlayerRecord, NormalizedGameRecord
 
 LINEUP_WEIGHT_SUM = 5.0
 
 
 def build_rawr_observations(
-    games: list[CanonicalGameRecord],
-    game_players: list[CanonicalGamePlayerRecord],
+    games: list[NormalizedGameRecord],
+    game_players: list[NormalizedGamePlayerRecord],
 ) -> tuple[list[RawrObservation], dict[int, str]]:
-    player_minutes_by_game_team: dict[tuple[str, int | str], dict[int, float]] = defaultdict(
-        dict
-    )
+    player_minutes_by_game_team: dict[tuple[str, int], dict[int, float]] = defaultdict(dict)
     player_names: dict[int, str] = {}
 
     for player in game_players:
@@ -31,7 +29,7 @@ def build_rawr_observations(
             minutes
         )
 
-    games_by_id: dict[str, list[CanonicalGameRecord]] = defaultdict(list)
+    games_by_id: dict[str, list[NormalizedGameRecord]] = defaultdict(list)
     for game in games:
         games_by_id[game.game_id].append(game)
 

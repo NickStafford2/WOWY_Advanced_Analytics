@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from wowy.nba.models import CanonicalGamePlayerRecord, CanonicalGameRecord
+from wowy.nba.models import NormalizedGamePlayerRecord, NormalizedGameRecord
 from wowy.nba.seasons import canonicalize_season_string
 from wowy.nba.season_types import canonicalize_season_type
 from wowy.nba.source_models import SourceBoxScore, SourceBoxScorePlayer, SourceBoxScoreTeam, SourceLeagueGame
@@ -22,11 +22,10 @@ def normalize_source_game(
     season: str,
     season_type: str,
     source: str = "nba_api",
-) -> tuple[CanonicalGameRecord, list[CanonicalGamePlayerRecord]]:
+) -> tuple[NormalizedGameRecord, list[NormalizedGamePlayerRecord]]:
     season = canonicalize_season_string(season)
     season_type = canonicalize_season_type(season_type)
     team_stat, opponent_stat = _resolve_game_teams(schedule_game=schedule_game, box_score=box_score)
-
     team_identity = resolve_source_team_identity(
         team_id=team_stat.team_id,
         team_abbreviation=team_stat.team_abbreviation,
@@ -65,7 +64,7 @@ def normalize_source_game(
         )
 
     margin = _resolve_margin(team_stat=team_stat, opponent_stat=opponent_stat, game_id=schedule_game.game_id)
-    game = CanonicalGameRecord(
+    game = NormalizedGameRecord(
         game_id=schedule_game.game_id,
         season=season,
         game_date=schedule_game.game_date,
@@ -110,8 +109,8 @@ def _normalize_players(
     game_id: str,
     team_identity: TeamIdentity,
     player_rows: list[SourceBoxScorePlayer],
-) -> list[CanonicalGamePlayerRecord]:
-    players: list[CanonicalGamePlayerRecord] = []
+) -> list[NormalizedGamePlayerRecord]:
+    players: list[NormalizedGamePlayerRecord] = []
     for row in player_rows:
         classification = classify_source_player_row(row)
         if classification.should_skip:
@@ -136,7 +135,7 @@ def _normalize_players(
             )
         player_name = row.player_name.strip()
         players.append(
-            CanonicalGamePlayerRecord(
+            NormalizedGamePlayerRecord(
                 game_id=game_id,
                 team=team_identity.abbreviation,
                 player_id=player_id,

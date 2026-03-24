@@ -3,14 +3,14 @@ from __future__ import annotations
 from collections import defaultdict
 
 from wowy.apps.wowy.models import WowyGameRecord
-from wowy.nba.models import CanonicalGamePlayerRecord, CanonicalGameRecord
+from wowy.nba.models import NormalizedGamePlayerRecord, NormalizedGameRecord
 
 
 def derive_wowy_games(
-    games: list[CanonicalGameRecord],
-    game_players: list[CanonicalGamePlayerRecord],
+    games: list[NormalizedGameRecord],
+    game_players: list[NormalizedGamePlayerRecord],
 ) -> list[WowyGameRecord]:
-    players_by_game_team: dict[tuple[str, int | str], set[int]] = defaultdict(set)
+    players_by_game_team: dict[tuple[str, int], set[int]] = defaultdict(set)
 
     for player in game_players:
         if not player.appeared:

@@ -7,9 +7,9 @@ from datetime import date
 
 from wowy.apps.wowy.derive import derive_wowy_games
 from wowy.nba.models import (
-    CanonicalGamePlayerRecord,
-    CanonicalGameRecord,
-    CanonicalTeamSeasonBatch,
+    NormalizedGamePlayerRecord,
+    NormalizedGameRecord,
+    NormalizedTeamSeasonBatch,
 )
 from wowy.nba.seasons import canonicalize_season_string
 from wowy.nba.season_types import canonicalize_season_type
@@ -24,15 +24,15 @@ _TEAM_ABBREVIATION_PATTERN = re.compile(r"^[A-Z0-9]{2,4}$")
 _GAME_DATE_PATTERN = re.compile(r"^\d{4}-\d{2}-\d{2}$")
 
 
-def validate_canonical_team_season_batch(batch: CanonicalTeamSeasonBatch) -> None:
-    _derive_and_validate_canonical_team_season_batch(batch)
+def validate_normalized_team_season_batch(batch: NormalizedTeamSeasonBatch) -> None:
+    _derive_and_validate_normalized_team_season_batch(batch)
 
 
-def derive_validated_wowy_games(batch: CanonicalTeamSeasonBatch):
-    return _derive_and_validate_canonical_team_season_batch(batch)
+def derive_validated_wowy_games(batch: NormalizedTeamSeasonBatch):
+    return _derive_and_validate_normalized_team_season_batch(batch)
 
 
-def _derive_and_validate_canonical_team_season_batch(batch: CanonicalTeamSeasonBatch):
+def _derive_and_validate_normalized_team_season_batch(batch: NormalizedTeamSeasonBatch):
     expected_batch_identity = resolve_team_identity_from_id_and_season(batch.team_id, batch.season)
     if batch.team != expected_batch_identity.abbreviation:
         raise ValueError(
@@ -41,7 +41,7 @@ def _derive_and_validate_canonical_team_season_batch(batch: CanonicalTeamSeasonB
         )
 
     game_keys: set[tuple[str, int]] = set()
-    players_by_game_key: dict[tuple[str, int], list[CanonicalGamePlayerRecord]] = defaultdict(list)
+    players_by_game_key: dict[tuple[str, int], list[NormalizedGamePlayerRecord]] = defaultdict(list)
 
     for game in batch.games:
         _validate_canonical_game(
@@ -51,7 +51,7 @@ def _derive_and_validate_canonical_team_season_batch(batch: CanonicalTeamSeasonB
             expected_season=batch.season,
             expected_season_type=batch.season_type,
         )
-        game_key = (game.game_id, game.team_id or batch.team_id)
+        game_key = (game.game_id, game.team_id)
         if game_key in game_keys:
             raise ValueError(f"Duplicate canonical game row for {game_key!r}")
         game_keys.add(game_key)
@@ -63,11 +63,11 @@ def _derive_and_validate_canonical_team_season_batch(batch: CanonicalTeamSeasonB
             expected_team=batch.team,
             expected_team_id=batch.team_id,
         )
-        player_key = (player.game_id, player.team_id or batch.team_id, player.player_id)
+        player_key = (player.game_id, player.team_id, player.player_id)
         if player_key in player_keys:
             raise ValueError(f"Duplicate canonical player row for {player_key!r}")
         player_keys.add(player_key)
-        players_by_game_key[(player.game_id, player.team_id or batch.team_id)].append(player)
+        players_by_game_key[(player.game_id, player.team_id)].append(player)
 
     if set(players_by_game_key) != game_keys:
         missing_players = sorted(game_keys - set(players_by_game_key))
@@ -103,35 +103,35 @@ def _derive_and_validate_canonical_team_season_batch(batch: CanonicalTeamSeasonB
 def validate_normalized_cache_batch(
     *,
     team: str,
-    team_id: int | None,
+    team_id: int,
     season: str,
     season_type: str,
-    games: list[CanonicalGameRecord],
-    game_players: list[CanonicalGamePlayerRecord],
+    games: list[NormalizedGameRecord],
+    game_players: list[NormalizedGamePlayerRecord],
 ) -> None:
-    batch = CanonicalTeamSeasonBatch(
+    batch = NormalizedTeamSeasonBatch(
         team=_canonical_team_abbreviation(team),
-        team_id=team_id or resolve_team_id(team, season=season),
+        team_id=team_id,
         season=canonicalize_season_string(season),
         season_type=canonicalize_season_type(season_type),
         games=games,
         game_players=game_players,
     )
-    validate_canonical_team_season_batch(batch)
+    validate_normalized_team_season_batch(batch)
 
 
 def validate_team_season_records(
-    games: list[CanonicalGameRecord],
-    game_players: list[CanonicalGamePlayerRecord],
+    games: list[NormalizedGameRecord],
+    game_players: list[NormalizedGamePlayerRecord],
     wowy_games,
 ) -> str:
-    game_keys = [(game.game_id, game.identity_team) for game in games]
+    game_keys = [(game.game_id, game.team_id) for game in games]
     if len(set(game_keys)) != len(game_keys):
         return "dup_games"
 
-    players_by_game_key: dict[tuple[str, int | str], list[CanonicalGamePlayerRecord]] = defaultdict(list)
+    players_by_game_key: dict[tuple[str, int], list[NormalizedGamePlayerRecord]] = defaultdict(list)
     for player in game_players:
-        players_by_game_key[(player.game_id, player.identity_team)].append(player)
+        players_by_game_key[(player.game_id, player.team_id)].append(player)
     if set(players_by_game_key) != set(game_keys):
         return "missing_players"
 
@@ -140,8 +140,8 @@ def validate_team_season_records(
     except ValueError:
         return "invalid_players"
 
-    derived_by_key = {(game.game_id, game.team_id or game.team): game for game in derived_wowy_games}
-    wowy_by_key = {(game.game_id, game.team_id or game.team): game for game in wowy_games}
+    derived_by_key = {(game.game_id, game.team_id): game for game in derived_wowy_games}
+    wowy_by_key = {(game.game_id, game.team_id): game for game in wowy_games}
     if set(derived_by_key) != set(wowy_by_key):
         return "wowy_keys"
 
@@ -158,7 +158,7 @@ def validate_team_season_records(
 
 
 def _validate_canonical_game(
-    game: CanonicalGameRecord,
+    game: NormalizedGameRecord,
     *,
     expected_team: str,
     expected_team_id: int,
@@ -231,7 +231,7 @@ def _validate_canonical_game(
 
 
 def _validate_canonical_game_player(
-    player: CanonicalGamePlayerRecord,
+    player: NormalizedGamePlayerRecord,
     *,
     expected_team: str,
     expected_team_id: int,

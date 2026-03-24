@@ -9,7 +9,12 @@ from pathlib import Path
 
 from wowy.data.player_metrics_db import DEFAULT_PLAYER_METRICS_DB_PATH
 from wowy.nba.ingest.validation import validate_normalized_cache_batch
-from wowy.nba.models import CanonicalGamePlayerRecord, CanonicalGameRecord
+from wowy.nba.models import (
+    CanonicalGamePlayerRecord,
+    CanonicalGameRecord,
+    NormalizedGamePlayerRecord,
+    NormalizedGameRecord,
+)
 from wowy.nba.seasons import canonicalize_season_string
 from wowy.nba.season_types import canonicalize_season_type
 from wowy.nba.team_identity import (
@@ -133,8 +138,8 @@ def replace_team_season_normalized_rows(
     team_id: int,
     season: str,
     season_type: str,
-    games: list[CanonicalGameRecord],
-    game_players: list[CanonicalGamePlayerRecord],
+    games: list[CanonicalGameRecord] | list[NormalizedGameRecord],
+    game_players: list[CanonicalGamePlayerRecord] | list[NormalizedGamePlayerRecord],
     source_path: str,
     source_snapshot: str,
     source_kind: str,
@@ -149,9 +154,9 @@ def replace_team_season_normalized_rows(
         raise ValueError(f"team_id must be positive for normalized cache writes: {team_id!r}")
     canonical_team = resolve_team_identity_from_id_and_season(team_id, season).abbreviation
     season_type = canonicalize_season_type(season_type)
-    games = [_with_resolved_game_identity(game) for game in games]
+    games = [_to_normalized_game_record(game) for game in games]
     game_players = [
-        _with_resolved_player_identity(
+        _to_normalized_game_player_record(
             player,
             default_team=canonical_team,
             season=season,
@@ -300,7 +305,7 @@ def load_normalized_games_from_db(
     teams: list[str] | None = None,
     seasons: list[str] | None = None,
     game_ids: list[str] | None = None,
-) -> list[CanonicalGameRecord]:
+) -> list[NormalizedGameRecord]:
     initialize_game_cache_db(db_path)
     season_type = canonicalize_season_type(season_type)
     query = """
@@ -352,7 +357,7 @@ def load_normalized_games_from_db(
     with _connect(db_path) as connection:
         rows = connection.execute(query, params).fetchall()
     return [
-        CanonicalGameRecord(
+        NormalizedGameRecord(
             game_id=row["game_id"],
             season=row["season"],
             game_date=row["game_date"],
@@ -376,7 +381,7 @@ def load_normalized_game_players_from_db(
     teams: list[str] | None = None,
     seasons: list[str] | None = None,
     game_ids: list[str] | None = None,
-) -> list[CanonicalGamePlayerRecord]:
+) -> list[NormalizedGamePlayerRecord]:
     initialize_game_cache_db(db_path)
     season_type = canonicalize_season_type(season_type)
     query = """
@@ -421,7 +426,7 @@ def load_normalized_game_players_from_db(
     with _connect(db_path) as connection:
         rows = connection.execute(query, params).fetchall()
     return [
-        CanonicalGamePlayerRecord(
+        NormalizedGamePlayerRecord(
             game_id=row["game_id"],
             team=row["team"],
             team_id=row["team_id"],
@@ -713,12 +718,14 @@ def _resolve_team_ids(
     return sorted(resolved_team_ids)
 
 
-def _with_resolved_game_identity(game: CanonicalGameRecord) -> CanonicalGameRecord:
+def _to_normalized_game_record(
+    game: CanonicalGameRecord | NormalizedGameRecord,
+) -> NormalizedGameRecord:
     team_id = game.team_id or resolve_team_id(game.team, game_date=game.game_date)
     opponent_team_id = (
         game.opponent_team_id or resolve_team_id(game.opponent, game_date=game.game_date)
     )
-    return CanonicalGameRecord(
+    return NormalizedGameRecord(
         game_id=game.game_id,
         season=game.season,
         game_date=game.game_date,
@@ -733,14 +740,14 @@ def _with_resolved_game_identity(game: CanonicalGameRecord) -> CanonicalGameReco
     )
 
 
-def _with_resolved_player_identity(
-    player: CanonicalGamePlayerRecord,
+def _to_normalized_game_player_record(
+    player: CanonicalGamePlayerRecord | NormalizedGamePlayerRecord,
     *,
     default_team: str,
     season: str,
-) -> CanonicalGamePlayerRecord:
+) -> NormalizedGamePlayerRecord:
     player_team = player.team or default_team
-    return CanonicalGamePlayerRecord(
+    return NormalizedGamePlayerRecord(
         game_id=player.game_id,
         team=player_team,
         player_id=player.player_id,
@@ -790,12 +797,10 @@ def _upsert_team_history_for_scope(
 
 def _upsert_team_history_for_games(
     connection: sqlite3.Connection,
-    games: list[CanonicalGameRecord],
+    games: list[NormalizedGameRecord],
 ) -> None:
     seen: set[tuple[int, str]] = set()
     for game in games:
-        if game.team_id is None or game.opponent_team_id is None:
-            raise ValueError(f"Game {game.game_id!r} is missing resolved team ids")
         for team_id, team_code in (
             (game.team_id, game.team),
             (game.opponent_team_id, game.opponent),

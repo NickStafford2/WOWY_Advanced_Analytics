@@ -15,7 +15,7 @@ from wowy.nba.ingest import (
     DEFAULT_SOURCE_DATA_DIR,
     load_player_names_from_cache,
 )
-from wowy.nba.models import CanonicalGamePlayerRecord, CanonicalGameRecord
+from wowy.nba.models import NormalizedGamePlayerRecord, NormalizedGameRecord
 from wowy.nba.team_seasons import TeamSeasonScope, resolve_team_seasons
 
 
@@ -53,7 +53,7 @@ def prepare_canonical_scope_records(
     include_opponents_for_team_scope: bool = True,
     require_cached_only: bool = False,
     log=print,
-) -> tuple[list[CanonicalGameRecord], list[CanonicalGamePlayerRecord]]:
+) -> tuple[list[NormalizedGameRecord], list[NormalizedGamePlayerRecord]]:
     team_seasons = resolve_team_seasons(
         teams,
         seasons,
@@ -128,7 +128,7 @@ def _load_games_from_db(
     *,
     season_type: str,
     player_metrics_db_path: Path,
-) -> list[CanonicalGameRecord]:
+) -> list[NormalizedGameRecord]:
     games = load_normalized_games_from_db(
         player_metrics_db_path,
         season_type=season_type,
@@ -146,10 +146,10 @@ def _load_games_from_db(
 
 
 def _filter_records_to_team_seasons(
-    games: list[CanonicalGameRecord],
-    game_players: list[CanonicalGamePlayerRecord],
+    games: list[NormalizedGameRecord],
+    game_players: list[NormalizedGamePlayerRecord],
     team_seasons: list[TeamSeasonScope],
-) -> tuple[list[CanonicalGameRecord], list[CanonicalGamePlayerRecord]]:
+) -> tuple[list[NormalizedGameRecord], list[NormalizedGamePlayerRecord]]:
     allowed_team_seasons = {
         (team_season.team_id, team_season.season)
         for team_season in team_seasons

@@ -27,9 +27,9 @@ from wowy.nba.errors import (
     TeamSeasonConsistencyError,
 )
 from wowy.nba.models import (
-    CanonicalGamePlayerRecord,
-    CanonicalGameRecord,
-    CanonicalTeamSeasonBatch,
+    NormalizedGamePlayerRecord,
+    NormalizedGameRecord,
+    NormalizedTeamSeasonBatch,
 )
 from wowy.nba.ingest.normalize import normalize_source_game
 from wowy.nba.ingest.parsers import (
@@ -62,7 +62,7 @@ def fetch_team_season_data(
     log: Callable[[str], None] | None = print,
     progress: ProgressFn | None = None,
     cached_only: bool = False,
-) -> tuple[list[CanonicalGameRecord], list[CanonicalGamePlayerRecord]]:
+) -> tuple[list[NormalizedGameRecord], list[NormalizedGamePlayerRecord]]:
     result = ingest_team_season(
         team_abbreviation=team_abbreviation,
         season=season,
@@ -121,8 +121,8 @@ def ingest_team_season(
             ),
         )
 
-    canonical_games: list[CanonicalGameRecord] = []
-    canonical_game_players: list[CanonicalGamePlayerRecord] = []
+    canonical_games: list[NormalizedGameRecord] = []
+    canonical_game_players: list[NormalizedGamePlayerRecord] = []
     failed_game_ids: list[str] = []
     failed_game_details: list[GameNormalizationFailure] = []
     failure_reason_counts: dict[str, int] = {}
@@ -214,7 +214,7 @@ def ingest_team_season(
             },
         )
 
-    batch = CanonicalTeamSeasonBatch(
+    batch = NormalizedTeamSeasonBatch(
         team=requested_team,
         team_id=requested_team_id,
         season=season,

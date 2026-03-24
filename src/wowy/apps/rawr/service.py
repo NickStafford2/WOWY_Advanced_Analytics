@@ -11,7 +11,7 @@ from wowy.apps.rawr.models import (
     RawrPlayerSeasonRecord,
     RawrResult,
 )
-from wowy.nba.models import CanonicalGamePlayerRecord, CanonicalGameRecord
+from wowy.nba.models import NormalizedGamePlayerRecord, NormalizedGameRecord
 from wowy.data.game_cache_db import list_cache_load_rows
 from wowy.data.player_metrics_db import DEFAULT_PLAYER_METRICS_DB_PATH
 from wowy.nba.prepare import prepare_canonical_scope_records
@@ -147,8 +147,8 @@ def filter_rawr_scope(
 
 
 def run_rawr_records(
-    games: list[CanonicalGameRecord],
-    game_players: list[CanonicalGamePlayerRecord],
+    games: list[NormalizedGameRecord],
+    game_players: list[NormalizedGamePlayerRecord],
     min_games: int,
     ridge_alpha: float = 1.0,
     shrinkage_mode: str = "uniform",
