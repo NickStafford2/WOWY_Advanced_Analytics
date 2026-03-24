@@ -68,7 +68,7 @@ def create_app(
             payload = build_metric_options_payload(
                 metric,
                 db_path=player_metrics_db_path,
-                teams=request.args.getlist("team") or None,
+                team_ids=_parse_positive_int_list(request.args.getlist("team_id")),
                 season_type=request.args.get("season_type", "Regular Season"),
             )
         except ValueError as exc:
@@ -209,9 +209,9 @@ def _build_metric_player_seasons_payload(
     season_type = canonicalize_season_type(
         request.args.get("season_type", "Regular Season")
     )
-    teams = request.args.getlist("team") or None
+    team_ids = _parse_positive_int_list(request.args.getlist("team_id"))
     seasons = _parse_request_seasons(request)
-    scope_key, _team_filter = build_scope_key(teams=teams, season_type=season_type)
+    scope_key, _team_filter = build_scope_key(team_ids=team_ids, season_type=season_type)
     payload = build_metric_player_seasons_payload(
         metric,
         db_path=player_metrics_db_path,
@@ -224,8 +224,8 @@ def _build_metric_player_seasons_payload(
     )
     payload["filters"] = _build_filters_payload(
         metric=metric,
-        teams=teams,
-        team_ids=None,
+        teams=None,
+        team_ids=team_ids,
         seasons=seasons,
         season_type=season_type,
         min_sample_size=request.args.get("min_games_with")
@@ -253,9 +253,9 @@ def _build_metric_span_chart_payload(
     season_type = canonicalize_season_type(
         request.args.get("season_type", "Regular Season")
     )
-    teams = request.args.getlist("team") or None
+    team_ids = _parse_positive_int_list(request.args.getlist("team_id"))
     seasons = _parse_request_seasons(request)
-    scope_key, _team_filter = build_scope_key(teams=teams, season_type=season_type)
+    scope_key, _team_filter = build_scope_key(team_ids=team_ids, season_type=season_type)
     payload = build_metric_span_chart_payload(
         metric,
         db_path=player_metrics_db_path,
@@ -264,8 +264,8 @@ def _build_metric_span_chart_payload(
     )
     payload["filters"] = _build_filters_payload(
         metric=metric,
-        teams=teams,
-        team_ids=None,
+        teams=None,
+        team_ids=team_ids,
         seasons=seasons,
         season_type=season_type,
         min_sample_size=request.args.get("min_games_with")
@@ -294,9 +294,9 @@ def _build_cached_metric_leaderboard_payload(
     season_type = canonicalize_season_type(
         request.args.get("season_type", "Regular Season")
     )
-    teams = request.args.getlist("team") or None
+    team_ids = _parse_positive_int_list(request.args.getlist("team_id"))
     seasons = _parse_request_seasons(request)
-    scope_key, _team_filter = build_scope_key(teams=teams, season_type=season_type)
+    scope_key, _team_filter = build_scope_key(team_ids=team_ids, season_type=season_type)
     payload = build_cached_metric_leaderboard_payload(
         metric,
         db_path=player_metrics_db_path,
@@ -310,8 +310,8 @@ def _build_cached_metric_leaderboard_payload(
     )
     payload["filters"] = _build_filters_payload(
         metric=metric,
-        teams=teams,
-        team_ids=None,
+        teams=None,
+        team_ids=team_ids,
         seasons=seasons,
         season_type=season_type,
         min_sample_size=request.args.get("min_games_with")
@@ -419,9 +419,9 @@ def _build_cached_metric_leaderboard_csv(
     season_type = canonicalize_season_type(
         request.args.get("season_type", "Regular Season")
     )
-    teams = request.args.getlist("team") or None
+    team_ids = _parse_positive_int_list(request.args.getlist("team_id"))
     seasons = _parse_request_seasons(request)
-    scope_key, _team_filter = build_scope_key(teams=teams, season_type=season_type)
+    scope_key, _team_filter = build_scope_key(team_ids=team_ids, season_type=season_type)
     metric_label, table_rows = build_cached_metric_export_table_rows(
         metric,
         db_path=player_metrics_db_path,

@@ -17,6 +17,7 @@ type ThemeMode = 'light' | 'dark'
 
 type MetricFilters = {
   team: string[] | null
+  team_id?: number[] | null
   season?: string[] | null
   season_type: string
   min_games_with?: number
@@ -60,7 +61,7 @@ type ErrorPayload = {
 }
 
 type CachedFilters = {
-  team: string
+  teamId: number | null
   topN: number
 }
 
@@ -90,7 +91,7 @@ function App() {
   const [availableSeasons, setAvailableSeasons] = useState<string[]>([])
   const [leaderboard, setLeaderboard] = useState<LeaderboardPayload | null>(null)
   const [cachedFilters, setCachedFilters] = useState<CachedFilters>({
-    team: '',
+    teamId: null,
     topN: 12,
   })
   const [customFilters, setCustomFilters] = useState<CustomFilters>({
@@ -251,8 +252,8 @@ function App() {
       if (effectiveFilters.min_games_without !== undefined) {
         params.set('min_games_without', String(effectiveFilters.min_games_without))
       }
-      if (cachedFilters.team) {
-        params.set('team', cachedFilters.team)
+      if (cachedFilters.teamId !== null) {
+        params.set('team_id', String(cachedFilters.teamId))
       }
 
       try {
@@ -550,6 +551,7 @@ function defaultMetricFilters(metric: MetricId): MetricFilters {
   if (metric === 'rawr') {
     return {
       team: null,
+      team_id: null,
       season_type: 'Regular Season',
       min_games: 35,
       ridge_alpha: 10,
@@ -560,6 +562,7 @@ function defaultMetricFilters(metric: MetricId): MetricFilters {
   }
   return {
     team: null,
+    team_id: null,
     season_type: 'Regular Season',
     min_games_with: 15,
     min_games_without: 2,
@@ -789,8 +792,8 @@ function buildExportUrl({
     if (metricFilters.min_games_without !== undefined) {
       params.set('min_games_without', String(metricFilters.min_games_without))
     }
-    if (cachedFilters.team) {
-      params.set('team', cachedFilters.team)
+    if (cachedFilters.teamId !== null) {
+      params.set('team_id', String(cachedFilters.teamId))
     }
     params.set('top_n', String(cachedFilters.topN))
     return `/api/metrics/${metric}/cached-leaderboard.csv?${params.toString()}`

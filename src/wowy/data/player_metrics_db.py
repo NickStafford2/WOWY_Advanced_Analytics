@@ -19,6 +19,7 @@ LEGACY_METRIC_RENAMES = {
     "shrinkage_wowy": ("wowy_shrunk", "WOWY Shrunk"),
 }
 _TEAM_ABBREVIATION_PATTERN = re.compile(r"^[A-Z]{3}$")
+_TEAM_ID_FILTER_PATTERN = re.compile(r"^[1-9]\d*$")
 
 
 @dataclass(frozen=True)
@@ -973,7 +974,7 @@ def _validate_metric_scope_catalog_row(row: MetricScopeCatalogRow) -> None:
         raise ValueError("Catalog season_type must use canonical season type")
     canonical_team_filter = _canonical_team_filter(row.team_filter)
     if row.team_filter != canonical_team_filter:
-        raise ValueError("Catalog team_filter must use canonical uppercase abbreviations")
+        raise ValueError("Catalog team_filter must use canonical positive team_ids")
     _validate_scope_shape(
         scope_key=row.scope_key,
         team_filter=canonical_team_filter,
@@ -1139,28 +1140,28 @@ def _migrate_legacy_metric_names(connection: sqlite3.Connection) -> None:
 
 def _validate_scope_shape(*, scope_key: str, team_filter: str, season_type: str) -> None:
     expected_team_key = team_filter or "all-teams"
-    expected_scope_key = f"teams={expected_team_key}|season_type={season_type}"
+    expected_scope_key = f"team_ids={expected_team_key}|season_type={season_type}"
     if scope_key != expected_scope_key:
         raise ValueError(
             f"Invalid scope_key {scope_key!r}; expected canonical {expected_scope_key!r}"
         )
     if not team_filter:
         return
-    teams = team_filter.split(",")
-    if teams != sorted(set(teams)):
+    team_ids = team_filter.split(",")
+    if team_ids != sorted(set(team_ids), key=int):
         raise ValueError("team_filter must be unique and sorted")
-    for team in teams:
-        _canonical_team(team)
+    for team_id in team_ids:
+        _canonical_team_id_filter_value(team_id)
 
 
 def _canonical_team_filter(value: str) -> str:
     if not value:
         return ""
-    teams = value.split(",")
-    canonical_teams = [_canonical_team(team) for team in teams]
-    if canonical_teams != sorted(set(canonical_teams)):
+    team_ids = value.split(",")
+    canonical_team_ids = [_canonical_team_id_filter_value(team_id) for team_id in team_ids]
+    if canonical_team_ids != sorted(set(canonical_team_ids), key=int):
         raise ValueError("team_filter must be unique and sorted")
-    return ",".join(canonical_teams)
+    return ",".join(canonical_team_ids)
 
 
 def _canonical_team(value: str) -> str:
@@ -1168,6 +1169,13 @@ def _canonical_team(value: str) -> str:
     if not _TEAM_ABBREVIATION_PATTERN.fullmatch(team):
         raise ValueError(f"Invalid team abbreviation {value!r}")
     return team
+
+
+def _canonical_team_id_filter_value(value: str) -> str:
+    team_id = value.strip()
+    if not _TEAM_ID_FILTER_PATTERN.fullmatch(team_id):
+        raise ValueError(f"Invalid team_id filter value {value!r}")
+    return team_id
 
 
 def _validate_required_text(value: str, label: str) -> None:

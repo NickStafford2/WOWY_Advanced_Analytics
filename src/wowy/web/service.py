@@ -88,10 +88,12 @@ def _build_wowy_rows(
     source_data_dir: Path,
     db_path: Path,
     teams: list[str] | None,
+    team_ids: list[int] | None,
     rawr_ridge_alpha: float,
 ) -> list[PlayerSeasonMetricRow]:
     records = prepare_wowy_player_season_records(
         teams=teams,
+        team_ids=team_ids,
         seasons=None,
         season_type=season_type,
         source_data_dir=source_data_dir,
@@ -135,10 +137,12 @@ def _build_rawr_rows(
     source_data_dir: Path,
     db_path: Path,
     teams: list[str] | None,
+    team_ids: list[int] | None,
     rawr_ridge_alpha: float,
 ) -> list[PlayerSeasonMetricRow]:
     records = prepare_rawr_player_season_records(
         teams=teams,
+        team_ids=team_ids,
         seasons=None,
         season_type=season_type,
         source_data_dir=source_data_dir,
@@ -206,10 +210,12 @@ def _build_wowy_shrunk_rows(
     source_data_dir: Path,
     db_path: Path,
     teams: list[str] | None,
+    team_ids: list[int] | None,
     rawr_ridge_alpha: float,
 ) -> list[PlayerSeasonMetricRow]:
     records = prepare_wowy_player_season_records(
         teams=teams,
+        team_ids=team_ids,
         seasons=None,
         season_type=season_type,
         source_data_dir=source_data_dir,
@@ -275,15 +281,15 @@ METRIC_DEFINITIONS = {
 
 def build_scope_key(
     *,
-    teams: list[str] | None,
+    team_ids: list[int] | None,
     season_type: str,
 ) -> tuple[str, str]:
     season_type = canonicalize_season_type(season_type)
-    normalized_teams = sorted({team.upper() for team in teams or []})
-    team_filter = ",".join(normalized_teams)
+    normalized_team_ids = sorted({team_id for team_id in team_ids or [] if team_id > 0})
+    team_filter = ",".join(str(team_id) for team_id in normalized_team_ids)
     team_key = team_filter or "all-teams"
     return (
-        f"teams={team_key}|season_type={season_type}",
+        f"team_ids={team_key}|season_type={season_type}",
         team_filter,
     )
 
@@ -317,17 +323,24 @@ def refresh_metric_store(
     )
     cached_team_seasons = list_cached_team_seasons(player_metrics_db_path=db_path, season_type=season_type)
     available_teams = sorted({team_season.team for team_season in cached_team_seasons})
-    team_scopes: list[list[str] | None] = [None]
+    available_team_ids = sorted(
+        {team_season.team_id for team_season in cached_team_seasons if team_season.team_id is not None}
+    )
+    team_scopes: list[list[int] | None] = [None]
     if include_team_scopes:
-        team_scopes.extend([[team] for team in available_teams])
+        team_scopes.extend([[team_id] for team_id in available_team_ids])
     warnings: list[str] = []
     scope_results: list[RefreshScopeResult] = []
     failure_message: str | None = None
 
-    for index, teams in enumerate(team_scopes):
-        scope_key, team_filter = build_scope_key(teams=teams, season_type=season_type)
-        scope_label = team_filter or "all-teams"
-        if metric == RAWR_METRIC and teams is None:
+    for index, team_ids in enumerate(team_scopes):
+        scope_key, team_filter = build_scope_key(team_ids=team_ids, season_type=season_type)
+        scope_label = (
+            official_continuity_label_for_team_id(team_ids[0])
+            if team_ids and len(team_ids) == 1
+            else team_filter or "all-teams"
+        )
+        if metric == RAWR_METRIC and team_ids is None:
             warnings = _print_rawr_incomplete_season_warning(
                 season_type=season_type,
                 db_path=db_path,
@@ -336,7 +349,7 @@ def refresh_metric_store(
             {
                 team_season.season
                 for team_season in cached_team_seasons
-                if teams is None or team_season.team in teams
+                if team_ids is None or team_season.team_id in team_ids
             }
         )
         if progress is not None:
@@ -373,10 +386,11 @@ def refresh_metric_store(
             season_type=season_type,
             source_data_dir=source_data_dir,
             db_path=db_path,
-            teams=teams,
+            teams=None,
+            team_ids=team_ids,
             rawr_ridge_alpha=rawr_ridge_alpha,
         )
-        should_fail_empty_rawr_scope = metric == RAWR_METRIC and teams is None and not rows
+        should_fail_empty_rawr_scope = metric == RAWR_METRIC and team_ids is None and not rows
         if should_fail_empty_rawr_scope:
             clear_metric_scope_store(
                 db_path,
@@ -807,10 +821,10 @@ def build_metric_options_payload(
     metric: str,
     *,
     db_path: Path = DEFAULT_PLAYER_METRICS_DB_PATH,
-    teams: list[str] | None,
+    team_ids: list[int] | None,
     season_type: str,
 ) -> dict[str, Any]:
-    scope_key, _team_filter = build_scope_key(teams=teams, season_type=season_type)
+    scope_key, _team_filter = build_scope_key(team_ids=team_ids, season_type=season_type)
     catalog_row = _require_current_metric_scope(
         db_path=db_path,
         metric=metric,
@@ -835,7 +849,8 @@ def build_metric_options_payload(
         ),
         "filters": build_metric_default_filters_payload(
             metric,
-            teams=sorted({team.upper() for team in teams or []}) or None,
+            teams=None,
+            team_ids=team_ids,
             season_type=catalog_row.season_type,
         ),
     }

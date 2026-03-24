@@ -216,7 +216,7 @@ def test_refresh_metric_store_builds_rawr_player_season_rows(
     team_seasons = _seed_rawr_cache_inputs(monkeypatch)
     player_metrics_db_path = _refresh_rawr_store(tmp_path, team_seasons)
     scope_key, _team_filter = build_scope_key(
-        teams=None,
+        team_ids=None,
         season_type="Regular Season",
     )
     rows = load_metric_rows(
@@ -253,7 +253,7 @@ def test_refresh_metric_store_skips_incomplete_rawr_seasons_without_scraping(
         source_data_dir=tmp_path / "source",
     )
     scope_key, _team_filter = build_scope_key(
-        teams=None,
+        team_ids=None,
         season_type="Regular Season",
     )
     rows = load_metric_rows(
@@ -319,11 +319,11 @@ def test_refresh_metric_store_can_skip_team_scopes(
     )
 
     all_scope_key, _team_filter = build_scope_key(
-        teams=None,
+        team_ids=None,
         season_type="Regular Season",
     )
     team_scope_key, _team_filter = build_scope_key(
-        teams=["BOS"],
+        team_ids=[1610612738],
         season_type="Regular Season",
     )
 
@@ -354,7 +354,7 @@ def test_refresh_metric_store_builds_wowy_shrunk_rows(
         source_data_dir=tmp_path / "source",
     )
     scope_key, _team_filter = build_scope_key(
-        teams=None,
+        team_ids=None,
         season_type="Regular Season",
     )
     rows = load_metric_rows(
@@ -398,7 +398,7 @@ def test_refresh_cli_refreshes_all_metrics_by_default(monkeypatch, tmp_path: Pat
             metric=metric,
             scope_results=[
                 RefreshScopeResult(
-                    scope_key="teams=all-teams|season_type=Regular Season",
+                    scope_key="team_ids=all-teams|season_type=Regular Season",
                     scope_label="all-teams",
                     row_count=1,
                     status="built",
@@ -442,7 +442,7 @@ def test_refresh_cli_fails_for_empty_all_teams_rawr_store(
                 metric=metric,
                 scope_results=[
                     RefreshScopeResult(
-                        scope_key="teams=all-teams|season_type=Regular Season",
+                        scope_key="team_ids=all-teams|season_type=Regular Season",
                         scope_label="all-teams",
                         row_count=5,
                         status="built",
@@ -454,7 +454,7 @@ def test_refresh_cli_fails_for_empty_all_teams_rawr_store(
             metric=metric,
             scope_results=[
                 RefreshScopeResult(
-                    scope_key="teams=all-teams|season_type=Regular Season",
+                    scope_key="team_ids=all-teams|season_type=Regular Season",
                     scope_label="all-teams",
                     row_count=0,
                     status="empty",
@@ -499,7 +499,7 @@ def test_wowy_shrunk_options_endpoint_returns_wowy_style_filters(
 
     response = client.get(
         "/api/metrics/wowy_shrunk/options",
-        query_string={"team": "BOS"},
+        query_string={"team_id": "1610612738"},
     )
 
     assert response.status_code == 200
@@ -517,8 +517,8 @@ def test_wowy_shrunk_options_endpoint_returns_wowy_style_filters(
             "2023-24": ["BOS", "NYK"],
         },
         "filters": {
-            "team": ["BOS"],
-            "team_id": None,
+            "team": None,
+            "team_id": [1610612738],
             "season_type": "Regular Season",
             "min_games_with": 15,
             "min_games_without": 2,
@@ -564,7 +564,7 @@ def test_refresh_metric_store_skips_empty_historical_rawr_team_seasons(
     team_seasons.append(("BKN", "2008-09", [], []))
     player_metrics_db_path = _refresh_rawr_store(tmp_path, team_seasons)
     scope_key, _team_filter = build_scope_key(
-        teams=["BKN"],
+        team_ids=[1610612751],
         season_type="Regular Season",
     )
     rows = load_metric_rows(
@@ -590,7 +590,7 @@ def test_rawr_options_endpoint_returns_metric_specific_filters(
     )
     client = app.test_client()
 
-    response = client.get("/api/metrics/rawr/options", query_string={"team": "BOS"})
+    response = client.get("/api/metrics/rawr/options", query_string={"team_id": "1610612738"})
 
     assert response.status_code == 200
     assert response.get_json() == {
@@ -608,8 +608,8 @@ def test_rawr_options_endpoint_returns_metric_specific_filters(
             "2023-24": ["BOS", "LAL", "MIL", "NYK"],
         },
         "filters": {
-            "team": ["BOS"],
-            "team_id": None,
+            "team": None,
+            "team_id": [1610612738],
             "season_type": "Regular Season",
             "min_games": 35,
             "ridge_alpha": 10.0,
@@ -880,7 +880,7 @@ def test_wowy_options_endpoint_returns_cached_teams_and_seasons(
     )
     client = app.test_client()
 
-    response = client.get("/api/wowy/options", query_string={"team": "BOS"})
+    response = client.get("/api/wowy/options", query_string={"team_id": "1610612738"})
 
     assert response.status_code == 200
     assert response.get_json() == {
@@ -897,8 +897,8 @@ def test_wowy_options_endpoint_returns_cached_teams_and_seasons(
             "2023-24": ["BOS", "NYK"],
         },
         "filters": {
-            "team": ["BOS"],
-            "team_id": None,
+            "team": None,
+            "team_id": [1610612738],
             "season_type": "Regular Season",
             "min_games_with": 15,
             "min_games_without": 2,
@@ -928,7 +928,7 @@ def test_wowy_player_seasons_endpoint_returns_rows_from_cache(
     response = client.get(
         "/api/wowy/player-seasons",
         query_string={
-            "team": "BOS",
+            "team_id": "1610612738",
             "min_games_with": "1",
             "min_games_without": "1",
             "min_average_minutes": "0",
@@ -942,8 +942,8 @@ def test_wowy_player_seasons_endpoint_returns_rows_from_cache(
         "metric": "wowy",
         "metric_label": "WOWY",
         "filters": {
-            "team": ["BOS"],
-            "team_id": None,
+            "team": None,
+            "team_id": [1610612738],
             "season": None,
             "season_type": "Regular Season",
             "min_games_with": 1,
@@ -1037,7 +1037,7 @@ def test_wowy_span_chart_endpoint_returns_series_for_selected_span(
     response = client.get(
         "/api/wowy/span-chart",
         query_string={
-            "team": "BOS",
+            "team_id": "1610612738",
             "top_n": "2",
             "min_games_with": "1",
             "min_games_without": "1",
@@ -1099,7 +1099,7 @@ def test_wowy_cached_leaderboard_endpoint_returns_server_ranked_rows(
     response = client.get(
         "/api/wowy/cached-leaderboard",
         query_string={
-            "team": "BOS",
+            "team_id": "1610612738",
             "top_n": "2",
             "min_games_with": "1",
             "min_games_without": "1",
@@ -1145,7 +1145,7 @@ def test_wowy_cached_leaderboard_csv_exports_all_players_ignoring_top_n(
     response = client.get(
         "/api/metrics/wowy/cached-leaderboard.csv",
         query_string={
-            "team": "BOS",
+            "team_id": "1610612738",
             "top_n": "1",
             "min_games_with": "1",
             "min_games_without": "1",
@@ -1318,7 +1318,7 @@ def test_wowy_options_endpoint_returns_team_id_team_options_for_frontend(
     player_metrics_db_path = tmp_path / "app" / "player_metrics.sqlite3"
     seed_db_from_team_seasons(player_metrics_db_path, _wowy_historical_continuity_seed())
     scope_key, _team_filter = build_scope_key(
-        teams=None,
+        team_ids=None,
         season_type="Regular Season",
     )
     replace_metric_scope_store(
