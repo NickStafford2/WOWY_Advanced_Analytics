@@ -17,7 +17,7 @@ from wowy.nba.team_identity import (
 class TeamSeasonScope:
     team: str
     season: str
-    team_id: int | None = None
+    team_id: int
 
 
 def list_cached_team_seasons(
@@ -61,7 +61,6 @@ def resolve_team_seasons(
     cached_team_seasons_by_key = {
         (team_season.team_id, team_season.season): team_season
         for team_season in cached_team_seasons
-        if team_season.team_id is not None
     }
 
     if normalized_seasons:
@@ -119,7 +118,7 @@ def _resolve_team_id_scoped_seasons(
     *,
     team_ids: list[int],
     seasons: list[str],
-    cached_team_seasons_by_key: dict[tuple[int | None, str], TeamSeasonScope],
+    cached_team_seasons_by_key: dict[tuple[int, str], TeamSeasonScope],
 ) -> list[TeamSeasonScope]:
     resolved: list[TeamSeasonScope] = []
     for season in seasons:
@@ -143,7 +142,7 @@ def _resolve_team_lookup_scoped_seasons(
     *,
     teams: list[str],
     seasons: list[str],
-    cached_team_seasons_by_key: dict[tuple[int | None, str], TeamSeasonScope],
+    cached_team_seasons_by_key: dict[tuple[int, str], TeamSeasonScope],
 ) -> list[TeamSeasonScope]:
     resolved: list[TeamSeasonScope] = []
     for season in seasons:

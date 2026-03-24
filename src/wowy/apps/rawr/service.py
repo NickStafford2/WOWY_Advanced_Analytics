@@ -191,9 +191,11 @@ def run_rawr_records(
             if games_played >= min_games
         )
         team_seasons = {
-            f"{game.team_id or game.team}:{game.season}" for game in games
+            f"{_require_team_id(game.team_id, game.game_id, 'team_id')}:{game.season}"
+            for game in games
         } | {
-            f"{game.opponent_team_id or game.opponent}:{game.season}" for game in games
+            f"{_require_team_id(game.opponent_team_id, game.game_id, 'opponent_team_id')}:{game.season}"
+            for game in games
         }
         feature_count = 2 + player_count + (2 * len(team_seasons))
         total_steps = (
@@ -315,6 +317,14 @@ def list_incomplete_rawr_seasons(
         for reason in sorted(season_rows["issues"]):
             issues.append(RawrSeasonCompletenessIssue(season=season, reason=reason))
     return issues
+
+
+def _require_team_id(team_id: int | None, game_id: str, field_name: str) -> int:
+    if team_id is None or team_id <= 0:
+        raise ValueError(
+            f"Normalized cache-backed game {game_id!r} is missing {field_name}"
+        )
+    return team_id
 
 
 def list_complete_rawr_seasons(

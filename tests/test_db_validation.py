@@ -29,6 +29,7 @@ from wowy.data.player_metrics_db import (
     replace_metric_rows,
     replace_metric_scope_catalog_row,
 )
+from wowy.nba.team_identity import resolve_team_id
 
 
 def test_audit_player_metrics_db_accepts_valid_seed_data(tmp_path: Path):
@@ -66,14 +67,16 @@ def test_audit_player_metrics_db_reports_normalized_cache_count_mismatch(tmp_pat
 
 def test_audit_player_metrics_db_reports_metric_metadata_count_mismatch(tmp_path: Path):
     db_path = _seed_valid_db(tmp_path)
+    scope_key = f"team_ids={resolve_team_id('BOS', season='2023-24')}|season_type=Regular Season"
 
     with sqlite3.connect(db_path) as connection:
         connection.execute(
             """
             UPDATE metric_store_metadata_v2
             SET row_count = 7
-            WHERE metric = 'wowy' AND scope_key = 'teams=BOS|season_type=Regular Season'
-            """
+            WHERE metric = 'wowy' AND scope_key = ?
+            """,
+            (scope_key,),
         )
         connection.commit()
 
@@ -89,14 +92,16 @@ def test_audit_player_metrics_db_reports_metric_metadata_count_mismatch(tmp_path
 
 def test_audit_player_metrics_db_reports_noncanonical_persisted_catalog_values(tmp_path: Path):
     db_path = _seed_valid_db(tmp_path)
+    scope_key = f"team_ids={resolve_team_id('BOS', season='2023-24')}|season_type=Regular Season"
 
     with sqlite3.connect(db_path) as connection:
         connection.execute(
             """
             UPDATE metric_scope_catalog
             SET team_filter = 'bos'
-            WHERE metric = 'wowy' AND scope_key = 'teams=BOS|season_type=Regular Season'
-            """
+            WHERE metric = 'wowy' AND scope_key = ?
+            """,
+            (scope_key,),
         )
         connection.commit()
 
@@ -105,7 +110,7 @@ def test_audit_player_metrics_db_reports_noncanonical_persisted_catalog_values(t
     assert report.ok is False
     assert any(
         issue.table == "metric_scope_catalog"
-        and "canonical uppercase abbreviations" in issue.message
+        and "Invalid team_id filter value" in issue.message
         for issue in report.issues
     )
 
@@ -206,6 +211,7 @@ def test_audit_player_metrics_db_reports_non_reciprocal_game_margins(tmp_path: P
     replace_team_season_normalized_rows(
         db_path,
         team="LAL",
+        team_id=resolve_team_id("LAL", season="2023-24"),
         season="2023-24",
         season_type="Regular Season",
         games=[
@@ -235,10 +241,14 @@ def test_audit_player_metrics_db_reports_non_reciprocal_game_margins(tmp_path: P
 
 def _seed_valid_db(tmp_path: Path) -> Path:
     db_path = tmp_path / "app" / "player_metrics.sqlite3"
+    team_id = resolve_team_id("BOS", season="2023-24")
+    scope_key = f"team_ids={team_id}|season_type=Regular Season"
+    team_filter = str(team_id)
 
     replace_team_season_normalized_rows(
         db_path,
         team="BOS",
+        team_id=team_id,
         season="2023-24",
         season_type="Regular Season",
         games=[
@@ -259,7 +269,7 @@ def _seed_valid_db(tmp_path: Path) -> Path:
     replace_metric_rows(
         db_path,
         metric="wowy",
-        scope_key="teams=BOS|season_type=Regular Season",
+        scope_key=scope_key,
         metric_label="WOWY",
         build_version="v1",
         source_fingerprint=build_normalized_cache_fingerprint(
@@ -270,8 +280,8 @@ def _seed_valid_db(tmp_path: Path) -> Path:
             PlayerSeasonMetricRow(
                 metric="wowy",
                 metric_label="WOWY",
-                scope_key="teams=BOS|season_type=Regular Season",
-                team_filter="BOS",
+                scope_key=scope_key,
+                team_filter=team_filter,
                 season_type="Regular Season",
                 season="2023-24",
                 player_id=101,
@@ -288,9 +298,9 @@ def _seed_valid_db(tmp_path: Path) -> Path:
         db_path,
         row=MetricScopeCatalogRow(
             metric="wowy",
-            scope_key="teams=BOS|season_type=Regular Season",
+            scope_key=scope_key,
             metric_label="WOWY",
-            team_filter="BOS",
+            team_filter=team_filter,
             season_type="Regular Season",
             available_seasons=["2023-24"],
             available_teams=["BOS"],
@@ -302,11 +312,11 @@ def _seed_valid_db(tmp_path: Path) -> Path:
     replace_metric_full_span_rows(
         db_path,
         metric="wowy",
-        scope_key="teams=BOS|season_type=Regular Season",
+        scope_key=scope_key,
         series_rows=[
             MetricFullSpanSeriesRow(
                 metric="wowy",
-                scope_key="teams=BOS|season_type=Regular Season",
+                scope_key=scope_key,
                 player_id=101,
                 player_name="Player 101",
                 span_average_value=2.5,
@@ -317,7 +327,7 @@ def _seed_valid_db(tmp_path: Path) -> Path:
         point_rows=[
             MetricFullSpanPointRow(
                 metric="wowy",
-                scope_key="teams=BOS|season_type=Regular Season",
+                scope_key=scope_key,
                 player_id=101,
                 season="2023-24",
                 value=2.5,

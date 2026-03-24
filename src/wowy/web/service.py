@@ -323,9 +323,7 @@ def refresh_metric_store(
     )
     cached_team_seasons = list_cached_team_seasons(player_metrics_db_path=db_path, season_type=season_type)
     available_teams = sorted({team_season.team for team_season in cached_team_seasons})
-    available_team_ids = sorted(
-        {team_season.team_id for team_season in cached_team_seasons if team_season.team_id is not None}
-    )
+    available_team_ids = sorted({team_season.team_id for team_season in cached_team_seasons})
     team_scopes: list[list[int] | None] = [None]
     if include_team_scopes:
         team_scopes.extend([[team_id] for team_id in available_team_ids])
@@ -898,8 +896,6 @@ def _build_team_options(
         player_metrics_db_path=db_path,
         season_type=season_type,
     ):
-        if team_season.team_id is None:
-            continue
         if team_season.team not in available_team_set:
             continue
         if team_season.season not in available_season_set:

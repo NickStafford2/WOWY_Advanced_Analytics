@@ -151,7 +151,7 @@ def _filter_records_to_team_seasons(
     team_seasons: list[TeamSeasonScope],
 ) -> tuple[list[CanonicalGameRecord], list[CanonicalGamePlayerRecord]]:
     allowed_team_seasons = {
-        (team_season.team_id or team_season.team, team_season.season)
+        (team_season.team_id, team_season.season)
         for team_season in team_seasons
     }
     filtered_games = [

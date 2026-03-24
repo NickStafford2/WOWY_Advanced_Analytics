@@ -25,6 +25,7 @@ from wowy.data.game_cache_db import (
 from wowy.nba.errors import BoxScoreFetchError, LeagueGamesFetchError
 from wowy.nba.models import CanonicalGamePlayerRecord, CanonicalGameRecord
 from wowy.nba.season_types import canonicalize_season_type
+from wowy.nba.team_identity import resolve_team_id
 from wowy.nba.team_seasons import TeamSeasonScope, resolve_team_seasons
 
 
@@ -546,6 +547,7 @@ def test_team_id_authoritative_reads_match_historical_alias_scopes(tmp_path: Pat
     replace_team_season_normalized_rows(
         db_path,
         team="NJN",
+        team_id=resolve_team_id("NJN", season="2009-10"),
         season="2009-10",
         season_type="Regular Season",
         games=[
@@ -600,6 +602,7 @@ def test_resolve_team_seasons_keeps_original_hornets_historical_scope(tmp_path: 
     replace_team_season_normalized_rows(
         db_path,
         team="CHH",
+        team_id=resolve_team_id("CHH", season="2001-02"),
         season="2001-02",
         season_type="Regular Season",
         games=[
@@ -645,6 +648,7 @@ def test_resolve_team_seasons_accepts_team_id_for_historical_multi_season_scope(
     replace_team_season_normalized_rows(
         db_path,
         team="NOH",
+        team_id=resolve_team_id("NOH", season="2002-03"),
         season="2002-03",
         season_type="Regular Season",
         games=[
@@ -674,6 +678,7 @@ def test_resolve_team_seasons_accepts_team_id_for_historical_multi_season_scope(
     replace_team_season_normalized_rows(
         db_path,
         team="NOP",
+        team_id=resolve_team_id("NOP", season="2013-14"),
         season="2013-14",
         season_type="Regular Season",
         games=[
@@ -721,6 +726,7 @@ def test_load_cache_load_row_uses_season_scoped_original_hornets_identity(tmp_pa
     replace_team_season_normalized_rows(
         db_path,
         team="CHH",
+        team_id=resolve_team_id("CHH", season="2001-02"),
         season="2001-02",
         season_type="Regular Season",
         games=[
@@ -777,6 +783,7 @@ def test_load_normalized_games_handles_historical_team_filters_across_multiple_s
     replace_team_season_normalized_rows(
         db_path,
         team="CHH",
+        team_id=resolve_team_id("CHH", season="2001-02"),
         season="2001-02",
         season_type="Regular Season",
         games=[
@@ -806,6 +813,7 @@ def test_load_normalized_games_handles_historical_team_filters_across_multiple_s
     replace_team_season_normalized_rows(
         db_path,
         team="NOH",
+        team_id=resolve_team_id("NOH", season="2002-03"),
         season="2002-03",
         season_type="Regular Season",
         games=[
@@ -855,6 +863,7 @@ def test_replace_team_season_normalized_rows_rejects_non_canonical_or_implausibl
         replace_team_season_normalized_rows(
             db_path,
             team="BOS",
+            team_id=resolve_team_id("BOS", season="2023-24"),
             season="2023-24",
             season_type="Regular Season",
             games=[
@@ -932,6 +941,7 @@ def test_replace_team_season_normalized_rows_rejects_opponent_label_mismatch(
         replace_team_season_normalized_rows(
             db_path,
             team="BOS",
+            team_id=resolve_team_id("BOS", season="2023-24"),
             season="2023-24",
             season_type="Regular Season",
             games=[
@@ -964,6 +974,7 @@ def test_replace_team_season_normalized_rows_rejects_opponent_label_mismatch(
         replace_team_season_normalized_rows(
             db_path,
             team="BOS",
+            team_id=resolve_team_id("BOS", season="2023-24"),
             season="2023-24",
             season_type="Regular Season",
             games=[
@@ -995,6 +1006,7 @@ def test_replace_team_season_normalized_rows_rejects_opponent_label_mismatch(
         replace_team_season_normalized_rows(
             db_path,
             team="BOS",
+            team_id=resolve_team_id("BOS", season="2023-24"),
             season="2023-24",
             season_type="Regular Season",
             games=[

@@ -27,10 +27,10 @@ def compute_wowy(
 
         for game in games:
             if player in game.players:
-                team_seasons_with_player.add((game.team_id or game.team, game.season))
+                team_seasons_with_player.add((game.identity_team, game.season))
 
         for game in games:
-            if (game.team_id or game.team, game.season) not in team_seasons_with_player:
+            if (game.identity_team, game.season) not in team_seasons_with_player:
                 continue
             if player in game.players:
                 margins_with.append(game.margin)

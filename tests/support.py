@@ -4,6 +4,7 @@ from typing import TypeAlias
 
 import wowy.data.game_cache_db as game_cache_db
 from wowy.nba.models import CanonicalGamePlayerRecord, CanonicalGameRecord
+from wowy.nba.team_identity import resolve_team_id
 
 
 TeamSeasonSeed: TypeAlias = tuple[
@@ -72,6 +73,7 @@ def seed_db_from_team_seasons(
             game_cache_db.replace_team_season_normalized_rows(
                 db_path,
                 team=team,
+                team_id=resolve_team_id(team, season=season),
                 season=season,
                 season_type=season_types.pop() if season_types else "Regular Season",
                 games=games,

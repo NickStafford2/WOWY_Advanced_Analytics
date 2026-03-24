@@ -130,7 +130,7 @@ def replace_team_season_normalized_rows(
     db_path: Path,
     *,
     team: str,
-    team_id: int | None = None,
+    team_id: int,
     season: str,
     season_type: str,
     games: list[CanonicalGameRecord],
@@ -145,7 +145,8 @@ def replace_team_season_normalized_rows(
     initialize_game_cache_db(db_path)
     team = team.upper()
     season = canonicalize_season_string(season)
-    team_id = team_id or resolve_team_id(team, season=season)
+    if team_id <= 0:
+        raise ValueError(f"team_id must be positive for normalized cache writes: {team_id!r}")
     canonical_team = resolve_team_identity_from_id_and_season(team_id, season).abbreviation
     season_type = canonicalize_season_type(season_type)
     games = [_with_resolved_game_identity(game) for game in games]
