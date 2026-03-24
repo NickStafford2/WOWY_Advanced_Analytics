@@ -9,7 +9,7 @@ from wowy.apps.wowy.derive import derive_wowy_games
 from wowy.nba.models import NormalizedGamePlayerRecord, NormalizedGameRecord
 from wowy.nba.seasons import canonicalize_season_string
 from wowy.nba.season_types import canonicalize_season_type
-from wowy.nba.team_identity import resolve_team_id
+from wowy.nba.team_identity import canonical_team_lookup_abbreviation, resolve_team_id
 
 
 _TEAM_ABBREVIATION_PATTERN = re.compile(r"^[A-Z]{3}$")
@@ -254,4 +254,4 @@ def _canonical_team_abbreviation(value: str) -> str:
     team = value.strip().upper()
     if not _TEAM_ABBREVIATION_PATTERN.fullmatch(team):
         raise ValueError(f"Invalid team abbreviation {value!r}")
-    return team
+    return canonical_team_lookup_abbreviation(team)

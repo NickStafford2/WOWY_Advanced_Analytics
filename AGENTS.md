@@ -1,5 +1,17 @@
 # AGENTS.md
 
+## Ingest simplification target
+- The current ingest/normalize/validation flow is too coupled and should be simplified aggressively.
+- Prefer a strict pipeline with clear stages: fetch raw payloads, parse raw payloads into typed source objects, normalize those into canonical domain objects, validate the canonical batch once, then persist canonical rows.
+- Keep source models, domain models, and persistence models separate when they serve different purposes.
+- Source models should represent backend payload shapes and validate only source-shape facts such as required fields, raw types, and parseability.
+- Domain models should represent the app's canonical basketball data and enforce business invariants such as stable team IDs, season consistency, opponent identity, and valid minutes/appearance rules.
+- Persistence models should stay close to the database layer and should only be separate from domain models when the database schema meaningfully differs from the canonical domain shape.
+- Avoid repeating the same validation logic in multiple modules. Each layer should validate only what it owns.
+- Centralize team identity and historical alias handling in one shared place. Do not scatter abbreviation reconciliation across ingest, normalize, validation, and DB code.
+- Prefer small adapters for each backend payload shape over large multi-purpose ingest functions with mixed responsibilities.
+- When simplifying, bias toward deleting glue code, collapsing redundant transformations, and making the current data shape explicit at every step.
+
 ## Security and scope
 - Only operate inside this repository.
 - Do not access, summarize, or transmit anything outside this repository.

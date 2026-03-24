@@ -290,6 +290,12 @@ def extract_game_date(game_row) -> str:
     return str(game_row["GAME_DATE"])
 
 
+def _matchup_side_matches_requested_team(side: str, team_abbreviation: str) -> bool:
+    return canonical_team_lookup_abbreviation(side) == canonical_team_lookup_abbreviation(
+        team_abbreviation
+    )
+
+
 def extract_opponent(game_row, team_abbreviation: str) -> str:
     matchup = str(game_row["MATCHUP"])
     if " vs. " in matchup:
@@ -299,9 +305,9 @@ def extract_opponent(game_row, team_abbreviation: str) -> str:
     else:
         raise ValueError(f"Unrecognized matchup string {matchup!r}")
 
-    if team_abbreviation == left:
+    if _matchup_side_matches_requested_team(left, team_abbreviation):
         return right
-    if team_abbreviation == right:
+    if _matchup_side_matches_requested_team(right, team_abbreviation):
         return left
     raise ValueError(f"Failed to parse opponent from matchup {matchup!r}")
 
@@ -310,15 +316,15 @@ def extract_is_home(game_row, team_abbreviation: str) -> bool:
     matchup = str(game_row["MATCHUP"])
     if " vs. " in matchup:
         left, right = matchup.split(" vs. ", maxsplit=1)
-        if team_abbreviation == left:
+        if _matchup_side_matches_requested_team(left, team_abbreviation):
             return True
-        if team_abbreviation == right:
+        if _matchup_side_matches_requested_team(right, team_abbreviation):
             return False
     elif " @ " in matchup:
         left, right = matchup.split(" @ ", maxsplit=1)
-        if team_abbreviation == left:
+        if _matchup_side_matches_requested_team(left, team_abbreviation):
             return False
-        if team_abbreviation == right:
+        if _matchup_side_matches_requested_team(right, team_abbreviation):
             return True
 
     raise ValueError(f"Unrecognized matchup string {matchup!r}")

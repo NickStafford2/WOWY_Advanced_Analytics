@@ -34,6 +34,7 @@ from wowy.data.game_cache_db import (
 )
 from wowy.apps.wowy.models import WowyGameRecord
 from wowy.nba.models import NormalizedGamePlayerRecord, NormalizedGameRecord
+from wowy.nba.validation import validate_normalized_cache_batch
 
 
 def test_cache_team_season_data_writes_normalized_outputs(
@@ -1072,6 +1073,16 @@ def test_extract_matchup_fields_accept_requested_team_on_either_side() -> None:
     assert extract_is_home(away_row, "WAS") is False
 
 
+def test_extract_matchup_fields_accept_historical_team_aliases() -> None:
+    home_row = {"GAME_ID": "0003", "MATCHUP": "NJN @ ATL"}
+    away_row = {"GAME_ID": "0004", "MATCHUP": "ATL vs. NJN"}
+
+    assert extract_opponent(home_row, "BKN") == "ATL"
+    assert extract_is_home(home_row, "BKN") is False
+    assert extract_opponent(away_row, "BKN") == "ATL"
+    assert extract_is_home(away_row, "BKN") is False
+
+
 @pytest.mark.parametrize(
     ("minutes", "expected"),
     [
@@ -1293,3 +1304,90 @@ def test_normalize_box_score_payload_accepts_live_box_score_shape():
     assert [(player.player_id, player.player_name, player.minutes) for player in players] == [
         (101, "Test Player", pytest.approx(29.05))
     ]
+
+
+def test_normalize_box_score_payload_accepts_historical_team_aliases():
+    payload = {
+        "resultSets": [
+            {
+                "name": "PlayerStats",
+                "headers": [
+                    "TEAM_ABBREVIATION",
+                    "PLAYER_ID",
+                    "PLAYER_NAME",
+                    "MIN",
+                ],
+                "rowSet": [
+                    ["NJN", 101, "Test Player", "32:00"],
+                    ["ATL", 201, "Opponent Player", "31:00"],
+                ],
+            },
+            {
+                "name": "TeamStats",
+                "headers": ["TEAM_ABBREVIATION", "TEAM_ID", "PLUS_MINUS"],
+                "rowSet": [
+                    ["NJN", 1610612751, 7],
+                    ["ATL", 1610612737, -7],
+                ],
+            },
+        ]
+    }
+
+    game, players = normalize_box_score_payload(
+        box_score_payload=payload,
+        game_id="0020200008",
+        team_abbreviation="BKN",
+        season="2002-03",
+        game_date="2002-10-30",
+        opponent="ATL",
+        is_home=True,
+        season_type="Regular Season",
+    )
+
+    assert game.team == "NJN"
+    assert game.opponent == "ATL"
+    assert game.team_id == 1610612751
+    assert game.opponent_team_id == 1610612737
+    assert game.margin == 7.0
+    assert [(player.player_id, player.player_name, player.minutes) for player in players] == [
+        (101, "Test Player", 32.0)
+    ]
+
+
+def test_validate_normalized_cache_batch_accepts_historical_team_aliases():
+    games = [
+        NormalizedGameRecord(
+            game_id="0020200008",
+            season="2002-03",
+            game_date="2002-10-30",
+            team="NJN",
+            opponent="ATL",
+            is_home=True,
+            margin=7.0,
+            season_type="Regular Season",
+            source="nba_api",
+            team_id=1610612751,
+            opponent_team_id=1610612737,
+        )
+    ]
+    players = [
+        NormalizedGamePlayerRecord(
+            game_id="0020200008",
+            team="NJN",
+            player_id=101 + index,
+            player_name=f"Player {index}",
+            appeared=True,
+            minutes=47.0,
+            team_id=1610612751,
+        )
+        for index in range(5)
+    ]
+
+    validate_normalized_cache_batch(
+        team="BKN",
+        team_id=1610612751,
+        season="2002-03",
+        season_type="Regular Season",
+        games=games,
+        game_players=players,
+    )

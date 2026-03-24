@@ -14,7 +14,7 @@ from wowy.nba.cache import (
 from wowy.nba.models import NormalizedGamePlayerRecord, NormalizedGameRecord
 from wowy.nba.seasons import canonicalize_season_string
 from wowy.nba.season_types import canonicalize_season_type
-from wowy.nba.team_identity import resolve_team_id
+from wowy.nba.team_identity import canonical_team_lookup_abbreviation, resolve_team_id
 
 
 def result_set_to_data_frame(result_set: dict) -> pd.DataFrame:
@@ -79,6 +79,12 @@ def load_player_names_from_cache(source_data_dir: Path) -> dict[int, str]:
             break
 
     return player_names
+
+
+def _team_abbreviation_matches(value: object, team_abbreviation: str) -> bool:
+    return canonical_team_lookup_abbreviation(str(value)) == canonical_team_lookup_abbreviation(
+        team_abbreviation
+    )
 
 
 def fetch_normalized_game_data(
@@ -189,7 +195,9 @@ def normalize_box_score_payload(
     )
 
     player_rows = player_stats_df.loc[
-        player_stats_df["TEAM_ABBREVIATION"] == normalized_team_abbreviation,
+        player_stats_df["TEAM_ABBREVIATION"].map(
+            lambda value: _team_abbreviation_matches(value, normalized_team_abbreviation)
+        ),
     ]
     normalized_players = extract_normalized_game_players(
         game_id=game_id,
@@ -345,7 +353,9 @@ def resolve_team_and_opponent_rows(
     game_id: str,
 ):
     team_rows = team_stats_df.loc[
-        team_stats_df["TEAM_ABBREVIATION"] == team_abbreviation,
+        team_stats_df["TEAM_ABBREVIATION"].map(
+            lambda value: _team_abbreviation_matches(value, team_abbreviation)
+        ),
     ]
     if team_rows.empty:
         raise ValueError(
@@ -353,7 +363,9 @@ def resolve_team_and_opponent_rows(
         )
 
     opponent_rows = team_stats_df.loc[
-        team_stats_df["TEAM_ABBREVIATION"] != team_abbreviation,
+        ~team_stats_df["TEAM_ABBREVIATION"].map(
+            lambda value: _team_abbreviation_matches(value, team_abbreviation)
+        ),
     ]
     if len(opponent_rows) > 1:
         raise ValueError(
@@ -371,7 +383,9 @@ def resolve_team_margin(
     game_id: str,
 ) -> float:
     team_rows = team_stats_df.loc[
-        team_stats_df["TEAM_ABBREVIATION"] == team_abbreviation,
+        team_stats_df["TEAM_ABBREVIATION"].map(
+            lambda value: _team_abbreviation_matches(value, team_abbreviation)
+        ),
     ]
     if team_rows.empty:
         raise ValueError(
@@ -383,7 +397,9 @@ def resolve_team_margin(
         return plus_minus
 
     opponent_rows = team_stats_df.loc[
-        team_stats_df["TEAM_ABBREVIATION"] != team_abbreviation,
+        ~team_stats_df["TEAM_ABBREVIATION"].map(
+            lambda value: _team_abbreviation_matches(value, team_abbreviation)
+        ),
     ]
     if len(opponent_rows) != 1:
         raise ValueError(
