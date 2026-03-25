@@ -31,8 +31,8 @@ from wowy.nba.models import (
     NormalizedGameRecord,
     NormalizedTeamSeasonBatch,
 )
-from wowy.nba.ingest.normalize import normalize_source_game
-from wowy.nba.ingest.parsers import (
+from wowy.nba.normalize.normalize_game import normalize_source_game
+from wowy.nba.source.parsers import (
     dedupe_schedule_games,
     load_player_names_from_cache as load_cached_player_names,
     parse_box_score_payload,
@@ -41,7 +41,7 @@ from wowy.nba.ingest.parsers import (
 from wowy.nba.seasons import canonicalize_season_string
 from wowy.nba.season_types import canonicalize_season_type
 from wowy.nba.team_identity import resolve_team_id
-from wowy.nba.ingest.validation import (
+from wowy.nba.normalize.validation import (
     derive_validated_wowy_games,
     validate_team_season_records,
 )

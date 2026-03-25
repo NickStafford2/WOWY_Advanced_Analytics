@@ -9,7 +9,14 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Callable
 
-from wowy.data.game_cache_db import NormalizedCacheLoadRow, initialize_game_cache_db
+from wowy.data.game_cache.schema import initialize_game_cache_db
+from wowy.data.game_cache.validation import (
+    _validate_normalized_cache_loads_table as _validate_normalized_cache_loads_table_impl,
+    _validate_normalized_cache_relations as _validate_normalized_cache_relations_impl,
+    _validate_normalized_game_players_table as _validate_normalized_game_players_table_impl,
+    _validate_normalized_games_table as _validate_normalized_games_table_impl,
+    _validate_team_history_table as _validate_team_history_table_impl,
+)
 from wowy.data.player_metrics_db import (
     DEFAULT_PLAYER_METRICS_DB_PATH,
     MetricFullSpanPointRow,
@@ -17,27 +24,12 @@ from wowy.data.player_metrics_db import (
     MetricScopeCatalogRow,
     PlayerSeasonMetricRow,
     _connect as _connect_player_metrics_db,
-    _validate_iso_datetime,
     _validate_metric_full_span_rows,
     _validate_metric_rows,
     _validate_metric_scope_catalog_row,
-    _validate_optional_non_negative_int,
-    _validate_required_text,
 )
-from wowy.nba.models import CanonicalGamePlayerRecord, CanonicalGameRecord
 from wowy.nba.seasons import canonicalize_season_string
 from wowy.nba.season_types import canonicalize_season_type
-from wowy.nba.team_identity import (
-    canonical_team_lookup_abbreviation,
-    resolve_team_history_entry,
-    resolve_team_id,
-)
-from wowy.nba.ingest.validation import (
-    _canonical_team_abbreviation,
-    _validate_canonical_game,
-    _validate_canonical_game_player,
-    validate_normalized_cache_batch,
-)
 
 
 @dataclass(frozen=True)
@@ -259,542 +251,55 @@ def _validate_normalized_games_table(
     connection: sqlite3.Connection,
     issues: list[ValidationIssue],
 ) -> None:
-    rows = connection.execute(
-        """
-        SELECT
-            game.game_id,
-            game.season,
-            game.game_date,
-            team_history.abbreviation AS team,
-            game.team_id,
-            opponent_history.abbreviation AS opponent,
-            game.opponent_team_id,
-            game.is_home,
-            game.margin,
-            game.season_type,
-            game.source
-        FROM normalized_games AS game
-        JOIN team_history
-          ON team_history.team_id = game.team_id
-         AND team_history.season = game.season
-        JOIN team_history AS opponent_history
-          ON opponent_history.team_id = game.opponent_team_id
-         AND opponent_history.season = game.season
-        ORDER BY game.season_type, game.season, team_history.abbreviation, game.game_id
-        """
-    ).fetchall()
-    for row in rows:
-        key = (
-            f"game_id={row['game_id']!r},team={row['team']!r},season={row['season']!r},"
-            f"season_type={row['season_type']!r}"
-        )
-        if row["is_home"] not in {0, 1}:
-            issues.append(
-                ValidationIssue(
-                    table="normalized_games",
-                    key=key,
-                    message=f"is_home must be 0 or 1, got {row['is_home']!r}",
-                )
-            )
-            continue
-        game = CanonicalGameRecord(
-            game_id=row["game_id"],
-            season=row["season"],
-            game_date=row["game_date"],
-            team=row["team"],
-            opponent=row["opponent"],
-            is_home=bool(row["is_home"]),
-            margin=row["margin"],
-            season_type=row["season_type"],
-            source=row["source"],
-            team_id=row["team_id"],
-            opponent_team_id=row["opponent_team_id"],
-        )
-        try:
-            _validate_canonical_game(
-                game,
-                expected_team=game.team,
-                expected_team_id=game.team_id or 0,
-                expected_season=game.season,
-                expected_season_type=game.season_type,
-            )
-        except ValueError as exc:
-            issues.append(ValidationIssue(table="normalized_games", key=key, message=str(exc)))
+    _validate_normalized_games_table_impl(
+        connection,
+        issues,
+        issue_factory=ValidationIssue,
+    )
 
 
 def _validate_normalized_game_players_table(
     connection: sqlite3.Connection,
     issues: list[ValidationIssue],
 ) -> None:
-    rows = connection.execute(
-        """
-        SELECT
-            player.game_id,
-            player.season,
-            player.season_type,
-            team_history.abbreviation AS team,
-            player.team_id,
-            player.player_id,
-            player.player_name,
-            player.appeared,
-            player.minutes
-        FROM normalized_game_players AS player
-        JOIN team_history
-          ON team_history.team_id = player.team_id
-         AND team_history.season = player.season
-        ORDER BY player.season_type, player.season, team_history.abbreviation, player.game_id, player.player_id
-        """
-    ).fetchall()
-    for row in rows:
-        key = (
-            f"game_id={row['game_id']!r},team={row['team']!r},player_id={row['player_id']!r},"
-            f"season={row['season']!r},season_type={row['season_type']!r}"
-        )
-        try:
-            if canonicalize_season_string(row["season"]) != row["season"]:
-                raise ValueError("season must use canonical season format")
-            if canonicalize_season_type(row["season_type"]) != row["season_type"]:
-                raise ValueError("season_type must use canonical season type")
-        except ValueError as exc:
-            issues.append(
-                ValidationIssue(
-                    table="normalized_game_players",
-                    key=key,
-                    message=str(exc),
-                )
-            )
-            continue
-        if row["appeared"] not in {0, 1}:
-            issues.append(
-                ValidationIssue(
-                    table="normalized_game_players",
-                    key=key,
-                    message=f"appeared must be 0 or 1, got {row['appeared']!r}",
-                )
-            )
-            continue
-        player = CanonicalGamePlayerRecord(
-            game_id=row["game_id"],
-            team=row["team"],
-            player_id=row["player_id"],
-            player_name=row["player_name"],
-            appeared=bool(row["appeared"]),
-            minutes=row["minutes"],
-            team_id=row["team_id"],
-        )
-        try:
-            _validate_canonical_game_player(
-                player,
-                expected_team=row["team"],
-                expected_team_id=row["team_id"],
-            )
-        except ValueError as exc:
-            issues.append(
-                ValidationIssue(
-                    table="normalized_game_players",
-                    key=key,
-                    message=str(exc),
-                )
-            )
+    _validate_normalized_game_players_table_impl(
+        connection,
+        issues,
+        issue_factory=ValidationIssue,
+    )
 
 
 def _validate_normalized_cache_loads_table(
     connection: sqlite3.Connection,
     issues: list[ValidationIssue],
 ) -> None:
-    rows = connection.execute(
-        """
-        SELECT
-            team_history.abbreviation AS team,
-            load.team_id,
-            load.season,
-            load.season_type,
-            load.source_path,
-            load.source_snapshot,
-            load.source_kind,
-            load.build_version,
-            load.refreshed_at,
-            load.games_row_count,
-            load.game_players_row_count,
-            load.expected_games_row_count,
-            load.skipped_games_row_count
-        FROM normalized_cache_loads AS load
-        JOIN team_history
-          ON team_history.team_id = load.team_id
-         AND team_history.season = load.season
-        ORDER BY load.season_type, load.season, load.team_id
-        """
-    ).fetchall()
-    for row in rows:
-        key = f"team={row['team']!r},season={row['season']!r},season_type={row['season_type']!r}"
-        load_row = NormalizedCacheLoadRow(
-            team=row["team"],
-            team_id=row["team_id"],
-            season=row["season"],
-            season_type=row["season_type"],
-            source_path=row["source_path"],
-            source_snapshot=row["source_snapshot"],
-            source_kind=row["source_kind"],
-            build_version=row["build_version"],
-            refreshed_at=row["refreshed_at"],
-            games_row_count=row["games_row_count"],
-            game_players_row_count=row["game_players_row_count"],
-        )
-        try:
-            if canonicalize_season_string(load_row.season) != load_row.season:
-                raise ValueError("season must use canonical season format")
-            if canonicalize_season_type(load_row.season_type) != load_row.season_type:
-                raise ValueError("season_type must use canonical season type")
-            _validate_required_text(load_row.team, "team")
-            _canonical_team_abbreviation(load_row.team)
-            _validate_optional_non_negative_int(load_row.team_id, "team_id")
-            if load_row.team_id is None or load_row.team_id <= 0:
-                raise ValueError("team_id must be a positive integer")
-            if resolve_team_id(load_row.team, season=load_row.season) != load_row.team_id:
-                raise ValueError("team_id does not match team abbreviation identity")
-            _validate_required_text(load_row.source_path, "source_path")
-            _validate_required_text(load_row.source_snapshot, "source_snapshot")
-            _validate_required_text(load_row.source_kind, "source_kind")
-            _validate_required_text(load_row.build_version, "build_version")
-            _validate_iso_datetime(load_row.refreshed_at, "refreshed_at")
-            _validate_optional_non_negative_int(load_row.games_row_count, "games_row_count")
-            _validate_optional_non_negative_int(
-                load_row.game_players_row_count,
-                "game_players_row_count",
-            )
-        except ValueError as exc:
-            issues.append(
-                ValidationIssue(
-                    table="normalized_cache_loads",
-                    key=key,
-                    message=str(exc),
-                )
-            )
+    _validate_normalized_cache_loads_table_impl(
+        connection,
+        issues,
+        issue_factory=ValidationIssue,
+    )
 
 
 def _validate_normalized_cache_relations(
     connection: sqlite3.Connection,
     issues: list[ValidationIssue],
 ) -> None:
-    game_rows = connection.execute(
-        """
-        SELECT
-            game.game_id,
-            game.season,
-            game.game_date,
-            team_history.abbreviation AS team,
-            game.team_id,
-            opponent_history.abbreviation AS opponent,
-            game.opponent_team_id,
-            game.is_home,
-            game.margin,
-            game.season_type,
-            game.source
-        FROM normalized_games AS game
-        JOIN team_history
-          ON team_history.team_id = game.team_id
-         AND team_history.season = game.season
-        JOIN team_history AS opponent_history
-          ON opponent_history.team_id = game.opponent_team_id
-         AND opponent_history.season = game.season
-        ORDER BY game.season_type, game.season, team_history.abbreviation, game.game_id
-        """
-    ).fetchall()
-    player_rows = connection.execute(
-        """
-        SELECT
-            player.game_id,
-            player.season,
-            player.season_type,
-            team_history.abbreviation AS team,
-            player.team_id,
-            player.player_id,
-            player.player_name,
-            player.appeared,
-            player.minutes
-        FROM normalized_game_players AS player
-        JOIN team_history
-          ON team_history.team_id = player.team_id
-         AND team_history.season = player.season
-        ORDER BY player.season_type, player.season, team_history.abbreviation, player.game_id, player.player_id
-        """
-    ).fetchall()
-    load_rows = connection.execute(
-        """
-        SELECT
-            team_history.abbreviation AS team,
-            load.team_id,
-            load.season,
-            load.season_type,
-            load.source_path,
-            load.source_snapshot,
-            load.source_kind,
-            load.build_version,
-            load.refreshed_at,
-            load.games_row_count,
-            load.game_players_row_count
-        FROM normalized_cache_loads AS load
-        JOIN team_history
-          ON team_history.team_id = load.team_id
-         AND team_history.season = load.season
-        """
-    ).fetchall()
-
-    games_by_scope: dict[tuple[int, str, str], list[CanonicalGameRecord]] = defaultdict(list)
-    players_by_scope: dict[tuple[int, str, str], list[CanonicalGamePlayerRecord]] = defaultdict(
-        list
+    _validate_normalized_cache_relations_impl(
+        connection,
+        issues,
+        issue_factory=ValidationIssue,
     )
-    game_key_scope_map: dict[tuple[str, int], tuple[int, str, str]] = {}
-
-    for row in game_rows:
-        game = CanonicalGameRecord(
-            game_id=row["game_id"],
-            season=row["season"],
-            game_date=row["game_date"],
-            team=row["team"],
-            team_id=row["team_id"],
-            opponent=row["opponent"],
-            opponent_team_id=row["opponent_team_id"],
-            is_home=bool(row["is_home"]),
-            margin=row["margin"],
-            season_type=row["season_type"],
-            source=row["source"],
-        )
-        scope = (game.team_id or 0, game.season, game.season_type)
-        games_by_scope[scope].append(game)
-        game_key_scope_map[(game.game_id, game.team_id or 0)] = scope
-
-    for row in player_rows:
-        player = CanonicalGamePlayerRecord(
-            game_id=row["game_id"],
-            team=row["team"],
-            team_id=row["team_id"],
-            player_id=row["player_id"],
-            player_name=row["player_name"],
-            appeared=bool(row["appeared"]),
-            minutes=row["minutes"],
-        )
-        scope = (row["team_id"], row["season"], row["season_type"])
-        players_by_scope[scope].append(player)
-        game_scope = game_key_scope_map.get((player.game_id, player.team_id or 0))
-        if game_scope is None:
-            issues.append(
-                ValidationIssue(
-                    table="normalized_game_players",
-                    key=(
-                        f"game_id={player.game_id!r},team={player.team!r},"
-                        f"player_id={player.player_id!r}"
-                    ),
-                    message="player row has no matching normalized_games row",
-                )
-            )
-        elif game_scope != scope:
-            issues.append(
-                ValidationIssue(
-                    table="normalized_game_players",
-                    key=(
-                        f"game_id={player.game_id!r},team={player.team!r},"
-                        f"player_id={player.player_id!r}"
-                    ),
-                    message="player row season or season_type does not match normalized_games row",
-                )
-            )
-
-    _validate_reciprocal_game_margins(game_rows, issues)
-
-    game_scopes = set(games_by_scope)
-    player_scopes = set(players_by_scope)
-    load_scopes = {(row["team_id"], row["season"], row["season_type"]) for row in load_rows}
-
-    for scope in sorted(game_scopes | player_scopes):
-        team_id, season, season_type = scope
-        games_for_scope = games_by_scope.get(scope, [])
-        players_for_scope = players_by_scope.get(scope, [])
-        team = (
-            games_for_scope[0].team
-            if games_for_scope
-            else players_for_scope[0].team
-        )
-        try:
-            validate_normalized_cache_batch(
-                team=team,
-                team_id=team_id,
-                season=season,
-                season_type=season_type,
-                games=games_for_scope,
-                game_players=players_for_scope,
-            )
-        except ValueError as exc:
-            issues.append(
-                ValidationIssue(
-                    table="normalized_cache_relations",
-                    key=f"team={team!r},season={season!r},season_type={season_type!r}",
-                    message=str(exc),
-                )
-            )
-
-    for row in load_rows:
-        scope = (row["team_id"], row["season"], row["season_type"])
-        game_count = len(games_by_scope.get(scope, []))
-        player_count = len(players_by_scope.get(scope, []))
-        key = f"team_id={scope[0]!r},season={scope[1]!r},season_type={scope[2]!r}"
-        if row["games_row_count"] != game_count:
-            issues.append(
-                ValidationIssue(
-                    table="normalized_cache_loads",
-                    key=key,
-                    message=(
-                        "games_row_count does not match normalized_games count: "
-                        f"{row['games_row_count']} != {game_count}"
-                    ),
-                )
-            )
-        if row["game_players_row_count"] != player_count:
-            issues.append(
-                ValidationIssue(
-                    table="normalized_cache_loads",
-                    key=key,
-                    message=(
-                        "game_players_row_count does not match normalized_game_players count: "
-                        f"{row['game_players_row_count']} != {player_count}"
-                    ),
-                )
-            )
-
-    for scope in sorted((game_scopes | player_scopes) - load_scopes):
-        issues.append(
-            ValidationIssue(
-                table="normalized_cache_loads",
-                key=f"team={scope[0]!r},season={scope[1]!r},season_type={scope[2]!r}",
-                message="missing normalized_cache_loads row for existing normalized cache scope",
-            )
-        )
-
-
-def _validate_reciprocal_game_margins(
-    game_rows: list[sqlite3.Row],
-    issues: list[ValidationIssue],
-) -> None:
-    games_by_id: dict[tuple[str, str, str], list[CanonicalGameRecord]] = defaultdict(list)
-
-    for row in game_rows:
-        games_by_id[(row["season"], row["season_type"], row["game_id"])].append(
-            CanonicalGameRecord(
-                game_id=row["game_id"],
-                season=row["season"],
-                game_date=row["game_date"],
-                team=row["team"],
-                team_id=row["team_id"],
-                opponent=row["opponent"],
-                opponent_team_id=row["opponent_team_id"],
-                is_home=bool(row["is_home"]),
-                margin=row["margin"],
-                season_type=row["season_type"],
-                source=row["source"],
-            )
-        )
-
-    for key, games in games_by_id.items():
-        if len(games) != 2:
-            continue
-
-        first_game, second_game = games
-        if (
-            first_game.identity_team != second_game.identity_opponent
-            or second_game.identity_team != first_game.identity_opponent
-        ):
-            issues.append(
-                ValidationIssue(
-                    table="normalized_games",
-                    key=(
-                        f"game_id={first_game.game_id!r},season={first_game.season!r},"
-                        f"season_type={first_game.season_type!r}"
-                    ),
-                    message="paired game rows must reference each other as opponents",
-                )
-            )
-        if first_game.is_home == second_game.is_home:
-            issues.append(
-                ValidationIssue(
-                    table="normalized_games",
-                    key=(
-                        f"game_id={first_game.game_id!r},season={first_game.season!r},"
-                        f"season_type={first_game.season_type!r}"
-                    ),
-                    message="paired game rows must have opposite home/away flags",
-                )
-            )
-        if first_game.game_date != second_game.game_date:
-            issues.append(
-                ValidationIssue(
-                    table="normalized_games",
-                    key=(
-                        f"game_id={first_game.game_id!r},season={first_game.season!r},"
-                        f"season_type={first_game.season_type!r}"
-                    ),
-                    message="paired game rows must have the same game date",
-                )
-            )
-        if first_game.margin != -second_game.margin:
-            issues.append(
-                ValidationIssue(
-                    table="normalized_games",
-                    key=(
-                        f"game_id={first_game.game_id!r},season={first_game.season!r},"
-                        f"season_type={first_game.season_type!r}"
-                    ),
-                    message=(
-                        "paired game rows must have opposite margins: "
-                        f"{first_game.team}={first_game.margin} "
-                        f"{second_game.team}={second_game.margin}"
-                    ),
-                )
-            )
 
 
 def _validate_team_history_table(
     connection: sqlite3.Connection,
     issues: list[ValidationIssue],
 ) -> None:
-    rows = connection.execute(
-        """
-        SELECT
-            team_id,
-            season,
-            abbreviation,
-            franchise_id,
-            lookup_abbreviation
-        FROM team_history
-        ORDER BY season, abbreviation
-        """
-    ).fetchall()
-    for row in rows:
-        key = f"team_id={row['team_id']!r},season={row['season']!r}"
-        try:
-            season = canonicalize_season_string(row["season"])
-            _validate_required_text(row["abbreviation"], "abbreviation")
-            _validate_required_text(row["franchise_id"], "franchise_id")
-            _validate_required_text(row["lookup_abbreviation"], "lookup_abbreviation")
-            _canonical_team_abbreviation(row["abbreviation"])
-            _canonical_team_abbreviation(row["lookup_abbreviation"])
-            _validate_optional_non_negative_int(row["team_id"], "team_id")
-            if row["team_id"] is None or row["team_id"] <= 0:
-                raise ValueError("team_id must be a positive integer")
-            history_entry = resolve_team_history_entry(row["abbreviation"], season=season)
-            if history_entry.team_id != row["team_id"]:
-                raise ValueError("team_id does not match historical team identity")
-            if history_entry.franchise_id != row["franchise_id"]:
-                raise ValueError("franchise_id does not match historical team identity")
-            if canonical_team_lookup_abbreviation(row["abbreviation"]) != row["lookup_abbreviation"]:
-                raise ValueError("lookup_abbreviation does not match historical team identity")
-        except ValueError as exc:
-            issues.append(
-                ValidationIssue(
-                    table="team_history",
-                    key=key,
-                    message=str(exc),
-                )
-            )
+    _validate_team_history_table_impl(
+        connection,
+        issues,
+        issue_factory=ValidationIssue,
+    )
 
 
 def _validate_metric_player_season_values_table(

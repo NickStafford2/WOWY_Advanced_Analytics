@@ -9,12 +9,12 @@ from pathlib import Path
 from typing import Callable
 
 from wowy.nba.ingest.cache import DEFAULT_SOURCE_DATA_DIR
-from wowy.nba.ingest.parsers import (
+from wowy.nba.source.parsers import (
     dedupe_schedule_games,
     parse_box_score_payload,
     parse_league_schedule_payload,
 )
-from wowy.nba.ingest.source_rules import (
+from wowy.nba.source.rules import (
     classify_source_player_row,
     classify_source_schedule_row,
     classify_source_team_row,

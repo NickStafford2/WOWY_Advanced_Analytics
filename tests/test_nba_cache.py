@@ -23,12 +23,7 @@ from wowy.data.game_cache_db import (
     replace_team_season_normalized_rows,
 )
 from wowy.nba.errors import BoxScoreFetchError, LeagueGamesFetchError
-from wowy.nba.models import (
-    CanonicalGamePlayerRecord,
-    CanonicalGameRecord,
-    NormalizedGamePlayerRecord,
-    NormalizedGameRecord,
-)
+from wowy.nba.models import NormalizedGamePlayerRecord, NormalizedGameRecord
 from wowy.nba.season_types import canonicalize_season_type
 from wowy.nba.team_identity import resolve_team_id
 from wowy.nba.team_seasons import TeamSeasonScope, resolve_team_seasons
@@ -804,12 +799,14 @@ def test_replace_team_season_normalized_rows_rejects_non_canonical_or_implausibl
             season="2023-24",
             season_type="Regular Season",
             games=[
-                CanonicalGameRecord(
+                NormalizedGameRecord(
                     game_id="0001",
                     season="2022-23",
                     game_date="2024-04-01",
                     team="BOS",
                     opponent="LAL",
+                    team_id=1610612738,
+                    opponent_team_id=1610612747,
                     is_home=True,
                     margin=8.0,
                     season_type="Regular Season",
@@ -817,11 +814,11 @@ def test_replace_team_season_normalized_rows_rejects_non_canonical_or_implausibl
                 )
             ],
             game_players=[
-                CanonicalGamePlayerRecord("0001", "BOS", 101, "Player 101", True, 48.0),
-                CanonicalGamePlayerRecord("0001", "BOS", 102, "Player 102", True, 48.0),
-                CanonicalGamePlayerRecord("0001", "BOS", 103, "Player 103", True, 48.0),
-                CanonicalGamePlayerRecord("0001", "BOS", 104, "Player 104", True, 48.0),
-                CanonicalGamePlayerRecord("0001", "BOS", 105, "Player 105", True, 48.0),
+                NormalizedGamePlayerRecord("0001", "BOS", 101, "Player 101", True, 48.0, 1610612738),
+                NormalizedGamePlayerRecord("0001", "BOS", 102, "Player 102", True, 48.0, 1610612738),
+                NormalizedGamePlayerRecord("0001", "BOS", 103, "Player 103", True, 48.0, 1610612738),
+                NormalizedGamePlayerRecord("0001", "BOS", 104, "Player 104", True, 48.0, 1610612738),
+                NormalizedGamePlayerRecord("0001", "BOS", 105, "Player 105", True, 48.0, 1610612738),
             ],
             source_path="sqlite://normalized_games/BOS_2023-24_regular_season",
             source_snapshot="test",
@@ -842,26 +839,26 @@ def test_replace_team_season_normalized_rows_rejects_historically_wrong_team_lab
             season="2002-03",
             season_type="Regular Season",
             games=[
-                CanonicalGameRecord(
+                NormalizedGameRecord(
                     game_id="0001",
                     season="2002-03",
                     game_date="2003-03-10",
                     team="NOP",
                     opponent="BOS",
+                    team_id=1610612740,
                     opponent_team_id=1610612738,
                     is_home=True,
                     margin=8.0,
                     season_type="Regular Season",
                     source="nba_api",
-                    team_id=1610612740,
                 )
             ],
             game_players=[
-                CanonicalGamePlayerRecord("0001", "NOP", 101, "Player 101", True, 48.0, team_id=1610612740),
-                CanonicalGamePlayerRecord("0001", "NOP", 102, "Player 102", True, 48.0, team_id=1610612740),
-                CanonicalGamePlayerRecord("0001", "NOP", 103, "Player 103", True, 48.0, team_id=1610612740),
-                CanonicalGamePlayerRecord("0001", "NOP", 104, "Player 104", True, 48.0, team_id=1610612740),
-                CanonicalGamePlayerRecord("0001", "NOP", 105, "Player 105", True, 48.0, team_id=1610612740),
+                NormalizedGamePlayerRecord("0001", "NOP", 101, "Player 101", True, 48.0, 1610612740),
+                NormalizedGamePlayerRecord("0001", "NOP", 102, "Player 102", True, 48.0, 1610612740),
+                NormalizedGamePlayerRecord("0001", "NOP", 103, "Player 103", True, 48.0, 1610612740),
+                NormalizedGamePlayerRecord("0001", "NOP", 104, "Player 104", True, 48.0, 1610612740),
+                NormalizedGamePlayerRecord("0001", "NOP", 105, "Player 105", True, 48.0, 1610612740),
             ],
             source_path="sqlite://normalized_games/NOP_2002-03_regular_season",
             source_snapshot="test",

@@ -15,7 +15,7 @@ from wowy.apps.wowy.analysis import (
 )
 from wowy.apps.wowy.models import WowyPlayerSeasonRecord
 from wowy.apps.wowy.service import prepare_wowy_player_season_records
-from wowy.data.game_cache_db import build_normalized_cache_fingerprint, list_cache_load_rows
+from wowy.data.game_cache import build_normalized_cache_fingerprint, list_cache_load_rows
 from wowy.data.player_metrics_db import (
     DEFAULT_PLAYER_METRICS_DB_PATH,
     MetricFullSpanPointRow,

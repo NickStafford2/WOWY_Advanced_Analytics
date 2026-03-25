@@ -2,13 +2,13 @@ from __future__ import annotations
 
 from typing import Iterable
 
-from wowy.nba.models import CanonicalGamePlayerRecord
+from wowy.nba.models import NormalizedGamePlayerRecord
 
 MinuteStats = dict[int, tuple[float, float]]
 
 
 def build_player_minute_stats(
-    game_players: Iterable[CanonicalGamePlayerRecord],
+    game_players: Iterable[NormalizedGamePlayerRecord],
 ) -> MinuteStats:
     totals: dict[int, float] = {}
     counts: dict[int, int] = {}

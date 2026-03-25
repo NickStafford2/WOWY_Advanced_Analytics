@@ -3,40 +3,20 @@ from __future__ import annotations
 import pytest
 
 from wowy.apps.rawr.data import build_rawr_observations, count_player_games
-from wowy.nba.models import CanonicalGamePlayerRecord, CanonicalGameRecord
+from tests.support import game, player
 
 
 def test_build_rawr_observations_preserves_game_context():
     games = [
-        CanonicalGameRecord(
-            game_id="1",
-            season="2023-24",
-            game_date="2024-04-01",
-            team="BOS",
-            opponent="MIL",
-            is_home=True,
-            margin=10.0,
-            season_type="Regular Season",
-            source="nba_api",
-        ),
-        CanonicalGameRecord(
-            game_id="1",
-            season="2023-24",
-            game_date="2024-04-01",
-            team="MIL",
-            opponent="BOS",
-            is_home=False,
-            margin=-10.0,
-            season_type="Regular Season",
-            source="nba_api",
-        )
+        game("1", "2023-24", "2024-04-01", "BOS", "MIL", True, 10.0),
+        game("1", "2023-24", "2024-04-01", "MIL", "BOS", False, -10.0),
     ]
     game_players = [
-        CanonicalGamePlayerRecord("1", "BOS", 101, "Player 101", True, 30.0),
-        CanonicalGamePlayerRecord("1", "BOS", 102, "Player 102", False, None),
-        CanonicalGamePlayerRecord("1", "BOS", 103, "Player 103", True, 18.0),
-        CanonicalGamePlayerRecord("1", "MIL", 201, "Player 201", True, 24.0),
-        CanonicalGamePlayerRecord("1", "MIL", 202, "Player 202", True, 24.0),
+        player("1", "BOS", 101, "Player 101", True, 30.0),
+        player("1", "BOS", 102, "Player 102", False, None),
+        player("1", "BOS", 103, "Player 103", True, 18.0),
+        player("1", "MIL", 201, "Player 201", True, 24.0),
+        player("1", "MIL", 202, "Player 202", True, 24.0),
     ]
 
     observations, player_names = build_rawr_observations(games, game_players)
@@ -63,57 +43,17 @@ def test_build_rawr_observations_preserves_game_context():
 
 def test_count_player_games_counts_appeared_games():
     games = [
-        CanonicalGameRecord(
-            game_id="1",
-            season="2023-24",
-            game_date="2024-04-01",
-            team="BOS",
-            opponent="MIL",
-            is_home=True,
-            margin=10.0,
-            season_type="Regular Season",
-            source="nba_api",
-        ),
-        CanonicalGameRecord(
-            game_id="1",
-            season="2023-24",
-            game_date="2024-04-01",
-            team="MIL",
-            opponent="BOS",
-            is_home=False,
-            margin=-10.0,
-            season_type="Regular Season",
-            source="nba_api",
-        ),
-        CanonicalGameRecord(
-            game_id="2",
-            season="2023-24",
-            game_date="2024-04-03",
-            team="BOS",
-            opponent="NYK",
-            is_home=False,
-            margin=-3.0,
-            season_type="Regular Season",
-            source="nba_api",
-        ),
-        CanonicalGameRecord(
-            game_id="2",
-            season="2023-24",
-            game_date="2024-04-03",
-            team="NYK",
-            opponent="BOS",
-            is_home=True,
-            margin=3.0,
-            season_type="Regular Season",
-            source="nba_api",
-        ),
+        game("1", "2023-24", "2024-04-01", "BOS", "MIL", True, 10.0),
+        game("1", "2023-24", "2024-04-01", "MIL", "BOS", False, -10.0),
+        game("2", "2023-24", "2024-04-03", "BOS", "NYK", False, -3.0),
+        game("2", "2023-24", "2024-04-03", "NYK", "BOS", True, 3.0),
     ]
     game_players = [
-        CanonicalGamePlayerRecord("1", "BOS", 101, "Player 101", True, 32.0),
-        CanonicalGamePlayerRecord("1", "BOS", 103, "Player 103", True, 16.0),
-        CanonicalGamePlayerRecord("1", "MIL", 201, "Player 201", True, 48.0),
-        CanonicalGamePlayerRecord("2", "BOS", 101, "Player 101", True, 48.0),
-        CanonicalGamePlayerRecord("2", "NYK", 202, "Player 202", True, 48.0),
+        player("1", "BOS", 101, "Player 101", True, 32.0),
+        player("1", "BOS", 103, "Player 103", True, 16.0),
+        player("1", "MIL", 201, "Player 201", True, 48.0),
+        player("2", "BOS", 101, "Player 101", True, 48.0),
+        player("2", "NYK", 202, "Player 202", True, 48.0),
     ]
 
     observations, _ = build_rawr_observations(games, game_players)
@@ -123,32 +63,12 @@ def test_count_player_games_counts_appeared_games():
 
 def test_build_rawr_observations_rejects_missing_minutes_for_appeared_player():
     games = [
-        CanonicalGameRecord(
-            game_id="1",
-            season="2023-24",
-            game_date="2024-04-01",
-            team="BOS",
-            opponent="MIL",
-            is_home=True,
-            margin=10.0,
-            season_type="Regular Season",
-            source="nba_api",
-        ),
-        CanonicalGameRecord(
-            game_id="1",
-            season="2023-24",
-            game_date="2024-04-01",
-            team="MIL",
-            opponent="BOS",
-            is_home=False,
-            margin=-10.0,
-            season_type="Regular Season",
-            source="nba_api",
-        ),
+        game("1", "2023-24", "2024-04-01", "BOS", "MIL", True, 10.0),
+        game("1", "2023-24", "2024-04-01", "MIL", "BOS", False, -10.0),
     ]
     game_players = [
-        CanonicalGamePlayerRecord("1", "BOS", 101, "Player 101", True, None),
-        CanonicalGamePlayerRecord("1", "MIL", 201, "Player 201", True, 48.0),
+        player("1", "BOS", 101, "Player 101", True, None),
+        player("1", "MIL", 201, "Player 201", True, 48.0),
     ]
 
     with pytest.raises(ValueError, match="Missing positive minutes"):

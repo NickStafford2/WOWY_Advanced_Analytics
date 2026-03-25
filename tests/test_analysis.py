@@ -27,8 +27,6 @@ from wowy.apps.wowy.models import (
     WowyPlayerSeasonRecord,
     WowyPlayerStats,
 )
-from wowy.nba.models import CanonicalGamePlayerRecord, CanonicalGameRecord
-from tests.support import seed_db_from_team_seasons
 
 
 def test_compute_wowy_basic():

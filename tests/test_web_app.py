@@ -10,7 +10,7 @@ from tests.support import (
     player,
     seed_db_from_team_seasons,
 )
-from wowy.data.game_cache_db import (
+from wowy.data.game_cache import (
     build_normalized_cache_fingerprint,
     replace_team_season_normalized_rows,
 )

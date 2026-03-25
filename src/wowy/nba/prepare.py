@@ -4,7 +4,7 @@ from pathlib import Path
 
 from wowy.apps.wowy.derive import derive_wowy_games
 from wowy.apps.wowy.models import WowyGameRecord
-from wowy.data.game_cache_db import (
+from wowy.data.game_cache import (
     load_cache_load_row,
     load_normalized_game_players_from_db,
     load_normalized_games_from_db,
