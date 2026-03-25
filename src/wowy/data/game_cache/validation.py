@@ -17,8 +17,8 @@ from wowy.nba.normalize.validation import (
     _validate_canonical_game_player,
     validate_normalized_cache_batch,
 )
-from wowy.nba.seasons import canonicalize_season_string
 from wowy.nba.season_types import canonicalize_season_type
+from wowy.nba.seasons import canonicalize_season_string
 from wowy.nba.team_identity import (
     canonical_team_lookup_abbreviation,
     resolve_team_history_entry,

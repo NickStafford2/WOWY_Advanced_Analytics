@@ -7,13 +7,13 @@ from pathlib import Path
 
 import numpy as np
 
+from wowy.apps.rawr.data import prepare_rawr_player_season_records
 from wowy.apps.rawr.models import RawrPlayerSeasonRecord
-from wowy.apps.rawr.service import prepare_rawr_player_season_records
+from wowy.apps.wowy.data import prepare_wowy_player_season_records
 from wowy.apps.wowy.models import WowyPlayerSeasonRecord
-from wowy.apps.wowy.service import prepare_wowy_player_season_records
 from wowy.data.player_metrics_db import DEFAULT_PLAYER_METRICS_DB_PATH
-from wowy.progress import TerminalProgressBar, print_status_box
 from wowy.nba.source.cache import DEFAULT_SOURCE_DATA_DIR
+from wowy.progress import TerminalProgressBar, print_status_box
 
 
 @dataclass(frozen=True)
@@ -371,12 +371,15 @@ def evaluate_configs(args) -> list[ComparisonResult]:
         shrinkage_modes,
         args.shrinkage_strength_values,
     ):
+        ridge_alpha = float(ridge_alpha)
+        shrinkage_strength = float(shrinkage_strength)
         minute_scales = (
             args.shrinkage_minute_scale_values
             if shrinkage_mode == "minutes"
             else [args.shrinkage_minute_scale_values[0]]
         )
         for minute_scale in minute_scales:
+            minute_scale = float(minute_scale)
             detail = (
                 f"alpha={ridge_alpha:.2f} mode={shrinkage_mode}"
                 + (
@@ -504,19 +507,22 @@ def build_summary(args, results: list[ComparisonResult]) -> str:
         ),
     ]
     if best is not None:
+        best_suffix = ""
+        if best.model != "wowy-baseline":
+            minute_scale = (
+                f"{best.shrinkage_minute_scale}"
+                if best.shrinkage_minute_scale is not None
+                else "-"
+            )
+            best_suffix = (
+                f"(alpha={best.ridge_alpha:.2f},mode={best.shrinkage_mode},"
+                f"strength={best.shrinkage_strength:.2f},"
+                f"minute_scale={minute_scale})"
+            )
         lines.append(
             "best_by_spearman="
             f"{best.model}"
-            + (
-                ""
-                if best.model == "wowy-baseline"
-                else (
-                    f"(alpha={best.ridge_alpha:.2f},mode={best.shrinkage_mode},"
-                    f"strength={best.shrinkage_strength:.2f},"
-                    f"minute_scale={best.shrinkage_minute_scale if best.shrinkage_minute_scale is not None else '-'}"
-                    ")"
-                )
-            )
+            + best_suffix
         )
     return "\n".join(lines)
 

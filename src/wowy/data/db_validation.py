@@ -12,9 +12,17 @@ from typing import Callable
 from wowy.data.game_cache.schema import initialize_game_cache_db
 from wowy.data.game_cache.validation import (
     _validate_normalized_cache_loads_table as _validate_normalized_cache_loads_table_impl,
+)
+from wowy.data.game_cache.validation import (
     _validate_normalized_cache_relations as _validate_normalized_cache_relations_impl,
+)
+from wowy.data.game_cache.validation import (
     _validate_normalized_game_players_table as _validate_normalized_game_players_table_impl,
+)
+from wowy.data.game_cache.validation import (
     _validate_normalized_games_table as _validate_normalized_games_table_impl,
+)
+from wowy.data.game_cache.validation import (
     _validate_team_history_table as _validate_team_history_table_impl,
 )
 from wowy.data.player_metrics_db import (
@@ -23,10 +31,12 @@ from wowy.data.player_metrics_db import (
     MetricFullSpanSeriesRow,
     MetricScopeCatalogRow,
     PlayerSeasonMetricRow,
-    _connect as _connect_player_metrics_db,
     _validate_metric_full_span_rows,
     _validate_metric_rows,
     _validate_metric_scope_catalog_row,
+)
+from wowy.data.player_metrics_db import (
+    _connect as _connect_player_metrics_db,
 )
 
 

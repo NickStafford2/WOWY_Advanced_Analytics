@@ -4,9 +4,9 @@ from pathlib import Path
 
 import pytest
 
+from tests.support import game, player, seed_db_from_team_seasons
 from wowy.nba.seasons import canonicalize_season_string
 from wowy.nba.team_seasons import TeamSeasonScope, list_cached_team_seasons
-from tests.support import game, player, seed_db_from_team_seasons
 
 
 def test_canonicalize_season_string_accepts_single_year_input():

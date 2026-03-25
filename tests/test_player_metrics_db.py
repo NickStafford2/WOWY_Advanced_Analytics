@@ -11,15 +11,15 @@ from wowy.data.player_metrics_db import (
     MetricScopeCatalogRow,
     PlayerSeasonMetricRow,
     initialize_player_metrics_db,
+    list_metric_seasons,
     load_metric_full_span_points_map,
     load_metric_full_span_series_rows,
-    load_metric_scope_catalog_row,
-    list_metric_seasons,
     load_metric_rows,
+    load_metric_scope_catalog_row,
     load_metric_store_metadata,
     replace_metric_full_span_rows,
-    replace_metric_scope_catalog_row,
     replace_metric_rows,
+    replace_metric_scope_catalog_row,
 )
 
 

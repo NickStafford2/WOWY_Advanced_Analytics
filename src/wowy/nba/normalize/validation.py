@@ -11,13 +11,12 @@ from wowy.nba.normalize.models import (
     NormalizedGameRecord,
     NormalizedTeamSeasonBatch,
 )
-from wowy.nba.seasons import canonicalize_season_string
 from wowy.nba.season_types import canonicalize_season_type
+from wowy.nba.seasons import canonicalize_season_string
 from wowy.nba.team_identity import (
     resolve_team_identity_from_id_and_date,
     resolve_team_identity_from_id_and_season,
 )
-
 
 _TEAM_ABBREVIATION_PATTERN = re.compile(r"^[A-Z0-9]{2,4}$")
 _GAME_DATE_PATTERN = re.compile(r"^\d{4}-\d{2}-\d{2}$")

@@ -3,8 +3,8 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Callable
 
-from wowy.nba.seasons import canonicalize_season_string
 from wowy.nba.season_types import canonicalize_season_type
+from wowy.nba.seasons import canonicalize_season_string
 from wowy.nba.source.cache import (
     _box_score_payload_is_empty,
     discard_invalid_cached_payload,

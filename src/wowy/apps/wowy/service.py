@@ -51,7 +51,8 @@ def build_wowy_report(
     if show_progress:
         all_players = {player_id for game in games for player_id in game.players}
         progress_bar = TerminalProgressBar("WOWY", total=len(all_players))
-        progress = lambda current, _total, detail: progress_bar.update(current, detail)
+        def progress(current: int, _total: int, detail: str) -> None:
+            progress_bar.update(current, detail)
     results = compute_wowy(games, progress=progress)
     if progress_bar is not None:
         progress_bar.finish("done")

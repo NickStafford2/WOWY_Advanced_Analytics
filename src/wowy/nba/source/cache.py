@@ -15,8 +15,8 @@ from nba_api.stats.endpoints import (
 from requests import RequestException
 
 from wowy.nba.errors import BoxScoreFetchError, LeagueGamesFetchError
-from wowy.nba.seasons import canonicalize_season_string
 from wowy.nba.season_types import canonicalize_season_type
+from wowy.nba.seasons import canonicalize_season_string
 
 DEFAULT_SOURCE_DATA_DIR = Path("data/source/nba")
 LEAGUE_GAMES_REQUEST_RETRIES = 3

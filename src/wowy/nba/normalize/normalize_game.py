@@ -1,8 +1,8 @@
 from __future__ import annotations
 
 from wowy.nba.normalize.models import NormalizedGamePlayerRecord, NormalizedGameRecord
-from wowy.nba.seasons import canonicalize_season_string
 from wowy.nba.season_types import canonicalize_season_type
+from wowy.nba.seasons import canonicalize_season_string
 from wowy.nba.source.models import (
     SourceBoxScore,
     SourceBoxScorePlayer,

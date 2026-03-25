@@ -4,7 +4,6 @@ from typing import Callable
 
 from wowy.apps.wowy.models import WowyGameRecord, WowyPlayerStats
 
-
 ProgressFn = Callable[[int, int, str | None], None]
 DEFAULT_WOWY_SHRINKAGE_PRIOR_GAMES = 10.0
 

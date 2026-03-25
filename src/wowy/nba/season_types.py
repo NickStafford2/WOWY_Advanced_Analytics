@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-
 _SEASON_TYPE_ALIASES = {
     "playoff": "Playoffs",
     "playoffs": "Playoffs",

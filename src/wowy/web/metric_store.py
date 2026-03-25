@@ -26,7 +26,6 @@ from wowy.nba.season_types import canonicalize_season_type
 from wowy.nba.team_history import official_continuity_label_for_team_id
 from wowy.nba.team_seasons import list_cached_team_seasons
 
-
 BuildRowsFn = Callable[..., list[PlayerSeasonMetricRow]]
 RefreshProgressFn = Callable[[int, int, str], None]
 

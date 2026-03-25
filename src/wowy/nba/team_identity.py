@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+from typing import cast
 
 from wowy.nba import team_history as _team_history
 from wowy.nba.team_history import (
@@ -24,7 +25,9 @@ class TeamIdentity:
     lookup_abbreviation: str
 
 
-list_expected_team_abbreviations_for_season = _team_history.list_expected_team_abbreviations_for_season
+list_expected_team_abbreviations_for_season = (
+    _team_history.list_expected_team_abbreviations_for_season
+)
 team_is_active_for_season = _team_history.team_is_active_for_season
 
 
@@ -132,7 +135,7 @@ def resolve_source_team_identity(
 
     if team_id is not None:
         try:
-            parsed_team_id = int(team_id)
+            parsed_team_id = int(cast(int | str, team_id))
         except (TypeError, ValueError) as exc:
             raise ValueError(f"Invalid TEAM_ID value: {team_id!r}") from exc
         if parsed_team_id <= 0:
@@ -143,7 +146,11 @@ def resolve_source_team_identity(
     if fallback_team_id is not None and fallback_team_id <= 0:
         raise ValueError(f"Invalid fallback_team_id value: {fallback_team_id!r}")
 
-    if parsed_team_id is not None and fallback_team_id is not None and parsed_team_id != fallback_team_id:
+    if (
+        parsed_team_id is not None
+        and fallback_team_id is not None
+        and parsed_team_id != fallback_team_id
+    ):
         raise ValueError(
             "Conflicting source team identity values: "
             f"TEAM_ID={parsed_team_id!r} fallback_team_id={fallback_team_id!r}"

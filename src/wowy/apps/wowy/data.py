@@ -23,7 +23,6 @@ from wowy.nba.prepare import (
 )
 from wowy.shared.minutes import build_player_minute_stats, passes_minute_filters
 
-
 type WowyPlayerSeasonRow = dict[str, str | int | float | None]
 
 WOWY_METRIC = "wowy"

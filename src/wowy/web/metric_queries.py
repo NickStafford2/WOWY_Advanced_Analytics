@@ -33,7 +33,6 @@ from wowy.web.metric_store import (
     build_scope_key,
 )
 
-
 DEFAULT_RAWR_SHRINKAGE_MODE = "uniform"
 DEFAULT_RAWR_SHRINKAGE_STRENGTH = 1.0
 DEFAULT_RAWR_SHRINKAGE_MINUTE_SCALE = 48.0
@@ -660,7 +659,10 @@ def _build_ranked_table_rows(
     ranked_rows = []
     for player_id, player_rows in rows_by_player.items():
         player_name = player_rows[0]["player_name"]
-        games_with = sum((row.get("games_with") or row.get("sample_size") or 0) for row in player_rows)
+        games_with = sum(
+            (row.get("games_with") or row.get("sample_size") or 0)
+            for row in player_rows
+        )
         games_without = sum(
             (row.get("games_without") or row.get("secondary_sample_size") or 0)
             for row in player_rows

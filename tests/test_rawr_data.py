@@ -2,8 +2,8 @@ from __future__ import annotations
 
 import pytest
 
-from wowy.apps.rawr.data import build_rawr_observations, count_player_games
 from tests.support import game, player
+from wowy.apps.rawr.data import build_rawr_observations, count_player_games
 
 
 def test_build_rawr_observations_preserves_game_context():

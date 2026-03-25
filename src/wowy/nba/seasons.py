@@ -2,7 +2,6 @@ from __future__ import annotations
 
 import re
 
-
 SEASON_PATTERN = re.compile(r"^(?P<start>\d{4})(?:-(?P<end>\d{2}))?$")
 
 

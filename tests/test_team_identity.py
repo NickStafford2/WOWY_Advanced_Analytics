@@ -2,15 +2,15 @@ from __future__ import annotations
 
 import pytest
 
+from wowy.nba.team_history import resolve_team_history_entry
 from wowy.nba.team_identity import (
     canonical_team_lookup_abbreviation,
     list_expected_team_abbreviations_for_season,
+    resolve_team_id,
     resolve_team_identity,
     resolve_team_identity_from_id_and_date,
-    resolve_team_id,
     team_is_active_for_season,
 )
-from wowy.nba.team_history import resolve_team_history_entry
 
 
 def test_list_expected_team_abbreviations_for_season_uses_exact_historical_codes() -> None:

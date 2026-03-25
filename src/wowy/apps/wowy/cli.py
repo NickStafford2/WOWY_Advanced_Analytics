@@ -3,8 +3,8 @@ from __future__ import annotations
 import argparse
 from pathlib import Path
 
-from wowy.data.player_metrics_db import DEFAULT_PLAYER_METRICS_DB_PATH
 from wowy.apps.wowy.service import prepare_and_run_wowy
+from wowy.data.player_metrics_db import DEFAULT_PLAYER_METRICS_DB_PATH
 
 
 def build_parser() -> argparse.ArgumentParser:

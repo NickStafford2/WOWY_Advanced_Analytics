@@ -11,8 +11,8 @@ from wowy.apps.rawr.data import (
     select_complete_rawr_scope_seasons,
 )
 from wowy.apps.rawr.formatting import format_rawr_results
-from wowy.nba.models import NormalizedGamePlayerRecord, NormalizedGameRecord
 from wowy.data.player_metrics_db import DEFAULT_PLAYER_METRICS_DB_PATH
+from wowy.nba.models import NormalizedGamePlayerRecord, NormalizedGameRecord
 from wowy.nba.prepare import load_normalized_scope_records
 from wowy.progress import TerminalProgressBar, print_status_box
 from wowy.shared.filters import validate_top_n_and_minutes
@@ -94,7 +94,8 @@ def run_rawr_records(
             f"{_require_team_id(game.team_id, game.game_id, 'team_id')}:{game.season}"
             for game in games
         } | {
-            f"{_require_team_id(game.opponent_team_id, game.game_id, 'opponent_team_id')}:{game.season}"
+            f"{_require_team_id(game.opponent_team_id, game.game_id, 'opponent_team_id')}"
+            f":{game.season}"
             for game in games
         }
         feature_count = 2 + player_count + (2 * len(team_seasons))
@@ -102,7 +103,8 @@ def run_rawr_records(
             (len(observations) * 2) + max(feature_count - 2, 0) + feature_count
         )
         progress_bar = TerminalProgressBar("RAWR", total=total_steps)
-        progress = lambda current, _total, detail: progress_bar.update(current, detail)
+        def progress(current: int, _total: int, detail: str) -> None:
+            progress_bar.update(current, detail)
     result = fit_player_rawr(
         observations,
         player_names=player_names,

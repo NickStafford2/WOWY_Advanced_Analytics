@@ -4,6 +4,7 @@ import math
 
 import pytest
 
+from wowy.nba.source.models import SourceBoxScorePlayer, SourceBoxScoreTeam
 from wowy.nba.source.rules import (
     CANONICAL_PLAYER_SOURCE_ROW,
     CANONICAL_SCHEDULE_SOURCE_ROW,
@@ -17,7 +18,6 @@ from wowy.nba.source.rules import (
     parse_minutes_to_float,
     played_in_game,
 )
-from wowy.nba.source.models import SourceBoxScorePlayer, SourceBoxScoreTeam
 
 
 @pytest.mark.parametrize(

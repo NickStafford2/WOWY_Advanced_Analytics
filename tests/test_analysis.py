@@ -7,24 +7,24 @@ from tests.support import (
     player,
     seed_db_from_team_seasons,
 )
-from wowy.apps.wowy.service import (
-    available_wowy_seasons,
-    build_wowy_span_chart_rows,
-    build_wowy_player_season_records,
-    prepare_wowy_player_season_records,
-    serialize_wowy_player_season_records,
-)
 from wowy.apps.wowy.analysis import (
     DEFAULT_WOWY_SHRINKAGE_PRIOR_GAMES,
     apply_wowy_shrinkage,
-    compute_wowy_shrinkage_score,
     compute_wowy,
+    compute_wowy_shrinkage_score,
     filter_results,
 )
 from wowy.apps.wowy.models import (
     WowyGameRecord,
     WowyPlayerSeasonRecord,
     WowyPlayerStats,
+)
+from wowy.apps.wowy.service import (
+    available_wowy_seasons,
+    build_wowy_player_season_records,
+    build_wowy_span_chart_rows,
+    prepare_wowy_player_season_records,
+    serialize_wowy_player_season_records,
 )
 
 

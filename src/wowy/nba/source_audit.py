@@ -20,7 +20,6 @@ from wowy.nba.source.rules import (
     classify_source_team_row,
 )
 
-
 AuditProgressFn = Callable[[int, int, str], None]
 _LAST_PROGRESS_LINE_LENGTH = 0
 

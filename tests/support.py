@@ -7,7 +7,6 @@ from wowy.data.game_cache import repository as game_cache_repository
 from wowy.nba.models import NormalizedGamePlayerRecord, NormalizedGameRecord
 from wowy.nba.team_identity import resolve_team_id
 
-
 TeamSeasonSeed: TypeAlias = tuple[
     str,
     str,

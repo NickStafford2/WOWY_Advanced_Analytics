@@ -4,8 +4,8 @@ from dataclasses import dataclass
 from pathlib import Path
 
 from wowy.data.player_metrics_db import DEFAULT_PLAYER_METRICS_DB_PATH
-from wowy.nba.seasons import canonicalize_season_string
 from wowy.nba.season_types import canonicalize_season_type
+from wowy.nba.seasons import canonicalize_season_string
 from wowy.nba.team_history import resolve_team_history_entry_from_id
 from wowy.nba.team_identity import (
     list_expected_team_abbreviations_for_season,

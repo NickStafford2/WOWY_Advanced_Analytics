@@ -12,7 +12,6 @@ from wowy.data.db_validation import (
 )
 from wowy.data.player_metrics_db import DEFAULT_PLAYER_METRICS_DB_PATH
 
-
 _LAST_PROGRESS_LINE_LENGTH = 0
 
 

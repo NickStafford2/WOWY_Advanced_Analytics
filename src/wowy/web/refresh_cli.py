@@ -9,8 +9,8 @@ from wowy.progress import TerminalProgressBar, print_status_box
 from wowy.web.metric_store import (
     DEFAULT_RAWR_RIDGE_ALPHA,
     RAWR_METRIC,
-    WOWY_SHRUNK_METRIC,
     WOWY_METRIC,
+    WOWY_SHRUNK_METRIC,
     refresh_metric_store,
 )
 

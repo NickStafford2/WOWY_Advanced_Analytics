@@ -10,9 +10,8 @@ from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
-from wowy.nba.seasons import canonicalize_season_string, season_sort_key
 from wowy.nba.season_types import canonicalize_season_type
-
+from wowy.nba.seasons import canonicalize_season_string, season_sort_key
 
 DEFAULT_PLAYER_METRICS_DB_PATH = Path("data/app/player_metrics.sqlite3")
 LEGACY_METRIC_RENAMES = {

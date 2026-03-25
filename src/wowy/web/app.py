@@ -2,13 +2,13 @@ from __future__ import annotations
 
 import json
 from pathlib import Path
-from typing import Any
+from typing import Any, TypedDict
 
 from wowy.apps.rawr.service import validate_filters as validate_rawr_filters
 from wowy.apps.wowy.service import validate_filters as validate_wowy_filters
 from wowy.data.player_metrics_db import DEFAULT_PLAYER_METRICS_DB_PATH
-from wowy.nba.seasons import canonicalize_season_string
 from wowy.nba.season_types import canonicalize_season_type
+from wowy.nba.seasons import canonicalize_season_string
 from wowy.nba.source.cache import DEFAULT_SOURCE_DATA_DIR
 from wowy.web.metric_queries import (
     build_cached_metric_export_table_rows,
@@ -25,10 +25,19 @@ from wowy.web.metric_queries import (
 from wowy.web.metric_store import (
     DEFAULT_RAWR_RIDGE_ALPHA,
     RAWR_METRIC,
-    WOWY_SHRUNK_METRIC,
     WOWY_METRIC,
+    WOWY_SHRUNK_METRIC,
     build_scope_key,
 )
+
+
+class ParsedRequestFilters(TypedDict):
+    min_sample_size: int
+    min_secondary_sample_size: int | None
+    ridge_alpha: float | None
+    min_average_minutes: float
+    min_total_minutes: float
+    top_n: int
 
 
 def _parse_optional_int(raw_value: str | None, default: int) -> int:
@@ -346,6 +355,9 @@ def _build_metric_custom_query_payload(
     team_ids = _parse_positive_int_list(request.args.getlist("team_id"))
     seasons = _parse_request_seasons(request)
     if metric == WOWY_METRIC:
+        min_games_without = filter_values["min_secondary_sample_size"]
+        if min_games_without is None:
+            raise ValueError("WOWY custom query requires min_games_without")
         payload = build_custom_wowy_leaderboard_payload(
             teams=None,
             team_ids=team_ids,
@@ -355,11 +367,14 @@ def _build_metric_custom_query_payload(
             source_data_dir=source_data_dir,
             player_metrics_db_path=player_metrics_db_path,
             min_games_with=int(filter_values["min_sample_size"]),
-            min_games_without=int(filter_values["min_secondary_sample_size"]),
-            min_average_minutes=float(filter_values["min_average_minutes"]),
-            min_total_minutes=float(filter_values["min_total_minutes"]),
+            min_games_without=min_games_without,
+            min_average_minutes=filter_values["min_average_minutes"],
+            min_total_minutes=filter_values["min_total_minutes"],
         )
     elif metric == WOWY_SHRUNK_METRIC:
+        min_games_without = filter_values["min_secondary_sample_size"]
+        if min_games_without is None:
+            raise ValueError("WOWY shrunk custom query requires min_games_without")
         payload = build_custom_wowy_shrunk_leaderboard_payload(
             teams=None,
             team_ids=team_ids,
@@ -369,11 +384,14 @@ def _build_metric_custom_query_payload(
             source_data_dir=source_data_dir,
             player_metrics_db_path=player_metrics_db_path,
             min_games_with=int(filter_values["min_sample_size"]),
-            min_games_without=int(filter_values["min_secondary_sample_size"]),
-            min_average_minutes=float(filter_values["min_average_minutes"]),
-            min_total_minutes=float(filter_values["min_total_minutes"]),
+            min_games_without=min_games_without,
+            min_average_minutes=filter_values["min_average_minutes"],
+            min_total_minutes=filter_values["min_total_minutes"],
         )
     elif metric == RAWR_METRIC:
+        ridge_alpha = filter_values["ridge_alpha"]
+        if ridge_alpha is None:
+            raise ValueError("RAWR custom query requires ridge_alpha")
         payload = build_custom_rawr_leaderboard_payload(
             teams=None,
             team_ids=team_ids,
@@ -383,9 +401,9 @@ def _build_metric_custom_query_payload(
             source_data_dir=source_data_dir,
             player_metrics_db_path=player_metrics_db_path,
             min_games=int(filter_values["min_sample_size"]),
-            ridge_alpha=float(filter_values["ridge_alpha"]),
-            min_average_minutes=float(filter_values["min_average_minutes"]),
-            min_total_minutes=float(filter_values["min_total_minutes"]),
+            ridge_alpha=ridge_alpha,
+            min_average_minutes=filter_values["min_average_minutes"],
+            min_total_minutes=filter_values["min_total_minutes"],
         )
     else:
         raise ValueError(f"Unknown metric: {metric}")
@@ -456,6 +474,18 @@ def _build_metric_custom_query_csv(
     )
     team_ids = _parse_positive_int_list(request.args.getlist("team_id"))
     seasons = _parse_request_seasons(request)
+    min_games_with = (
+        int(filter_values["min_sample_size"])
+        if metric in {WOWY_METRIC, WOWY_SHRUNK_METRIC}
+        else None
+    )
+    min_games_without = (
+        filter_values["min_secondary_sample_size"]
+        if metric in {WOWY_METRIC, WOWY_SHRUNK_METRIC}
+        else None
+    )
+    min_games = int(filter_values["min_sample_size"]) if metric == RAWR_METRIC else None
+    ridge_alpha = filter_values["ridge_alpha"] if metric == RAWR_METRIC else None
     metric_label, table_rows = build_custom_metric_export_table_rows(
         metric,
         teams=None,
@@ -464,16 +494,12 @@ def _build_metric_custom_query_csv(
         season_type=season_type,
         source_data_dir=source_data_dir,
         player_metrics_db_path=player_metrics_db_path,
-        min_games_with=int(filter_values["min_sample_size"])
-        if metric in {WOWY_METRIC, WOWY_SHRUNK_METRIC}
-        else None,
-        min_games_without=int(filter_values["min_secondary_sample_size"])
-        if metric in {WOWY_METRIC, WOWY_SHRUNK_METRIC}
-        else None,
-        min_games=int(filter_values["min_sample_size"]) if metric == RAWR_METRIC else None,
-        ridge_alpha=float(filter_values["ridge_alpha"]) if metric == RAWR_METRIC else None,
-        min_average_minutes=float(filter_values["min_average_minutes"]),
-        min_total_minutes=float(filter_values["min_total_minutes"]),
+        min_games_with=min_games_with,
+        min_games_without=min_games_without,
+        min_games=min_games,
+        ridge_alpha=ridge_alpha,
+        min_average_minutes=filter_values["min_average_minutes"],
+        min_total_minutes=filter_values["min_total_minutes"],
     )
     return _render_leaderboard_csv(metric_label=metric_label, table_rows=table_rows), (
         f"{metric}-all-players.csv"
@@ -485,7 +511,8 @@ def _parse_request_filters(
     *,
     metric: str,
     include_top_n: bool,
-) -> dict[str, int | float]:
+) -> ParsedRequestFilters:
+    ridge_alpha: float | None = None
     if metric in {WOWY_METRIC, WOWY_SHRUNK_METRIC}:
         min_sample_size = _parse_optional_int(
             request.args.get("min_games_with"),
@@ -633,7 +660,9 @@ def _render_leaderboard_csv(
     output = StringIO()
     writer = csv.writer(output)
     column_order = _build_csv_column_order(table_rows)
-    writer.writerow([_csv_header_label(column, metric_label=metric_label) for column in column_order])
+    writer.writerow(
+        [_csv_header_label(column, metric_label=metric_label) for column in column_order]
+    )
     for row in table_rows:
         writer.writerow([_format_csv_value(row.get(column)) for column in column_order])
     return output.getvalue()

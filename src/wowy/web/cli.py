@@ -10,8 +10,8 @@ from wowy.web.app import create_app
 from wowy.web.metric_store import (
     DEFAULT_RAWR_RIDGE_ALPHA,
     RAWR_METRIC,
-    WOWY_SHRUNK_METRIC,
     WOWY_METRIC,
+    WOWY_SHRUNK_METRIC,
     refresh_metric_store,
 )
 
