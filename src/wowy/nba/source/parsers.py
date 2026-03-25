@@ -374,6 +374,11 @@ def _validate_source_player_row(row: SourceBoxScorePlayer) -> None:
     if classification.should_skip:
         return
 
+    resolve_source_team_identity(
+        team_id=row.team_id,
+        team_abbreviation=row.team_abbreviation,
+    )
+
     if row.game_id.strip() == "":
         raise ValueError(
             "Missing GAME_ID; "
@@ -400,6 +405,11 @@ def _validate_source_team_row(row: SourceBoxScoreTeam) -> None:
     classification = classify_source_team_row(row)
     if classification.should_skip:
         return
+
+    resolve_source_team_identity(
+        team_id=row.team_id,
+        team_abbreviation=row.team_abbreviation,
+    )
 
     if row.team_id is None or row.team_id <= 0:
         raise ValueError(

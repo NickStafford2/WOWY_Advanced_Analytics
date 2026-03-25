@@ -12,9 +12,7 @@ from wowy.apps.rawr.service import prepare_rawr_player_season_records
 from wowy.apps.wowy.models import WowyPlayerSeasonRecord
 from wowy.apps.wowy.service import prepare_wowy_player_season_records
 from wowy.data.player_metrics_db import DEFAULT_PLAYER_METRICS_DB_PATH
-from wowy.nba.ingest import (
-    DEFAULT_SOURCE_DATA_DIR,
-)
+from wowy.nba.ingest.cache import DEFAULT_SOURCE_DATA_DIR
 from wowy.progress import TerminalProgressBar, print_status_box
 
 

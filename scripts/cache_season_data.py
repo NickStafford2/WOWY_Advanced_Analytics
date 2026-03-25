@@ -5,16 +5,13 @@ import json
 import sys
 from pathlib import Path
 
-from wowy.nba.ingest import (
-    DEFAULT_SOURCE_DATA_DIR,
-    cache_team_season_data,
-)
 from wowy.nba.errors import (
     FetchError,
     GameNormalizationFailure,
     PartialTeamSeasonError,
     TeamSeasonConsistencyError,
 )
+from wowy.nba.ingest.cache import DEFAULT_SOURCE_DATA_DIR
 from wowy.nba.ingest_logging import (
     DEFAULT_INGEST_FAILURE_LOG_PATH,
     append_ingest_failure_log,
@@ -25,6 +22,7 @@ from wowy.nba.team_identity import (
     list_expected_team_abbreviations_for_season,
     team_is_active_for_season,
 )
+from wowy.workflows.nba_ingest import cache_team_season_data
 
 
 _LAST_STATUS_LINE_LENGTH = 0

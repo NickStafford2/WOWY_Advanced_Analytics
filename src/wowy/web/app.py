@@ -7,7 +7,7 @@ from typing import Any
 from wowy.apps.rawr.service import validate_filters as validate_rawr_filters
 from wowy.apps.wowy.service import validate_filters as validate_wowy_filters
 from wowy.data.player_metrics_db import DEFAULT_PLAYER_METRICS_DB_PATH
-from wowy.nba.ingest import DEFAULT_SOURCE_DATA_DIR
+from wowy.nba.ingest.cache import DEFAULT_SOURCE_DATA_DIR
 from wowy.nba.seasons import canonicalize_season_string
 from wowy.nba.season_types import canonicalize_season_type
 from wowy.web.service import (

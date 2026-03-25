@@ -16,7 +16,7 @@ from wowy.nba.ingest.cache import (
     load_or_fetch_league_games_with_source,
     write_cached_payload,
 )
-from wowy.data.game_cache_db import (
+from wowy.data.game_cache import (
     initialize_game_cache_db,
     load_cache_load_row,
     load_normalized_games_from_db,

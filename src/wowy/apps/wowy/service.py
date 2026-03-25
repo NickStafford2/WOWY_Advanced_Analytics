@@ -11,11 +11,11 @@ from wowy.apps.wowy.models import (
     WowyPlayerStats,
 )
 from wowy.data.player_metrics_db import DEFAULT_PLAYER_METRICS_DB_PATH
-from wowy.nba.ingest import load_player_names_from_cache
 from wowy.nba.prepare import (
     prepare_canonical_scope_records,
     prepare_wowy_game_records,
 )
+from wowy.nba.source.parsers import load_player_names_from_cache
 from wowy.progress import TerminalProgressBar, print_status_box
 from wowy.shared.filters import validate_top_n_and_minutes
 from wowy.shared.minutes import build_player_minute_stats, passes_minute_filters

@@ -127,12 +127,12 @@ def classify_source_schedule_row(
 def classify_source_player_row(
     row: SourceBoxScorePlayer,
 ) -> SourcePlayerRowClassification:
+    if _is_inactive_player_status_row(row):
+        return INACTIVE_PLAYER_STATUS_ROW
     if _is_skip_player_row(row):
         return PLAYER_DID_NOT_PLAY_PLACEHOLDER
     if _is_player_did_not_play_placeholder(row):
         return PLAYER_DID_NOT_PLAY_PLACEHOLDER
-    if _is_inactive_player_status_row(row):
-        return INACTIVE_PLAYER_STATUS_ROW
     return CANONICAL_PLAYER_SOURCE_ROW
 
 

@@ -11,11 +11,9 @@ from wowy.data.game_cache import (
 )
 from wowy.data.player_metrics_db import DEFAULT_PLAYER_METRICS_DB_PATH
 from wowy.nba.cache_sync import ensure_team_season_data
-from wowy.nba.ingest import (
-    DEFAULT_SOURCE_DATA_DIR,
-    load_player_names_from_cache,
-)
+from wowy.nba.ingest.cache import DEFAULT_SOURCE_DATA_DIR
 from wowy.nba.models import NormalizedGamePlayerRecord, NormalizedGameRecord
+from wowy.nba.source.parsers import load_player_names_from_cache
 from wowy.nba.team_seasons import TeamSeasonScope, resolve_team_seasons
 
 
