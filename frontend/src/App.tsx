@@ -276,6 +276,16 @@ function App() {
     setIsLoading(true)
     setError('')
     setLoadingStartedAt(Date.now())
+    const selectedTeamIds = filterSelectedTeamIdsForAvailableTeams(
+      customFilters.teams,
+      availableCustomTeams,
+    )
+    if (selectedTeamIds.length === 0) {
+      setError('Select at least one team active across the full season span.')
+      setLeaderboard(null)
+      setIsLoading(false)
+      return
+    }
     const params = new URLSearchParams({
       top_n: String(customFilters.topN),
       min_average_minutes: String(customFilters.minAverageMinutes),
@@ -289,7 +299,7 @@ function App() {
       params.set('min_games_without', String(customFilters.minGamesWithout))
     }
 
-    for (const team of customFilters.teams) {
+    for (const team of selectedTeamIds) {
       params.append('team_id', String(team))
     }
     for (const season of seasonSpan(customFilters.startSeason, customFilters.endSeason, availableSeasons)) {
@@ -354,6 +364,7 @@ function App() {
     cachedFilters,
     customFilters,
     availableSeasons,
+    availableCustomTeams,
     metricFilters,
   })
   const pageShellStyle = {
@@ -765,6 +776,7 @@ function buildExportUrl({
   cachedFilters,
   customFilters,
   availableSeasons,
+  availableCustomTeams,
   metricFilters,
 }: {
   metric: MetricId
@@ -772,6 +784,7 @@ function buildExportUrl({
   cachedFilters: CachedFilters
   customFilters: CustomFilters
   availableSeasons: string[]
+  availableCustomTeams: TeamOption[]
   metricFilters: MetricFilters
 }): string {
   const params = new URLSearchParams({
@@ -809,7 +822,7 @@ function buildExportUrl({
     params.set('min_games_with', String(customFilters.minGamesWith))
     params.set('min_games_without', String(customFilters.minGamesWithout))
   }
-  for (const team of customFilters.teams) {
+  for (const team of filterSelectedTeamIdsForAvailableTeams(customFilters.teams, availableCustomTeams)) {
     params.append('team_id', String(team))
   }
   for (const season of seasonSpan(customFilters.startSeason, customFilters.endSeason, availableSeasons)) {
@@ -834,8 +847,16 @@ function buildAvailableTeamsForSeasonSpan({
     return []
   }
   return teamOptions.filter((teamOption) =>
-    teamOption.available_seasons.some((season) => seasonsInScope.includes(season)),
+    seasonsInScope.every((season) => teamOption.available_seasons.includes(season)),
   )
+}
+
+function filterSelectedTeamIdsForAvailableTeams(
+  selectedTeamIds: number[],
+  availableTeams: TeamOption[],
+): number[] {
+  const availableTeamIds = new Set(availableTeams.map((team) => team.team_id))
+  return selectedTeamIds.filter((teamId) => availableTeamIds.has(teamId))
 }
 
 async function fetchJson(url: string): Promise<unknown> {
