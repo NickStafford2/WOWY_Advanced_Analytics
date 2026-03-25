@@ -72,6 +72,14 @@ class _RefreshScopeContext:
     available_seasons: list[str]
 
 
+@dataclass(frozen=True)
+class _RefreshStoreInputs:
+    source_fingerprint: str
+    cached_team_seasons: list[Any]
+    available_teams: list[str]
+    team_scopes: list[list[int] | None]
+
+
 WOWY_METRIC = "wowy"
 WOWY_SHRUNK_METRIC = "wowy_shrunk"
 RAWR_METRIC = "rawr"
@@ -127,33 +135,19 @@ def refresh_metric_store(
 ) -> RefreshMetricStoreResult:
     season_type = canonicalize_season_type(season_type)
     definition = _get_metric_definition(metric)
-    cache_load_rows = list_cache_load_rows(db_path, season_type=season_type)
-    if not cache_load_rows:
-        return RefreshMetricStoreResult(
-            metric=metric,
-            scope_results=[],
-            warnings=[],
-            failure_message=(
-                "Normalized cache is empty for the requested season type. "
-                "Rebuild ingest before refreshing the web metric store."
-            ),
-        )
+    if not _has_refreshable_cache(db_path=db_path, season_type=season_type):
+        return _build_empty_cache_refresh_result(metric)
 
-    source_fingerprint = build_normalized_cache_fingerprint(
-        db_path,
+    store_inputs = _build_refresh_store_inputs(
+        db_path=db_path,
         season_type=season_type,
+        include_team_scopes=include_team_scopes,
     )
-    cached_team_seasons = list_cached_team_seasons(
-        player_metrics_db_path=db_path,
+    warnings = _build_refresh_warnings(
+        metric=metric,
         season_type=season_type,
+        db_path=db_path,
     )
-    available_teams = sorted({team_season.team for team_season in cached_team_seasons})
-    available_team_ids = sorted({team_season.team_id for team_season in cached_team_seasons})
-    team_scopes: list[list[int] | None] = [None]
-    if include_team_scopes:
-        team_scopes.extend([[team_id] for team_id in available_team_ids])
-
-    warnings: list[str] = []
     scope_results: list[RefreshScopeResult] = []
     failure_message: str | None = None
     build_version = (
@@ -162,20 +156,15 @@ def refresh_metric_store(
         else definition.build_version
     )
 
-    for index, team_ids in enumerate(team_scopes):
+    for index, team_ids in enumerate(store_inputs.team_scopes):
         scope = _build_refresh_scope_context(
             team_ids=team_ids,
             season_type=season_type,
-            cached_team_seasons=cached_team_seasons,
+            cached_team_seasons=store_inputs.cached_team_seasons,
         )
-        if metric == RAWR_METRIC and team_ids is None:
-            warnings = _print_rawr_incomplete_season_warning(
-                season_type=season_type,
-                db_path=db_path,
-            )
 
         if progress is not None:
-            progress(index, len(team_scopes), f"building {scope.scope_label}")
+            progress(index, len(store_inputs.team_scopes), f"building {scope.scope_label}")
 
         scope_result, should_fail_empty_rawr_scope = _refresh_metric_store_scope(
             definition=definition,
@@ -185,12 +174,16 @@ def refresh_metric_store(
             db_path=db_path,
             source_data_dir=source_data_dir,
             rawr_ridge_alpha=rawr_ridge_alpha,
-            available_teams=available_teams,
-            source_fingerprint=source_fingerprint,
+            available_teams=store_inputs.available_teams,
+            source_fingerprint=store_inputs.source_fingerprint,
             build_version=build_version,
         )
         if progress is not None:
-            progress(index + 1, len(team_scopes), f"{scope_result.status} {scope.scope_label}")
+            progress(
+                index + 1,
+                len(store_inputs.team_scopes),
+                f"{scope_result.status} {scope.scope_label}",
+            )
         scope_results.append(scope_result)
         if should_fail_empty_rawr_scope:
             failure_message = (
@@ -204,6 +197,61 @@ def refresh_metric_store(
         scope_results=scope_results,
         warnings=warnings,
         failure_message=failure_message,
+    )
+
+
+def _has_refreshable_cache(*, db_path: Path, season_type: str) -> bool:
+    return bool(list_cache_load_rows(db_path, season_type=season_type))
+
+
+def _build_empty_cache_refresh_result(metric: str) -> RefreshMetricStoreResult:
+    return RefreshMetricStoreResult(
+        metric=metric,
+        scope_results=[],
+        warnings=[],
+        failure_message=(
+            "Normalized cache is empty for the requested season type. "
+            "Rebuild ingest before refreshing the web metric store."
+        ),
+    )
+
+
+def _build_refresh_store_inputs(
+    *,
+    db_path: Path,
+    season_type: str,
+    include_team_scopes: bool,
+) -> _RefreshStoreInputs:
+    cached_team_seasons = list_cached_team_seasons(
+        player_metrics_db_path=db_path,
+        season_type=season_type,
+    )
+    available_team_ids = sorted({team_season.team_id for team_season in cached_team_seasons})
+    team_scopes: list[list[int] | None] = [None]
+    if include_team_scopes:
+        team_scopes.extend([[team_id] for team_id in available_team_ids])
+    return _RefreshStoreInputs(
+        source_fingerprint=build_normalized_cache_fingerprint(
+            db_path,
+            season_type=season_type,
+        ),
+        cached_team_seasons=cached_team_seasons,
+        available_teams=sorted({team_season.team for team_season in cached_team_seasons}),
+        team_scopes=team_scopes,
+    )
+
+
+def _build_refresh_warnings(
+    *,
+    metric: str,
+    season_type: str,
+    db_path: Path,
+) -> list[str]:
+    if metric != RAWR_METRIC:
+        return []
+    return _print_rawr_incomplete_season_warning(
+        season_type=season_type,
+        db_path=db_path,
     )
 
 
