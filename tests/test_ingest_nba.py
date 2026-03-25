@@ -45,7 +45,7 @@ def _sample_cached_team_seasons() -> list[tuple[str, str]]:
     samples: list[tuple[str, str]] = []
     for index in sample_indices:
         stem = cache_paths[index].stem.removesuffix("_leaguegamefinder")
-        team, season, _season_type_slug = stem.split("_", maxsplit=2)
+        team, season, _ = stem.split("_", maxsplit=2)
         samples.append((team, season))
     return samples
 
@@ -57,7 +57,7 @@ def _latest_cached_scope() -> tuple[str, str] | None:
     if not cache_paths:
         return None
     latest_path = max(cache_paths, key=lambda path: path.stem.split("_", maxsplit=2)[1])
-    team, season, _season_type_slug = latest_path.stem.removesuffix("_leaguegamefinder").split(
+    team, season, _ = latest_path.stem.removesuffix("_leaguegamefinder").split(
         "_",
         maxsplit=2,
     )
@@ -1743,7 +1743,7 @@ def test_normalize_source_game_skips_inactive_status_rows_with_missing_name_and_
         game_id="0001",
     )
 
-    _game, players = normalize_source_game(
+    _, players = normalize_source_game(
         schedule_game=schedule.games[0],
         box_score=box_score,
         season="2002-03",
@@ -1756,7 +1756,12 @@ def test_normalize_source_game_skips_inactive_status_rows_with_missing_name_and_
 def test_parse_league_schedule_payload_raises_with_raw_row_for_conflicting_team_identity() -> None:
     with pytest.raises(
         ValueError,
-        match="Conflicting source team identity values: TEAM_ABBREVIATION='LAL' expected='MEM' for TEAM_ID=1610612763; nba_api_league_schedule_row=",
+        match=(
+            "Conflicting source team identity values: "
+            "TEAM_ABBREVIATION='LAL' expected='MEM' "
+            "for TEAM_ID=1610612763; "
+            "nba_api_league_schedule_row="
+        ),
     ):
         parse_league_schedule_payload(
             {

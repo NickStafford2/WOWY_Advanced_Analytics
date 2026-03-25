@@ -5,9 +5,6 @@ from pathlib import Path
 
 import pytest
 
-from rawr_analytics.metrics.rawr.models import RawrPlayerSeasonRecord
-from rawr_analytics.metrics.wowy.analysis import compute_wowy_shrinkage_score
-from rawr_analytics.metrics.wowy.models import WowyPlayerSeasonRecord
 from rawr_analytics.data.player_metrics_db import (
     MetricFullSpanPointRow,
     MetricFullSpanSeriesRow,
@@ -26,6 +23,9 @@ from rawr_analytics.data.player_metrics_db import (
     replace_metric_rows,
     replace_metric_scope_catalog_row,
 )
+from rawr_analytics.metrics.rawr.models import RawrPlayerSeasonRecord
+from rawr_analytics.metrics.wowy.analysis import compute_wowy_shrinkage_score
+from rawr_analytics.metrics.wowy.models import WowyPlayerSeasonRecord
 
 
 def test_build_rawr_player_season_metric_rows_maps_metric_native_records():

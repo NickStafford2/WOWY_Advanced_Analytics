@@ -62,7 +62,7 @@ def _load_normalized_games_from_db_for_scope(
     season_type: str,
     player_metrics_db_path: Path,
 ) -> list[NormalizedGameRecord]:
-    games, _game_players = load_normalized_scope_records_from_db(
+    games, _ = load_normalized_scope_records_from_db(
         player_metrics_db_path,
         team_seasons=team_seasons,
         season_type=season_type,

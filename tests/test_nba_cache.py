@@ -7,9 +7,6 @@ from pathlib import Path
 import pytest
 from requests import RequestException
 
-from tests.support import game as normalized_game
-from tests.support import player as normalized_player
-from tests.support import seed_db_from_team_seasons
 from rawr_analytics.data.game_cache.repository import (
     load_cache_load_row,
     load_normalized_games_from_db,
@@ -31,6 +28,9 @@ from rawr_analytics.nba.source.cache import (
 )
 from rawr_analytics.nba.team_identity import resolve_team_id
 from rawr_analytics.nba.team_seasons import TeamSeasonScope, resolve_team_seasons
+from tests.support import game as normalized_game
+from tests.support import player as normalized_player
+from tests.support import seed_db_from_team_seasons
 
 
 def test_write_cached_payload_writes_json_atomically(tmp_path: Path):

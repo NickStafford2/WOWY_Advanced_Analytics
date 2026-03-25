@@ -2,11 +2,6 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from tests.support import (
-    game,
-    player,
-    seed_db_from_team_seasons,
-)
 from rawr_analytics.metrics.wowy.analysis import (
     DEFAULT_WOWY_SHRINKAGE_PRIOR_GAMES,
     apply_wowy_shrinkage,
@@ -25,6 +20,11 @@ from rawr_analytics.metrics.wowy.records import (
     build_wowy_span_chart_rows,
     prepare_wowy_player_season_records,
     serialize_wowy_player_season_records,
+)
+from tests.support import (
+    game,
+    player,
+    seed_db_from_team_seasons,
 )
 
 

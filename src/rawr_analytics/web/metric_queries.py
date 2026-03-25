@@ -3,16 +3,6 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Any
 
-from rawr_analytics.metrics.rawr.models import RawrPlayerSeasonRecord
-from rawr_analytics.metrics.rawr.records import prepare_rawr_player_season_records
-from rawr_analytics.metrics.wowy.analysis import (
-    DEFAULT_WOWY_SHRINKAGE_PRIOR_GAMES,
-    compute_wowy_shrinkage_score,
-)
-from rawr_analytics.metrics.wowy.models import WowyPlayerSeasonRecord
-from rawr_analytics.metrics.wowy.records import (
-    prepare_wowy_player_season_records,
-)
 from rawr_analytics.data.game_cache import list_cached_team_seasons
 from rawr_analytics.data.game_cache.fingerprints import build_normalized_cache_fingerprint
 from rawr_analytics.data.game_cache.repository import list_cache_load_rows
@@ -25,6 +15,16 @@ from rawr_analytics.data.player_metrics_db import (
     load_metric_rows,
     load_metric_scope_catalog_row,
     load_metric_store_metadata,
+)
+from rawr_analytics.metrics.rawr.models import RawrPlayerSeasonRecord
+from rawr_analytics.metrics.rawr.records import prepare_rawr_player_season_records
+from rawr_analytics.metrics.wowy.analysis import (
+    DEFAULT_WOWY_SHRINKAGE_PRIOR_GAMES,
+    compute_wowy_shrinkage_score,
+)
+from rawr_analytics.metrics.wowy.models import WowyPlayerSeasonRecord
+from rawr_analytics.metrics.wowy.records import (
+    prepare_wowy_player_season_records,
 )
 from rawr_analytics.nba.season_types import canonicalize_season_type
 from rawr_analytics.nba.team_history import official_continuity_label_for_team_id
@@ -475,7 +475,7 @@ def build_metric_options_payload(
     team_ids: list[int] | None,
     season_type: str,
 ) -> dict[str, Any]:
-    scope_key, _team_filter = build_scope_key(team_ids=team_ids, season_type=season_type)
+    scope_key, _ = build_scope_key(team_ids=team_ids, season_type=season_type)
     catalog_row = _require_current_metric_scope(
         db_path=db_path,
         metric=metric,

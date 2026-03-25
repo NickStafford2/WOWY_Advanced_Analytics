@@ -4,12 +4,6 @@ import csv
 from io import StringIO
 from pathlib import Path
 
-from tests.support import (
-    TeamSeasonSeed,
-    game,
-    player,
-    seed_db_from_team_seasons,
-)
 from rawr_analytics.data.game_cache.fingerprints import build_normalized_cache_fingerprint
 from rawr_analytics.data.player_metrics_db import (
     MetricFullSpanPointRow,
@@ -31,6 +25,12 @@ from rawr_analytics.web.metric_store import (
     refresh_metric_store,
 )
 from rawr_analytics.web.refresh_cli import main as refresh_cli_main
+from tests.support import (
+    TeamSeasonSeed,
+    game,
+    player,
+    seed_db_from_team_seasons,
+)
 
 
 def _refresh_wowy_store(tmp_path: Path, team_seasons: list[TeamSeasonSeed]) -> Path:
@@ -60,7 +60,7 @@ def _seed_rawr_cache_inputs(
 ) -> list[TeamSeasonSeed]:
     monkeypatch.setattr(
         "rawr_analytics.metrics.rawr.data.list_expected_rawr_teams_for_season",
-        lambda _season: ["BOS", "LAL", "MIL", "NYK"],
+        lambda _: ["BOS", "LAL", "MIL", "NYK"],
     )
     return [
         (
@@ -206,7 +206,7 @@ def test_refresh_metric_store_builds_rawr_player_season_rows(
 ):
     team_seasons = _seed_rawr_cache_inputs(monkeypatch)
     player_metrics_db_path = _refresh_rawr_store(tmp_path, team_seasons)
-    scope_key, _team_filter = build_scope_key(
+    scope_key, _ = build_scope_key(
         team_ids=None,
         season_type="Regular Season",
     )
@@ -242,7 +242,7 @@ def test_refresh_metric_store_skips_incomplete_rawr_seasons_without_scraping(
         season_type="Regular Season",
         db_path=player_metrics_db_path,
     )
-    scope_key, _team_filter = build_scope_key(
+    scope_key, _ = build_scope_key(
         team_ids=None,
         season_type="Regular Season",
     )
@@ -305,11 +305,11 @@ def test_refresh_metric_store_can_skip_team_scopes(
         include_team_scopes=False,
     )
 
-    all_scope_key, _team_filter = build_scope_key(
+    all_scope_key, _ = build_scope_key(
         team_ids=None,
         season_type="Regular Season",
     )
-    team_scope_key, _team_filter = build_scope_key(
+    team_scope_key, _ = build_scope_key(
         team_ids=[1610612738],
         season_type="Regular Season",
     )
@@ -342,7 +342,7 @@ def test_refresh_metric_store_builds_wowy_shrunk_rows(
         season_type="Regular Season",
         db_path=player_metrics_db_path,
     )
-    scope_key, _team_filter = build_scope_key(
+    scope_key, _ = build_scope_key(
         team_ids=None,
         season_type="Regular Season",
     )
@@ -550,7 +550,7 @@ def test_refresh_metric_store_skips_empty_historical_rawr_team_seasons(
     team_seasons = _seed_rawr_cache_inputs(monkeypatch)
     team_seasons.append(("BKN", "2008-09", [], []))
     player_metrics_db_path = _refresh_rawr_store(tmp_path, team_seasons)
-    scope_key, _team_filter = build_scope_key(
+    scope_key, _ = build_scope_key(
         team_ids=[1610612751],
         season_type="Regular Season",
     )
@@ -1249,7 +1249,7 @@ def test_wowy_options_endpoint_returns_team_id_team_options_for_frontend(
 ):
     player_metrics_db_path = tmp_path / "app" / "player_metrics.sqlite3"
     seed_db_from_team_seasons(player_metrics_db_path, _wowy_historical_continuity_seed())
-    scope_key, _team_filter = build_scope_key(
+    scope_key, _ = build_scope_key(
         team_ids=None,
         season_type="Regular Season",
     )

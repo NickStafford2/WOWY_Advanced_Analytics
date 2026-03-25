@@ -112,12 +112,14 @@ def played_in_game(minutes: object) -> bool:
     return parsed_minutes > 0.0
 
 
+# todo: find out why I made this.
 def classify_source_team_row(
     row: SourceBoxScoreTeam,
 ) -> SourceTeamRowClassification:
     return CANONICAL_TEAM_SOURCE_ROW
 
 
+# todo: find out why I made this.
 def classify_source_schedule_row(
     row: dict[str, object],
 ) -> SourceScheduleRowClassification:
@@ -192,9 +194,10 @@ def _is_player_did_not_play_placeholder(row: SourceBoxScorePlayer) -> bool:
         return False
     if row.minutes_raw is not None:
         return False
+    # You can Definitely reach here. I don't know why pyright thinks otherwise
+    # print("pyright thinks you can't reach here.")
     if _row_has_any_box_score_stats(row.raw_row):
         return False
-
     comment = str(row.raw_row.get("COMMENT", "")).strip().upper()
     if comment not in {"", "DNP - COACH'S DECISION"}:
         return False

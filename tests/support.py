@@ -70,7 +70,7 @@ def seed_db_from_team_seasons(
         if len(season_types) > 1:
             raise ValueError(f"Expected one season type per team-season seed for {team} {season}")
         original_validate = game_cache_repository.validate_normalized_cache_batch
-        game_cache_repository.validate_normalized_cache_batch = lambda **_kwargs: None
+        game_cache_repository.validate_normalized_cache_batch = lambda **_: None
         try:
             replace_team_season_normalized_rows(
                 db_path,

@@ -3,7 +3,6 @@ from __future__ import annotations
 import sqlite3
 from pathlib import Path
 
-from tests.support import game, player
 from rawr_analytics.data.db_validation import (
     DatabaseValidationReport,
     ValidationIssue,
@@ -26,6 +25,7 @@ from rawr_analytics.data.player_metrics_db import (
     replace_metric_scope_catalog_row,
 )
 from rawr_analytics.nba.team_identity import resolve_team_id
+from tests.support import game, player
 
 
 def test_audit_player_metrics_db_accepts_valid_seed_data(tmp_path: Path):

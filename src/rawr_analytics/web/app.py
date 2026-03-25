@@ -5,9 +5,9 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, TypedDict
 
+from rawr_analytics.data.player_metrics_db import DEFAULT_PLAYER_METRICS_DB_PATH
 from rawr_analytics.metrics.rawr.service import validate_filters as validate_rawr_filters
 from rawr_analytics.metrics.wowy.service import validate_filters as validate_wowy_filters
-from rawr_analytics.data.player_metrics_db import DEFAULT_PLAYER_METRICS_DB_PATH
 from rawr_analytics.nba.season_types import canonicalize_season_type
 from rawr_analytics.nba.seasons import canonicalize_season_string
 from rawr_analytics.web.metric_queries import (
@@ -354,7 +354,7 @@ def _parse_metric_request(
 ) -> _ParsedMetricRequest:
     season_type = canonicalize_season_type(request.args.get("season_type", "Regular Season"))
     team_ids = _parse_positive_int_list(request.args.getlist("team_id"))
-    scope_key, _team_filter = build_scope_key(team_ids=team_ids, season_type=season_type)
+    scope_key, _ = build_scope_key(team_ids=team_ids, season_type=season_type)
     return _ParsedMetricRequest(
         season_type=season_type,
         team_ids=team_ids,

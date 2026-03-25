@@ -5,11 +5,6 @@ from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any, Callable
 
-from rawr_analytics.metrics.rawr.data import build_rawr_metric_rows, list_incomplete_rawr_seasons
-from rawr_analytics.metrics.wowy.records import (
-    build_wowy_metric_rows,
-    build_wowy_shrunk_metric_rows,
-)
 from rawr_analytics.data.game_cache import list_cached_team_seasons
 from rawr_analytics.data.game_cache.fingerprints import build_normalized_cache_fingerprint
 from rawr_analytics.data.game_cache.repository import list_cache_load_rows
@@ -23,6 +18,11 @@ from rawr_analytics.data.player_metrics_db import (
     load_metric_scope_catalog_row,
     load_metric_store_metadata,
     replace_metric_scope_store,
+)
+from rawr_analytics.metrics.rawr.data import build_rawr_metric_rows, list_incomplete_rawr_seasons
+from rawr_analytics.metrics.wowy.records import (
+    build_wowy_metric_rows,
+    build_wowy_shrunk_metric_rows,
 )
 from rawr_analytics.nba.season_types import canonicalize_season_type
 from rawr_analytics.nba.team_history import official_continuity_label_for_team_id

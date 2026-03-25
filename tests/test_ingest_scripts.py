@@ -2,13 +2,13 @@ from __future__ import annotations
 
 import subprocess
 
-from scripts import cache_all_seasons, cache_season_data
 from rawr_analytics.nba.build_models import TeamSeasonRunSummary
 from rawr_analytics.nba.errors import (
     BoxScoreFetchError,
     GameNormalizationFailure,
     PartialTeamSeasonError,
 )
+from scripts import cache_all_seasons, cache_season_data
 
 
 def test_cache_season_data_continues_after_team_failure(monkeypatch, capsys):
@@ -101,7 +101,7 @@ def test_filtered_log_only_emits_actionable_cache_messages(capsys):
 def test_cache_season_data_skips_requested_team_not_active_in_season(monkeypatch, capsys):
     called = False
 
-    def fake_refresh_normalized_team_season_cache(**_kwargs):
+    def fake_refresh_normalized_team_season_cache():
         nonlocal called
         called = True
         raise AssertionError("inactive team-season should not be fetched")
@@ -111,7 +111,7 @@ def test_cache_season_data_skips_requested_team_not_active_in_season(monkeypatch
         "refresh_normalized_team_season_cache",
         fake_refresh_normalized_team_season_cache,
     )
-    monkeypatch.setattr(cache_season_data, "team_is_active_for_season", lambda team, season: False)
+    monkeypatch.setattr(cache_season_data, "team_is_active_for_season", lambda team, _: False)
 
     exit_code = cache_season_data.main(["2002-03", "--teams", "CHA"])
 

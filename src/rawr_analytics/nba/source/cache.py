@@ -186,19 +186,6 @@ def load_or_fetch_box_score_with_source(
     raise RuntimeError(f"Failed to fetch box score for game {game_id!r}")
 
 
-def _load_or_fetch_box_score(
-    game_id: str,
-    source_data_dir: Path,
-    log: LogFn | None = print,
-) -> dict:
-    payload, _ = load_or_fetch_box_score_with_source(
-        game_id=game_id,
-        source_data_dir=source_data_dir,
-        log=log,
-    )
-    return payload
-
-
 def league_games_cache_path(
     team_abbreviation: str,
     season: str,

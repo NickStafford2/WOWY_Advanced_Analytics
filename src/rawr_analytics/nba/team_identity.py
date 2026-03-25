@@ -87,13 +87,6 @@ def resolve_team_id(
     ).team_id
 
 
-def resolve_team_identity_from_id(team_id: int) -> TeamIdentity:
-    raise ValueError(
-        "resolve_team_identity_from_id() is not supported without a season or game date; "
-        "historical team labels must be resolved with time context"
-    )
-
-
 def resolve_team_identity_from_id_and_season(team_id: int, season: str) -> TeamIdentity:
     return _identity_from_entry(resolve_team_history_entry_from_id(team_id, season=season))
 
