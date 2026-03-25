@@ -14,9 +14,7 @@ from wowy.web.metric_queries import (
     build_cached_metric_export_table_rows,
     build_cached_metric_leaderboard_payload,
     build_custom_metric_export_table_rows,
-    build_custom_rawr_leaderboard_payload,
-    build_custom_wowy_leaderboard_payload,
-    build_custom_wowy_shrunk_leaderboard_payload,
+    build_custom_metric_leaderboard_payload,
     build_metric_filters_payload,
     build_metric_options_payload,
     build_metric_player_seasons_payload,
@@ -354,59 +352,26 @@ def _build_metric_custom_query_payload(
     )
     team_ids = _parse_positive_int_list(request.args.getlist("team_id"))
     seasons = _parse_request_seasons(request)
-    if metric == WOWY_METRIC:
-        min_games_without = filter_values["min_secondary_sample_size"]
-        if min_games_without is None:
-            raise ValueError("WOWY custom query requires min_games_without")
-        payload = build_custom_wowy_leaderboard_payload(
-            teams=None,
-            team_ids=team_ids,
-            seasons=seasons,
-            season_type=season_type,
-            top_n=filter_values["top_n"],
-            source_data_dir=source_data_dir,
-            player_metrics_db_path=player_metrics_db_path,
-            min_games_with=int(filter_values["min_sample_size"]),
-            min_games_without=min_games_without,
-            min_average_minutes=filter_values["min_average_minutes"],
-            min_total_minutes=filter_values["min_total_minutes"],
-        )
-    elif metric == WOWY_SHRUNK_METRIC:
-        min_games_without = filter_values["min_secondary_sample_size"]
-        if min_games_without is None:
-            raise ValueError("WOWY shrunk custom query requires min_games_without")
-        payload = build_custom_wowy_shrunk_leaderboard_payload(
-            teams=None,
-            team_ids=team_ids,
-            seasons=seasons,
-            season_type=season_type,
-            top_n=filter_values["top_n"],
-            source_data_dir=source_data_dir,
-            player_metrics_db_path=player_metrics_db_path,
-            min_games_with=int(filter_values["min_sample_size"]),
-            min_games_without=min_games_without,
-            min_average_minutes=filter_values["min_average_minutes"],
-            min_total_minutes=filter_values["min_total_minutes"],
-        )
-    elif metric == RAWR_METRIC:
-        ridge_alpha = filter_values["ridge_alpha"]
-        if ridge_alpha is None:
-            raise ValueError("RAWR custom query requires ridge_alpha")
-        payload = build_custom_rawr_leaderboard_payload(
-            teams=None,
-            team_ids=team_ids,
-            seasons=seasons,
-            season_type=season_type,
-            top_n=filter_values["top_n"],
-            source_data_dir=source_data_dir,
-            player_metrics_db_path=player_metrics_db_path,
-            min_games=int(filter_values["min_sample_size"]),
-            ridge_alpha=ridge_alpha,
-            min_average_minutes=filter_values["min_average_minutes"],
-            min_total_minutes=filter_values["min_total_minutes"],
-        )
-    else:
-        raise ValueError(f"Unknown metric: {metric}")
+    payload = build_custom_metric_leaderboard_payload(
+        metric,
+        teams=None,
+        team_ids=team_ids,
+        seasons=seasons,
+        season_type=season_type,
+        top_n=filter_values["top_n"],
+        source_data_dir=source_data_dir,
+        player_metrics_db_path=player_metrics_db_path,
+        min_games_with=int(filter_values["min_sample_size"])
+        if metric in {WOWY_METRIC, WOWY_SHRUNK_METRIC}
+        else None,
+        min_games_without=filter_values["min_secondary_sample_size"]
+        if metric in {WOWY_METRIC, WOWY_SHRUNK_METRIC}
+        else None,
+        min_games=int(filter_values["min_sample_size"]) if metric == RAWR_METRIC else None,
+        ridge_alpha=filter_values["ridge_alpha"] if metric == RAWR_METRIC else None,
+        min_average_minutes=filter_values["min_average_minutes"],
+        min_total_minutes=filter_values["min_total_minutes"],
+    )
     payload["filters"] = build_metric_filters_payload(
         metric=metric,
         teams=None,
