@@ -7,7 +7,7 @@ from wowy.data.player_metrics_db import DEFAULT_PLAYER_METRICS_DB_PATH
 from wowy.nba.season_types import canonicalize_season_type
 from wowy.nba.source.cache import DEFAULT_SOURCE_DATA_DIR
 from wowy.web.app import create_app
-from wowy.web.service import (
+from wowy.web.metric_store import (
     DEFAULT_RAWR_RIDGE_ALPHA,
     RAWR_METRIC,
     WOWY_SHRUNK_METRIC,

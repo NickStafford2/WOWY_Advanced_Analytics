@@ -10,22 +10,24 @@ from wowy.data.player_metrics_db import DEFAULT_PLAYER_METRICS_DB_PATH
 from wowy.nba.seasons import canonicalize_season_string
 from wowy.nba.season_types import canonicalize_season_type
 from wowy.nba.source.cache import DEFAULT_SOURCE_DATA_DIR
-from wowy.web.service import (
+from wowy.web.metric_queries import (
+    build_cached_metric_export_table_rows,
+    build_cached_metric_leaderboard_payload,
+    build_custom_metric_export_table_rows,
+    build_custom_rawr_leaderboard_payload,
+    build_custom_wowy_leaderboard_payload,
+    build_custom_wowy_shrunk_leaderboard_payload,
+    build_metric_default_filters_payload,
+    build_metric_options_payload,
+    build_metric_player_seasons_payload,
+    build_metric_span_chart_payload,
+)
+from wowy.web.metric_store import (
     DEFAULT_RAWR_RIDGE_ALPHA,
     RAWR_METRIC,
     WOWY_SHRUNK_METRIC,
     WOWY_METRIC,
-    build_cached_metric_export_table_rows,
-    build_custom_rawr_leaderboard_payload,
-    build_custom_metric_export_table_rows,
-    build_custom_wowy_shrunk_leaderboard_payload,
-    build_metric_default_filters_payload,
     build_scope_key,
-    build_cached_metric_leaderboard_payload,
-    build_custom_wowy_leaderboard_payload,
-    build_metric_options_payload,
-    build_metric_player_seasons_payload,
-    build_metric_span_chart_payload,
 )
 
 
