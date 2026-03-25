@@ -34,7 +34,7 @@ poetry run rawr
 Run the Flask backend for the web prototype:
 
 ```bash
-poetry run wowy-web
+poetry run web
 ```
 
 Show CLI usage:
@@ -62,8 +62,6 @@ poetry run rawr --season 2024-25 --team BOS --tune-ridge
 ```
 
 Both CLIs read cached team-season data from `data/app/player_metrics.sqlite3`. If you request a specific scope with `--season` and optionally `--team`, missing team-season data is fetched into the database automatically.
-
-TODO: `--team` without `--season` still depends on already-cached seasons. Align that with the intended eager-fetch behavior.
 
 ## Cache tools
 
