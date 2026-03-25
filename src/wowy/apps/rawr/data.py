@@ -4,6 +4,12 @@ from collections import defaultdict
 from dataclasses import dataclass
 from pathlib import Path
 
+from wowy.apps.rawr._observations import (
+    build_minute_weights,
+    build_rawr_player_season_minute_stats,
+    count_player_games,
+)
+from wowy.apps.rawr.analysis import fit_player_rawr
 from wowy.apps.rawr.models import (
     RawrObservation,
     RawrPlayerEstimate,
@@ -21,11 +27,27 @@ from wowy.nba.team_identity import (
 from wowy.nba.team_seasons import resolve_team_seasons
 from wowy.shared.minutes import passes_minute_filters
 
-LINEUP_WEIGHT_SUM = 5.0
 RAWR_METRIC = "rawr"
 DEFAULT_RAWR_SHRINKAGE_MODE = "uniform"
 DEFAULT_RAWR_SHRINKAGE_STRENGTH = 1.0
 DEFAULT_RAWR_SHRINKAGE_MINUTE_SCALE = 48.0
+
+__all__ = [
+    "DEFAULT_RAWR_SHRINKAGE_MINUTE_SCALE",
+    "DEFAULT_RAWR_SHRINKAGE_MODE",
+    "DEFAULT_RAWR_SHRINKAGE_STRENGTH",
+    "RAWR_METRIC",
+    "RawrSeasonCompletenessIssue",
+    "attach_minute_stats_to_result",
+    "build_rawr_metric_rows",
+    "build_rawr_observations",
+    "count_player_games",
+    "filter_rawr_estimates_by_minutes",
+    "list_expected_rawr_teams_for_season",
+    "list_incomplete_rawr_seasons",
+    "prepare_rawr_player_season_records",
+    "select_complete_rawr_scope_seasons",
+]
 
 
 @dataclass
@@ -120,36 +142,6 @@ def build_rawr_observations(
         )
 
     return observations, player_names
-
-
-def build_minute_weights(player_minutes: dict[int, float]) -> dict[int, float]:
-    total_minutes = sum(player_minutes.values())
-    if total_minutes <= 0.0:
-        raise ValueError("Expected positive total team minutes for RAWR observation")
-
-    return {
-        player_id: (minutes / total_minutes) * LINEUP_WEIGHT_SUM
-        for player_id, minutes in player_minutes.items()
-    }
-
-
-def count_player_games(observations: list[RawrObservation]) -> dict[int, int]:
-    games_by_player: dict[int, int] = defaultdict(int)
-    for observation in observations:
-        for player_id in observation.player_weights:
-            games_by_player[player_id] += 1
-    return dict(games_by_player)
-
-
-def count_player_season_games(
-    observations: list[RawrObservation],
-) -> dict[tuple[str, int], int]:
-    games_by_player_season: dict[tuple[str, int], int] = defaultdict(int)
-    for observation in observations:
-        for player_id in observation.player_weights:
-            games_by_player_season[(observation.season, player_id)] += 1
-    return dict(games_by_player_season)
-
 
 def attach_minute_stats_to_result(
     result: RawrResult,
@@ -378,30 +370,6 @@ def select_complete_rawr_scope_seasons(
     return [season for season in candidate_seasons if season in complete_seasons]
 
 
-def build_player_season_minute_stats(
-    games,
-    game_players,
-) -> dict[tuple[str, int], tuple[float, float]]:
-    season_by_game_id = {game.game_id: game.season for game in games}
-    totals: dict[tuple[str, int], float] = {}
-    counts: dict[tuple[str, int], int] = {}
-
-    for player in game_players:
-        season = season_by_game_id.get(player.game_id)
-        if (
-            season is None
-            or not player.appeared
-            or player.minutes is None
-            or player.minutes <= 0.0
-        ):
-            continue
-        key = (season, player.player_id)
-        totals[key] = totals.get(key, 0.0) + player.minutes
-        counts[key] = counts.get(key, 0) + 1
-
-    return {key: (totals[key] / counts[key], totals[key]) for key in totals}
-
-
 def prepare_rawr_player_season_records(
     *,
     teams: list[str] | None,
@@ -417,8 +385,6 @@ def prepare_rawr_player_season_records(
     min_total_minutes: float | None = None,
     player_metrics_db_path: Path = DEFAULT_PLAYER_METRICS_DB_PATH,
 ) -> list[RawrPlayerSeasonRecord]:
-    from wowy.apps.rawr.analysis import fit_player_rawr
-
     team_seasons = resolve_team_seasons(
         teams,
         seasons,
@@ -462,7 +428,7 @@ def prepare_rawr_player_season_records(
             if str(exc) == "No games matched the requested RAWR scope":
                 continue
             raise
-        player_minute_stats = build_player_season_minute_stats(games, game_players)
+        player_minute_stats = build_rawr_player_season_minute_stats(games, game_players)
         observations, player_names = build_rawr_observations(games, game_players)
         try:
             result = fit_player_rawr(

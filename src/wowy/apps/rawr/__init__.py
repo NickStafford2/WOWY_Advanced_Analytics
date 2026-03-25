@@ -1,1 +1,1 @@
-"""RAWR application package."""
+"""RAWR metric package."""

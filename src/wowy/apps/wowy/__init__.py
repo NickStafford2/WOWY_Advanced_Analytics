@@ -1,1 +1,1 @@
-"""WOWY application package."""
+"""WOWY metric package."""

@@ -5,7 +5,10 @@ from typing import Callable
 
 import numpy as np
 
-from wowy.apps.rawr.data import count_player_season_games
+from wowy.apps.rawr._observations import (
+    count_player_season_games,
+    count_player_season_minutes,
+)
 from wowy.apps.rawr.models import (
     RawrModel,
     RawrObservation,
@@ -17,6 +20,14 @@ from wowy.apps.rawr.models import (
 
 ProgressFn = Callable[[int, int, str | None], None]
 ShrinkageMode = str
+
+__all__ = [
+    "ProgressFn",
+    "build_player_penalties",
+    "count_player_season_minutes",
+    "fit_player_rawr",
+    "tune_ridge_alpha",
+]
 
 
 def fit_player_rawr(
@@ -384,22 +395,6 @@ def build_player_penalties(
         scaled_minutes = minutes_by_player_season[player_key] / shrinkage_minute_scale
         penalties[player_key] = ridge_alpha / (scaled_minutes**shrinkage_strength)
     return penalties
-
-
-def count_player_season_minutes(
-    observations: list[RawrObservation],
-) -> dict[tuple[str, int], float]:
-    minutes_by_player_season: dict[tuple[str, int], float] = {}
-    for observation in observations:
-        if observation.player_minutes is None:
-            continue
-        for player_id, minutes in observation.player_minutes.items():
-            key = (observation.season, player_id)
-            minutes_by_player_season[key] = (
-                minutes_by_player_season.get(key, 0.0) + minutes
-            )
-    return minutes_by_player_season
-
 
 def accumulate_row(
     gram: np.ndarray,
