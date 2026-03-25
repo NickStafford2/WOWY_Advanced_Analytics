@@ -163,6 +163,8 @@ The codebase is not far from the target, but a few architectural problems still 
 - `nba` no longer imports WOWY code; WOWY input shaping now lives in the WOWY package
 - `nba/prepare.py` no longer performs repository reads directly; DB-backed canonical scope loading is now behind `data`
 - web callers now get cached team-season metadata from `data`, and `nba/cache_sync.py` uses a data-owned cache-presence check
+- RAWR observation building, scope filtering, and result minute-shaping now live in `apps/rawr/inputs.py`; `apps/rawr/data.py` is narrower
+- RAWR metric-native `RawrPlayerSeasonRecord` preparation now lives in `apps/rawr/records.py`
 
 The main remaining issues are:
 
@@ -189,9 +191,9 @@ WOWY:
 
 RAWR:
 
-- split `apps/rawr/data.py`
-- move observation/input shaping into `inputs.py`
-- keep metric-native outputs in `records.py`
+- continue shrinking `apps/rawr/data.py`
+- `apps/rawr/inputs.py` now owns observation building and input/result shaping
+- `apps/rawr/records.py` now owns metric-native player-season record construction
 - keep CLI/report orchestration in `service.py`
 
 ### 2. Move metric row mapping into `data`

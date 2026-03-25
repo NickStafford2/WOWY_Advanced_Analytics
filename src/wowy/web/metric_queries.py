@@ -3,8 +3,8 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Any
 
-from wowy.apps.rawr.data import prepare_rawr_player_season_records
 from wowy.apps.rawr.models import RawrPlayerSeasonRecord
+from wowy.apps.rawr.records import prepare_rawr_player_season_records
 from wowy.apps.wowy.analysis import (
     DEFAULT_WOWY_SHRINKAGE_PRIOR_GAMES,
     compute_wowy_shrinkage_score,

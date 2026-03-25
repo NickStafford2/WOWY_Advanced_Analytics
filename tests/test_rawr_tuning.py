@@ -47,14 +47,26 @@ def test_evaluate_configs_compares_wowy_and_rawr(monkeypatch):
     def fake_prepare_wowy_player_season_records(*, seasons, **_kwargs):
         if seasons == ["2023-24"]:
             return [
-                WowyPlayerSeasonRecord("2023-24", 101, "Player 101", 20, 5, 0.0, 0.0, 10.0, 34.0, 680.0),
-                WowyPlayerSeasonRecord("2023-24", 102, "Player 102", 20, 5, 0.0, 0.0, 5.0, 33.0, 660.0),
+                WowyPlayerSeasonRecord(
+                    "2023-24", 101, "Player 101", 20, 5, 0.0, 0.0, 10.0, 34.0, 680.0
+                ),
+                WowyPlayerSeasonRecord(
+                    "2023-24", 102, "Player 102", 20, 5, 0.0, 0.0, 5.0, 33.0, 660.0
+                ),
             ]
         return [
-            WowyPlayerSeasonRecord("2021-22", 101, "Player 101", 20, 5, 0.0, 0.0, 9.0, 34.0, 680.0),
-            WowyPlayerSeasonRecord("2022-23", 101, "Player 101", 20, 5, 0.0, 0.0, 11.0, 35.0, 700.0),
-            WowyPlayerSeasonRecord("2021-22", 102, "Player 102", 20, 5, 0.0, 0.0, 3.0, 33.0, 660.0),
-            WowyPlayerSeasonRecord("2022-23", 102, "Player 102", 20, 5, 0.0, 0.0, 4.0, 32.0, 640.0),
+            WowyPlayerSeasonRecord(
+                "2021-22", 101, "Player 101", 20, 5, 0.0, 0.0, 9.0, 34.0, 680.0
+            ),
+            WowyPlayerSeasonRecord(
+                "2022-23", 101, "Player 101", 20, 5, 0.0, 0.0, 11.0, 35.0, 700.0
+            ),
+            WowyPlayerSeasonRecord(
+                "2021-22", 102, "Player 102", 20, 5, 0.0, 0.0, 3.0, 33.0, 660.0
+            ),
+            WowyPlayerSeasonRecord(
+                "2022-23", 102, "Player 102", 20, 5, 0.0, 0.0, 4.0, 32.0, 640.0
+            ),
         ]
 
     def fake_prepare_rawr_player_season_records(
@@ -72,8 +84,18 @@ def test_evaluate_configs_compares_wowy_and_rawr(monkeypatch):
         else:
             player_101_score = 8.0
         return [
-            RawrPlayerSeasonRecord("2021-22", 101, "Player 101", 40, 34.0, 1360.0, player_101_score),
-            RawrPlayerSeasonRecord("2022-23", 101, "Player 101", 42, 35.0, 1470.0, player_101_score + 1.0),
+            RawrPlayerSeasonRecord(
+                "2021-22", 101, "Player 101", 40, 34.0, 1360.0, player_101_score
+            ),
+            RawrPlayerSeasonRecord(
+                "2022-23",
+                101,
+                "Player 101",
+                42,
+                35.0,
+                1470.0,
+                player_101_score + 1.0,
+            ),
             RawrPlayerSeasonRecord("2021-22", 102, "Player 102", 38, 33.0, 1254.0, 2.0),
             RawrPlayerSeasonRecord("2022-23", 102, "Player 102", 39, 32.0, 1248.0, 3.0),
         ]
