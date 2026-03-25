@@ -21,7 +21,7 @@ def __getattr__(name: str):
         "load_player_names_from_cache",
         "season_type_slug",
     }:
-        from wowy.nba.ingest import runner
+        from wowy.workflows import nba_ingest
 
-        return getattr(runner, name)
+        return getattr(nba_ingest, name)
     raise AttributeError(f"module {__name__!r} has no attribute {name!r}")
