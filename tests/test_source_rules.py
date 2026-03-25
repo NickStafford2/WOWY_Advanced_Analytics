@@ -17,7 +17,7 @@ from wowy.nba.source.rules import (
     parse_minutes_to_float,
     played_in_game,
 )
-from wowy.nba.source_models import SourceBoxScorePlayer, SourceBoxScoreTeam
+from wowy.nba.source.models import SourceBoxScorePlayer, SourceBoxScoreTeam
 
 
 @pytest.mark.parametrize(

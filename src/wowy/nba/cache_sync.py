@@ -7,8 +7,8 @@ from wowy.data.game_cache import (
     load_cache_load_row,
 )
 from wowy.data.player_metrics_db import DEFAULT_PLAYER_METRICS_DB_PATH
-from wowy.nba.ingest.cache import DEFAULT_SOURCE_DATA_DIR
 from wowy.nba.team_seasons import TeamSeasonScope
+from wowy.nba.source.cache import DEFAULT_SOURCE_DATA_DIR
 from wowy.workflows.nba_ingest import cache_team_season_data
 LogFn = Callable[[str], None]
 

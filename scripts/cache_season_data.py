@@ -11,13 +11,13 @@ from wowy.nba.errors import (
     PartialTeamSeasonError,
     TeamSeasonConsistencyError,
 )
-from wowy.nba.ingest.cache import DEFAULT_SOURCE_DATA_DIR
 from wowy.nba.ingest_logging import (
     DEFAULT_INGEST_FAILURE_LOG_PATH,
     append_ingest_failure_log,
 )
 from wowy.nba.seasons import canonicalize_season_string
 from wowy.nba.season_types import canonicalize_season_type
+from wowy.nba.source.cache import DEFAULT_SOURCE_DATA_DIR
 from wowy.nba.team_identity import (
     list_expected_team_abbreviations_for_season,
     team_is_active_for_season,

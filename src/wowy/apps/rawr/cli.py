@@ -5,7 +5,7 @@ from pathlib import Path
 
 from wowy.apps.rawr.service import prepare_and_run_rawr
 from wowy.data.player_metrics_db import DEFAULT_PLAYER_METRICS_DB_PATH
-from wowy.nba.ingest.cache import DEFAULT_SOURCE_DATA_DIR
+from wowy.nba.source.cache import DEFAULT_SOURCE_DATA_DIR
 
 
 def build_parser() -> argparse.ArgumentParser:

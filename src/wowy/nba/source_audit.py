@@ -8,7 +8,7 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Callable
 
-from wowy.nba.ingest.cache import DEFAULT_SOURCE_DATA_DIR
+from wowy.nba.source.cache import DEFAULT_SOURCE_DATA_DIR
 from wowy.nba.source.parsers import (
     dedupe_schedule_games,
     parse_box_score_payload,

@@ -7,7 +7,7 @@ from wowy.nba.normalize.normalize_game import (
     extract_opponent,
     normalize_source_game,
 )
-from wowy.nba.source_models import (
+from wowy.nba.source.models import (
     SourceBoxScore,
     SourceBoxScorePlayer,
     SourceBoxScoreTeam,

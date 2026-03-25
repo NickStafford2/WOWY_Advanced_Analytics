@@ -5,7 +5,7 @@ from pathlib import Path
 
 from wowy.data.player_metrics_db import DEFAULT_PLAYER_METRICS_DB_PATH
 from wowy.apps.wowy.service import prepare_and_run_wowy
-from wowy.nba.ingest.cache import DEFAULT_SOURCE_DATA_DIR
+from wowy.nba.source.cache import DEFAULT_SOURCE_DATA_DIR
 from wowy.nba.source.parsers import load_player_names_from_cache
 
 

@@ -16,7 +16,7 @@ from wowy.nba.errors import (
     PartialTeamSeasonError,
     TeamSeasonConsistencyError,
 )
-from wowy.nba.ingest.cache import (
+from wowy.nba.source.cache import (
     DEFAULT_SOURCE_DATA_DIR,
     _box_score_payload_is_empty,
     _league_games_payload_is_valid,

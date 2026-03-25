@@ -4,8 +4,8 @@ import argparse
 from pathlib import Path
 
 from wowy.data.player_metrics_db import DEFAULT_PLAYER_METRICS_DB_PATH
-from wowy.nba.ingest.cache import DEFAULT_SOURCE_DATA_DIR
 from wowy.nba.season_types import canonicalize_season_type
+from wowy.nba.source.cache import DEFAULT_SOURCE_DATA_DIR
 from wowy.web.app import create_app
 from wowy.web.service import (
     DEFAULT_RAWR_RIDGE_ALPHA,
