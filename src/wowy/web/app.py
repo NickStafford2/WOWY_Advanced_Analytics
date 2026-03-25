@@ -10,7 +10,6 @@ from wowy.apps.wowy.service import validate_filters as validate_wowy_filters
 from wowy.data.player_metrics_db import DEFAULT_PLAYER_METRICS_DB_PATH
 from wowy.nba.season_types import canonicalize_season_type
 from wowy.nba.seasons import canonicalize_season_string
-from wowy.nba.source.cache import DEFAULT_SOURCE_DATA_DIR
 from wowy.web.metric_queries import (
     build_cached_metric_export_table_rows,
     build_cached_metric_leaderboard_payload,
@@ -74,7 +73,6 @@ def _parse_positive_int_list(raw_values: list[str]) -> list[int] | None:
 
 def create_app(
     *,
-    source_data_dir: Path = DEFAULT_SOURCE_DATA_DIR,
     player_metrics_db_path: Path = DEFAULT_PLAYER_METRICS_DB_PATH,
 ):
     from flask import Flask, Response, jsonify, request
@@ -157,7 +155,6 @@ def create_app(
             payload = _build_metric_custom_query_payload(
                 request,
                 metric=metric,
-                source_data_dir=source_data_dir,
                 player_metrics_db_path=player_metrics_db_path,
             )
         except ValueError as exc:
@@ -171,7 +168,6 @@ def create_app(
             csv_content, filename = _build_metric_custom_query_csv(
                 request,
                 metric=metric,
-                source_data_dir=source_data_dir,
                 player_metrics_db_path=player_metrics_db_path,
             )
         except ValueError as exc:
@@ -283,7 +279,6 @@ def _build_metric_custom_query_payload(
     request,
     *,
     metric: str,
-    source_data_dir: Path,
     player_metrics_db_path: Path,
 ) -> dict[str, Any]:
     parsed_request = _parse_metric_request(
@@ -296,7 +291,6 @@ def _build_metric_custom_query_payload(
         teams=None,
         team_ids=parsed_request.team_ids,
         top_n=parsed_request.filters["top_n"],
-        source_data_dir=source_data_dir,
         player_metrics_db_path=player_metrics_db_path,
         **_build_metric_query_kwargs(metric=metric, parsed=parsed_request),
     )
@@ -331,7 +325,6 @@ def _build_metric_custom_query_csv(
     request,
     *,
     metric: str,
-    source_data_dir: Path,
     player_metrics_db_path: Path,
 ) -> tuple[str, str]:
     parsed_request = _parse_metric_request(
@@ -343,7 +336,6 @@ def _build_metric_custom_query_csv(
         metric,
         teams=None,
         team_ids=parsed_request.team_ids,
-        source_data_dir=source_data_dir,
         player_metrics_db_path=player_metrics_db_path,
         **_build_metric_query_kwargs(metric=metric, parsed=parsed_request),
     )

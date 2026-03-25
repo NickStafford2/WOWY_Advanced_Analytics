@@ -154,7 +154,8 @@ Recent refactors have improved dependency direction without broad reorganization
 
 ## Current Status
 
-The codebase is not far from the target, but a few architectural problems still matter:
+The codebase is not far from the target, and the Step 2 web-layer cleanup is now
+effectively complete:
 
 - the NBA source parsing, normalization, and team identity code is in good shape
 - `shared` is small and mostly well scoped
@@ -174,58 +175,52 @@ The codebase is not far from the target, but a few architectural problems still 
 - `web/metric_store.py` now delegates catalog and full-span row shaping to private helpers; refresh/update flow is a bit more orchestration-focused
 - `web/metric_store.py` now also delegates per-scope refresh/update flow to private helpers; `refresh_metric_store(...)` is closer to top-level orchestration
 - `web/metric_store.py` now also delegates cache preflight, warning collection, and shared refresh inputs to private helpers
+- web request and refresh paths no longer carry an unused `source_data_dir` dependency; the current web metric flow is explicitly DB-backed
 
 The main remaining issues are:
 
-1. web modules are too orchestration-heavy
-   - especially `web/app.py` and `web/metric_queries.py`
-   - `web/app.py` is smaller, but some cached/custom helper pairs still mirror each other closely
-   - `web/metric_store.py` is narrower, but the module still coordinates multiple concerns even though more of the mechanics now live behind private helpers
-2. a few large modules have become mixed-responsibility files
+1. package naming still lags actual ownership
+   - `apps` is now mostly serving as the metrics layer in practice
+   - the rename to `metrics` should now be lower-risk than before
+2. web still reaches into several metric-internal modules directly
+   - this is not a blocker for the rename
+   - after the rename, consider tightening metric package entrypoints so web imports fewer low-level helpers
+3. a few large modules have become mixed-responsibility files
    - examples: `data/player_metrics_db.py`, `data/db_validation.py`, `apps/rawr/data.py`
 
 ## Next Refactors
 
 Do these in order. Prefer medium PRs.
 
-### 1. Finish cleanup inside metric packages
+### 1. Rename `apps` to `metrics`
 
-WOWY:
-
-- keep math in `analysis.py`
-- keep canonical -> WOWY conversion in `derive.py` or `inputs.py`
-- keep metric-native derived records in `records.py`
-- keep CLI/report wiring in `service.py`
-- `data` now owns WOWY persistence-row mapping
-
-RAWR:
-
-- continue shrinking `apps/rawr/data.py`
-- `apps/rawr/inputs.py` now owns observation building and input/result shaping
-- `apps/rawr/records.py` now owns metric-native player-season record construction
-- `data` now owns RAWR persistence-row mapping
-- keep CLI/report orchestration in `service.py`
-
-### 2. Shrink the web layer
-
-Target:
-
-- `web/app.py` handles routing and request parsing
-- `web/metric_queries.py` continues splitting toward smaller query/payload helpers
-- `web/metric_store.py` only orchestrates cached-store refreshes
-
-Do not let the web layer become the place where all cross-layer glue accumulates.
-
-### 4. Rename `apps` to `metrics`
-
-Do this after the boundary cleanup, not before.
+The boundary cleanup is now good enough to do this directly.
 
 Target:
 
 - `src/wowy/apps/wowy` -> `src/wowy/metrics/wowy`
 - `src/wowy/apps/rawr` -> `src/wowy/metrics/rawr`
 
-Rename only after package ownership is clearer.
+Safest order:
+
+- move the packages
+- rewrite imports everywhere in one pass
+- run focused checks on metrics, web, and CLI entrypoints
+
+### 2. Tighten metric package entrypoints
+
+After the rename:
+
+- reduce direct web imports from metric internals where convenient
+- prefer a smaller set of stable metric-owned entrypoints for validation, custom-query building, and cached-row construction
+
+### 3. Continue shrinking mixed-responsibility files
+
+Examples:
+
+- `data/player_metrics_db.py`
+- `data/db_validation.py`
+- `apps/rawr/data.py`
 
 ## Working Rules For Future Refactors
 

@@ -5,7 +5,6 @@ from pathlib import Path
 
 from wowy.data.player_metrics_db import DEFAULT_PLAYER_METRICS_DB_PATH
 from wowy.nba.season_types import canonicalize_season_type
-from wowy.nba.source.cache import DEFAULT_SOURCE_DATA_DIR
 from wowy.web.app import create_app
 from wowy.web.metric_store import (
     DEFAULT_RAWR_RIDGE_ALPHA,
@@ -62,12 +61,6 @@ def build_parser() -> argparse.ArgumentParser:
         help="Ridge alpha used when building cached RAWR web rows.",
     )
     parser.add_argument(
-        "--source-data-dir",
-        type=Path,
-        default=DEFAULT_SOURCE_DATA_DIR,
-        help=argparse.SUPPRESS,
-    )
-    parser.add_argument(
         "--player-metrics-db-path",
         type=Path,
         default=DEFAULT_PLAYER_METRICS_DB_PATH,
@@ -92,16 +85,12 @@ def main(argv: list[str] | None = None) -> int:
                 metric,
                 season_type=season_type,
                 db_path=args.player_metrics_db_path,
-                source_data_dir=args.source_data_dir,
                 rawr_ridge_alpha=args.rawr_ridge_alpha,
                 include_team_scopes=False,
             )
             if not result.ok:
                 print(result.failure_message)
                 return 1
-    app = create_app(
-        source_data_dir=args.source_data_dir,
-        player_metrics_db_path=args.player_metrics_db_path,
-    )
+    app = create_app(player_metrics_db_path=args.player_metrics_db_path)
     app.run(host=args.host, port=args.port, debug=args.debug)
     return 0

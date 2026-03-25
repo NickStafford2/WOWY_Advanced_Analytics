@@ -178,13 +178,11 @@ def build_rawr_metric_rows(
     scope_key: str,
     team_filter: str,
     season_type: str,
-    source_data_dir: Path,
     db_path: Path,
     teams: list[str] | None,
     team_ids: list[int] | None,
     rawr_ridge_alpha: float,
 ) -> list[PlayerSeasonMetricRow]:
-    del source_data_dir
     from wowy.apps.rawr.records import prepare_rawr_player_season_records
 
     records = prepare_rawr_player_season_records(

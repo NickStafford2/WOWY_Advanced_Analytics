@@ -40,7 +40,6 @@ def _refresh_wowy_store(tmp_path: Path, team_seasons: list[TeamSeasonSeed]) -> P
         "wowy",
         season_type="Regular Season",
         db_path=player_metrics_db_path,
-        source_data_dir=tmp_path / "source",
     )
     return player_metrics_db_path
 
@@ -52,7 +51,6 @@ def _refresh_rawr_store(tmp_path: Path, team_seasons: list[TeamSeasonSeed]) -> P
         "rawr",
         season_type="Regular Season",
         db_path=player_metrics_db_path,
-        source_data_dir=tmp_path / "source",
     )
     return player_metrics_db_path
 
@@ -243,7 +241,6 @@ def test_refresh_metric_store_skips_incomplete_rawr_seasons_without_scraping(
         "rawr",
         season_type="Regular Season",
         db_path=player_metrics_db_path,
-        source_data_dir=tmp_path / "source",
     )
     scope_key, _team_filter = build_scope_key(
         team_ids=None,
@@ -281,7 +278,6 @@ def test_refresh_metric_store_warns_about_incomplete_rawr_seasons_even_when_cach
         "rawr",
         season_type="Regular Season",
         db_path=player_metrics_db_path,
-        source_data_dir=tmp_path / "source",
     )
     first_run = capsys.readouterr()
 
@@ -289,7 +285,6 @@ def test_refresh_metric_store_warns_about_incomplete_rawr_seasons_even_when_cach
         "rawr",
         season_type="Regular Season",
         db_path=player_metrics_db_path,
-        source_data_dir=tmp_path / "source",
     )
     second_run = capsys.readouterr()
 
@@ -307,7 +302,6 @@ def test_refresh_metric_store_can_skip_team_scopes(
         WOWY_METRIC,
         season_type="Regular Season",
         db_path=player_metrics_db_path,
-        source_data_dir=tmp_path / "source",
         include_team_scopes=False,
     )
 
@@ -344,7 +338,6 @@ def test_refresh_metric_store_builds_wowy_shrunk_rows(
         WOWY_SHRUNK_METRIC,
         season_type="Regular Season",
         db_path=player_metrics_db_path,
-        source_data_dir=tmp_path / "source",
     )
     scope_key, _team_filter = build_scope_key(
         team_ids=None,
@@ -380,7 +373,6 @@ def test_refresh_cli_refreshes_all_metrics_by_default(monkeypatch, tmp_path: Pat
         *,
         season_type: str,
         db_path: Path,
-        source_data_dir: Path,
         rawr_ridge_alpha: float,
         include_team_scopes: bool,
         progress,
@@ -424,7 +416,6 @@ def test_refresh_cli_fails_for_empty_all_teams_rawr_store(
         *,
         season_type: str,
         db_path: Path,
-        source_data_dir: Path,
         rawr_ridge_alpha: float,
         include_team_scopes: bool,
         progress,
@@ -481,11 +472,9 @@ def test_wowy_shrunk_options_endpoint_returns_wowy_style_filters(
         WOWY_SHRUNK_METRIC,
         season_type="Regular Season",
         db_path=player_metrics_db_path,
-        source_data_dir=tmp_path / "source",
     )
 
     app = create_app(
-        source_data_dir=tmp_path / "source",
         player_metrics_db_path=player_metrics_db_path,
     )
     client = app.test_client()
@@ -531,11 +520,9 @@ def test_options_endpoint_canonicalizes_lowercase_season_type(
         WOWY_METRIC,
         season_type="regular season",
         db_path=player_metrics_db_path,
-        source_data_dir=tmp_path / "source",
     )
 
     app = create_app(
-        source_data_dir=tmp_path / "source",
         player_metrics_db_path=player_metrics_db_path,
     )
     client = app.test_client()
@@ -578,7 +565,6 @@ def test_rawr_options_endpoint_returns_metric_specific_filters(
     player_metrics_db_path = _refresh_rawr_store(tmp_path, team_seasons)
 
     app = create_app(
-        source_data_dir=tmp_path / "source",
         player_metrics_db_path=player_metrics_db_path,
     )
     client = app.test_client()
@@ -621,7 +607,6 @@ def test_rawr_player_seasons_endpoint_accepts_metric_specific_filters(
     player_metrics_db_path = _refresh_rawr_store(tmp_path, team_seasons)
 
     app = create_app(
-        source_data_dir=tmp_path / "source",
         player_metrics_db_path=player_metrics_db_path,
     )
     client = app.test_client()
@@ -669,7 +654,6 @@ def test_rawr_player_seasons_endpoint_rejects_invalid_filters(
     tmp_path: Path,
 ):
     app = create_app(
-        source_data_dir=tmp_path / "source",
         player_metrics_db_path=tmp_path / "app" / "player_metrics.sqlite3",
     )
     client = app.test_client()
@@ -691,7 +675,6 @@ def test_rawr_cached_leaderboard_endpoint_returns_cached_series(
     player_metrics_db_path = _refresh_rawr_store(tmp_path, team_seasons)
 
     app = create_app(
-        source_data_dir=tmp_path / "source",
         player_metrics_db_path=player_metrics_db_path,
     )
     client = app.test_client()
@@ -732,7 +715,6 @@ def test_rawr_custom_query_endpoint_recalculates_requested_span(
     )
 
     app = create_app(
-        source_data_dir=tmp_path / "source",
         player_metrics_db_path=tmp_path / "app" / "player_metrics.sqlite3",
     )
     client = app.test_client()
@@ -783,7 +765,6 @@ def test_rawr_custom_query_endpoint_recalculates_requested_span(
 
 def test_rawr_custom_query_endpoint_rejects_invalid_filters(tmp_path: Path):
     app = create_app(
-        source_data_dir=tmp_path / "source",
         player_metrics_db_path=tmp_path / "app" / "player_metrics.sqlite3",
     )
     client = app.test_client()
@@ -824,7 +805,6 @@ def test_rawr_custom_query_skips_seasons_without_qualifying_players(
     )
 
     app = create_app(
-        source_data_dir=tmp_path / "source",
         player_metrics_db_path=tmp_path / "app" / "player_metrics.sqlite3",
     )
     client = app.test_client()
@@ -863,7 +843,6 @@ def test_wowy_options_endpoint_returns_cached_teams_and_seasons(
     player_metrics_db_path = _refresh_wowy_store(tmp_path, _wowy_options_seed())
 
     app = create_app(
-        source_data_dir=tmp_path / "source",
         player_metrics_db_path=player_metrics_db_path,
     )
     client = app.test_client()
@@ -903,7 +882,6 @@ def test_wowy_player_seasons_endpoint_returns_rows_from_cache(
     player_metrics_db_path = _refresh_wowy_store(tmp_path, _wowy_single_season_seed())
 
     app = create_app(
-        source_data_dir=tmp_path / "source",
         player_metrics_db_path=player_metrics_db_path,
     )
     client = app.test_client()
@@ -972,7 +950,6 @@ def test_wowy_player_seasons_endpoint_returns_bad_request_for_invalid_filters(
     tmp_path: Path,
 ):
     app = create_app(
-        source_data_dir=tmp_path / "source",
         player_metrics_db_path=tmp_path / "app" / "player_metrics.sqlite3",
     )
     client = app.test_client()
@@ -988,7 +965,6 @@ def test_wowy_player_seasons_endpoint_returns_bad_request_for_invalid_filters(
 
 def test_wowy_options_endpoint_requires_prebuilt_store(tmp_path: Path):
     app = create_app(
-        source_data_dir=tmp_path / "source",
         player_metrics_db_path=tmp_path / "app" / "player_metrics.sqlite3",
     )
     client = app.test_client()
@@ -1007,7 +983,6 @@ def test_wowy_span_chart_endpoint_returns_series_for_selected_span(
     player_metrics_db_path = _refresh_wowy_store(tmp_path, _wowy_two_season_seed())
 
     app = create_app(
-        source_data_dir=tmp_path / "source",
         player_metrics_db_path=player_metrics_db_path,
     )
     client = app.test_client()
@@ -1064,7 +1039,6 @@ def test_wowy_cached_leaderboard_endpoint_returns_server_ranked_rows(
     player_metrics_db_path = _refresh_wowy_store(tmp_path, _wowy_two_season_seed())
 
     app = create_app(
-        source_data_dir=tmp_path / "source",
         player_metrics_db_path=player_metrics_db_path,
     )
     client = app.test_client()
@@ -1105,7 +1079,6 @@ def test_wowy_cached_leaderboard_csv_exports_all_players_ignoring_top_n(
     player_metrics_db_path = _refresh_wowy_store(tmp_path, _wowy_two_season_seed())
 
     app = create_app(
-        source_data_dir=tmp_path / "source",
         player_metrics_db_path=player_metrics_db_path,
     )
     client = app.test_client()
@@ -1153,7 +1126,6 @@ def test_wowy_custom_query_endpoint_recalculates_requested_span(
     )
 
     app = create_app(
-        source_data_dir=tmp_path / "source",
         player_metrics_db_path=tmp_path / "app" / "player_metrics.sqlite3",
     )
     client = app.test_client()
@@ -1225,7 +1197,6 @@ def test_rawr_custom_query_csv_exports_all_players_ignoring_top_n(
     )
 
     app = create_app(
-        source_data_dir=tmp_path / "source",
         player_metrics_db_path=tmp_path / "app" / "player_metrics.sqlite3",
     )
     client = app.test_client()
@@ -1342,7 +1313,6 @@ def test_wowy_options_endpoint_returns_team_id_team_options_for_frontend(
     )
 
     app = create_app(
-        source_data_dir=tmp_path / "source",
         player_metrics_db_path=player_metrics_db_path,
     )
     client = app.test_client()
@@ -1365,7 +1335,6 @@ def test_wowy_custom_query_endpoint_accepts_team_id_for_historical_multi_season_
     )
 
     app = create_app(
-        source_data_dir=tmp_path / "source",
         player_metrics_db_path=tmp_path / "app" / "player_metrics.sqlite3",
     )
     client = app.test_client()

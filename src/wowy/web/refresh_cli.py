@@ -4,7 +4,6 @@ import argparse
 from pathlib import Path
 
 from wowy.data.player_metrics_db import DEFAULT_PLAYER_METRICS_DB_PATH
-from wowy.nba.source.cache import DEFAULT_SOURCE_DATA_DIR
 from wowy.progress import TerminalProgressBar, print_status_box
 from wowy.web.metric_store import (
     DEFAULT_RAWR_RIDGE_ALPHA,
@@ -40,12 +39,6 @@ def build_parser() -> argparse.ArgumentParser:
         help="Ridge alpha used when building cached RAWR web rows.",
     )
     parser.add_argument(
-        "--source-data-dir",
-        type=Path,
-        default=DEFAULT_SOURCE_DATA_DIR,
-        help=argparse.SUPPRESS,
-    )
-    parser.add_argument(
         "--player-metrics-db-path",
         type=Path,
         default=DEFAULT_PLAYER_METRICS_DB_PATH,
@@ -74,7 +67,6 @@ def main(argv: list[str] | None = None) -> int:
             metric,
             season_type=args.season_type,
             db_path=args.player_metrics_db_path,
-            source_data_dir=args.source_data_dir,
             rawr_ridge_alpha=args.rawr_ridge_alpha,
             include_team_scopes=False,
             progress=lambda current, total, detail, progress_bar=progress_bar: _update_progress(

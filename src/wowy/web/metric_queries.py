@@ -155,14 +155,12 @@ def build_custom_wowy_leaderboard_payload(
     seasons: list[str] | None,
     season_type: str,
     top_n: int,
-    source_data_dir: Path,
     player_metrics_db_path: Path = DEFAULT_PLAYER_METRICS_DB_PATH,
     min_games_with: int,
     min_games_without: int,
     min_average_minutes: float | None,
     min_total_minutes: float | None,
 ) -> dict[str, Any]:
-    del source_data_dir
     records = prepare_wowy_player_season_records(
         teams=teams,
         team_ids=team_ids,
@@ -191,14 +189,12 @@ def build_custom_wowy_shrunk_leaderboard_payload(
     seasons: list[str] | None,
     season_type: str,
     top_n: int,
-    source_data_dir: Path,
     player_metrics_db_path: Path = DEFAULT_PLAYER_METRICS_DB_PATH,
     min_games_with: int,
     min_games_without: int,
     min_average_minutes: float | None,
     min_total_minutes: float | None,
 ) -> dict[str, Any]:
-    del source_data_dir
     records = prepare_wowy_player_season_records(
         teams=teams,
         team_ids=team_ids,
@@ -252,14 +248,12 @@ def build_custom_rawr_leaderboard_payload(
     seasons: list[str] | None,
     season_type: str,
     top_n: int,
-    source_data_dir: Path,
     player_metrics_db_path: Path = DEFAULT_PLAYER_METRICS_DB_PATH,
     min_games: int,
     ridge_alpha: float,
     min_average_minutes: float | None,
     min_total_minutes: float | None,
 ) -> dict[str, Any]:
-    del source_data_dir
     records = prepare_rawr_player_season_records(
         teams=teams,
         team_ids=team_ids,
@@ -292,7 +286,6 @@ def build_custom_metric_leaderboard_payload(
     seasons: list[str] | None,
     season_type: str,
     top_n: int,
-    source_data_dir: Path,
     player_metrics_db_path: Path = DEFAULT_PLAYER_METRICS_DB_PATH,
     min_games_with: int | None = None,
     min_games_without: int | None = None,
@@ -310,7 +303,6 @@ def build_custom_metric_leaderboard_payload(
             seasons=seasons,
             season_type=season_type,
             top_n=top_n,
-            source_data_dir=source_data_dir,
             player_metrics_db_path=player_metrics_db_path,
             min_games_with=int(min_games_with or 0),
             min_games_without=min_games_without,
@@ -327,7 +319,6 @@ def build_custom_metric_leaderboard_payload(
             seasons=seasons,
             season_type=season_type,
             top_n=top_n,
-            source_data_dir=source_data_dir,
             player_metrics_db_path=player_metrics_db_path,
             min_games_with=int(min_games_with or 0),
             min_games_without=min_games_without,
@@ -344,7 +335,6 @@ def build_custom_metric_leaderboard_payload(
             seasons=seasons,
             season_type=season_type,
             top_n=top_n,
-            source_data_dir=source_data_dir,
             player_metrics_db_path=player_metrics_db_path,
             min_games=int(min_games or 0),
             ridge_alpha=ridge_alpha,
@@ -362,7 +352,6 @@ def build_custom_metric_export_table_rows(
     team_ids: list[int] | None,
     seasons: list[str] | None,
     season_type: str,
-    source_data_dir: Path,
     player_metrics_db_path: Path = DEFAULT_PLAYER_METRICS_DB_PATH,
     min_games_with: int | None = None,
     min_games_without: int | None = None,
@@ -371,7 +360,6 @@ def build_custom_metric_export_table_rows(
     min_average_minutes: float | None = None,
     min_total_minutes: float | None = None,
 ) -> tuple[str, list[dict[str, Any]]]:
-    del source_data_dir
     if metric == WOWY_METRIC:
         records = prepare_wowy_player_season_records(
             teams=teams,

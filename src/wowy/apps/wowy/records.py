@@ -244,13 +244,12 @@ def build_wowy_metric_rows(
     scope_key: str,
     team_filter: str,
     season_type: str,
-    source_data_dir: Path,
     db_path: Path,
     teams: list[str] | None,
     team_ids: list[int] | None,
     rawr_ridge_alpha: float,
 ) -> list[PlayerSeasonMetricRow]:
-    del source_data_dir, rawr_ridge_alpha
+    del rawr_ridge_alpha
     records = prepare_wowy_player_season_records(
         teams=teams,
         team_ids=team_ids,
@@ -277,13 +276,12 @@ def build_wowy_shrunk_metric_rows(
     scope_key: str,
     team_filter: str,
     season_type: str,
-    source_data_dir: Path,
     db_path: Path,
     teams: list[str] | None,
     team_ids: list[int] | None,
     rawr_ridge_alpha: float,
 ) -> list[PlayerSeasonMetricRow]:
-    del source_data_dir, rawr_ridge_alpha
+    del rawr_ridge_alpha
     records = prepare_wowy_player_season_records(
         teams=teams,
         team_ids=team_ids,
