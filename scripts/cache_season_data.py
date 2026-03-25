@@ -9,7 +9,6 @@ from wowy.nba.errors import (
     FetchError,
     GameNormalizationFailure,
     PartialTeamSeasonError,
-    TeamSeasonConsistencyError,
 )
 from wowy.nba.ingest_logging import (
     DEFAULT_INGEST_FAILURE_LOG_PATH,
@@ -47,7 +46,10 @@ def build_parser() -> argparse.ArgumentParser:
         "--start-year",
         type=int,
         default=DEFAULT_START_YEAR,
-        help=f"First season start year to cache when using --all-seasons (default: {DEFAULT_START_YEAR})",
+        help=(
+            "First season start year to cache when using --all-seasons "
+            f"(default: {DEFAULT_START_YEAR})"
+        ),
     )
     parser.add_argument(
         "--first-year",
@@ -249,8 +251,12 @@ def render_team_validation_failed_line(
     team_total: int,
     team: str,
     season: str,
+    reason: str,
 ) -> None:
-    line = f"  [{team_index:>2}/{team_total}] {team} {season} failed validation"
+    line = (
+        f"  [{team_index:>2}/{team_total}] {team} {season} "
+        f"failed validation={reason}"
+    )
     write_status_line(line)
 
 
@@ -346,34 +352,6 @@ def main(argv: list[str] | None = None) -> int:
                 sys.stderr.write(f"Fetch failed for {team_code} {season}: {exc}\n")
                 sys.stderr.flush()
                 continue
-            except TeamSeasonConsistencyError as exc:
-                _record_failure(
-                    failure_counts,
-                    failed_scopes,
-                    failure_kind="consistency_error",
-                    scope=team_season_scope,
-                )
-                append_ingest_failure_log(
-                    team=team_code,
-                    season=season,
-                    season_type=season_type,
-                    failure_kind="consistency_error",
-                    error=exc,
-                    log_path=args.failure_log_path,
-                )
-                render_team_failed_line(
-                    team_index=team_index,
-                    team_total=team_total,
-                    team=team_code,
-                    season=season,
-                    reason=exc.reason,
-                )
-                sys.stdout.write("\n")
-                sys.stderr.write(
-                    f"Inconsistent cache for {team_code} {season}: {exc.reason}\n"
-                )
-                sys.stderr.flush()
-                continue
             except PartialTeamSeasonError as exc:
                 _record_failure(
                     failure_counts,
@@ -406,6 +384,7 @@ def main(argv: list[str] | None = None) -> int:
                 sys.stderr.flush()
                 continue
             except ValueError as exc:
+                reason = str(exc)
                 _record_failure(
                     failure_counts,
                     failed_scopes,
@@ -425,9 +404,12 @@ def main(argv: list[str] | None = None) -> int:
                     team_total=team_total,
                     team=team_code,
                     season=season,
+                    reason=reason,
                 )
                 sys.stdout.write("\n")
-                sys.stderr.write(f"Validation failed for {team_code} {season}: {exc}\n")
+                sys.stderr.write(
+                    f"Validation failed for {team_code} {season}: {reason}\n"
+                )
                 sys.stderr.flush()
                 continue
             render_team_complete_line(team_index, team_total, summary)
