@@ -2,10 +2,10 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
+from wowy.nba import team_history as _team_history
 from wowy.nba.team_history import (
     TeamHistoryEntry,
     canonical_team_lookup_abbreviation,
-    list_expected_team_abbreviations_for_season,
     list_team_history_entries_for_abbreviation,
     normalize_team_abbreviation,
     resolve_team_history_entry,
@@ -13,7 +13,6 @@ from wowy.nba.team_history import (
     resolve_team_history_entry_from_id,
     resolve_team_history_entry_from_id_for_date,
     resolve_team_id_for_lookup,
-    team_is_active_for_season,
 )
 
 
@@ -23,6 +22,10 @@ class TeamIdentity:
     abbreviation: str
     franchise_id: str
     lookup_abbreviation: str
+
+
+list_expected_team_abbreviations_for_season = _team_history.list_expected_team_abbreviations_for_season
+team_is_active_for_season = _team_history.team_is_active_for_season
 
 
 def _identity_from_entry(entry: TeamHistoryEntry) -> TeamIdentity:

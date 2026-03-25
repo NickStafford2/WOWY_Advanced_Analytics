@@ -12,7 +12,6 @@ from tests.support import (
 )
 from wowy.data.game_cache import (
     build_normalized_cache_fingerprint,
-    replace_team_season_normalized_rows,
 )
 from wowy.data.player_metrics_db import (
     MetricFullSpanPointRow,
@@ -24,18 +23,16 @@ from wowy.data.player_metrics_db import (
     replace_metric_scope_store,
 )
 from wowy.web.app import create_app
-from wowy.web.refresh_cli import main as refresh_cli_main
-from wowy.web.service import (
+from wowy.web.metric_store import (
     RAWR_METRIC,
     RefreshMetricStoreResult,
     RefreshScopeResult,
-    WOWY_SHRUNK_METRIC,
     WOWY_METRIC,
+    WOWY_SHRUNK_METRIC,
     build_scope_key,
     refresh_metric_store,
 )
-
-
+from wowy.web.refresh_cli import main as refresh_cli_main
 def _refresh_wowy_store(tmp_path: Path, team_seasons: list[TeamSeasonSeed]) -> Path:
     player_metrics_db_path = tmp_path / "app" / "player_metrics.sqlite3"
     seed_db_from_team_seasons(player_metrics_db_path, team_seasons)

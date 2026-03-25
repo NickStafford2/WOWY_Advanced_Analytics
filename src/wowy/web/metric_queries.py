@@ -3,12 +3,14 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Any
 
+from wowy.apps.rawr.data import prepare_rawr_player_season_records
 from wowy.apps.rawr.models import RawrPlayerSeasonRecord
-from wowy.apps.rawr.service import prepare_rawr_player_season_records
 from wowy.apps.wowy.analysis import compute_wowy_shrinkage_score
-from wowy.apps.wowy.data import DEFAULT_WOWY_SHRINKAGE_PRIOR_GAMES
+from wowy.apps.wowy.data import (
+    DEFAULT_WOWY_SHRINKAGE_PRIOR_GAMES,
+    prepare_wowy_player_season_records,
+)
 from wowy.apps.wowy.models import WowyPlayerSeasonRecord
-from wowy.apps.wowy.service import prepare_wowy_player_season_records
 from wowy.data.game_cache import build_normalized_cache_fingerprint, list_cache_load_rows
 from wowy.data.player_metrics_db import (
     DEFAULT_PLAYER_METRICS_DB_PATH,
@@ -66,7 +68,7 @@ def build_metric_player_seasons_payload(
     return {
         "metric": metric,
         "metric_label": catalog_row.metric_label,
-        "rows": [serialize_metric_player_season_row(row) for row in rows],
+        "rows": [_serialize_metric_player_season_row(row) for row in rows],
     }
 
 
@@ -97,7 +99,7 @@ def build_cached_metric_leaderboard_payload(
         min_sample_size=min_sample_size,
         min_secondary_sample_size=min_secondary_sample_size,
     )
-    leaderboard = build_leaderboard_payload_from_rows(
+    leaderboard = _build_leaderboard_payload_from_rows(
         metric=metric,
         metric_label=catalog_row.metric_label,
         rows=rows,
@@ -136,8 +138,8 @@ def build_cached_metric_export_table_rows(
         min_sample_size=min_sample_size,
         min_secondary_sample_size=min_secondary_sample_size,
     )
-    table_rows = build_ranked_table_rows(
-        [serialize_metric_player_season_row(row) for row in rows],
+    table_rows = _build_ranked_table_rows(
+        [_serialize_metric_player_season_row(row) for row in rows],
         seasons=seasons or catalog_row.available_seasons,
         top_n=None,
     )
@@ -170,7 +172,7 @@ def build_custom_wowy_leaderboard_payload(
         min_average_minutes=min_average_minutes,
         min_total_minutes=min_total_minutes,
     )
-    return build_leaderboard_payload_from_records(
+    return _build_leaderboard_payload_from_records(
         metric=WOWY_METRIC,
         metric_label="WOWY",
         records=records,
@@ -230,14 +232,14 @@ def build_custom_wowy_shrunk_leaderboard_payload(
         for record in records
     ]
     seasons_in_scope = sorted({record.season for record in records})
-    table_rows = build_ranked_table_rows(rows, seasons=seasons_in_scope, top_n=top_n)
+    table_rows = _build_ranked_table_rows(rows, seasons=seasons_in_scope, top_n=top_n)
     return {
         "mode": "custom",
         "metric": WOWY_SHRUNK_METRIC,
         "metric_label": "WOWY Shrunk",
-        "span": build_span_payload(seasons_in_scope, top_n=top_n),
+        "span": _build_span_payload(seasons_in_scope, top_n=top_n),
         "table_rows": table_rows,
-        "series": build_series_from_table_rows(table_rows, seasons=seasons_in_scope),
+        "series": _build_series_from_table_rows(table_rows, seasons=seasons_in_scope),
     }
 
 
@@ -270,7 +272,7 @@ def build_custom_rawr_leaderboard_payload(
         min_average_minutes=min_average_minutes,
         min_total_minutes=min_total_minutes,
     )
-    return build_leaderboard_payload_from_rawr_records(
+    return _build_leaderboard_payload_from_rawr_records(
         metric=RAWR_METRIC,
         metric_label="RAWR",
         records=records,
@@ -327,7 +329,7 @@ def build_custom_metric_export_table_rows(
             for record in records
         ]
         seasons_in_scope = sorted({record.season for record in records})
-        return "WOWY", build_ranked_table_rows(rows, seasons=seasons_in_scope, top_n=None)
+        return "WOWY", _build_ranked_table_rows(rows, seasons=seasons_in_scope, top_n=None)
 
     if metric == WOWY_SHRUNK_METRIC:
         records = prepare_wowy_player_season_records(
@@ -367,7 +369,7 @@ def build_custom_metric_export_table_rows(
         seasons_in_scope = sorted({record.season for record in records})
         return (
             "WOWY Shrunk",
-            build_ranked_table_rows(rows, seasons=seasons_in_scope, top_n=None),
+            _build_ranked_table_rows(rows, seasons=seasons_in_scope, top_n=None),
         )
 
     if metric == RAWR_METRIC:
@@ -400,7 +402,7 @@ def build_custom_metric_export_table_rows(
             for record in records
         ]
         seasons_in_scope = sorted({record.season for record in records})
-        return "RAWR", build_ranked_table_rows(rows, seasons=seasons_in_scope, top_n=None)
+        return "RAWR", _build_ranked_table_rows(rows, seasons=seasons_in_scope, top_n=None)
 
     raise ValueError(f"Unknown metric: {metric}")
 
@@ -524,7 +526,7 @@ def build_metric_span_chart_payload(
     }
 
 
-def serialize_metric_player_season_row(row: PlayerSeasonMetricRow) -> dict[str, Any]:
+def _serialize_metric_player_season_row(row: PlayerSeasonMetricRow) -> dict[str, Any]:
     payload = {
         "season": row.season,
         "player_id": row.player_id,
@@ -539,7 +541,7 @@ def serialize_metric_player_season_row(row: PlayerSeasonMetricRow) -> dict[str, 
     return payload
 
 
-def build_leaderboard_payload_from_rows(
+def _build_leaderboard_payload_from_rows(
     *,
     metric: str,
     metric_label: str,
@@ -548,8 +550,8 @@ def build_leaderboard_payload_from_rows(
     top_n: int,
     mode: str,
 ) -> dict[str, Any]:
-    table_rows = build_ranked_table_rows(
-        [serialize_metric_player_season_row(row) for row in rows],
+    table_rows = _build_ranked_table_rows(
+        [_serialize_metric_player_season_row(row) for row in rows],
         seasons=seasons,
         top_n=top_n,
     )
@@ -557,13 +559,13 @@ def build_leaderboard_payload_from_rows(
         "mode": mode,
         "metric": metric,
         "metric_label": metric_label,
-        "span": build_span_payload(seasons, top_n=top_n),
+        "span": _build_span_payload(seasons, top_n=top_n),
         "table_rows": table_rows,
-        "series": build_series_from_table_rows(table_rows, seasons=seasons),
+        "series": _build_series_from_table_rows(table_rows, seasons=seasons),
     }
 
 
-def build_leaderboard_payload_from_records(
+def _build_leaderboard_payload_from_records(
     *,
     metric: str,
     metric_label: str,
@@ -589,18 +591,18 @@ def build_leaderboard_payload_from_records(
         }
         for record in records
     ]
-    table_rows = build_ranked_table_rows(rows, seasons=seasons, top_n=top_n)
+    table_rows = _build_ranked_table_rows(rows, seasons=seasons, top_n=top_n)
     return {
         "mode": mode,
         "metric": metric,
         "metric_label": metric_label,
-        "span": build_span_payload(seasons, top_n=top_n),
+        "span": _build_span_payload(seasons, top_n=top_n),
         "table_rows": table_rows,
-        "series": build_series_from_table_rows(table_rows, seasons=seasons),
+        "series": _build_series_from_table_rows(table_rows, seasons=seasons),
     }
 
 
-def build_leaderboard_payload_from_rawr_records(
+def _build_leaderboard_payload_from_rawr_records(
     *,
     metric: str,
     metric_label: str,
@@ -623,18 +625,18 @@ def build_leaderboard_payload_from_rawr_records(
         }
         for record in records
     ]
-    table_rows = build_ranked_table_rows(rows, seasons=seasons, top_n=top_n)
+    table_rows = _build_ranked_table_rows(rows, seasons=seasons, top_n=top_n)
     return {
         "mode": mode,
         "metric": metric,
         "metric_label": metric_label,
-        "span": build_span_payload(seasons, top_n=top_n),
+        "span": _build_span_payload(seasons, top_n=top_n),
         "table_rows": table_rows,
-        "series": build_series_from_table_rows(table_rows, seasons=seasons),
+        "series": _build_series_from_table_rows(table_rows, seasons=seasons),
     }
 
 
-def build_span_payload(seasons: list[str], *, top_n: int) -> dict[str, Any]:
+def _build_span_payload(seasons: list[str], *, top_n: int) -> dict[str, Any]:
     ordered_seasons = sorted(dict.fromkeys(seasons))
     return {
         "start_season": ordered_seasons[0] if ordered_seasons else None,
@@ -644,7 +646,7 @@ def build_span_payload(seasons: list[str], *, top_n: int) -> dict[str, Any]:
     }
 
 
-def build_ranked_table_rows(
+def _build_ranked_table_rows(
     rows: list[dict[str, Any]],
     *,
     seasons: list[str],
@@ -675,12 +677,12 @@ def build_ranked_table_rows(
                 "total_minutes": total_minutes,
                 "games_with": games_with,
                 "games_without": games_without,
-                "avg_margin_with": weighted_average_rows(
+                "avg_margin_with": _weighted_average_rows(
                     player_rows,
                     value_key="avg_margin_with",
                     weight_keys=("games_with", "sample_size"),
                 ),
-                "avg_margin_without": weighted_average_rows(
+                "avg_margin_without": _weighted_average_rows(
                     player_rows,
                     value_key="avg_margin_without",
                     weight_keys=("games_without", "secondary_sample_size"),
@@ -707,7 +709,7 @@ def build_ranked_table_rows(
     return [{**row, "rank": index + 1} for index, row in enumerate(limited_rows)]
 
 
-def build_series_from_table_rows(
+def _build_series_from_table_rows(
     table_rows: list[dict[str, Any]],
     *,
     seasons: list[str],
@@ -734,7 +736,7 @@ def build_series_from_table_rows(
     return series
 
 
-def weighted_average_rows(
+def _weighted_average_rows(
     rows: list[dict[str, Any]],
     *,
     value_key: str,

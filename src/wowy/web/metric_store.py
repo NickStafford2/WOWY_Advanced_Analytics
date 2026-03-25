@@ -5,8 +5,7 @@ from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any, Callable
 
-from wowy.apps.rawr.data import build_rawr_metric_rows
-from wowy.apps.rawr.service import list_incomplete_rawr_seasons
+from wowy.apps.rawr.data import build_rawr_metric_rows, list_incomplete_rawr_seasons
 from wowy.apps.wowy.data import (
     build_wowy_metric_rows,
     build_wowy_shrunk_metric_rows,
@@ -33,7 +32,7 @@ RefreshProgressFn = Callable[[int, int, str], None]
 
 
 @dataclass(frozen=True)
-class MetricDefinition:
+class _MetricDefinition:
     metric: str
     label: str
     build_version: str
@@ -71,19 +70,19 @@ DEFAULT_RAWR_RIDGE_ALPHA = 10.0
 
 
 METRIC_DEFINITIONS = {
-    WOWY_METRIC: MetricDefinition(
+    WOWY_METRIC: _MetricDefinition(
         metric=WOWY_METRIC,
         label="WOWY",
         build_version="wowy-player-season-v3",
         build_rows=build_wowy_metric_rows,
     ),
-    WOWY_SHRUNK_METRIC: MetricDefinition(
+    WOWY_SHRUNK_METRIC: _MetricDefinition(
         metric=WOWY_SHRUNK_METRIC,
         label="WOWY Shrunk",
         build_version="wowy-shrunk-player-season-v1",
         build_rows=build_wowy_shrunk_metric_rows,
     ),
-    RAWR_METRIC: MetricDefinition(
+    RAWR_METRIC: _MetricDefinition(
         metric=RAWR_METRIC,
         label="RAWR",
         build_version="rawr-player-season-v3",
@@ -118,7 +117,7 @@ def refresh_metric_store(
     progress: RefreshProgressFn | None = None,
 ) -> RefreshMetricStoreResult:
     season_type = canonicalize_season_type(season_type)
-    definition = get_metric_definition(metric)
+    definition = _get_metric_definition(metric)
     cache_load_rows = list_cache_load_rows(db_path, season_type=season_type)
     if not cache_load_rows:
         return RefreshMetricStoreResult(
@@ -258,7 +257,7 @@ def refresh_metric_store(
     )
 
 
-def build_metric_series(
+def _build_metric_series(
     rows: list[PlayerSeasonMetricRow],
     *,
     seasons: list[str],
@@ -330,7 +329,7 @@ def _print_rawr_incomplete_season_warning(
 def _replace_metric_scope_rows(
     *,
     db_path: Path,
-    definition: MetricDefinition,
+    definition: _MetricDefinition,
     scope_key: str,
     team_filter: str,
     season_type: str,
@@ -340,7 +339,7 @@ def _replace_metric_scope_rows(
     build_version: str,
     source_fingerprint: str,
 ) -> None:
-    span_series = build_metric_series(
+    span_series = _build_metric_series(
         rows,
         seasons=available_seasons,
         top_n=len({row.player_id for row in rows}),
@@ -392,7 +391,7 @@ def _replace_metric_scope_rows(
     )
 
 
-def get_metric_definition(metric: str) -> MetricDefinition:
+def _get_metric_definition(metric: str) -> _MetricDefinition:
     try:
         return METRIC_DEFINITIONS[metric]
     except KeyError as exc:

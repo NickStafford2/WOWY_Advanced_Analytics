@@ -28,8 +28,6 @@ from wowy.data.player_metrics_db import (
     _validate_metric_rows,
     _validate_metric_scope_catalog_row,
 )
-from wowy.nba.seasons import canonicalize_season_string
-from wowy.nba.season_types import canonicalize_season_type
 
 
 @dataclass(frozen=True)

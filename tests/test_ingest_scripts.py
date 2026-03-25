@@ -2,8 +2,6 @@ from __future__ import annotations
 
 import subprocess
 
-import pytest
-
 from scripts import cache_all_seasons, cache_season_data
 from wowy.nba.build_models import TeamSeasonRunSummary
 from wowy.nba.errors import (

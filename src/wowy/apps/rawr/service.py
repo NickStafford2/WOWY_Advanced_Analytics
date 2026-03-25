@@ -2,18 +2,12 @@ from __future__ import annotations
 
 from wowy.apps.rawr.analysis import fit_player_rawr, tune_ridge_alpha
 from wowy.apps.rawr.data import (
-    DEFAULT_RAWR_SHRINKAGE_MINUTE_SCALE,
-    DEFAULT_RAWR_SHRINKAGE_MODE,
-    DEFAULT_RAWR_SHRINKAGE_STRENGTH,
     attach_minute_stats_to_result,
     build_player_season_minute_stats,
     build_rawr_observations,
     count_player_games,
     filter_rawr_estimates_by_minutes,
     filter_rawr_scope,
-    list_expected_rawr_teams_for_season,
-    list_incomplete_rawr_seasons,
-    prepare_rawr_player_season_records,
     select_complete_rawr_scope_seasons,
 )
 from wowy.apps.rawr.formatting import format_rawr_results
