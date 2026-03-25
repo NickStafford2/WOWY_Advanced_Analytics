@@ -95,11 +95,11 @@ def test_evaluate_configs_compares_wowy_and_rawr(monkeypatch):
         ]
 
     monkeypatch.setattr(
-        "wowy.metrics.rawr.tuning.prepare_wowy_player_season_records",
+        "rawr_analytics.metrics.rawr.tuning.prepare_wowy_player_season_records",
         fake_prepare_wowy_player_season_records,
     )
     monkeypatch.setattr(
-        "wowy.metrics.rawr.tuning.prepare_rawr_player_season_records",
+        "rawr_analytics.metrics.rawr.tuning.prepare_rawr_player_season_records",
         fake_prepare_rawr_player_season_records,
     )
 

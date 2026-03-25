@@ -130,10 +130,10 @@ def test_load_or_fetch_league_games_retries_and_caches(tmp_path: Path, monkeypat
             return {"resultSets": [{"headers": ["GAME_ID"], "rowSet": [["0001"]]}]}
 
     monkeypatch.setattr(
-        "wowy.nba.source.cache.leaguegamefinder.LeagueGameFinder",
+        "rawr_analytics.nba.source.cache.leaguegamefinder.LeagueGameFinder",
         FakeLeagueGameFinder,
     )
-    monkeypatch.setattr("wowy.nba.source.cache.time.sleep", sleeps.append)
+    monkeypatch.setattr("rawr_analytics.nba.source.cache.time.sleep", sleeps.append)
 
     payload, source = load_or_fetch_league_games_with_source(
         team_id=1610612738,
@@ -179,10 +179,10 @@ def test_load_or_fetch_league_games_retries_json_decode_error(
             return {"resultSets": [{"headers": ["GAME_ID"], "rowSet": [["0002"]]}]}
 
     monkeypatch.setattr(
-        "wowy.nba.source.cache.leaguegamefinder.LeagueGameFinder",
+        "rawr_analytics.nba.source.cache.leaguegamefinder.LeagueGameFinder",
         FakeLeagueGameFinder,
     )
-    monkeypatch.setattr("wowy.nba.source.cache.time.sleep", sleeps.append)
+    monkeypatch.setattr("rawr_analytics.nba.source.cache.time.sleep", sleeps.append)
 
     payload, source = load_or_fetch_league_games_with_source(
         team_id=1610612738,
@@ -212,10 +212,10 @@ def test_load_or_fetch_league_games_raises_typed_fetch_error_after_retries(
             raise json.JSONDecodeError("Expecting value", "", 0)
 
     monkeypatch.setattr(
-        "wowy.nba.source.cache.leaguegamefinder.LeagueGameFinder",
+        "rawr_analytics.nba.source.cache.leaguegamefinder.LeagueGameFinder",
         FakeLeagueGameFinder,
     )
-    monkeypatch.setattr("wowy.nba.source.cache.time.sleep", sleeps.append)
+    monkeypatch.setattr("rawr_analytics.nba.source.cache.time.sleep", sleeps.append)
 
     with pytest.raises(LeagueGamesFetchError, match="Failed to fetch league games"):
         load_or_fetch_league_games_with_source(
@@ -253,10 +253,10 @@ def test_load_or_fetch_league_games_discards_empty_cached_payload_and_refetches(
             return {"resultSets": [{"headers": ["GAME_ID"], "rowSet": [["0003"]]}]}
 
     monkeypatch.setattr(
-        "wowy.nba.source.cache.leaguegamefinder.LeagueGameFinder",
+        "rawr_analytics.nba.source.cache.leaguegamefinder.LeagueGameFinder",
         FakeLeagueGameFinder,
     )
-    monkeypatch.setattr("wowy.nba.source.cache.time.sleep", lambda _: None)
+    monkeypatch.setattr("rawr_analytics.nba.source.cache.time.sleep", lambda _: None)
 
     payload, source = load_or_fetch_league_games_with_source(
         team_id=1610612738,
@@ -285,10 +285,10 @@ def test_load_or_fetch_box_score_reports_cache_source(tmp_path: Path, monkeypatc
             return {"resultSets": [{"headers": ["A"], "rowSet": [[1]]}]}
 
     monkeypatch.setattr(
-        "wowy.nba.source.cache.boxscoretraditionalv2.BoxScoreTraditionalV2",
+        "rawr_analytics.nba.source.cache.boxscoretraditionalv2.BoxScoreTraditionalV2",
         FakeBoxScoreTraditionalV2,
     )
-    monkeypatch.setattr("wowy.nba.source.cache.time.sleep", lambda _: None)
+    monkeypatch.setattr("rawr_analytics.nba.source.cache.time.sleep", lambda _: None)
 
     payload, source = load_or_fetch_box_score_with_source(
         game_id="0001",
@@ -342,14 +342,14 @@ def test_load_or_fetch_box_score_falls_back_to_v3_when_v2_is_empty(tmp_path: Pat
             }
 
     monkeypatch.setattr(
-        "wowy.nba.source.cache.boxscoretraditionalv2.BoxScoreTraditionalV2",
+        "rawr_analytics.nba.source.cache.boxscoretraditionalv2.BoxScoreTraditionalV2",
         FakeBoxScoreTraditionalV2,
     )
     monkeypatch.setattr(
-        "wowy.nba.source.cache.boxscoretraditionalv3.BoxScoreTraditionalV3",
+        "rawr_analytics.nba.source.cache.boxscoretraditionalv3.BoxScoreTraditionalV3",
         FakeBoxScoreTraditionalV3,
     )
-    monkeypatch.setattr("wowy.nba.source.cache.time.sleep", lambda _: None)
+    monkeypatch.setattr("rawr_analytics.nba.source.cache.time.sleep", lambda _: None)
 
     payload, source = load_or_fetch_box_score_with_source(
         game_id="0003",
@@ -416,15 +416,15 @@ def test_load_or_fetch_box_score_falls_back_to_live_when_v2_and_v3_are_empty(
             }
 
     monkeypatch.setattr(
-        "wowy.nba.source.cache.boxscoretraditionalv2.BoxScoreTraditionalV2",
+        "rawr_analytics.nba.source.cache.boxscoretraditionalv2.BoxScoreTraditionalV2",
         FakeBoxScoreTraditionalV2,
     )
     monkeypatch.setattr(
-        "wowy.nba.source.cache.boxscoretraditionalv3.BoxScoreTraditionalV3",
+        "rawr_analytics.nba.source.cache.boxscoretraditionalv3.BoxScoreTraditionalV3",
         FakeBoxScoreTraditionalV3,
     )
-    monkeypatch.setattr("wowy.nba.source.cache.live_boxscore.BoxScore", FakeLiveBoxScore)
-    monkeypatch.setattr("wowy.nba.source.cache.time.sleep", lambda _: None)
+    monkeypatch.setattr("rawr_analytics.nba.source.cache.live_boxscore.BoxScore", FakeLiveBoxScore)
+    monkeypatch.setattr("rawr_analytics.nba.source.cache.time.sleep", lambda _: None)
 
     payload, source = load_or_fetch_box_score_with_source(
         game_id="0004",
@@ -459,10 +459,10 @@ def test_load_or_fetch_box_score_retries_request_exception(tmp_path: Path, monke
             return {"resultSets": [{"headers": ["A"], "rowSet": [[1]]}]}
 
     monkeypatch.setattr(
-        "wowy.nba.source.cache.boxscoretraditionalv2.BoxScoreTraditionalV2",
+        "rawr_analytics.nba.source.cache.boxscoretraditionalv2.BoxScoreTraditionalV2",
         FakeBoxScoreTraditionalV2,
     )
-    monkeypatch.setattr("wowy.nba.source.cache.time.sleep", sleeps.append)
+    monkeypatch.setattr("rawr_analytics.nba.source.cache.time.sleep", sleeps.append)
 
     payload, source = load_or_fetch_box_score_with_source(
         game_id="0002",
@@ -492,10 +492,10 @@ def test_load_or_fetch_box_score_raises_typed_fetch_error_after_retries(
             raise AssertionError("unreachable")
 
     monkeypatch.setattr(
-        "wowy.nba.source.cache.boxscoretraditionalv2.BoxScoreTraditionalV2",
+        "rawr_analytics.nba.source.cache.boxscoretraditionalv2.BoxScoreTraditionalV2",
         FakeBoxScoreTraditionalV2,
     )
-    monkeypatch.setattr("wowy.nba.source.cache.time.sleep", sleeps.append)
+    monkeypatch.setattr("rawr_analytics.nba.source.cache.time.sleep", sleeps.append)
 
     with pytest.raises(BoxScoreFetchError, match="Failed to fetch box score"):
         load_or_fetch_box_score_with_source(
@@ -533,10 +533,10 @@ def test_load_or_fetch_box_score_discards_empty_cached_payload_and_refetches(
             return {"resultSets": [{"headers": ["A"], "rowSet": [[1]]}]}
 
     monkeypatch.setattr(
-        "wowy.nba.source.cache.boxscoretraditionalv2.BoxScoreTraditionalV2",
+        "rawr_analytics.nba.source.cache.boxscoretraditionalv2.BoxScoreTraditionalV2",
         FakeBoxScoreTraditionalV2,
     )
-    monkeypatch.setattr("wowy.nba.source.cache.time.sleep", lambda _: None)
+    monkeypatch.setattr("rawr_analytics.nba.source.cache.time.sleep", lambda _: None)
 
     payload, source = load_or_fetch_box_score_with_source(
         game_id="0009",

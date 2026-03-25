@@ -59,7 +59,7 @@ def _seed_rawr_cache_inputs(
     monkeypatch,
 ) -> list[TeamSeasonSeed]:
     monkeypatch.setattr(
-        "wowy.metrics.rawr.data.list_expected_rawr_teams_for_season",
+        "rawr_analytics.metrics.rawr.data.list_expected_rawr_teams_for_season",
         lambda _season: ["BOS", "LAL", "MIL", "NYK"],
     )
     return [
@@ -395,7 +395,9 @@ def test_refresh_cli_refreshes_all_metrics_by_default(monkeypatch, tmp_path: Pat
             warnings=[],
         )
 
-    monkeypatch.setattr("wowy.web.refresh_cli.refresh_metric_store", fake_refresh_metric_store)
+    monkeypatch.setattr(
+        "rawr_analytics.web.refresh_cli.refresh_metric_store", fake_refresh_metric_store
+    )
 
     exit_code = refresh_cli_main(
         ["--player-metrics-db-path", str(tmp_path / "app" / "player_metrics.sqlite3")]
@@ -454,7 +456,9 @@ def test_refresh_cli_fails_for_empty_all_teams_rawr_store(
             ),
         )
 
-    monkeypatch.setattr("wowy.web.refresh_cli.refresh_metric_store", fake_refresh_metric_store)
+    monkeypatch.setattr(
+        "rawr_analytics.web.refresh_cli.refresh_metric_store", fake_refresh_metric_store
+    )
 
     exit_code = refresh_cli_main(
         ["--player-metrics-db-path", str(tmp_path / "app" / "player_metrics.sqlite3")]
