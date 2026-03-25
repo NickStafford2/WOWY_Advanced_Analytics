@@ -19,7 +19,6 @@ from rawr_analytics.nba.team_identity import (
 from rawr_analytics.nba.team_seasons import TeamSeasonScope
 
 _GAME_CACHE_BUILD_VERSION = "normalized-cache-v2"
-_REGULAR_SEASON = "Regular Season"
 
 
 def replace_team_season_normalized_rows(

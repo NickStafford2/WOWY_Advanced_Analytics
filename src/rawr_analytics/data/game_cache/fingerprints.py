@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import hashlib
-import shutil
 from pathlib import Path
 
 from rawr_analytics.data.game_cache.schema import _connect, initialize_game_cache_db
@@ -58,33 +57,6 @@ def build_normalized_cache_fingerprint(
         digest.update(str(row["expected_games_row_count"]).encode("utf-8"))
         digest.update(str(row["skipped_games_row_count"]).encode("utf-8"))
     return digest.hexdigest()
-
-
-def _ensure_explicit_regular_season_copy(
-    source_path: Path,
-    target_path: Path,
-) -> bool:
-    if source_path == target_path or not source_path.exists():
-        return False
-    if target_path.exists():
-        source_stat = source_path.stat()
-        target_stat = target_path.stat()
-        if (
-            source_stat.st_size == target_stat.st_size
-            and source_stat.st_mtime_ns == target_stat.st_mtime_ns
-        ):
-            return False
-    target_path.parent.mkdir(parents=True, exist_ok=True)
-    shutil.copy2(source_path, target_path)
-    return True
-
-
-def _build_file_snapshot(*paths: Path) -> str:
-    parts = []
-    for path in paths:
-        stat = path.stat()
-        parts.append(f"{path.name}:{stat.st_size}:{stat.st_mtime_ns}")
-    return "|".join(parts)
 
 
 __all__ = ["build_normalized_cache_fingerprint"]

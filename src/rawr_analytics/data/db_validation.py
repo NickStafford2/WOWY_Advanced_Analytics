@@ -384,7 +384,7 @@ def _validate_metric_player_season_values_table(
 
     for key, group_rows in groups.items():
         metric, scope_key = key
-        metric_label, build_version, source_fingerprint, _row_count = metadata_by_key.get(
+        metric_label, build_version, source_fingerprint, _ = metadata_by_key.get(
             key,
             (group_rows[0].metric_label, "missing-metadata", "missing-metadata", -1),
         )

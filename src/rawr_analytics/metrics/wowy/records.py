@@ -2,6 +2,11 @@ from __future__ import annotations
 
 from pathlib import Path
 
+from rawr_analytics.data.player_metrics_db import (
+    DEFAULT_PLAYER_METRICS_DB_PATH,
+    PlayerSeasonMetricRow,
+    build_wowy_player_season_metric_rows,
+)
 from rawr_analytics.metrics.wowy.analysis import (
     DEFAULT_WOWY_SHRINKAGE_PRIOR_GAMES,
     compute_wowy,
@@ -17,11 +22,6 @@ from rawr_analytics.metrics.wowy.minutes import (
 from rawr_analytics.metrics.wowy.models import (
     WowyGameRecord,
     WowyPlayerSeasonRecord,
-)
-from rawr_analytics.data.player_metrics_db import (
-    DEFAULT_PLAYER_METRICS_DB_PATH,
-    PlayerSeasonMetricRow,
-    build_wowy_player_season_metric_rows,
 )
 
 type WowyPlayerSeasonRow = dict[str, str | int | float | None]

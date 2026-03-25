@@ -7,11 +7,11 @@ from pathlib import Path
 
 import numpy as np
 
+from rawr_analytics.data.player_metrics_db import DEFAULT_PLAYER_METRICS_DB_PATH
 from rawr_analytics.metrics.rawr.models import RawrPlayerSeasonRecord
 from rawr_analytics.metrics.rawr.records import prepare_rawr_player_season_records
 from rawr_analytics.metrics.wowy.models import WowyPlayerSeasonRecord
 from rawr_analytics.metrics.wowy.records import prepare_wowy_player_season_records
-from rawr_analytics.data.player_metrics_db import DEFAULT_PLAYER_METRICS_DB_PATH
 from rawr_analytics.nba.source.cache import DEFAULT_SOURCE_DATA_DIR
 from rawr_analytics.progress import TerminalProgressBar, print_status_box
 
@@ -434,7 +434,7 @@ def evaluate_configs(args) -> list[ComparisonResult]:
 def count_evaluation_steps(args) -> int:
     shrinkage_modes = args.shrinkage_mode or ["uniform", "game-count", "minutes"]
     rawr_configs = 0
-    for _ridge_alpha, shrinkage_mode, _shrinkage_strength in product(
+    for _, shrinkage_mode, _ in product(
         args.rawr_ridge_values,
         shrinkage_modes,
         args.shrinkage_strength_values,

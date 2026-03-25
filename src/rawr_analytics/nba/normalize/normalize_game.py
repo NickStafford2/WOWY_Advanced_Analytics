@@ -98,7 +98,7 @@ def normalize_source_game(
 
 
 def extract_opponent(matchup: str, team_abbreviation: str) -> str:
-    left, right, _separator = _split_matchup(matchup)
+    left, right, _ = _split_matchup(matchup)
     if _matchup_side_matches_requested_team(left, team_abbreviation):
         return right
     if _matchup_side_matches_requested_team(right, team_abbreviation):

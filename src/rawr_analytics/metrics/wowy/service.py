@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from rawr_analytics.data.player_metrics_db import DEFAULT_PLAYER_METRICS_DB_PATH
 from rawr_analytics.metrics.wowy.analysis import ProgressFn, compute_wowy, filter_results
 from rawr_analytics.metrics.wowy.formatting import format_results_table
 from rawr_analytics.metrics.wowy.inputs import load_wowy_game_records
@@ -9,7 +10,6 @@ from rawr_analytics.metrics.wowy.minutes import (
     load_player_minute_stats,
 )
 from rawr_analytics.metrics.wowy.models import WowyGameRecord
-from rawr_analytics.data.player_metrics_db import DEFAULT_PLAYER_METRICS_DB_PATH
 from rawr_analytics.progress import TerminalProgressBar, print_status_box
 from rawr_analytics.shared.filters import validate_top_n_and_minutes
 from rawr_analytics.shared.scope import format_scope
@@ -56,7 +56,7 @@ def build_wowy_report(
         all_players = {player_id for game in games for player_id in game.players}
         progress_bar = TerminalProgressBar("WOWY", total=len(all_players))
 
-        def _report_progress(current: int, _total: int, detail: str | None) -> None:
+        def _report_progress(current: int, _: int, detail: str | None) -> None:
             progress_bar.update(current, detail)
 
         progress = _report_progress

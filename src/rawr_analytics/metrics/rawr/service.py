@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from rawr_analytics.data.player_metrics_db import DEFAULT_PLAYER_METRICS_DB_PATH
 from rawr_analytics.metrics.rawr._observations import build_rawr_player_season_minute_stats
 from rawr_analytics.metrics.rawr.analysis import ProgressFn, fit_player_rawr, tune_ridge_alpha
 from rawr_analytics.metrics.rawr.data import count_player_games, select_complete_rawr_scope_seasons
@@ -10,7 +11,6 @@ from rawr_analytics.metrics.rawr.inputs import (
     filter_rawr_estimates_by_minutes,
     filter_rawr_scope,
 )
-from rawr_analytics.data.player_metrics_db import DEFAULT_PLAYER_METRICS_DB_PATH
 from rawr_analytics.nba.models import NormalizedGamePlayerRecord, NormalizedGameRecord
 from rawr_analytics.nba.prepare import load_normalized_scope_records
 from rawr_analytics.progress import TerminalProgressBar, print_status_box
@@ -109,7 +109,7 @@ def run_rawr_records(
         total_steps = (len(observations) * 2) + max(feature_count - 2, 0) + feature_count
         progress_bar = TerminalProgressBar("RAWR", total=total_steps)
 
-        def _report_progress(current: int, _total: int, detail: str | None) -> None:
+        def _report_progress(current: int, _: int, detail: str | None) -> None:
             progress_bar.update(current, detail)
 
         progress = _report_progress

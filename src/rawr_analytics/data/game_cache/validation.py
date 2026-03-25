@@ -466,7 +466,7 @@ def _validate_reciprocal_game_margins(
             )
         )
 
-    for _key, games in games_by_id.items():
+    for _, games in games_by_id.items():
         if len(games) != 2:
             continue
 

@@ -2,8 +2,8 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from rawr_analytics.metrics.wowy.models import WowyPlayerStats
 from rawr_analytics.data.player_metrics_db import DEFAULT_PLAYER_METRICS_DB_PATH
+from rawr_analytics.metrics.wowy.models import WowyPlayerStats
 from rawr_analytics.nba.prepare import load_normalized_scope_records
 from rawr_analytics.shared.minutes import build_player_minute_stats, passes_minute_filters
 
@@ -22,7 +22,7 @@ def load_player_minute_stats(
     player_metrics_db_path: Path = DEFAULT_PLAYER_METRICS_DB_PATH,
     team_ids: list[int] | None = None,
 ) -> dict[int, tuple[float, float]]:
-    _games, game_players = load_normalized_scope_records(
+    _, game_players = load_normalized_scope_records(
         teams=teams,
         seasons=seasons,
         team_ids=team_ids,

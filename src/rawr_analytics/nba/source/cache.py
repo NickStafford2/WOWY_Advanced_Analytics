@@ -104,25 +104,6 @@ def load_or_fetch_league_games_with_source(
     raise RuntimeError(f"Failed to fetch league games for {team_abbreviation!r} in {season!r}")
 
 
-def _load_or_fetch_league_games(
-    team_id: int,
-    team_abbreviation: str,
-    season: str,
-    season_type: str,
-    source_data_dir: Path,
-    log: LogFn | None = print,
-) -> dict:
-    payload, _ = load_or_fetch_league_games_with_source(
-        team_id=team_id,
-        team_abbreviation=team_abbreviation,
-        season=season,
-        season_type=season_type,
-        source_data_dir=source_data_dir,
-        log=log,
-    )
-    return payload
-
-
 def load_or_fetch_box_score_with_source(
     game_id: str,
     source_data_dir: Path,
