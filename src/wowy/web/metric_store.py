@@ -339,10 +339,11 @@ def _replace_metric_scope_rows(
     build_version: str,
     source_fingerprint: str,
 ) -> None:
-    span_series = _build_metric_series(
+    store_rows = _build_metric_scope_store_rows(
         rows,
+        definition=definition,
+        scope_key=scope_key,
         seasons=available_seasons,
-        top_n=len({row.player_id for row in rows}),
     )
     replace_metric_scope_store(
         db_path,
@@ -352,19 +353,56 @@ def _replace_metric_scope_rows(
         build_version=build_version,
         source_fingerprint=source_fingerprint,
         rows=rows,
-        catalog_row=MetricScopeCatalogRow(
-            metric=definition.metric,
+        catalog_row=_build_metric_scope_catalog_row(
+            definition=definition,
             scope_key=scope_key,
-            metric_label=definition.label,
             team_filter=team_filter,
             season_type=season_type,
             available_seasons=available_seasons,
             available_teams=available_teams,
-            full_span_start_season=available_seasons[0] if available_seasons else None,
-            full_span_end_season=available_seasons[-1] if available_seasons else None,
-            updated_at=datetime.now(UTC).isoformat(),
         ),
-        series_rows=[
+        series_rows=store_rows["series_rows"],
+        point_rows=store_rows["point_rows"],
+    )
+
+
+def _build_metric_scope_catalog_row(
+    *,
+    definition: _MetricDefinition,
+    scope_key: str,
+    team_filter: str,
+    season_type: str,
+    available_seasons: list[str],
+    available_teams: list[str],
+) -> MetricScopeCatalogRow:
+    return MetricScopeCatalogRow(
+        metric=definition.metric,
+        scope_key=scope_key,
+        metric_label=definition.label,
+        team_filter=team_filter,
+        season_type=season_type,
+        available_seasons=available_seasons,
+        available_teams=available_teams,
+        full_span_start_season=available_seasons[0] if available_seasons else None,
+        full_span_end_season=available_seasons[-1] if available_seasons else None,
+        updated_at=datetime.now(UTC).isoformat(),
+    )
+
+
+def _build_metric_scope_store_rows(
+    rows: list[PlayerSeasonMetricRow],
+    *,
+    definition: _MetricDefinition,
+    scope_key: str,
+    seasons: list[str],
+) -> dict[str, list[MetricFullSpanSeriesRow] | list[MetricFullSpanPointRow]]:
+    span_series = _build_metric_series(
+        rows,
+        seasons=seasons,
+        top_n=len({row.player_id for row in rows}),
+    )
+    return {
+        "series_rows": [
             MetricFullSpanSeriesRow(
                 metric=definition.metric,
                 scope_key=scope_key,
@@ -376,7 +414,7 @@ def _replace_metric_scope_rows(
             )
             for index, series in enumerate(span_series)
         ],
-        point_rows=[
+        "point_rows": [
             MetricFullSpanPointRow(
                 metric=definition.metric,
                 scope_key=scope_key,
@@ -388,7 +426,7 @@ def _replace_metric_scope_rows(
             for point in series["points"]
             if point["value"] is not None
         ],
-    )
+    }
 
 
 def _get_metric_definition(metric: str) -> _MetricDefinition:
