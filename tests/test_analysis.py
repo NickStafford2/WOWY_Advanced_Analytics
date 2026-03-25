@@ -190,12 +190,7 @@ def test_serialize_wowy_player_season_records_returns_json_ready_rows():
 
 def test_prepare_wowy_player_season_records_builds_web_ready_rows_from_cache(
     tmp_path: Path,
-    monkeypatch,
 ):
-    monkeypatch.setattr(
-        "wowy.nba.prepare.load_player_names_from_cache",
-        lambda _: {101: "Player 101", 102: "Player 102", 103: "Player 103"},
-    )
     db_path = tmp_path / "app" / "player_metrics.sqlite3"
     seed_db_from_team_seasons(
         db_path,

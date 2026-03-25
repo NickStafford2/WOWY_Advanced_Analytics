@@ -10,10 +10,7 @@ from wowy.data.game_cache import (
     load_normalized_games_from_db,
 )
 from wowy.data.player_metrics_db import DEFAULT_PLAYER_METRICS_DB_PATH
-from wowy.nba.cache_sync import ensure_team_season_data
 from wowy.nba.models import NormalizedGamePlayerRecord, NormalizedGameRecord
-from wowy.nba.source.cache import DEFAULT_SOURCE_DATA_DIR
-from wowy.nba.source.parsers import load_player_names_from_cache
 from wowy.nba.team_seasons import TeamSeasonScope, resolve_team_seasons
 
 
@@ -23,21 +20,18 @@ def prepare_wowy_game_records(
     *,
     team_ids: list[int] | None = None,
     season_type: str = "Regular Season",
-    source_data_dir: Path = DEFAULT_SOURCE_DATA_DIR,
     player_metrics_db_path: Path = DEFAULT_PLAYER_METRICS_DB_PATH,
-    log=print,
 ) -> tuple[list[WowyGameRecord], dict[int, str]]:
     games, game_players = prepare_canonical_scope_records(
         teams=teams,
         seasons=seasons,
         team_ids=team_ids,
         season_type=season_type,
-        source_data_dir=source_data_dir,
         player_metrics_db_path=player_metrics_db_path,
         include_opponents_for_team_scope=False,
-        log=log,
     )
-    return derive_wowy_games(games, game_players), load_player_names_from_cache(source_data_dir)
+    player_names = {player.player_id: player.player_name for player in game_players}
+    return derive_wowy_games(games, game_players), player_names
 
 
 def prepare_canonical_scope_records(
@@ -46,11 +40,8 @@ def prepare_canonical_scope_records(
     *,
     team_ids: list[int] | None = None,
     season_type: str = "Regular Season",
-    source_data_dir: Path = DEFAULT_SOURCE_DATA_DIR,
     player_metrics_db_path: Path = DEFAULT_PLAYER_METRICS_DB_PATH,
     include_opponents_for_team_scope: bool = True,
-    require_cached_only: bool = False,
-    log=print,
 ) -> tuple[list[NormalizedGameRecord], list[NormalizedGamePlayerRecord]]:
     team_seasons = resolve_team_seasons(
         teams,
@@ -64,13 +55,10 @@ def prepare_canonical_scope_records(
 
     requested_team_seasons = list(team_seasons)
     for team_season in requested_team_seasons:
-        _ensure_team_season_scope_available(
+        _require_cached_team_season_scope(
             team_season,
             season_type=season_type,
-            source_data_dir=source_data_dir,
             player_metrics_db_path=player_metrics_db_path,
-            require_cached_only=require_cached_only,
-            log=log,
         )
 
     if (teams or team_ids) and include_opponents_for_team_scope:
@@ -89,13 +77,10 @@ def prepare_canonical_scope_records(
         for team_season in sorted(opponent_team_seasons):
             if team_season in requested_team_seasons:
                 continue
-            _ensure_team_season_scope_available(
+            _require_cached_team_season_scope(
                 team_season,
                 season_type=season_type,
-                source_data_dir=source_data_dir,
                 player_metrics_db_path=player_metrics_db_path,
-                require_cached_only=require_cached_only,
-                log=log,
             )
             team_seasons.append(team_season)
 
@@ -166,14 +151,11 @@ def _filter_records_to_team_seasons(
     return filtered_games, filtered_game_players
 
 
-def _ensure_team_season_scope_available(
+def _require_cached_team_season_scope(
     team_season: TeamSeasonScope,
     *,
     season_type: str,
-    source_data_dir: Path,
     player_metrics_db_path: Path,
-    require_cached_only: bool,
-    log,
 ) -> None:
     cache_load_row = load_cache_load_row(
         player_metrics_db_path,
@@ -187,15 +169,7 @@ def _ensure_team_season_scope_available(
         and cache_load_row.game_players_row_count > 0
     ):
         return
-    if require_cached_only:
-        raise ValueError(
-            f"Missing cached team-season scope for {team_season.team} "
-            f"{team_season.season} {season_type}"
-        )
-    ensure_team_season_data(
-        team_season=team_season,
-        season_type=season_type,
-        source_data_dir=source_data_dir,
-        player_metrics_db_path=player_metrics_db_path,
-        log=log,
+    raise ValueError(
+        f"Missing cached team-season scope for {team_season.team} "
+        f"{team_season.season} {season_type}"
     )

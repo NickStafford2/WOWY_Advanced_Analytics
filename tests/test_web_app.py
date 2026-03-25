@@ -64,11 +64,7 @@ def _seed_rawr_cache_inputs(
     monkeypatch,
 ) -> list[TeamSeasonSeed]:
     monkeypatch.setattr(
-        "wowy.nba.prepare.ensure_team_season_data",
-        lambda **_kwargs: None,
-    )
-    monkeypatch.setattr(
-        "wowy.apps.rawr.service.list_expected_rawr_teams_for_season",
+        "wowy.apps.rawr.data.list_expected_rawr_teams_for_season",
         lambda _season: ["BOS", "LAL", "MIL", "NYK"],
     )
     return [
@@ -372,7 +368,7 @@ def test_refresh_metric_store_builds_wowy_shrunk_rows(
         min_secondary_sample_size=1,
     )
 
-    assert {row.player_name for row in rows} == {"101", "102"}
+    assert {row.player_name for row in rows} == {"Player 101", "Player 102"}
     assert all(row.metric_label == "WOWY Shrunk" for row in rows)
     assert all(abs(row.details["raw_wowy_score"]) > abs(row.value) for row in rows)
     assert all(row.details["raw_wowy_score"] * row.value >= 0 for row in rows)
@@ -866,12 +862,7 @@ def test_rawr_custom_query_skips_seasons_without_qualifying_players(
 
 def test_wowy_options_endpoint_returns_cached_teams_and_seasons(
     tmp_path: Path,
-    monkeypatch,
 ):
-    monkeypatch.setattr(
-        "wowy.nba.prepare.load_player_names_from_cache",
-        lambda _: {101: "Player 101", 201: "Player 201"},
-    )
     player_metrics_db_path = _refresh_wowy_store(tmp_path, _wowy_options_seed())
 
     app = create_app(
@@ -911,12 +902,7 @@ def test_wowy_options_endpoint_returns_cached_teams_and_seasons(
 
 def test_wowy_player_seasons_endpoint_returns_rows_from_cache(
     tmp_path: Path,
-    monkeypatch,
 ):
-    monkeypatch.setattr(
-        "wowy.nba.prepare.load_player_names_from_cache",
-        lambda _: {101: "Player 101", 102: "Player 102"},
-    )
     player_metrics_db_path = _refresh_wowy_store(tmp_path, _wowy_single_season_seed())
 
     app = create_app(
@@ -1020,12 +1006,7 @@ def test_wowy_options_endpoint_requires_prebuilt_store(tmp_path: Path):
 
 def test_wowy_span_chart_endpoint_returns_series_for_selected_span(
     tmp_path: Path,
-    monkeypatch,
 ):
-    monkeypatch.setattr(
-        "wowy.nba.prepare.load_player_names_from_cache",
-        lambda _: {101: "Player 101", 102: "Player 102", 103: "Player 103"},
-    )
     player_metrics_db_path = _refresh_wowy_store(tmp_path, _wowy_two_season_seed())
 
     app = create_app(
@@ -1082,12 +1063,7 @@ def test_wowy_span_chart_endpoint_returns_series_for_selected_span(
 
 def test_wowy_cached_leaderboard_endpoint_returns_server_ranked_rows(
     tmp_path: Path,
-    monkeypatch,
 ):
-    monkeypatch.setattr(
-        "wowy.nba.prepare.load_player_names_from_cache",
-        lambda _: {101: "Player 101", 102: "Player 102", 103: "Player 103"},
-    )
     player_metrics_db_path = _refresh_wowy_store(tmp_path, _wowy_two_season_seed())
 
     app = create_app(
@@ -1128,12 +1104,7 @@ def test_wowy_cached_leaderboard_endpoint_returns_server_ranked_rows(
 
 def test_wowy_cached_leaderboard_csv_exports_all_players_ignoring_top_n(
     tmp_path: Path,
-    monkeypatch,
 ):
-    monkeypatch.setattr(
-        "wowy.nba.prepare.load_player_names_from_cache",
-        lambda _: {101: "Player 101", 102: "Player 102", 103: "Player 103"},
-    )
     player_metrics_db_path = _refresh_wowy_store(tmp_path, _wowy_two_season_seed())
 
     app = create_app(
@@ -1178,12 +1149,7 @@ def test_wowy_cached_leaderboard_csv_exports_all_players_ignoring_top_n(
 
 def test_wowy_custom_query_endpoint_recalculates_requested_span(
     tmp_path: Path,
-    monkeypatch,
 ):
-    monkeypatch.setattr(
-        "wowy.nba.prepare.load_player_names_from_cache",
-        lambda _: {101: "Player 101", 102: "Player 102", 103: "Player 103"},
-    )
     seed_db_from_team_seasons(
         tmp_path / "app" / "player_metrics.sqlite3",
         _wowy_two_season_seed(),
@@ -1309,12 +1275,7 @@ def test_rawr_custom_query_csv_exports_all_players_ignoring_top_n(
 
 def test_wowy_options_endpoint_returns_team_id_team_options_for_frontend(
     tmp_path: Path,
-    monkeypatch,
 ):
-    monkeypatch.setattr(
-        "wowy.nba.prepare.load_player_names_from_cache",
-        lambda _: {301: "Player 301", 302: "Player 302", 303: "Player 303"},
-    )
     player_metrics_db_path = tmp_path / "app" / "player_metrics.sqlite3"
     seed_db_from_team_seasons(player_metrics_db_path, _wowy_historical_continuity_seed())
     scope_key, _team_filter = build_scope_key(
@@ -1400,12 +1361,7 @@ def test_wowy_options_endpoint_returns_team_id_team_options_for_frontend(
 
 def test_wowy_custom_query_endpoint_accepts_team_id_for_historical_multi_season_scope(
     tmp_path: Path,
-    monkeypatch,
 ):
-    monkeypatch.setattr(
-        "wowy.nba.prepare.load_player_names_from_cache",
-        lambda _: {301: "Player 301", 302: "Player 302", 303: "Player 303"},
-    )
     seed_db_from_team_seasons(
         tmp_path / "app" / "player_metrics.sqlite3",
         _wowy_historical_continuity_seed(),

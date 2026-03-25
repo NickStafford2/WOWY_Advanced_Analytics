@@ -1,9 +1,17 @@
 from __future__ import annotations
 
-from pathlib import Path
-from typing import Callable
-
 from wowy.apps.wowy.analysis import compute_wowy, filter_results
+from wowy.apps.wowy.data import (
+    LoadPlayerNamesFn,
+    attach_minute_stats,
+    available_wowy_seasons,
+    build_wowy_player_season_records,
+    filter_results_by_minutes,
+    load_player_minute_stats,
+    load_player_season_minute_stats,
+    prepare_wowy_player_season_records,
+    serialize_wowy_player_season_records,
+)
 from wowy.apps.wowy.formatting import format_results_table
 from wowy.apps.wowy.models import (
     WowyGameRecord,
@@ -11,19 +19,10 @@ from wowy.apps.wowy.models import (
     WowyPlayerStats,
 )
 from wowy.data.player_metrics_db import DEFAULT_PLAYER_METRICS_DB_PATH
-from wowy.nba.prepare import (
-    prepare_canonical_scope_records,
-    prepare_wowy_game_records,
-)
-from wowy.nba.source.parsers import load_player_names_from_cache
+from wowy.nba.prepare import prepare_wowy_game_records
 from wowy.progress import TerminalProgressBar, print_status_box
 from wowy.shared.filters import validate_top_n_and_minutes
-from wowy.shared.minutes import build_player_minute_stats, passes_minute_filters
 from wowy.shared.scope import format_scope
-
-
-type LoadPlayerNamesFn = Callable[[Path], dict[int, str]]
-type WowyPlayerSeasonRow = dict[str, str | int | float | None]
 
 
 def validate_filters(
@@ -114,206 +113,6 @@ def run_wowy_records(
     )
 
 
-def load_player_minute_stats(
-    teams: list[str] | None,
-    seasons: list[str] | None,
-    season_type: str = "Regular Season",
-    source_data_dir: Path | None = None,
-    player_metrics_db_path: Path = DEFAULT_PLAYER_METRICS_DB_PATH,
-    team_ids: list[int] | None = None,
-) -> dict[int, tuple[float, float]]:
-    """Build minute summaries from the DB-backed normalized cache."""
-    _games, game_players = prepare_canonical_scope_records(
-        teams=teams,
-        seasons=seasons,
-        team_ids=team_ids,
-        season_type=season_type,
-        source_data_dir=source_data_dir or Path("data/source/nba"),
-        player_metrics_db_path=player_metrics_db_path,
-        include_opponents_for_team_scope=False,
-        log=lambda *_args, **_kwargs: None,
-    )
-    return build_player_minute_stats(game_players)
-
-
-def load_player_season_minute_stats(
-    teams: list[str] | None,
-    seasons: list[str] | None,
-    season_type: str = "Regular Season",
-    source_data_dir: Path | None = None,
-    player_metrics_db_path: Path = DEFAULT_PLAYER_METRICS_DB_PATH,
-    team_ids: list[int] | None = None,
-) -> dict[tuple[str, int], tuple[float, float]]:
-    totals: dict[tuple[str, int], float] = {}
-    counts: dict[tuple[str, int], int] = {}
-
-    games, game_players = prepare_canonical_scope_records(
-        teams=teams,
-        seasons=seasons,
-        team_ids=team_ids,
-        season_type=season_type,
-        source_data_dir=source_data_dir or Path("data/source/nba"),
-        player_metrics_db_path=player_metrics_db_path,
-        include_opponents_for_team_scope=False,
-        log=lambda *_args, **_kwargs: None,
-    )
-    seasons_by_game_id = {game.game_id: game.season for game in games}
-    for player in game_players:
-        season = seasons_by_game_id.get(player.game_id)
-        if season is None or not player.appeared or player.minutes is None or player.minutes <= 0.0:
-            continue
-        key = (season, player.player_id)
-        totals[key] = totals.get(key, 0.0) + player.minutes
-        counts[key] = counts.get(key, 0) + 1
-
-    return {
-        key: (totals[key] / counts[key], totals[key])
-        for key in totals
-    }
-
-
-def filter_results_by_minutes(
-    results: dict[int, WowyPlayerStats],
-    player_minute_stats: dict[int, tuple[float, float]] | None,
-    min_average_minutes: float | None,
-    min_total_minutes: float | None,
-) -> dict[int, WowyPlayerStats]:
-    if player_minute_stats is None:
-        return results
-    if min_average_minutes is None and min_total_minutes is None:
-        return results
-
-    return {
-        player_id: stats
-        for player_id, stats in results.items()
-        if passes_minute_filters(
-            player_minute_stats.get(player_id),
-            min_average_minutes=min_average_minutes,
-            min_total_minutes=min_total_minutes,
-        )
-    }
-
-
-def attach_minute_stats(
-    results: dict[int, WowyPlayerStats],
-    player_minute_stats: dict[int, tuple[float, float]] | None,
-) -> dict[int, WowyPlayerStats]:
-    if player_minute_stats is None:
-        return results
-
-    updated = {}
-    for player_id, stats in results.items():
-        average_minutes, total_minutes = player_minute_stats.get(
-            player_id,
-            (None, None),
-        )
-        updated[player_id] = WowyPlayerStats(
-            games_with=stats.games_with,
-            games_without=stats.games_without,
-            avg_margin_with=stats.avg_margin_with,
-            avg_margin_without=stats.avg_margin_without,
-            wowy_score=stats.wowy_score,
-            average_minutes=average_minutes,
-            total_minutes=total_minutes,
-        )
-    return updated
-
-
-def build_wowy_player_season_records(
-    games: list[WowyGameRecord],
-    min_games_with: int,
-    min_games_without: int,
-    player_names: dict[int, str] | None = None,
-    player_season_minute_stats: dict[tuple[str, int], tuple[float, float]] | None = None,
-    min_average_minutes: float | None = None,
-    min_total_minutes: float | None = None,
-) -> list[WowyPlayerSeasonRecord]:
-    validate_filters(
-        min_games_with,
-        min_games_without,
-        min_average_minutes=min_average_minutes,
-        min_total_minutes=min_total_minutes,
-    )
-    player_names = player_names or {}
-    games_by_season: dict[str, list[WowyGameRecord]] = {}
-    for game in games:
-        games_by_season.setdefault(game.season, []).append(game)
-
-    records: list[WowyPlayerSeasonRecord] = []
-    for season in sorted(games_by_season):
-        results = compute_wowy(games_by_season[season])
-        results = filter_results(
-            results,
-            min_games_with=min_games_with,
-            min_games_without=min_games_without,
-        )
-
-        season_minute_stats = None
-        if player_season_minute_stats is not None:
-            season_minute_stats = {
-                player_id: stats
-                for (row_season, player_id), stats in player_season_minute_stats.items()
-                if row_season == season
-            }
-
-        results = filter_results_by_minutes(
-            results,
-            player_minute_stats=season_minute_stats,
-            min_average_minutes=min_average_minutes,
-            min_total_minutes=min_total_minutes,
-        )
-        results = attach_minute_stats(results, season_minute_stats)
-
-        ranked = sorted(
-            results.items(),
-            key=lambda item: item[1].wowy_score if item[1].wowy_score is not None else float("-inf"),
-            reverse=True,
-        )
-        for player_id, stats in ranked:
-            if (
-                stats.avg_margin_with is None
-                or stats.avg_margin_without is None
-                or stats.wowy_score is None
-            ):
-                continue
-            records.append(
-                WowyPlayerSeasonRecord(
-                    season=season,
-                    player_id=player_id,
-                    player_name=player_names.get(player_id, str(player_id)),
-                    games_with=stats.games_with,
-                    games_without=stats.games_without,
-                    avg_margin_with=stats.avg_margin_with,
-                    avg_margin_without=stats.avg_margin_without,
-                    wowy_score=stats.wowy_score,
-                    average_minutes=stats.average_minutes,
-                    total_minutes=stats.total_minutes,
-                )
-            )
-
-    return records
-
-
-def serialize_wowy_player_season_records(
-    records: list[WowyPlayerSeasonRecord],
-) -> list[WowyPlayerSeasonRow]:
-    return [
-        {
-            "season": record.season,
-            "player_id": record.player_id,
-            "player_name": record.player_name,
-            "games_with": record.games_with,
-            "games_without": record.games_without,
-            "avg_margin_with": record.avg_margin_with,
-            "avg_margin_without": record.avg_margin_without,
-            "wowy_score": record.wowy_score,
-            "average_minutes": record.average_minutes,
-            "total_minutes": record.total_minutes,
-        }
-        for record in records
-    ]
-
-
 def build_wowy_span_chart_rows(
     records: list[WowyPlayerSeasonRecord],
     *,
@@ -373,64 +172,12 @@ def build_wowy_span_chart_rows(
     ]
 
 
-def available_wowy_seasons(
-    records: list[WowyPlayerSeasonRecord],
-) -> list[str]:
-    return sorted({record.season for record in records})
-
-
-def prepare_wowy_player_season_records(
-    teams: list[str] | None,
-    seasons: list[str] | None,
-    season_type: str,
-    source_data_dir: Path,
-    min_games_with: int,
-    min_games_without: int,
-    player_metrics_db_path: Path = DEFAULT_PLAYER_METRICS_DB_PATH,
-    team_ids: list[int] | None = None,
-    min_average_minutes: float | None = None,
-    min_total_minutes: float | None = None,
-    load_player_names_fn: LoadPlayerNamesFn = load_player_names_from_cache,
-) -> list[WowyPlayerSeasonRecord]:
-    validate_filters(
-        min_games_with,
-        min_games_without,
-        min_average_minutes=min_average_minutes,
-        min_total_minutes=min_total_minutes,
-    )
-    games, player_names = prepare_wowy_game_records(
-        teams=teams,
-        seasons=seasons,
-        team_ids=team_ids,
-        season_type=season_type,
-        source_data_dir=source_data_dir,
-        player_metrics_db_path=player_metrics_db_path,
-        log=lambda *_args, **_kwargs: None,
-    )
-    player_season_minute_stats = load_player_season_minute_stats(
-        teams=teams,
-        seasons=seasons,
-        team_ids=team_ids,
-        season_type=season_type,
-        source_data_dir=source_data_dir,
-        player_metrics_db_path=player_metrics_db_path,
-    )
-    return build_wowy_player_season_records(
-        games,
-        min_games_with=min_games_with,
-        min_games_without=min_games_without,
-        player_names=player_names,
-        player_season_minute_stats=player_season_minute_stats,
-        min_average_minutes=min_average_minutes,
-        min_total_minutes=min_total_minutes,
-    )
-
-
 def prepare_and_run_wowy(
     args,
-    load_player_names_fn: LoadPlayerNamesFn = load_player_names_from_cache,
+    load_player_names_fn: LoadPlayerNamesFn | None = None,
 ) -> str:
     """CLI entrypoint for WOWY using the cache-managed pipeline."""
+    del load_player_names_fn
     validate_filters(
         args.min_games_with,
         args.min_games_without,
@@ -452,7 +199,6 @@ def prepare_and_run_wowy(
         teams=args.team,
         seasons=args.season,
         season_type=args.season_type,
-        source_data_dir=args.source_data_dir,
         player_metrics_db_path=getattr(
             args,
             "player_metrics_db_path",
@@ -463,7 +209,6 @@ def prepare_and_run_wowy(
         teams=args.team,
         seasons=args.season,
         season_type=args.season_type,
-        source_data_dir=args.source_data_dir,
         player_metrics_db_path=getattr(
             args,
             "player_metrics_db_path",
