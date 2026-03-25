@@ -11,7 +11,11 @@ from wowy.nba.source.parsers import (
     parse_box_score_payload,
     parse_league_schedule_payload,
 )
-from wowy.nba.source.models import SourceBoxScorePlayer, SourceBoxScoreTeam, SourceLeagueGame
+from wowy.nba.source.models import (
+    SourceBoxScorePlayer,
+    SourceBoxScoreTeam,
+    SourceLeagueGame,
+)
 from wowy.nba.source.rules import (
     CANONICAL_SCHEDULE_SOURCE_ROW,
     CANONICAL_TEAM_SOURCE_ROW,
@@ -28,8 +32,12 @@ SOURCE_DATA_DIR = Path("data/source/nba")
 
 
 def _sample_cached_team_seasons() -> list[tuple[str, str]]:
-    cache_paths = sorted(SOURCE_DATA_DIR.glob("team_seasons/*_regular_season_leaguegamefinder.json"))
-    assert cache_paths, "Expected cached NBA team-season payloads under data/source/nba/team_seasons"
+    cache_paths = sorted(
+        SOURCE_DATA_DIR.glob("team_seasons/*_regular_season_leaguegamefinder.json")
+    )
+    assert cache_paths, (
+        "Expected cached NBA team-season payloads under data/source/nba/team_seasons"
+    )
     latest_season = max(path.stem.split("_", maxsplit=2)[1] for path in cache_paths)
     cache_paths = [
         path
@@ -46,11 +54,15 @@ def _sample_cached_team_seasons() -> list[tuple[str, str]]:
 
 
 def _latest_cached_scope() -> tuple[str, str] | None:
-    cache_paths = sorted(SOURCE_DATA_DIR.glob("team_seasons/*_regular_season_leaguegamefinder.json"))
+    cache_paths = sorted(
+        SOURCE_DATA_DIR.glob("team_seasons/*_regular_season_leaguegamefinder.json")
+    )
     if not cache_paths:
         return None
     latest_path = max(cache_paths, key=lambda path: path.stem.split("_", maxsplit=2)[1])
-    team, season, _season_type_slug = latest_path.stem.removesuffix("_leaguegamefinder").split(
+    team, season, _season_type_slug = latest_path.stem.removesuffix(
+        "_leaguegamefinder"
+    ).split(
         "_",
         maxsplit=2,
     )
@@ -79,9 +91,12 @@ def test_ingest_team_season_from_cached_nba_source(team: str, season: str) -> No
     assert result.summary.processed_games == result.summary.total_games
     assert result.summary.fetched_box_scores == 0
     assert result.summary.cached_box_scores == result.summary.total_games
-    assert len(result.artifacts.canonical_games) == result.summary.total_games
-    assert len(result.artifacts.wowy_games) == len(result.artifacts.canonical_games)
-    assert len(result.artifacts.canonical_game_players) > len(result.artifacts.canonical_games) * 5
+    assert len(result.artifacts.normalized_games) == result.summary.total_games
+    assert len(result.artifacts.wowy_games) == len(result.artifacts.normalized_games)
+    assert (
+        len(result.artifacts.normalized_game_players)
+        > len(result.artifacts.normalized_games) * 5
+    )
 
 
 def test_latest_cached_scope_is_explicitly_reported_if_partial() -> None:
@@ -146,7 +161,10 @@ def test_ingest_team_season_cached_only_rejects_empty_cached_box_score(
         )
 
     assert exc_info.value.failed_game_ids == ["0001"]
-    assert "Missing valid cached box score payload" in exc_info.value.failed_game_details[0].message
+    assert (
+        "Missing valid cached box score payload"
+        in exc_info.value.failed_game_details[0].message
+    )
     assert not (boxscores_dir / "0001_boxscoretraditionalv2.json").exists()
 
 
@@ -212,7 +230,9 @@ def test_ingest_team_season_cached_only_rejects_empty_cached_league_games(
 ) -> None:
     team_season_dir = tmp_path / "team_seasons"
     team_season_dir.mkdir(parents=True, exist_ok=True)
-    league_games_path = team_season_dir / "BOS_2023-24_regular_season_leaguegamefinder.json"
+    league_games_path = (
+        team_season_dir / "BOS_2023-24_regular_season_leaguegamefinder.json"
+    )
     league_games_path.write_text(
         """
         {
@@ -244,8 +264,16 @@ def test_normalize_source_game_skips_sentinel_player_id_zero_rows() -> None:
         {
             "resultSets": [
                 {
-                    "headers": ["GAME_ID", "GAME_DATE", "MATCHUP", "TEAM_ID", "TEAM_ABBREVIATION"],
-                    "rowSet": [["0001", "2003-03-10", "MEM vs. BOS", 1610612763, "MEM"]],
+                    "headers": [
+                        "GAME_ID",
+                        "GAME_DATE",
+                        "MATCHUP",
+                        "TEAM_ID",
+                        "TEAM_ABBREVIATION",
+                    ],
+                    "rowSet": [
+                        ["0001", "2003-03-10", "MEM vs. BOS", 1610612763, "MEM"]
+                    ],
                 }
             ]
         },
@@ -258,7 +286,14 @@ def test_normalize_source_game_skips_sentinel_player_id_zero_rows() -> None:
             "resultSets": [
                 {
                     "name": "PlayerStats",
-                    "headers": ["GAME_ID", "TEAM_ID", "TEAM_ABBREVIATION", "PLAYER_ID", "PLAYER_NAME", "MIN"],
+                    "headers": [
+                        "GAME_ID",
+                        "TEAM_ID",
+                        "TEAM_ABBREVIATION",
+                        "PLAYER_ID",
+                        "PLAYER_NAME",
+                        "MIN",
+                    ],
                     "rowSet": [
                         ["0001", 1610612763, "MEM", 0, None, None],
                         ["0001", 1610612763, "MEM", 1, "P1", "48:00"],
@@ -298,8 +333,16 @@ def test_normalize_source_game_skips_player_did_not_play_placeholder_rows() -> N
         {
             "resultSets": [
                 {
-                    "headers": ["GAME_ID", "GAME_DATE", "MATCHUP", "TEAM_ID", "TEAM_ABBREVIATION"],
-                    "rowSet": [["0001", "2003-03-10", "MEM vs. BOS", 1610612763, "MEM"]],
+                    "headers": [
+                        "GAME_ID",
+                        "GAME_DATE",
+                        "MATCHUP",
+                        "TEAM_ID",
+                        "TEAM_ABBREVIATION",
+                    ],
+                    "rowSet": [
+                        ["0001", "2003-03-10", "MEM vs. BOS", 1610612763, "MEM"]
+                    ],
                 }
             ]
         },
@@ -341,13 +384,202 @@ def test_normalize_source_game_skips_player_did_not_play_placeholder_rows() -> N
                         "TO",
                     ],
                     "rowSet": [
-                        ["0001", 1610612763, "MEM", 1337, None, None, " ", None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None],
-                        ["0001", 1610612763, "MEM", 1, "P1", "48:00", "", None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None],
-                        ["0001", 1610612763, "MEM", 2, "P2", "48:00", "", None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None],
-                        ["0001", 1610612763, "MEM", 3, "P3", "48:00", "", None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None],
-                        ["0001", 1610612763, "MEM", 4, "P4", "48:00", "", None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None],
-                        ["0001", 1610612763, "MEM", 5, "P5", "48:00", "", None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None],
-                        ["0001", 1610612738, "BOS", 10, "Opp", "48:00", "", None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None],
+                        [
+                            "0001",
+                            1610612763,
+                            "MEM",
+                            1337,
+                            None,
+                            None,
+                            " ",
+                            None,
+                            None,
+                            None,
+                            None,
+                            None,
+                            None,
+                            None,
+                            None,
+                            None,
+                            None,
+                            None,
+                            None,
+                            None,
+                            None,
+                            None,
+                            None,
+                            None,
+                            None,
+                            None,
+                        ],
+                        [
+                            "0001",
+                            1610612763,
+                            "MEM",
+                            1,
+                            "P1",
+                            "48:00",
+                            "",
+                            None,
+                            None,
+                            None,
+                            None,
+                            None,
+                            None,
+                            None,
+                            None,
+                            None,
+                            None,
+                            None,
+                            None,
+                            None,
+                            None,
+                            None,
+                            None,
+                            None,
+                            None,
+                            None,
+                        ],
+                        [
+                            "0001",
+                            1610612763,
+                            "MEM",
+                            2,
+                            "P2",
+                            "48:00",
+                            "",
+                            None,
+                            None,
+                            None,
+                            None,
+                            None,
+                            None,
+                            None,
+                            None,
+                            None,
+                            None,
+                            None,
+                            None,
+                            None,
+                            None,
+                            None,
+                            None,
+                            None,
+                            None,
+                            None,
+                        ],
+                        [
+                            "0001",
+                            1610612763,
+                            "MEM",
+                            3,
+                            "P3",
+                            "48:00",
+                            "",
+                            None,
+                            None,
+                            None,
+                            None,
+                            None,
+                            None,
+                            None,
+                            None,
+                            None,
+                            None,
+                            None,
+                            None,
+                            None,
+                            None,
+                            None,
+                            None,
+                            None,
+                            None,
+                            None,
+                        ],
+                        [
+                            "0001",
+                            1610612763,
+                            "MEM",
+                            4,
+                            "P4",
+                            "48:00",
+                            "",
+                            None,
+                            None,
+                            None,
+                            None,
+                            None,
+                            None,
+                            None,
+                            None,
+                            None,
+                            None,
+                            None,
+                            None,
+                            None,
+                            None,
+                            None,
+                            None,
+                            None,
+                            None,
+                            None,
+                        ],
+                        [
+                            "0001",
+                            1610612763,
+                            "MEM",
+                            5,
+                            "P5",
+                            "48:00",
+                            "",
+                            None,
+                            None,
+                            None,
+                            None,
+                            None,
+                            None,
+                            None,
+                            None,
+                            None,
+                            None,
+                            None,
+                            None,
+                            None,
+                            None,
+                            None,
+                            None,
+                            None,
+                            None,
+                            None,
+                        ],
+                        [
+                            "0001",
+                            1610612738,
+                            "BOS",
+                            10,
+                            "Opp",
+                            "48:00",
+                            "",
+                            None,
+                            None,
+                            None,
+                            None,
+                            None,
+                            None,
+                            None,
+                            None,
+                            None,
+                            None,
+                            None,
+                            None,
+                            None,
+                            None,
+                            None,
+                            None,
+                            None,
+                            None,
+                            None,
+                        ],
                     ],
                 },
                 {
@@ -477,7 +709,9 @@ def test_classify_source_player_row_names_known_skip_patterns() -> None:
 
     assert classify_source_player_row(placeholder) == PLAYER_DID_NOT_PLAY_PLACEHOLDER
     assert classify_source_player_row(inactive) == INACTIVE_PLAYER_STATUS_ROW
-    assert classify_source_player_row(inactive_blank_status) == INACTIVE_PLAYER_STATUS_ROW
+    assert (
+        classify_source_player_row(inactive_blank_status) == INACTIVE_PLAYER_STATUS_ROW
+    )
 
 
 def test_classify_source_player_row_treats_historical_out_status_as_inactive() -> None:
@@ -549,7 +783,10 @@ def test_classify_source_player_row_treats_historical_out_status_as_inactive() -
     )
 
     assert classify_source_player_row(inactive_out_status) == INACTIVE_PLAYER_STATUS_ROW
-    assert classify_source_player_row(inactive_out_no_space_status) == INACTIVE_PLAYER_STATUS_ROW
+    assert (
+        classify_source_player_row(inactive_out_no_space_status)
+        == INACTIVE_PLAYER_STATUS_ROW
+    )
 
 
 def test_classify_source_team_row_defaults_to_canonical_team_source_row() -> None:
@@ -569,7 +806,9 @@ def test_classify_source_team_row_defaults_to_canonical_team_source_row() -> Non
     assert classify_source_team_row(team_row) == CANONICAL_TEAM_SOURCE_ROW
 
 
-def test_classify_source_schedule_row_defaults_to_canonical_schedule_source_row() -> None:
+def test_classify_source_schedule_row_defaults_to_canonical_schedule_source_row() -> (
+    None
+):
     schedule_row = {
         "GAME_ID": "0001",
         "GAME_DATE": "2003-03-10",
@@ -582,7 +821,9 @@ def test_classify_source_schedule_row_defaults_to_canonical_schedule_source_row(
 
 
 def test_dedupe_schedule_games_raises_on_conflicting_duplicate_rows() -> None:
-    with pytest.raises(ValueError, match="Conflicting duplicate schedule rows for game '0001'"):
+    with pytest.raises(
+        ValueError, match="Conflicting duplicate schedule rows for game '0001'"
+    ):
         dedupe_schedule_games(
             [
                 SourceLeagueGame(
@@ -622,8 +863,16 @@ def test_normalize_source_game_skips_inactive_player_status_rows() -> None:
         {
             "resultSets": [
                 {
-                    "headers": ["GAME_ID", "GAME_DATE", "MATCHUP", "TEAM_ID", "TEAM_ABBREVIATION"],
-                    "rowSet": [["0001", "2003-03-10", "MEM vs. BOS", 1610612763, "MEM"]],
+                    "headers": [
+                        "GAME_ID",
+                        "GAME_DATE",
+                        "MATCHUP",
+                        "TEAM_ID",
+                        "TEAM_ABBREVIATION",
+                    ],
+                    "rowSet": [
+                        ["0001", "2003-03-10", "MEM vs. BOS", 1610612763, "MEM"]
+                    ],
                 }
             ]
         },
@@ -665,13 +914,202 @@ def test_normalize_source_game_skips_inactive_player_status_rows() -> None:
                         "TO",
                     ],
                     "rowSet": [
-                        ["0001", 1610612763, "MEM", 1337, "Inactive Player", None, "DNP - Coach's Decision", None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None],
-                        ["0001", 1610612763, "MEM", 1, "P1", "48:00", "", None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None],
-                        ["0001", 1610612763, "MEM", 2, "P2", "48:00", "", None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None],
-                        ["0001", 1610612763, "MEM", 3, "P3", "48:00", "", None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None],
-                        ["0001", 1610612763, "MEM", 4, "P4", "48:00", "", None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None],
-                        ["0001", 1610612763, "MEM", 5, "P5", "48:00", "", None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None],
-                        ["0001", 1610612738, "BOS", 10, "Opp", "48:00", "", None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None],
+                        [
+                            "0001",
+                            1610612763,
+                            "MEM",
+                            1337,
+                            "Inactive Player",
+                            None,
+                            "DNP - Coach's Decision",
+                            None,
+                            None,
+                            None,
+                            None,
+                            None,
+                            None,
+                            None,
+                            None,
+                            None,
+                            None,
+                            None,
+                            None,
+                            None,
+                            None,
+                            None,
+                            None,
+                            None,
+                            None,
+                            None,
+                        ],
+                        [
+                            "0001",
+                            1610612763,
+                            "MEM",
+                            1,
+                            "P1",
+                            "48:00",
+                            "",
+                            None,
+                            None,
+                            None,
+                            None,
+                            None,
+                            None,
+                            None,
+                            None,
+                            None,
+                            None,
+                            None,
+                            None,
+                            None,
+                            None,
+                            None,
+                            None,
+                            None,
+                            None,
+                            None,
+                        ],
+                        [
+                            "0001",
+                            1610612763,
+                            "MEM",
+                            2,
+                            "P2",
+                            "48:00",
+                            "",
+                            None,
+                            None,
+                            None,
+                            None,
+                            None,
+                            None,
+                            None,
+                            None,
+                            None,
+                            None,
+                            None,
+                            None,
+                            None,
+                            None,
+                            None,
+                            None,
+                            None,
+                            None,
+                            None,
+                        ],
+                        [
+                            "0001",
+                            1610612763,
+                            "MEM",
+                            3,
+                            "P3",
+                            "48:00",
+                            "",
+                            None,
+                            None,
+                            None,
+                            None,
+                            None,
+                            None,
+                            None,
+                            None,
+                            None,
+                            None,
+                            None,
+                            None,
+                            None,
+                            None,
+                            None,
+                            None,
+                            None,
+                            None,
+                            None,
+                        ],
+                        [
+                            "0001",
+                            1610612763,
+                            "MEM",
+                            4,
+                            "P4",
+                            "48:00",
+                            "",
+                            None,
+                            None,
+                            None,
+                            None,
+                            None,
+                            None,
+                            None,
+                            None,
+                            None,
+                            None,
+                            None,
+                            None,
+                            None,
+                            None,
+                            None,
+                            None,
+                            None,
+                            None,
+                            None,
+                        ],
+                        [
+                            "0001",
+                            1610612763,
+                            "MEM",
+                            5,
+                            "P5",
+                            "48:00",
+                            "",
+                            None,
+                            None,
+                            None,
+                            None,
+                            None,
+                            None,
+                            None,
+                            None,
+                            None,
+                            None,
+                            None,
+                            None,
+                            None,
+                            None,
+                            None,
+                            None,
+                            None,
+                            None,
+                            None,
+                        ],
+                        [
+                            "0001",
+                            1610612738,
+                            "BOS",
+                            10,
+                            "Opp",
+                            "48:00",
+                            "",
+                            None,
+                            None,
+                            None,
+                            None,
+                            None,
+                            None,
+                            None,
+                            None,
+                            None,
+                            None,
+                            None,
+                            None,
+                            None,
+                            None,
+                            None,
+                            None,
+                            None,
+                            None,
+                            None,
+                        ],
                     ],
                 },
                 {
@@ -714,7 +1152,15 @@ def test_parse_box_score_payload_accepts_v3_result_set_shape() -> None:
                     ],
                     "data": [
                         ["0001", 1610612737, "ATL", 101, "Test", "Player", "12:00"],
-                        ["0001", 1610612738, "BOS", 201, "Other", "Player", "DNP - COACH'S DECISION"],
+                        [
+                            "0001",
+                            1610612738,
+                            "BOS",
+                            201,
+                            "Other",
+                            "Player",
+                            "DNP - COACH'S DECISION",
+                        ],
                     ],
                 },
                 "TeamStats": {
@@ -735,24 +1181,40 @@ def test_parse_box_score_payload_accepts_v3_result_set_shape() -> None:
         game_id="0001",
     )
 
-    assert [(player.player_id, player.player_name, player.minutes_raw) for player in box_score.players] == [
+    assert [
+        (player.player_id, player.player_name, player.minutes_raw)
+        for player in box_score.players
+    ] == [
         (101, "Test Player", "12:00"),
         (201, "Other Player", "DNP - COACH'S DECISION"),
     ]
-    assert [(team.team_id, team.team_abbreviation, team.points_raw) for team in box_score.teams] == [
+    assert [
+        (team.team_id, team.team_abbreviation, team.points_raw)
+        for team in box_score.teams
+    ] == [
         (1610612737, "ATL", 110),
         (1610612738, "BOS", 105),
     ]
 
 
 def test_parse_box_score_payload_raises_with_raw_row_for_blank_player_name() -> None:
-    with pytest.raises(ValueError, match='Missing PLAYER_NAME; nba_api_box_score_player_row=.*"PLAYER_ID": 1'):
+    with pytest.raises(
+        ValueError,
+        match='Missing PLAYER_NAME; nba_api_box_score_player_row=.*"PLAYER_ID": 1',
+    ):
         parse_box_score_payload(
             {
                 "resultSets": [
                     {
                         "name": "PlayerStats",
-                        "headers": ["GAME_ID", "TEAM_ID", "TEAM_ABBREVIATION", "PLAYER_ID", "PLAYER_NAME", "MIN"],
+                        "headers": [
+                            "GAME_ID",
+                            "TEAM_ID",
+                            "TEAM_ABBREVIATION",
+                            "PLAYER_ID",
+                            "PLAYER_NAME",
+                            "MIN",
+                        ],
                         "rowSet": [
                             ["0001", 1610612763, "MEM", 1, "", "48:00"],
                             ["0001", 1610612738, "BOS", 10, "Opp", "48:00"],
@@ -760,7 +1222,12 @@ def test_parse_box_score_payload_raises_with_raw_row_for_blank_player_name() -> 
                     },
                     {
                         "name": "TeamStats",
-                        "headers": ["TEAM_ID", "TEAM_ABBREVIATION", "PLUS_MINUS", "PTS"],
+                        "headers": [
+                            "TEAM_ID",
+                            "TEAM_ABBREVIATION",
+                            "PLUS_MINUS",
+                            "PTS",
+                        ],
                         "rowSet": [
                             [1610612763, "MEM", 5, 100],
                             [1610612738, "BOS", -5, 95],
@@ -773,13 +1240,23 @@ def test_parse_box_score_payload_raises_with_raw_row_for_blank_player_name() -> 
 
 
 def test_parse_box_score_payload_raises_with_raw_row_for_unparseable_minutes() -> None:
-    with pytest.raises(ValueError, match='Unparseable MIN value; nba_api_box_score_player_row=.*"MIN": "bogus"'):
+    with pytest.raises(
+        ValueError,
+        match='Unparseable MIN value; nba_api_box_score_player_row=.*"MIN": "bogus"',
+    ):
         parse_box_score_payload(
             {
                 "resultSets": [
                     {
                         "name": "PlayerStats",
-                        "headers": ["GAME_ID", "TEAM_ID", "TEAM_ABBREVIATION", "PLAYER_ID", "PLAYER_NAME", "MIN"],
+                        "headers": [
+                            "GAME_ID",
+                            "TEAM_ID",
+                            "TEAM_ABBREVIATION",
+                            "PLAYER_ID",
+                            "PLAYER_NAME",
+                            "MIN",
+                        ],
                         "rowSet": [
                             ["0001", 1610612763, "MEM", 1, "P1", "bogus"],
                             ["0001", 1610612738, "BOS", 10, "Opp", "48:00"],
@@ -787,7 +1264,12 @@ def test_parse_box_score_payload_raises_with_raw_row_for_unparseable_minutes() -
                     },
                     {
                         "name": "TeamStats",
-                        "headers": ["TEAM_ID", "TEAM_ABBREVIATION", "PLUS_MINUS", "PTS"],
+                        "headers": [
+                            "TEAM_ID",
+                            "TEAM_ABBREVIATION",
+                            "PLUS_MINUS",
+                            "PTS",
+                        ],
                         "rowSet": [
                             [1610612763, "MEM", 5, 100],
                             [1610612738, "BOS", -5, 95],
@@ -799,8 +1281,13 @@ def test_parse_box_score_payload_raises_with_raw_row_for_unparseable_minutes() -
         )
 
 
-def test_parse_box_score_payload_raises_with_raw_row_for_missing_minutes_outside_known_skip_category() -> None:
-    with pytest.raises(ValueError, match='Unparseable MIN value; nba_api_box_score_player_row=.*"PTS": 12'):
+def test_parse_box_score_payload_raises_with_raw_row_for_missing_minutes_outside_known_skip_category() -> (
+    None
+):
+    with pytest.raises(
+        ValueError,
+        match='Unparseable MIN value; nba_api_box_score_player_row=.*"PTS": 12',
+    ):
         parse_box_score_payload(
             {
                 "resultSets": [
@@ -822,7 +1309,12 @@ def test_parse_box_score_payload_raises_with_raw_row_for_missing_minutes_outside
                     },
                     {
                         "name": "TeamStats",
-                        "headers": ["TEAM_ID", "TEAM_ABBREVIATION", "PLUS_MINUS", "PTS"],
+                        "headers": [
+                            "TEAM_ID",
+                            "TEAM_ABBREVIATION",
+                            "PLUS_MINUS",
+                            "PTS",
+                        ],
                         "rowSet": [
                             [1610612763, "MEM", 5, 100],
                             [1610612738, "BOS", -5, 95],
@@ -834,7 +1326,9 @@ def test_parse_box_score_payload_raises_with_raw_row_for_missing_minutes_outside
         )
 
 
-def test_parse_box_score_payload_skips_historical_inactive_status_rows_with_null_minutes() -> None:
+def test_parse_box_score_payload_skips_historical_inactive_status_rows_with_null_minutes() -> (
+    None
+):
     box_score = parse_box_score_payload(
         {
             "resultSets": [
@@ -851,8 +1345,26 @@ def test_parse_box_score_payload_skips_historical_inactive_status_rows_with_null
                         "PTS",
                     ],
                     "rowSet": [
-                        ["0001", 1610612763, "MEM", 1, "Active Player", "", "48:00", 12],
-                        ["0001", 1610612763, "MEM", 2, "Inactive DNT", "DNT - Sore back", None, None],
+                        [
+                            "0001",
+                            1610612763,
+                            "MEM",
+                            1,
+                            "Active Player",
+                            "",
+                            "48:00",
+                            12,
+                        ],
+                        [
+                            "0001",
+                            1610612763,
+                            "MEM",
+                            2,
+                            "Inactive DNT",
+                            "DNT - Sore back",
+                            None,
+                            None,
+                        ],
                         [
                             "0001",
                             1610612763,
@@ -919,7 +1431,10 @@ def test_parse_box_score_payload_skips_historical_inactive_status_rows_with_null
         game_id="0001",
     )
 
-    assert [(player.player_id, player.player_name, player.minutes_raw) for player in box_score.players] == [
+    assert [
+        (player.player_id, player.player_name, player.minutes_raw)
+        for player in box_score.players
+    ] == [
         (1, "Active Player", "48:00"),
         (2, "Inactive DNT", None),
         (3, "Inactive Make Trip", None),
@@ -931,7 +1446,9 @@ def test_parse_box_score_payload_skips_historical_inactive_status_rows_with_null
     ]
 
 
-def test_parse_box_score_payload_skips_historical_out_status_rows_with_null_minutes() -> None:
+def test_parse_box_score_payload_skips_historical_out_status_rows_with_null_minutes() -> (
+    None
+):
     box_score = parse_box_score_payload(
         {
             "resultSets": [
@@ -949,8 +1466,26 @@ def test_parse_box_score_payload_skips_historical_out_status_rows_with_null_minu
                     ],
                     "rowSet": [
                         ["0001", 1610612751, "NJN", 1, "Active Net", "", "38:40", 25],
-                        ["0001", 1610612751, "NJN", 2734, "Devin Harris", "OUT - Sore Right Groin", None, None],
-                        ["0001", 1610612764, "WAS", 2406, "Caron Butler", "OUT- Sore Right Ankle", None, None],
+                        [
+                            "0001",
+                            1610612751,
+                            "NJN",
+                            2734,
+                            "Devin Harris",
+                            "OUT - Sore Right Groin",
+                            None,
+                            None,
+                        ],
+                        [
+                            "0001",
+                            1610612764,
+                            "WAS",
+                            2406,
+                            "Caron Butler",
+                            "OUT- Sore Right Ankle",
+                            None,
+                            None,
+                        ],
                         ["0001", 1610612764, "WAS", 10, "Opp", "", "35:00", 18],
                     ],
                 },
@@ -967,7 +1502,10 @@ def test_parse_box_score_payload_skips_historical_out_status_rows_with_null_minu
         game_id="0001",
     )
 
-    assert [(player.player_id, player.player_name, player.minutes_raw) for player in box_score.players] == [
+    assert [
+        (player.player_id, player.player_name, player.minutes_raw)
+        for player in box_score.players
+    ] == [
         (1, "Active Net", "38:40"),
         (2734, "Devin Harris", None),
         (2406, "Caron Butler", None),
@@ -975,13 +1513,23 @@ def test_parse_box_score_payload_skips_historical_out_status_rows_with_null_minu
     ]
 
 
-def test_normalize_source_game_skips_inactive_status_rows_with_missing_name_and_id() -> None:
+def test_normalize_source_game_skips_inactive_status_rows_with_missing_name_and_id() -> (
+    None
+):
     schedule = parse_league_schedule_payload(
         {
             "resultSets": [
                 {
-                    "headers": ["GAME_ID", "GAME_DATE", "MATCHUP", "TEAM_ID", "TEAM_ABBREVIATION"],
-                    "rowSet": [["0001", "2003-03-10", "MEM vs. BOS", 1610612763, "MEM"]],
+                    "headers": [
+                        "GAME_ID",
+                        "GAME_DATE",
+                        "MATCHUP",
+                        "TEAM_ID",
+                        "TEAM_ABBREVIATION",
+                    ],
+                    "rowSet": [
+                        ["0001", "2003-03-10", "MEM vs. BOS", 1610612763, "MEM"]
+                    ],
                 },
             ]
         },
@@ -1023,13 +1571,202 @@ def test_normalize_source_game_skips_inactive_status_rows_with_missing_name_and_
                         "TO",
                     ],
                     "rowSet": [
-                        ["0001", 1610612763, "MEM", None, None, None, "DND-SYNCOPE (FAINTED)", None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None],
-                        ["0001", 1610612763, "MEM", 1, "P1", "48:00", "", None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None],
-                        ["0001", 1610612763, "MEM", 2, "P2", "48:00", "", None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None],
-                        ["0001", 1610612763, "MEM", 3, "P3", "48:00", "", None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None],
-                        ["0001", 1610612763, "MEM", 4, "P4", "48:00", "", None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None],
-                        ["0001", 1610612763, "MEM", 5, "P5", "48:00", "", None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None],
-                        ["0001", 1610612738, "BOS", 10, "Opp", "48:00", "", None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None],
+                        [
+                            "0001",
+                            1610612763,
+                            "MEM",
+                            None,
+                            None,
+                            None,
+                            "DND-SYNCOPE (FAINTED)",
+                            None,
+                            None,
+                            None,
+                            None,
+                            None,
+                            None,
+                            None,
+                            None,
+                            None,
+                            None,
+                            None,
+                            None,
+                            None,
+                            None,
+                            None,
+                            None,
+                            None,
+                            None,
+                            None,
+                        ],
+                        [
+                            "0001",
+                            1610612763,
+                            "MEM",
+                            1,
+                            "P1",
+                            "48:00",
+                            "",
+                            None,
+                            None,
+                            None,
+                            None,
+                            None,
+                            None,
+                            None,
+                            None,
+                            None,
+                            None,
+                            None,
+                            None,
+                            None,
+                            None,
+                            None,
+                            None,
+                            None,
+                            None,
+                            None,
+                        ],
+                        [
+                            "0001",
+                            1610612763,
+                            "MEM",
+                            2,
+                            "P2",
+                            "48:00",
+                            "",
+                            None,
+                            None,
+                            None,
+                            None,
+                            None,
+                            None,
+                            None,
+                            None,
+                            None,
+                            None,
+                            None,
+                            None,
+                            None,
+                            None,
+                            None,
+                            None,
+                            None,
+                            None,
+                            None,
+                        ],
+                        [
+                            "0001",
+                            1610612763,
+                            "MEM",
+                            3,
+                            "P3",
+                            "48:00",
+                            "",
+                            None,
+                            None,
+                            None,
+                            None,
+                            None,
+                            None,
+                            None,
+                            None,
+                            None,
+                            None,
+                            None,
+                            None,
+                            None,
+                            None,
+                            None,
+                            None,
+                            None,
+                            None,
+                            None,
+                        ],
+                        [
+                            "0001",
+                            1610612763,
+                            "MEM",
+                            4,
+                            "P4",
+                            "48:00",
+                            "",
+                            None,
+                            None,
+                            None,
+                            None,
+                            None,
+                            None,
+                            None,
+                            None,
+                            None,
+                            None,
+                            None,
+                            None,
+                            None,
+                            None,
+                            None,
+                            None,
+                            None,
+                            None,
+                            None,
+                        ],
+                        [
+                            "0001",
+                            1610612763,
+                            "MEM",
+                            5,
+                            "P5",
+                            "48:00",
+                            "",
+                            None,
+                            None,
+                            None,
+                            None,
+                            None,
+                            None,
+                            None,
+                            None,
+                            None,
+                            None,
+                            None,
+                            None,
+                            None,
+                            None,
+                            None,
+                            None,
+                            None,
+                            None,
+                            None,
+                        ],
+                        [
+                            "0001",
+                            1610612738,
+                            "BOS",
+                            10,
+                            "Opp",
+                            "48:00",
+                            "",
+                            None,
+                            None,
+                            None,
+                            None,
+                            None,
+                            None,
+                            None,
+                            None,
+                            None,
+                            None,
+                            None,
+                            None,
+                            None,
+                            None,
+                            None,
+                            None,
+                            None,
+                            None,
+                            None,
+                        ],
                     ],
                 },
                 {
@@ -1055,17 +1792,27 @@ def test_normalize_source_game_skips_inactive_status_rows_with_missing_name_and_
     assert [player.player_id for player in players] == [1, 2, 3, 4, 5]
 
 
-def test_parse_league_schedule_payload_raises_with_raw_row_for_conflicting_team_identity() -> None:
+def test_parse_league_schedule_payload_raises_with_raw_row_for_conflicting_team_identity() -> (
+    None
+):
     with pytest.raises(
         ValueError,
-        match='Conflicting source team identity values: TEAM_ABBREVIATION=\'LAL\' expected=\'MEM\' for TEAM_ID=1610612763; nba_api_league_schedule_row=',
+        match="Conflicting source team identity values: TEAM_ABBREVIATION='LAL' expected='MEM' for TEAM_ID=1610612763; nba_api_league_schedule_row=",
     ):
         parse_league_schedule_payload(
             {
                 "resultSets": [
                     {
-                        "headers": ["GAME_ID", "GAME_DATE", "MATCHUP", "TEAM_ID", "TEAM_ABBREVIATION"],
-                        "rowSet": [["0001", "2003-03-10", "MEM vs. BOS", 1610612763, "LAL"]],
+                        "headers": [
+                            "GAME_ID",
+                            "GAME_DATE",
+                            "MATCHUP",
+                            "TEAM_ID",
+                            "TEAM_ABBREVIATION",
+                        ],
+                        "rowSet": [
+                            ["0001", "2003-03-10", "MEM vs. BOS", 1610612763, "LAL"]
+                        ],
                     }
                 ]
             },
@@ -1078,14 +1825,22 @@ def test_parse_league_schedule_payload_raises_with_raw_row_for_conflicting_team_
 def test_parse_league_schedule_payload_rejects_historically_wrong_team_label() -> None:
     with pytest.raises(
         ValueError,
-        match='TEAM_ABBREVIATION=\'NOP\' expected=\'NOH\' for TEAM_ID=1610612740',
+        match="TEAM_ABBREVIATION='NOP' expected='NOH' for TEAM_ID=1610612740",
     ):
         parse_league_schedule_payload(
             {
                 "resultSets": [
                     {
-                        "headers": ["GAME_ID", "GAME_DATE", "MATCHUP", "TEAM_ID", "TEAM_ABBREVIATION"],
-                        "rowSet": [["0001", "2003-03-10", "NOP vs. BOS", 1610612740, "NOP"]],
+                        "headers": [
+                            "GAME_ID",
+                            "GAME_DATE",
+                            "MATCHUP",
+                            "TEAM_ID",
+                            "TEAM_ABBREVIATION",
+                        ],
+                        "rowSet": [
+                            ["0001", "2003-03-10", "NOP vs. BOS", 1610612740, "NOP"]
+                        ],
                     }
                 ]
             },
@@ -1095,17 +1850,26 @@ def test_parse_league_schedule_payload_rejects_historically_wrong_team_label() -
         )
 
 
-def test_parse_box_score_payload_raises_with_raw_row_for_conflicting_player_team_identity() -> None:
+def test_parse_box_score_payload_raises_with_raw_row_for_conflicting_player_team_identity() -> (
+    None
+):
     with pytest.raises(
         ValueError,
-        match='Conflicting source team identity values: TEAM_ID=1610612763 TEAM_ABBREVIATION=\'LAL\'',
+        match="Conflicting source team identity values: TEAM_ID=1610612763 TEAM_ABBREVIATION='LAL'",
     ):
         parse_box_score_payload(
             {
                 "resultSets": [
                     {
                         "name": "PlayerStats",
-                        "headers": ["GAME_ID", "TEAM_ID", "TEAM_ABBREVIATION", "PLAYER_ID", "PLAYER_NAME", "MIN"],
+                        "headers": [
+                            "GAME_ID",
+                            "TEAM_ID",
+                            "TEAM_ABBREVIATION",
+                            "PLAYER_ID",
+                            "PLAYER_NAME",
+                            "MIN",
+                        ],
                         "rowSet": [
                             ["0001", 1610612763, "LAL", 1, "P1", "48:00"],
                             ["0001", 1610612738, "BOS", 10, "Opp", "48:00"],
@@ -1113,7 +1877,12 @@ def test_parse_box_score_payload_raises_with_raw_row_for_conflicting_player_team
                     },
                     {
                         "name": "TeamStats",
-                        "headers": ["TEAM_ID", "TEAM_ABBREVIATION", "PLUS_MINUS", "PTS"],
+                        "headers": [
+                            "TEAM_ID",
+                            "TEAM_ABBREVIATION",
+                            "PLUS_MINUS",
+                            "PTS",
+                        ],
                         "rowSet": [
                             [1610612763, "MEM", 5, 100],
                             [1610612738, "BOS", -5, 95],
@@ -1125,13 +1894,23 @@ def test_parse_box_score_payload_raises_with_raw_row_for_conflicting_player_team
         )
 
 
-def test_parse_box_score_payload_raises_with_raw_values_for_conflicting_team_identity() -> None:
+def test_parse_box_score_payload_raises_with_raw_values_for_conflicting_team_identity() -> (
+    None
+):
     schedule = parse_league_schedule_payload(
         {
             "resultSets": [
                 {
-                    "headers": ["GAME_ID", "GAME_DATE", "MATCHUP", "TEAM_ID", "TEAM_ABBREVIATION"],
-                    "rowSet": [["0001", "2003-03-10", "MEM vs. BOS", 1610612763, "MEM"]],
+                    "headers": [
+                        "GAME_ID",
+                        "GAME_DATE",
+                        "MATCHUP",
+                        "TEAM_ID",
+                        "TEAM_ABBREVIATION",
+                    ],
+                    "rowSet": [
+                        ["0001", "2003-03-10", "MEM vs. BOS", 1610612763, "MEM"]
+                    ],
                 }
             ]
         },
@@ -1150,7 +1929,14 @@ def test_parse_box_score_payload_raises_with_raw_values_for_conflicting_team_ide
                 "resultSets": [
                     {
                         "name": "PlayerStats",
-                        "headers": ["GAME_ID", "TEAM_ID", "TEAM_ABBREVIATION", "PLAYER_ID", "PLAYER_NAME", "MIN"],
+                        "headers": [
+                            "GAME_ID",
+                            "TEAM_ID",
+                            "TEAM_ABBREVIATION",
+                            "PLAYER_ID",
+                            "PLAYER_NAME",
+                            "MIN",
+                        ],
                         "rowSet": [
                             ["0001", 1610612763, "MEM", 1, "P1", "48:00"],
                             ["0001", 1610612763, "MEM", 2, "P2", "48:00"],
@@ -1162,7 +1948,12 @@ def test_parse_box_score_payload_raises_with_raw_values_for_conflicting_team_ide
                     },
                     {
                         "name": "TeamStats",
-                        "headers": ["TEAM_ID", "TEAM_ABBREVIATION", "PLUS_MINUS", "PTS"],
+                        "headers": [
+                            "TEAM_ID",
+                            "TEAM_ABBREVIATION",
+                            "PLUS_MINUS",
+                            "PTS",
+                        ],
                         "rowSet": [
                             [1610612763, "MEM", 5, 100],
                             [1610612738, "LAL", -5, 95],

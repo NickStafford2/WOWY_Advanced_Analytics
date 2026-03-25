@@ -16,7 +16,7 @@ from wowy.nba.errors import (
 def test_cache_season_data_continues_after_team_failure(monkeypatch, capsys):
     calls: list[str] = []
 
-    def fake_cache_team_season_data(**kwargs):
+    def fake_refresh_normalized_team_season_cache(**kwargs):
         team = kwargs["team_abbreviation"]
         calls.append(team)
         if team == "BOS":
@@ -43,7 +43,11 @@ def test_cache_season_data_continues_after_team_failure(monkeypatch, capsys):
 
     logged_failures: list[tuple[str, str]] = []
 
-    monkeypatch.setattr(cache_season_data, "cache_team_season_data", fake_cache_team_season_data)
+    monkeypatch.setattr(
+        cache_season_data,
+        "refresh_normalized_team_season_cache",
+        fake_refresh_normalized_team_season_cache,
+    )
     monkeypatch.setattr(
         cache_season_data,
         "append_ingest_failure_log",
@@ -99,12 +103,16 @@ def test_filtered_log_only_emits_actionable_cache_messages(capsys):
 def test_cache_season_data_skips_requested_team_not_active_in_season(monkeypatch, capsys):
     called = False
 
-    def fake_cache_team_season_data(**_kwargs):
+    def fake_refresh_normalized_team_season_cache(**_kwargs):
         nonlocal called
         called = True
         raise AssertionError("inactive team-season should not be fetched")
 
-    monkeypatch.setattr(cache_season_data, "cache_team_season_data", fake_cache_team_season_data)
+    monkeypatch.setattr(
+        cache_season_data,
+        "refresh_normalized_team_season_cache",
+        fake_refresh_normalized_team_season_cache,
+    )
     monkeypatch.setattr(cache_season_data, "team_is_active_for_season", lambda team, season: False)
 
     exit_code = cache_season_data.main(["2002-03", "--teams", "CHA"])

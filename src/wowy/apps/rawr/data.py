@@ -12,8 +12,11 @@ from wowy.data.game_cache import list_cache_load_rows
 from wowy.data.player_metrics_db import DEFAULT_PLAYER_METRICS_DB_PATH
 from wowy.data.player_metrics_db import PlayerSeasonMetricRow
 from wowy.nba.models import NormalizedGamePlayerRecord, NormalizedGameRecord
-from wowy.nba.prepare import prepare_canonical_scope_records
-from wowy.nba.team_identity import list_expected_team_abbreviations_for_season, resolve_team_id
+from wowy.nba.prepare import load_normalized_scope_records
+from wowy.nba.team_identity import (
+    list_expected_team_abbreviations_for_season,
+    resolve_team_id,
+)
 from wowy.nba.team_seasons import resolve_team_seasons
 from wowy.shared.minutes import passes_minute_filters
 
@@ -28,7 +31,9 @@ def build_rawr_observations(
     games: list[NormalizedGameRecord],
     game_players: list[NormalizedGamePlayerRecord],
 ) -> tuple[list[RawrObservation], dict[int, str]]:
-    player_minutes_by_game_team: dict[tuple[str, int], dict[int, float]] = defaultdict(dict)
+    player_minutes_by_game_team: dict[tuple[str, int], dict[int, float]] = defaultdict(
+        dict
+    )
     player_names: dict[int, str] = {}
 
     for player in game_players:
@@ -41,9 +46,9 @@ def build_rawr_observations(
                 f"Missing positive minutes for appeared player {player.player_id!r} "
                 f"in game {player.game_id!r} and team {player.team!r}"
             )
-        player_minutes_by_game_team[(player.game_id, player.identity_team)][player.player_id] = (
-            minutes
-        )
+        player_minutes_by_game_team[(player.game_id, player.identity_team)][
+            player.player_id
+        ] = minutes
 
     games_by_id: dict[str, list[NormalizedGameRecord]] = defaultdict(list)
     for game in games:
@@ -208,10 +213,9 @@ def filter_rawr_scope(
         if not team_ids:
             return games, game_players
 
-    normalized_team_ids = (
-        {int(team_id) for team_id in team_ids or [] if int(team_id) > 0}
-        or {resolve_team_id(team) for team in teams or []}
-    )
+    normalized_team_ids = {
+        int(team_id) for team_id in team_ids or [] if int(team_id) > 0
+    } or {resolve_team_id(team) for team in teams or []}
     normalized_seasons = set(seasons or [])
     selected_game_ids = {
         game.game_id
@@ -367,10 +371,7 @@ def build_player_season_minute_stats(
     games,
     game_players,
 ) -> dict[tuple[str, int], tuple[float, float]]:
-    season_by_game_id = {
-        game.game_id: game.season
-        for game in games
-    }
+    season_by_game_id = {game.game_id: game.season for game in games}
     totals: dict[tuple[str, int], float] = {}
     counts: dict[tuple[str, int], int] = {}
 
@@ -387,10 +388,7 @@ def build_player_season_minute_stats(
         totals[key] = totals.get(key, 0.0) + player.minutes
         counts[key] = counts.get(key, 0) + 1
 
-    return {
-        key: (totals[key] / counts[key], totals[key])
-        for key in totals
-    }
+    return {key: (totals[key] / counts[key], totals[key]) for key in totals}
 
 
 def prepare_rawr_player_season_records(
@@ -434,7 +432,7 @@ def prepare_rawr_player_season_records(
     for season in sorted(teams_by_season):
         if season not in complete_seasons:
             continue
-        games, game_players = prepare_canonical_scope_records(
+        games, game_players = load_normalized_scope_records(
             teams=sorted(set(teams_by_season[season])),
             seasons=[season],
             season_type=season_type,

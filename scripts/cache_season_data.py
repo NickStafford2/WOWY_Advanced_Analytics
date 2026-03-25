@@ -22,7 +22,7 @@ from wowy.nba.team_identity import (
     list_expected_team_abbreviations_for_season,
     team_is_active_for_season,
 )
-from wowy.workflows.nba_ingest import cache_team_season_data
+from wowy.workflows.nba_ingest import refresh_normalized_team_season_cache
 
 
 _LAST_STATUS_LINE_LENGTH = 0
@@ -168,7 +168,9 @@ def render_team_failed_line(
     season: str,
     reason: str,
 ) -> None:
-    line = f"  [{team_index:>2}/{team_total}] {team} {season} failed consistency={reason}"
+    line = (
+        f"  [{team_index:>2}/{team_total}] {team} {season} failed consistency={reason}"
+    )
     write_status_line(line)
 
 
@@ -260,10 +262,7 @@ def render_team_fetch_failed_line(
     season: str,
     error_type: str,
 ) -> None:
-    line = (
-        f"  [{team_index:>2}/{team_total}] {team} {season} "
-        f"failed fetch={error_type}"
-    )
+    line = f"  [{team_index:>2}/{team_total}] {team} {season} failed fetch={error_type}"
     write_status_line(line)
 
 
@@ -308,14 +307,15 @@ def main(argv: list[str] | None = None) -> int:
                 sys.stdout.write("\n")
                 continue
             try:
-                summary = cache_team_season_data(
+                summary = refresh_normalized_team_season_cache(
                     team_abbreviation=team_code,
                     season=season,
                     season_type=season_type,
                     source_data_dir=DEFAULT_SOURCE_DATA_DIR,
                     player_metrics_db_path=args.player_metrics_db_path,
                     log=filtered_log,
-                    progress=lambda payload, team_index=team_index: render_progress_line(
+                    progress=lambda payload,
+                    team_index=team_index: render_progress_line(
                         team_index,
                         team_total,
                         payload,
@@ -428,9 +428,7 @@ def main(argv: list[str] | None = None) -> int:
                     season=season,
                 )
                 sys.stdout.write("\n")
-                sys.stderr.write(
-                    f"Validation failed for {team_code} {season}: {exc}\n"
-                )
+                sys.stderr.write(f"Validation failed for {team_code} {season}: {exc}\n")
                 sys.stderr.flush()
                 continue
             render_team_complete_line(team_index, team_total, summary)

@@ -19,7 +19,7 @@ from wowy.apps.rawr.data import (
 from wowy.apps.rawr.formatting import format_rawr_results
 from wowy.nba.models import NormalizedGamePlayerRecord, NormalizedGameRecord
 from wowy.data.player_metrics_db import DEFAULT_PLAYER_METRICS_DB_PATH
-from wowy.nba.prepare import prepare_canonical_scope_records
+from wowy.nba.prepare import load_normalized_scope_records
 from wowy.progress import TerminalProgressBar, print_status_box
 from wowy.shared.filters import validate_top_n_and_minutes
 from wowy.shared.scope import format_scope
@@ -199,13 +199,9 @@ def prepare_and_run_rawr(args) -> str:
         ),
     )
     if not complete_seasons:
-        raise ValueError(
-            "No complete cached seasons matched the requested RAWR scope"
-        )
-    print(
-        f"[1/3] preparing RAWR inputs for {format_scope(args.team, args.season)}"
-    )
-    games, game_players = prepare_canonical_scope_records(
+        raise ValueError("No complete cached seasons matched the requested RAWR scope")
+    print(f"[1/3] preparing RAWR inputs for {format_scope(args.team, args.season)}")
+    games, game_players = load_normalized_scope_records(
         teams=args.team,
         seasons=complete_seasons,
         season_type=args.season_type,

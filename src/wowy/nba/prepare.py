@@ -14,7 +14,7 @@ from wowy.nba.models import NormalizedGamePlayerRecord, NormalizedGameRecord
 from wowy.nba.team_seasons import TeamSeasonScope, resolve_team_seasons
 
 
-def prepare_wowy_game_records(
+def load_wowy_game_records(
     teams: list[str] | None,
     seasons: list[str] | None,
     *,
@@ -22,7 +22,7 @@ def prepare_wowy_game_records(
     season_type: str = "Regular Season",
     player_metrics_db_path: Path = DEFAULT_PLAYER_METRICS_DB_PATH,
 ) -> tuple[list[WowyGameRecord], dict[int, str]]:
-    games, game_players = prepare_canonical_scope_records(
+    games, game_players = load_normalized_scope_records(
         teams=teams,
         seasons=seasons,
         team_ids=team_ids,
@@ -34,7 +34,7 @@ def prepare_wowy_game_records(
     return derive_wowy_games(games, game_players), player_names
 
 
-def prepare_canonical_scope_records(
+def load_normalized_scope_records(
     teams: list[str] | None,
     seasons: list[str] | None,
     *,
@@ -68,7 +68,7 @@ def prepare_canonical_scope_records(
                 team_id=game.opponent_team_id,
                 season=game.season,
             )
-            for game in _load_games_from_db(
+            for game in _load_normalized_games_from_db_for_scope(
                 requested_team_seasons,
                 season_type=season_type,
                 player_metrics_db_path=player_metrics_db_path,
@@ -106,7 +106,7 @@ def prepare_canonical_scope_records(
     raise ValueError("No database cache matched the requested scope")
 
 
-def _load_games_from_db(
+def _load_normalized_games_from_db_for_scope(
     team_seasons: list[TeamSeasonScope],
     *,
     season_type: str,
@@ -134,8 +134,7 @@ def _filter_records_to_team_seasons(
     team_seasons: list[TeamSeasonScope],
 ) -> tuple[list[NormalizedGameRecord], list[NormalizedGamePlayerRecord]]:
     allowed_team_seasons = {
-        (team_season.team_id, team_season.season)
-        for team_season in team_seasons
+        (team_season.team_id, team_season.season) for team_season in team_seasons
     }
     filtered_games = [
         game

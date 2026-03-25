@@ -53,7 +53,7 @@ def season_type_slug(season_type: str) -> str:
     return canonicalize_season_type(season_type).lower().replace(" ", "_")
 
 
-def fetch_team_season_data(
+def load_normalized_team_season_records(
     team_abbreviation: str,
     season: str,
     season_type: str = "Regular Season",
@@ -71,7 +71,7 @@ def fetch_team_season_data(
         progress=progress,
         cached_only=cached_only,
     )
-    return result.artifacts.canonical_games, result.artifacts.canonical_game_players
+    return result.artifacts.normalized_games, result.artifacts.normalized_game_players
 
 
 def ingest_team_season(
@@ -224,8 +224,8 @@ def ingest_team_season(
     wowy_games = derive_validated_wowy_games(batch)
     return TeamSeasonBuildResult(
         artifacts=TeamSeasonArtifacts(
-            canonical_games=normalized_games,
-            canonical_game_players=normalized_game_players,
+            normalized_games=normalized_games,
+            normalized_game_players=normalized_game_players,
             wowy_games=wowy_games,
         ),
         summary=TeamSeasonRunSummary(
@@ -242,7 +242,7 @@ def ingest_team_season(
     )
 
 
-def cache_team_season_data(
+def refresh_normalized_team_season_cache(
     team_abbreviation: str,
     season: str,
     season_type: str = "Regular Season",
@@ -271,8 +271,8 @@ def cache_team_season_data(
         team_id=team_id,
         season=season,
         season_type=season_type,
-        games=result.artifacts.canonical_games,
-        game_players=result.artifacts.canonical_game_players,
+        games=result.artifacts.normalized_games,
+        game_players=result.artifacts.normalized_game_players,
         source_path=f"sqlite://normalized_games/{team}_{season}_{season_type_slug(season_type)}",
         source_snapshot="ingest-build",
         source_kind="nba-api",
@@ -280,8 +280,8 @@ def cache_team_season_data(
         skipped_games_row_count=result.summary.skipped_games,
     )
     consistency = validate_team_season_records(
-        result.artifacts.canonical_games,
-        result.artifacts.canonical_game_players,
+        result.artifacts.normalized_games,
+        result.artifacts.normalized_game_players,
         result.artifacts.wowy_games,
     )
     if consistency != "ok":
@@ -392,8 +392,8 @@ def _summarize_game_failure_reason(failure: GameNormalizationFailure) -> str:
 
 __all__ = [
     "ProgressFn",
-    "cache_team_season_data",
-    "fetch_team_season_data",
+    "refresh_normalized_team_season_cache",
+    "load_normalized_team_season_records",
     "ingest_team_season",
     "load_player_names_from_cache",
     "season_type_slug",

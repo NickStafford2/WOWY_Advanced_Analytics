@@ -18,7 +18,7 @@ from wowy.apps.wowy.models import (
     WowyPlayerStats,
 )
 from wowy.data.player_metrics_db import DEFAULT_PLAYER_METRICS_DB_PATH
-from wowy.nba.prepare import prepare_wowy_game_records
+from wowy.nba.prepare import load_wowy_game_records
 from wowy.progress import TerminalProgressBar, print_status_box
 from wowy.shared.filters import validate_top_n_and_minutes
 from wowy.shared.scope import format_scope
@@ -124,9 +124,7 @@ def build_wowy_span_chart_rows(
         raise ValueError("start_season must be less than or equal to end_season")
 
     span_records = [
-        record
-        for record in records
-        if start_season <= record.season <= end_season
+        record for record in records if start_season <= record.season <= end_season
     ]
     if not span_records:
         return []
@@ -137,10 +135,14 @@ def build_wowy_span_chart_rows(
     season_scores: dict[int, dict[str, float]] = {}
 
     for record in span_records:
-        score_totals[record.player_id] = score_totals.get(record.player_id, 0.0) + record.wowy_score
+        score_totals[record.player_id] = (
+            score_totals.get(record.player_id, 0.0) + record.wowy_score
+        )
         season_counts[record.player_id] = season_counts.get(record.player_id, 0) + 1
         player_names[record.player_id] = record.player_name
-        season_scores.setdefault(record.player_id, {})[record.season] = record.wowy_score
+        season_scores.setdefault(record.player_id, {})[record.season] = (
+            record.wowy_score
+        )
 
     ranked_player_ids = sorted(
         score_totals,
@@ -192,7 +194,7 @@ def prepare_and_run_wowy(
         ],
     )
     print(f"[1/3] preparing WOWY inputs for {format_scope(args.team, args.season)}")
-    games, player_names = prepare_wowy_game_records(
+    games, player_names = load_wowy_game_records(
         teams=args.team,
         seasons=args.season,
         season_type=args.season_type,

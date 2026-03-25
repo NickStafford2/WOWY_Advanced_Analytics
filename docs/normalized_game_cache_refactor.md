@@ -20,15 +20,19 @@ Done:
 - `workflows/nba_ingest.py` now owns the real ingest flow
 - `wowy.nba.ingest` compatibility layers were removed after callers were migrated
 - several clean call sites now import `data.game_cache` directly
+- normalized cache reads now go through `nba.prepare` read-only loaders
+- WOWY and RAWR now read normalized cache only
+- WOWY and RAWR metric refresh/build paths now go through metric-specific data modules
+- `canonical_*` loader/artifact names in the normalized-cache read path were renamed to `normalized_*`
 
 Still temporary:
 
-- none in the normalized cache/source/normalize boundary tracked by this note
+- `web/service.py` still mixes metric refresh orchestration and metric query/read payload building
 
 ## Next
 
-1. Separate normalized cache refresh from derived metric refresh so WOWY and RAWR only read normalized cache and write through metrics-specific data modules.
-2. Remove leftover `canonical_*` naming only after the new boundaries are stable.
+1. Split `web/service.py` into clearer refresh/build vs read/query responsibilities.
+2. Remove any remaining low-value compatibility args or aliases only when they no longer help staged call-site migration.
 
 ## Constraints
 

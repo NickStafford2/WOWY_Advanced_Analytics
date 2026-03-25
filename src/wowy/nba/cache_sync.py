@@ -9,7 +9,8 @@ from wowy.data.game_cache import (
 from wowy.data.player_metrics_db import DEFAULT_PLAYER_METRICS_DB_PATH
 from wowy.nba.team_seasons import TeamSeasonScope
 from wowy.nba.source.cache import DEFAULT_SOURCE_DATA_DIR
-from wowy.workflows.nba_ingest import cache_team_season_data
+from wowy.workflows.nba_ingest import refresh_normalized_team_season_cache
+
 LogFn = Callable[[str], None]
 
 
@@ -35,7 +36,7 @@ def ensure_team_season_data(
         return
     if log is not None:
         log(f"fetch {team_season.team} {team_season.season}")
-    cache_team_season_data(
+    refresh_normalized_team_season_cache(
         team_abbreviation=team_season.team,
         season=team_season.season,
         season_type=season_type,

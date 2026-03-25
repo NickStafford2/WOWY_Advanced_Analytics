@@ -18,8 +18,8 @@ from wowy.data.player_metrics_db import (
     PlayerSeasonMetricRow,
 )
 from wowy.nba.prepare import (
-    prepare_canonical_scope_records,
-    prepare_wowy_game_records,
+    load_normalized_scope_records,
+    load_wowy_game_records,
 )
 from wowy.shared.minutes import build_player_minute_stats, passes_minute_filters
 
@@ -37,7 +37,7 @@ def load_player_minute_stats(
     player_metrics_db_path: Path = DEFAULT_PLAYER_METRICS_DB_PATH,
     team_ids: list[int] | None = None,
 ) -> dict[int, tuple[float, float]]:
-    _games, game_players = prepare_canonical_scope_records(
+    _games, game_players = load_normalized_scope_records(
         teams=teams,
         seasons=seasons,
         team_ids=team_ids,
@@ -58,7 +58,7 @@ def load_player_season_minute_stats(
     totals: dict[tuple[str, int], float] = {}
     counts: dict[tuple[str, int], int] = {}
 
-    games, game_players = prepare_canonical_scope_records(
+    games, game_players = load_normalized_scope_records(
         teams=teams,
         seasons=seasons,
         team_ids=team_ids,
@@ -69,16 +69,18 @@ def load_player_season_minute_stats(
     seasons_by_game_id = {game.game_id: game.season for game in games}
     for player in game_players:
         season = seasons_by_game_id.get(player.game_id)
-        if season is None or not player.appeared or player.minutes is None or player.minutes <= 0.0:
+        if (
+            season is None
+            or not player.appeared
+            or player.minutes is None
+            or player.minutes <= 0.0
+        ):
             continue
         key = (season, player.player_id)
         totals[key] = totals.get(key, 0.0) + player.minutes
         counts[key] = counts.get(key, 0) + 1
 
-    return {
-        key: (totals[key] / counts[key], totals[key])
-        for key in totals
-    }
+    return {key: (totals[key] / counts[key], totals[key]) for key in totals}
 
 
 def filter_results_by_minutes(
@@ -133,7 +135,8 @@ def build_wowy_player_season_records(
     min_games_with: int,
     min_games_without: int,
     player_names: dict[int, str] | None = None,
-    player_season_minute_stats: dict[tuple[str, int], tuple[float, float]] | None = None,
+    player_season_minute_stats: dict[tuple[str, int], tuple[float, float]]
+    | None = None,
     min_average_minutes: float | None = None,
     min_total_minutes: float | None = None,
 ) -> list[WowyPlayerSeasonRecord]:
@@ -169,7 +172,9 @@ def build_wowy_player_season_records(
 
         ranked = sorted(
             results.items(),
-            key=lambda item: item[1].wowy_score if item[1].wowy_score is not None else float("-inf"),
+            key=lambda item: item[1].wowy_score
+            if item[1].wowy_score is not None
+            else float("-inf"),
             reverse=True,
         )
         for player_id, stats in ranked:
@@ -234,7 +239,7 @@ def prepare_wowy_player_season_records(
     min_average_minutes: float | None = None,
     min_total_minutes: float | None = None,
 ) -> list[WowyPlayerSeasonRecord]:
-    games, player_names = prepare_wowy_game_records(
+    games, player_names = load_wowy_game_records(
         teams=teams,
         seasons=seasons,
         team_ids=team_ids,

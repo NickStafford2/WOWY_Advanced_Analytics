@@ -8,8 +8,8 @@ from wowy.nba.models import NormalizedGamePlayerRecord, NormalizedGameRecord
 
 @dataclass(frozen=True)
 class TeamSeasonArtifacts:
-    canonical_games: list[NormalizedGameRecord]
-    canonical_game_players: list[NormalizedGamePlayerRecord]
+    normalized_games: list[NormalizedGameRecord]
+    normalized_game_players: list[NormalizedGamePlayerRecord]
     wowy_games: list[WowyGameRecord]
 
 
