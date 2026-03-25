@@ -321,7 +321,6 @@ def evaluate_configs(args) -> list[ComparisonResult]:
         teams=args.team,
         seasons=[args.holdout_season],
         season_type=args.season_type,
-        source_data_dir=args.source_data_dir,
         player_metrics_db_path=getattr(
             args,
             "player_metrics_db_path",
@@ -340,7 +339,6 @@ def evaluate_configs(args) -> list[ComparisonResult]:
         teams=args.team,
         seasons=args.train_season,
         season_type=args.season_type,
-        source_data_dir=args.source_data_dir,
         player_metrics_db_path=getattr(
             args,
             "player_metrics_db_path",
@@ -391,7 +389,6 @@ def evaluate_configs(args) -> list[ComparisonResult]:
                 teams=args.team,
                 seasons=args.train_season,
                 season_type=args.season_type,
-                source_data_dir=args.source_data_dir,
                 player_metrics_db_path=getattr(
                     args,
                     "player_metrics_db_path",

@@ -232,17 +232,11 @@ def test_prepare_wowy_player_season_records_builds_web_ready_rows_from_cache(
         teams=["BOS"],
         seasons=None,
         season_type="Regular Season",
-        source_data_dir=tmp_path / "source",
         player_metrics_db_path=db_path,
         min_games_with=1,
         min_games_without=1,
         min_average_minutes=0.0,
         min_total_minutes=0.0,
-        load_player_names_fn=lambda _: {
-            101: "Player 101",
-            102: "Player 102",
-            103: "Player 103",
-        },
     )
 
     assert [(record.season, record.player_id) for record in records] == [
@@ -294,13 +288,11 @@ def test_prepare_wowy_player_season_records_uses_db_without_file_fixture_dirs(
         teams=["BOS"],
         seasons=None,
         season_type="Regular Season",
-        source_data_dir=tmp_path / "source",
         player_metrics_db_path=db_path,
         min_games_with=1,
         min_games_without=1,
         min_average_minutes=0.0,
         min_total_minutes=0.0,
-        load_player_names_fn=lambda _: {101: "Player 101", 102: "Player 102"},
     )
 
     assert [(record.season, record.player_id) for record in records] == [

@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 from pathlib import Path
-from typing import Callable
 
 from wowy.apps.wowy.analysis import (
     DEFAULT_WOWY_SHRINKAGE_PRIOR_GAMES,
@@ -26,7 +25,6 @@ from wowy.shared.minutes import build_player_minute_stats, passes_minute_filters
 
 
 type WowyPlayerSeasonRow = dict[str, str | int | float | None]
-type LoadPlayerNamesFn = Callable[[Path], dict[int, str]]
 
 WOWY_METRIC = "wowy"
 WOWY_SHRUNK_METRIC = "wowy_shrunk"
@@ -229,16 +227,13 @@ def prepare_wowy_player_season_records(
     teams: list[str] | None,
     seasons: list[str] | None,
     season_type: str,
-    source_data_dir: Path,
     min_games_with: int,
     min_games_without: int,
     player_metrics_db_path: Path = DEFAULT_PLAYER_METRICS_DB_PATH,
     team_ids: list[int] | None = None,
     min_average_minutes: float | None = None,
     min_total_minutes: float | None = None,
-    load_player_names_fn: LoadPlayerNamesFn | None = None,
 ) -> list[WowyPlayerSeasonRecord]:
-    del source_data_dir, load_player_names_fn
     games, player_names = prepare_wowy_game_records(
         teams=teams,
         seasons=seasons,
@@ -275,13 +270,12 @@ def build_wowy_metric_rows(
     team_ids: list[int] | None,
     rawr_ridge_alpha: float,
 ) -> list[PlayerSeasonMetricRow]:
-    del rawr_ridge_alpha
+    del source_data_dir, rawr_ridge_alpha
     records = prepare_wowy_player_season_records(
         teams=teams,
         team_ids=team_ids,
         seasons=None,
         season_type=season_type,
-        source_data_dir=source_data_dir,
         player_metrics_db_path=db_path,
         min_games_with=0,
         min_games_without=0,
@@ -325,13 +319,12 @@ def build_wowy_shrunk_metric_rows(
     team_ids: list[int] | None,
     rawr_ridge_alpha: float,
 ) -> list[PlayerSeasonMetricRow]:
-    del rawr_ridge_alpha
+    del source_data_dir, rawr_ridge_alpha
     records = prepare_wowy_player_season_records(
         teams=teams,
         team_ids=team_ids,
         seasons=None,
         season_type=season_type,
-        source_data_dir=source_data_dir,
         player_metrics_db_path=db_path,
         min_games_with=0,
         min_games_without=0,

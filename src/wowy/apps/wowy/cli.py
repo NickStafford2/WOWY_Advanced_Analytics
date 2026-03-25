@@ -5,13 +5,11 @@ from pathlib import Path
 
 from wowy.data.player_metrics_db import DEFAULT_PLAYER_METRICS_DB_PATH
 from wowy.apps.wowy.service import prepare_and_run_wowy
-from wowy.nba.source.cache import DEFAULT_SOURCE_DATA_DIR
-from wowy.nba.source.parsers import load_player_names_from_cache
 
 
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
-        description="Run WOWY on cached data, fetching missing requested scope when needed."
+        description="Run WOWY on normalized cached data."
     )
     parser.add_argument(
         "--team",
@@ -28,7 +26,7 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument(
         "--season-type",
         default="Regular Season",
-        help="NBA season type to fetch when requested scope is missing from cache",
+        help="NBA season type to read from normalized cache",
     )
     parser.add_argument(
         "--min-games-with",
@@ -41,12 +39,6 @@ def build_parser() -> argparse.ArgumentParser:
         type=int,
         default=2,
         help="Minimum games without player required to include player in output",
-    )
-    parser.add_argument(
-        "--source-data-dir",
-        type=Path,
-        default=DEFAULT_SOURCE_DATA_DIR,
-        help="Path to cached source data used for player names",
     )
     parser.add_argument(
         "--top-n",
@@ -78,10 +70,5 @@ def build_parser() -> argparse.ArgumentParser:
 def main(argv: list[str] | None = None) -> int:
     parser = build_parser()
     args = parser.parse_args(argv)
-    print(
-        prepare_and_run_wowy(
-            args,
-            load_player_names_fn=load_player_names_from_cache,
-        )
-    )
+    print(prepare_and_run_wowy(args))
     return 0

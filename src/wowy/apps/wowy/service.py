@@ -2,7 +2,6 @@ from __future__ import annotations
 
 from wowy.apps.wowy.analysis import compute_wowy, filter_results
 from wowy.apps.wowy.data import (
-    LoadPlayerNamesFn,
     attach_minute_stats,
     available_wowy_seasons,
     build_wowy_player_season_records,
@@ -174,10 +173,8 @@ def build_wowy_span_chart_rows(
 
 def prepare_and_run_wowy(
     args,
-    load_player_names_fn: LoadPlayerNamesFn | None = None,
 ) -> str:
     """CLI entrypoint for WOWY using the cache-managed pipeline."""
-    del load_player_names_fn
     validate_filters(
         args.min_games_with,
         args.min_games_without,

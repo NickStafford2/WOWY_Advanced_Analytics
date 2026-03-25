@@ -399,7 +399,6 @@ def prepare_rawr_player_season_records(
     seasons: list[str] | None,
     team_ids: list[int] | None = None,
     season_type: str,
-    source_data_dir: Path,
     min_games: int,
     ridge_alpha: float,
     shrinkage_mode: str,
@@ -409,7 +408,6 @@ def prepare_rawr_player_season_records(
     min_total_minutes: float | None = None,
     player_metrics_db_path: Path = DEFAULT_PLAYER_METRICS_DB_PATH,
 ) -> list[RawrPlayerSeasonRecord]:
-    del source_data_dir
     from wowy.apps.rawr.analysis import fit_player_rawr
 
     team_seasons = resolve_team_seasons(
@@ -509,12 +507,12 @@ def build_rawr_metric_rows(
     team_ids: list[int] | None,
     rawr_ridge_alpha: float,
 ) -> list[PlayerSeasonMetricRow]:
+    del source_data_dir
     records = prepare_rawr_player_season_records(
         teams=teams,
         team_ids=team_ids,
         seasons=None,
         season_type=season_type,
-        source_data_dir=source_data_dir,
         player_metrics_db_path=db_path,
         min_games=1,
         ridge_alpha=rawr_ridge_alpha,
