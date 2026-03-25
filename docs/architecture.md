@@ -1,4 +1,5 @@
 # Architecture
+THIS FILE IS OUT OF DATE. NEEDS REWRITTEN. 
 
 ## `apps/`
 
