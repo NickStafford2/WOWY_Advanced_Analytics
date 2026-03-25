@@ -20,15 +20,15 @@ class TeamSeasonScope:
     team_id: int
 
 
-def list_cached_team_seasons(
+def _list_cached_team_seasons(
     player_metrics_db_path: Path = DEFAULT_PLAYER_METRICS_DB_PATH,
     season_type: str | None = None,
 ) -> list[TeamSeasonScope]:
-    from wowy.data.game_cache.repository import list_cached_team_seasons_from_db
+    from wowy.data.game_cache.repository import list_cached_team_seasons
 
     if season_type is not None:
         season_type = canonicalize_season_type(season_type)
-    return list_cached_team_seasons_from_db(
+    return list_cached_team_seasons(
         player_metrics_db_path,
         season_type=season_type,
     )
@@ -54,7 +54,7 @@ def resolve_team_seasons(
     )
     if season_type is not None:
         season_type = canonicalize_season_type(season_type)
-    cached_team_seasons = list_cached_team_seasons(
+    cached_team_seasons = _list_cached_team_seasons(
         player_metrics_db_path=player_metrics_db_path,
         season_type=season_type,
     )

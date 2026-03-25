@@ -9,9 +9,11 @@ from requests import RequestException
 
 from tests.support import game as normalized_game
 from tests.support import player as normalized_player
+from tests.support import seed_db_from_team_seasons
 from wowy.data.game_cache.repository import (
     load_cache_load_row,
     load_normalized_games_from_db,
+    load_normalized_scope_records_from_db,
     replace_team_season_normalized_rows,
 )
 from wowy.data.game_cache.schema import initialize_game_cache_db
@@ -65,6 +67,52 @@ def test_load_cached_payload_discards_non_object_json_file(tmp_path: Path):
 
     assert load_cached_payload(cache_path) is None
     assert not cache_path.exists()
+
+
+def test_load_normalized_scope_records_from_db_requires_each_cached_team_season(
+    tmp_path: Path,
+):
+    db_path = tmp_path / "app" / "player_metrics.sqlite3"
+    seed_db_from_team_seasons(
+        db_path,
+        [
+            (
+                "BOS",
+                "2023-24",
+                [
+                    normalized_game(
+                        "1",
+                        "2023-24",
+                        "2024-04-01",
+                        "BOS",
+                        "MIL",
+                        True,
+                        10.0,
+                    )
+                ],
+                [
+                    normalized_player("1", "BOS", 101, "Player 101", True, 34.0),
+                    normalized_player("1", "BOS", 102, "Player 102", True, 32.0),
+                    normalized_player("1", "BOS", 103, "Player 103", True, 30.0),
+                    normalized_player("1", "BOS", 104, "Player 104", True, 28.0),
+                    normalized_player("1", "BOS", 105, "Player 105", True, 26.0),
+                ],
+            )
+        ],
+    )
+
+    with pytest.raises(
+        ValueError,
+        match="Missing cached team-season scope for MIL 2023-24 Regular Season",
+    ):
+        load_normalized_scope_records_from_db(
+            db_path,
+            team_seasons=[
+                TeamSeasonScope("BOS", "2023-24", resolve_team_id("BOS", season="2023-24")),
+                TeamSeasonScope("MIL", "2023-24", resolve_team_id("MIL", season="2023-24")),
+            ],
+            season_type="Regular Season",
+        )
 
 
 def test_load_or_fetch_league_games_retries_and_caches(tmp_path: Path, monkeypatch):

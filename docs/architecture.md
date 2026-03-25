@@ -149,6 +149,8 @@ Recent refactors have improved dependency direction without broad reorganization
 - canonical validation now checks only canonical NBA invariants
 - ingest workflows now return canonical artifacts only
 - WOWY-specific input shaping moved out of `nba` and into the WOWY package
+- DB-backed canonical scope loading now lives in `data`; `nba/prepare.py` only resolves scope and opponent expansion
+- cached team-season listing and cache-presence checks now also live behind `data`
 
 ## Current Status
 
@@ -159,38 +161,23 @@ The codebase is not far from the target, but a few architectural problems still 
 - metric packages already have some useful internal separation
 - canonical validation is now metric-agnostic, and ingest returns canonical artifacts only
 - `nba` no longer imports WOWY code; WOWY input shaping now lives in the WOWY package
+- `nba/prepare.py` no longer performs repository reads directly; DB-backed canonical scope loading is now behind `data`
+- web callers now get cached team-season metadata from `data`, and `nba/cache_sync.py` uses a data-owned cache-presence check
 
 The main remaining issues are:
 
-1. some DB-backed retrieval still lives in `nba`
-   - examples: `nba/prepare.py`, `nba/team_seasons.py`, `nba/cache_sync.py`
-2. metric packages still build persistence-shaped rows directly
+1. metric packages still build persistence-shaped rows directly
    - acceptable temporarily, but not the long-term target
-3. web modules are too orchestration-heavy
+2. web modules are too orchestration-heavy
    - especially `web/app.py` and `web/metric_queries.py`
-4. a few large modules have become mixed-responsibility files
+3. a few large modules have become mixed-responsibility files
    - examples: `data/player_metrics_db.py`, `data/db_validation.py`, `apps/rawr/data.py`
 
 ## Next Refactors
 
 Do these in order. Prefer medium PRs.
 
-### 1. Move DB-backed canonical loading behind `data`
-
-The repository/query boundary is still blurry.
-
-Target:
-
-- `data` owns loading canonical rows from SQLite
-- `nba` owns canonical rules and scope logic only
-
-Likely files to change:
-
-- `nba/prepare.py`
-- `nba/team_seasons.py`
-- `nba/cache_sync.py`
-
-### 2. Finish cleanup inside metric packages
+### 1. Finish cleanup inside metric packages
 
 WOWY:
 
@@ -207,7 +194,7 @@ RAWR:
 - keep metric-native outputs in `records.py`
 - keep CLI/report orchestration in `service.py`
 
-### 3. Move metric row mapping into `data`
+### 2. Move metric row mapping into `data`
 
 Metric packages should stop constructing `PlayerSeasonMetricRow` directly.
 
@@ -219,7 +206,7 @@ Target:
 
 Do not force this in one pass if it creates extra glue. Incremental cleanup is fine.
 
-### 4. Shrink the web layer
+### 3. Shrink the web layer
 
 Target:
 
@@ -229,7 +216,7 @@ Target:
 
 Do not let the web layer become the place where all cross-layer glue accumulates.
 
-### 5. Rename `apps` to `metrics`
+### 4. Rename `apps` to `metrics`
 
 Do this after the boundary cleanup, not before.
 

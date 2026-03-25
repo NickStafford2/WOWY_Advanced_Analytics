@@ -10,6 +10,7 @@ from wowy.apps.wowy.records import (
     build_wowy_metric_rows,
     build_wowy_shrunk_metric_rows,
 )
+from wowy.data.game_cache import list_cached_team_seasons
 from wowy.data.game_cache.fingerprints import build_normalized_cache_fingerprint
 from wowy.data.game_cache.repository import list_cache_load_rows
 from wowy.data.player_metrics_db import (
@@ -25,7 +26,6 @@ from wowy.data.player_metrics_db import (
 )
 from wowy.nba.season_types import canonicalize_season_type
 from wowy.nba.team_history import official_continuity_label_for_team_id
-from wowy.nba.team_seasons import list_cached_team_seasons
 
 BuildRowsFn = Callable[..., list[PlayerSeasonMetricRow]]
 RefreshProgressFn = Callable[[int, int, str], None]
