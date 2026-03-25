@@ -19,7 +19,7 @@ from wowy.apps.wowy.models import (
     WowyPlayerSeasonRecord,
     WowyPlayerStats,
 )
-from wowy.apps.wowy.service import (
+from wowy.apps.wowy.records import (
     available_wowy_seasons,
     build_wowy_player_season_records,
     build_wowy_span_chart_rows,

@@ -35,6 +35,7 @@ __all__ = [
     "available_wowy_seasons",
     "build_wowy_metric_rows",
     "build_wowy_player_season_records",
+    "build_wowy_span_chart_rows",
     "build_wowy_shrunk_metric_rows",
     "prepare_wowy_player_season_records",
     "serialize_wowy_player_season_records",
@@ -137,6 +138,68 @@ def available_wowy_seasons(
     records: list[WowyPlayerSeasonRecord],
 ) -> list[str]:
     return sorted({record.season for record in records})
+
+
+def build_wowy_span_chart_rows(
+    records: list[WowyPlayerSeasonRecord],
+    *,
+    start_season: str,
+    end_season: str,
+    top_n: int = 30,
+) -> list[dict[str, str | int | float | list[dict[str, str | float | None]]]]:
+    if top_n <= 0:
+        raise ValueError("top_n must be positive")
+    if start_season > end_season:
+        raise ValueError("start_season must be less than or equal to end_season")
+
+    span_records = [
+        record for record in records if start_season <= record.season <= end_season
+    ]
+    if not span_records:
+        return []
+
+    score_totals: dict[int, float] = {}
+    season_counts: dict[int, int] = {}
+    player_names: dict[int, str] = {}
+    season_scores: dict[int, dict[str, float]] = {}
+
+    for record in span_records:
+        score_totals[record.player_id] = (
+            score_totals.get(record.player_id, 0.0) + record.wowy_score
+        )
+        season_counts[record.player_id] = season_counts.get(record.player_id, 0) + 1
+        player_names[record.player_id] = record.player_name
+        season_scores.setdefault(record.player_id, {})[record.season] = (
+            record.wowy_score
+        )
+
+    ranked_player_ids = sorted(
+        score_totals,
+        key=lambda player_id: (
+            score_totals[player_id],
+            player_names[player_id],
+        ),
+        reverse=True,
+    )[:top_n]
+    seasons = sorted({record.season for record in span_records})
+    span_length = len(seasons)
+
+    return [
+        {
+            "player_id": player_id,
+            "player_name": player_names[player_id],
+            "span_average_value": score_totals[player_id] / span_length,
+            "season_count": season_counts[player_id],
+            "points": [
+                {
+                    "season": season,
+                    "value": season_scores[player_id].get(season),
+                }
+                for season in seasons
+            ],
+        }
+        for player_id in ranked_player_ids
+    ]
 
 
 def prepare_wowy_player_season_records(
