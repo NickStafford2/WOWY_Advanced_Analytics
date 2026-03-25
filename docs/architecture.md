@@ -169,12 +169,13 @@ The codebase is not far from the target, but a few architectural problems still 
 - RAWR `RawrPlayerSeasonRecord` -> `PlayerSeasonMetricRow` mapping now lives in `data`
 - web filter-payload shaping now lives in `web/metric_queries.py`; `web/app.py` is a bit closer to routing and request parsing only
 - custom metric-query branching now lives in `web/metric_queries.py`; `web/app.py` no longer chooses metric-specific query builders directly
+- `web/app.py` now parses shared metric-request context once per handler instead of duplicating request-to-query glue in each endpoint helper
 
 The main remaining issues are:
 
 1. web modules are too orchestration-heavy
    - especially `web/app.py` and `web/metric_queries.py`
-   - `web/app.py` no longer owns filter-payload shaping or custom metric-query branching, but route handlers still duplicate request-to-query wiring
+   - `web/app.py` is smaller, but leaderboard and export helpers still repeat similar metric wiring
 2. a few large modules have become mixed-responsibility files
    - examples: `data/player_metrics_db.py`, `data/db_validation.py`, `apps/rawr/data.py`
 

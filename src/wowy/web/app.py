@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, TypedDict
 
@@ -36,6 +37,15 @@ class ParsedRequestFilters(TypedDict):
     min_average_minutes: float
     min_total_minutes: float
     top_n: int
+
+
+@dataclass(frozen=True)
+class _ParsedMetricRequest:
+    season_type: str
+    team_ids: list[int] | None
+    seasons: list[str] | None
+    scope_key: str
+    filters: ParsedRequestFilters
 
 
 def _parse_optional_int(raw_value: str | None, default: int) -> int:
@@ -210,42 +220,22 @@ def _build_metric_player_seasons_payload(
     metric: str,
     player_metrics_db_path: Path,
 ) -> dict[str, Any]:
-    filter_values = _parse_request_filters(
+    parsed_request = _parse_metric_request(
         request,
         metric=metric,
         include_top_n=False,
     )
-    season_type = canonicalize_season_type(
-        request.args.get("season_type", "Regular Season")
-    )
-    team_ids = _parse_positive_int_list(request.args.getlist("team_id"))
-    seasons = _parse_request_seasons(request)
-    scope_key, _team_filter = build_scope_key(team_ids=team_ids, season_type=season_type)
     payload = build_metric_player_seasons_payload(
         metric,
         db_path=player_metrics_db_path,
-        scope_key=scope_key,
-        seasons=seasons,
-        min_average_minutes=filter_values["min_average_minutes"],
-        min_total_minutes=filter_values["min_total_minutes"],
-        min_sample_size=filter_values["min_sample_size"],
-        min_secondary_sample_size=filter_values["min_secondary_sample_size"],
+        scope_key=parsed_request.scope_key,
+        seasons=parsed_request.seasons,
+        min_average_minutes=parsed_request.filters["min_average_minutes"],
+        min_total_minutes=parsed_request.filters["min_total_minutes"],
+        min_sample_size=parsed_request.filters["min_sample_size"],
+        min_secondary_sample_size=parsed_request.filters["min_secondary_sample_size"],
     )
-    payload["filters"] = build_metric_filters_payload(
-        metric=metric,
-        teams=None,
-        team_ids=team_ids,
-        seasons=seasons,
-        season_type=season_type,
-        min_sample_size=request.args.get("min_games_with")
-        if metric in {WOWY_METRIC, WOWY_SHRUNK_METRIC}
-        else request.args.get("min_games"),
-        min_secondary_sample_size=request.args.get("min_games_without"),
-        ridge_alpha=request.args.get("ridge_alpha"),
-        min_average_minutes=request.args.get("min_average_minutes"),
-        min_total_minutes=request.args.get("min_total_minutes"),
-    )
-    return payload
+    return _attach_request_filters(payload, request=request, metric=metric, parsed=parsed_request)
 
 
 def _build_metric_span_chart_payload(
@@ -254,39 +244,18 @@ def _build_metric_span_chart_payload(
     metric: str,
     player_metrics_db_path: Path,
 ) -> dict[str, Any]:
-    filter_values = _parse_request_filters(
+    parsed_request = _parse_metric_request(
         request,
         metric=metric,
         include_top_n=True,
     )
-    season_type = canonicalize_season_type(
-        request.args.get("season_type", "Regular Season")
-    )
-    team_ids = _parse_positive_int_list(request.args.getlist("team_id"))
-    seasons = _parse_request_seasons(request)
-    scope_key, _team_filter = build_scope_key(team_ids=team_ids, season_type=season_type)
     payload = build_metric_span_chart_payload(
         metric,
         db_path=player_metrics_db_path,
-        scope_key=scope_key,
-        top_n=filter_values["top_n"],
+        scope_key=parsed_request.scope_key,
+        top_n=parsed_request.filters["top_n"],
     )
-    payload["filters"] = build_metric_filters_payload(
-        metric=metric,
-        teams=None,
-        team_ids=team_ids,
-        seasons=seasons,
-        season_type=season_type,
-        min_sample_size=request.args.get("min_games_with")
-        if metric in {WOWY_METRIC, WOWY_SHRUNK_METRIC}
-        else request.args.get("min_games"),
-        min_secondary_sample_size=request.args.get("min_games_without"),
-        ridge_alpha=request.args.get("ridge_alpha"),
-        min_average_minutes=request.args.get("min_average_minutes"),
-        min_total_minutes=request.args.get("min_total_minutes"),
-        top_n=request.args.get("top_n"),
-    )
-    return payload
+    return _attach_request_filters(payload, request=request, metric=metric, parsed=parsed_request)
 
 
 def _build_cached_metric_leaderboard_payload(
@@ -295,44 +264,23 @@ def _build_cached_metric_leaderboard_payload(
     metric: str,
     player_metrics_db_path: Path,
 ) -> dict[str, Any]:
-    filter_values = _parse_request_filters(
+    parsed_request = _parse_metric_request(
         request,
         metric=metric,
         include_top_n=True,
     )
-    season_type = canonicalize_season_type(
-        request.args.get("season_type", "Regular Season")
-    )
-    team_ids = _parse_positive_int_list(request.args.getlist("team_id"))
-    seasons = _parse_request_seasons(request)
-    scope_key, _team_filter = build_scope_key(team_ids=team_ids, season_type=season_type)
     payload = build_cached_metric_leaderboard_payload(
         metric,
         db_path=player_metrics_db_path,
-        scope_key=scope_key,
-        top_n=filter_values["top_n"],
-        seasons=seasons,
-        min_average_minutes=filter_values["min_average_minutes"],
-        min_total_minutes=filter_values["min_total_minutes"],
-        min_sample_size=filter_values["min_sample_size"],
-        min_secondary_sample_size=filter_values["min_secondary_sample_size"],
+        scope_key=parsed_request.scope_key,
+        top_n=parsed_request.filters["top_n"],
+        seasons=parsed_request.seasons,
+        min_average_minutes=parsed_request.filters["min_average_minutes"],
+        min_total_minutes=parsed_request.filters["min_total_minutes"],
+        min_sample_size=parsed_request.filters["min_sample_size"],
+        min_secondary_sample_size=parsed_request.filters["min_secondary_sample_size"],
     )
-    payload["filters"] = build_metric_filters_payload(
-        metric=metric,
-        teams=None,
-        team_ids=team_ids,
-        seasons=seasons,
-        season_type=season_type,
-        min_sample_size=request.args.get("min_games_with")
-        if metric in {WOWY_METRIC, WOWY_SHRUNK_METRIC}
-        else request.args.get("min_games"),
-        min_secondary_sample_size=request.args.get("min_games_without"),
-        ridge_alpha=request.args.get("ridge_alpha"),
-        min_average_minutes=request.args.get("min_average_minutes"),
-        min_total_minutes=request.args.get("min_total_minutes"),
-        top_n=request.args.get("top_n"),
-    )
-    return payload
+    return _attach_request_filters(payload, request=request, metric=metric, parsed=parsed_request)
 
 
 def _build_metric_custom_query_payload(
@@ -342,52 +290,34 @@ def _build_metric_custom_query_payload(
     source_data_dir: Path,
     player_metrics_db_path: Path,
 ) -> dict[str, Any]:
-    filter_values = _parse_request_filters(
+    parsed_request = _parse_metric_request(
         request,
         metric=metric,
         include_top_n=True,
     )
-    season_type = canonicalize_season_type(
-        request.args.get("season_type", "Regular Season")
-    )
-    team_ids = _parse_positive_int_list(request.args.getlist("team_id"))
-    seasons = _parse_request_seasons(request)
     payload = build_custom_metric_leaderboard_payload(
         metric,
         teams=None,
-        team_ids=team_ids,
-        seasons=seasons,
-        season_type=season_type,
-        top_n=filter_values["top_n"],
+        team_ids=parsed_request.team_ids,
+        seasons=parsed_request.seasons,
+        season_type=parsed_request.season_type,
+        top_n=parsed_request.filters["top_n"],
         source_data_dir=source_data_dir,
         player_metrics_db_path=player_metrics_db_path,
-        min_games_with=int(filter_values["min_sample_size"])
+        min_games_with=int(parsed_request.filters["min_sample_size"])
         if metric in {WOWY_METRIC, WOWY_SHRUNK_METRIC}
         else None,
-        min_games_without=filter_values["min_secondary_sample_size"]
+        min_games_without=parsed_request.filters["min_secondary_sample_size"]
         if metric in {WOWY_METRIC, WOWY_SHRUNK_METRIC}
         else None,
-        min_games=int(filter_values["min_sample_size"]) if metric == RAWR_METRIC else None,
-        ridge_alpha=filter_values["ridge_alpha"] if metric == RAWR_METRIC else None,
-        min_average_minutes=filter_values["min_average_minutes"],
-        min_total_minutes=filter_values["min_total_minutes"],
+        min_games=int(parsed_request.filters["min_sample_size"])
+        if metric == RAWR_METRIC
+        else None,
+        ridge_alpha=parsed_request.filters["ridge_alpha"] if metric == RAWR_METRIC else None,
+        min_average_minutes=parsed_request.filters["min_average_minutes"],
+        min_total_minutes=parsed_request.filters["min_total_minutes"],
     )
-    payload["filters"] = build_metric_filters_payload(
-        metric=metric,
-        teams=None,
-        team_ids=team_ids,
-        seasons=seasons,
-        season_type=season_type,
-        min_sample_size=request.args.get("min_games_with")
-        if metric in {WOWY_METRIC, WOWY_SHRUNK_METRIC}
-        else request.args.get("min_games"),
-        min_secondary_sample_size=request.args.get("min_games_without"),
-        ridge_alpha=request.args.get("ridge_alpha"),
-        min_average_minutes=request.args.get("min_average_minutes"),
-        min_total_minutes=request.args.get("min_total_minutes"),
-        top_n=request.args.get("top_n"),
-    )
-    return payload
+    return _attach_request_filters(payload, request=request, metric=metric, parsed=parsed_request)
 
 
 def _build_cached_metric_leaderboard_csv(
@@ -396,26 +326,20 @@ def _build_cached_metric_leaderboard_csv(
     metric: str,
     player_metrics_db_path: Path,
 ) -> tuple[str, str]:
-    filter_values = _parse_request_filters(
+    parsed_request = _parse_metric_request(
         request,
         metric=metric,
         include_top_n=True,
     )
-    season_type = canonicalize_season_type(
-        request.args.get("season_type", "Regular Season")
-    )
-    team_ids = _parse_positive_int_list(request.args.getlist("team_id"))
-    seasons = _parse_request_seasons(request)
-    scope_key, _team_filter = build_scope_key(team_ids=team_ids, season_type=season_type)
     metric_label, table_rows = build_cached_metric_export_table_rows(
         metric,
         db_path=player_metrics_db_path,
-        scope_key=scope_key,
-        seasons=seasons,
-        min_average_minutes=filter_values["min_average_minutes"],
-        min_total_minutes=filter_values["min_total_minutes"],
-        min_sample_size=filter_values["min_sample_size"],
-        min_secondary_sample_size=filter_values["min_secondary_sample_size"],
+        scope_key=parsed_request.scope_key,
+        seasons=parsed_request.seasons,
+        min_average_minutes=parsed_request.filters["min_average_minutes"],
+        min_total_minutes=parsed_request.filters["min_total_minutes"],
+        min_sample_size=parsed_request.filters["min_sample_size"],
+        min_secondary_sample_size=parsed_request.filters["min_secondary_sample_size"],
     )
     return _render_leaderboard_csv(metric_label=metric_label, table_rows=table_rows), (
         f"{metric}-all-players.csv"
@@ -429,46 +353,90 @@ def _build_metric_custom_query_csv(
     source_data_dir: Path,
     player_metrics_db_path: Path,
 ) -> tuple[str, str]:
-    filter_values = _parse_request_filters(
+    parsed_request = _parse_metric_request(
         request,
         metric=metric,
         include_top_n=True,
     )
-    season_type = canonicalize_season_type(
-        request.args.get("season_type", "Regular Season")
-    )
-    team_ids = _parse_positive_int_list(request.args.getlist("team_id"))
-    seasons = _parse_request_seasons(request)
     min_games_with = (
-        int(filter_values["min_sample_size"])
+        int(parsed_request.filters["min_sample_size"])
         if metric in {WOWY_METRIC, WOWY_SHRUNK_METRIC}
         else None
     )
     min_games_without = (
-        filter_values["min_secondary_sample_size"]
+        parsed_request.filters["min_secondary_sample_size"]
         if metric in {WOWY_METRIC, WOWY_SHRUNK_METRIC}
         else None
     )
-    min_games = int(filter_values["min_sample_size"]) if metric == RAWR_METRIC else None
-    ridge_alpha = filter_values["ridge_alpha"] if metric == RAWR_METRIC else None
+    min_games = int(parsed_request.filters["min_sample_size"]) if metric == RAWR_METRIC else None
+    ridge_alpha = parsed_request.filters["ridge_alpha"] if metric == RAWR_METRIC else None
     metric_label, table_rows = build_custom_metric_export_table_rows(
         metric,
         teams=None,
-        team_ids=team_ids,
-        seasons=seasons,
-        season_type=season_type,
+        team_ids=parsed_request.team_ids,
+        seasons=parsed_request.seasons,
+        season_type=parsed_request.season_type,
         source_data_dir=source_data_dir,
         player_metrics_db_path=player_metrics_db_path,
         min_games_with=min_games_with,
         min_games_without=min_games_without,
         min_games=min_games,
         ridge_alpha=ridge_alpha,
-        min_average_minutes=filter_values["min_average_minutes"],
-        min_total_minutes=filter_values["min_total_minutes"],
+        min_average_minutes=parsed_request.filters["min_average_minutes"],
+        min_total_minutes=parsed_request.filters["min_total_minutes"],
     )
     return _render_leaderboard_csv(metric_label=metric_label, table_rows=table_rows), (
         f"{metric}-all-players.csv"
     )
+
+
+def _parse_metric_request(
+    request,
+    *,
+    metric: str,
+    include_top_n: bool,
+) -> _ParsedMetricRequest:
+    season_type = canonicalize_season_type(
+        request.args.get("season_type", "Regular Season")
+    )
+    team_ids = _parse_positive_int_list(request.args.getlist("team_id"))
+    scope_key, _team_filter = build_scope_key(team_ids=team_ids, season_type=season_type)
+    return _ParsedMetricRequest(
+        season_type=season_type,
+        team_ids=team_ids,
+        seasons=_parse_request_seasons(request),
+        scope_key=scope_key,
+        filters=_parse_request_filters(
+            request,
+            metric=metric,
+            include_top_n=include_top_n,
+        ),
+    )
+
+
+def _attach_request_filters(
+    payload: dict[str, Any],
+    *,
+    request,
+    metric: str,
+    parsed: _ParsedMetricRequest,
+) -> dict[str, Any]:
+    payload["filters"] = build_metric_filters_payload(
+        metric=metric,
+        teams=None,
+        team_ids=parsed.team_ids,
+        seasons=parsed.seasons,
+        season_type=parsed.season_type,
+        min_sample_size=request.args.get("min_games_with")
+        if metric in {WOWY_METRIC, WOWY_SHRUNK_METRIC}
+        else request.args.get("min_games"),
+        min_secondary_sample_size=request.args.get("min_games_without"),
+        ridge_alpha=request.args.get("ridge_alpha"),
+        min_average_minutes=request.args.get("min_average_minutes"),
+        min_total_minutes=request.args.get("min_total_minutes"),
+        top_n=request.args.get("top_n"),
+    )
+    return payload
 
 
 def _parse_request_filters(
