@@ -120,7 +120,12 @@ def _validate_normalized_game_players_table(
         JOIN team_history
           ON team_history.team_id = player.team_id
          AND team_history.season = player.season
-        ORDER BY player.season_type, player.season, team_history.abbreviation, player.game_id, player.player_id
+        ORDER BY
+            player.season_type,
+            player.season,
+            team_history.abbreviation,
+            player.game_id,
+            player.player_id
         """
     ).fetchall()
     for row in rows:
@@ -280,7 +285,12 @@ def _validate_normalized_cache_relations(
         JOIN team_history
           ON team_history.team_id = player.team_id
          AND team_history.season = player.season
-        ORDER BY player.season_type, player.season, team_history.abbreviation, player.game_id, player.player_id
+        ORDER BY
+            player.season_type,
+            player.season,
+            team_history.abbreviation,
+            player.game_id,
+            player.player_id
         """
     ).fetchall()
     load_rows = connection.execute(
@@ -544,9 +554,15 @@ def _validate_team_history_table(
                 raise ValueError("team_id does not match abbreviation history")
             if row["abbreviation"] != expected_history.abbreviation:
                 raise ValueError("abbreviation does not match official team history")
-            if row["franchise_id"] != (expected_history.franchise_id or expected_history.abbreviation.lower()):
+            expected_franchise_id = (
+                expected_history.franchise_id
+                or expected_history.abbreviation.lower()
+            )
+            if row["franchise_id"] != expected_franchise_id:
                 raise ValueError("franchise_id does not match official team history")
-            if row["lookup_abbreviation"] != canonical_team_lookup_abbreviation(row["abbreviation"]):
+            if row["lookup_abbreviation"] != canonical_team_lookup_abbreviation(
+                row["abbreviation"]
+            ):
                 raise ValueError("lookup_abbreviation does not match canonical lookup abbreviation")
         except ValueError as exc:
             issues.append(issue_factory("team_history", key, str(exc)))

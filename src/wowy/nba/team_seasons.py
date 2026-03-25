@@ -24,7 +24,7 @@ def list_cached_team_seasons(
     player_metrics_db_path: Path = DEFAULT_PLAYER_METRICS_DB_PATH,
     season_type: str | None = None,
 ) -> list[TeamSeasonScope]:
-    from wowy.data.game_cache import list_cached_team_seasons_from_db
+    from wowy.data.game_cache.repository import list_cached_team_seasons_from_db
 
     if season_type is not None:
         season_type = canonicalize_season_type(season_type)

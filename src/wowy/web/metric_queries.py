@@ -11,7 +11,8 @@ from wowy.apps.wowy.data import (
     prepare_wowy_player_season_records,
 )
 from wowy.apps.wowy.models import WowyPlayerSeasonRecord
-from wowy.data.game_cache import build_normalized_cache_fingerprint, list_cache_load_rows
+from wowy.data.game_cache.fingerprints import build_normalized_cache_fingerprint
+from wowy.data.game_cache.repository import list_cache_load_rows
 from wowy.data.player_metrics_db import (
     DEFAULT_PLAYER_METRICS_DB_PATH,
     MetricScopeCatalogRow,

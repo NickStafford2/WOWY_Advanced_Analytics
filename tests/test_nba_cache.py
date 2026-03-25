@@ -9,12 +9,12 @@ from requests import RequestException
 
 from tests.support import game as normalized_game
 from tests.support import player as normalized_player
-from wowy.data.game_cache import (
-    initialize_game_cache_db,
+from wowy.data.game_cache.repository import (
     load_cache_load_row,
     load_normalized_games_from_db,
     replace_team_season_normalized_rows,
 )
+from wowy.data.game_cache.schema import initialize_game_cache_db
 from wowy.nba.errors import BoxScoreFetchError, LeagueGamesFetchError
 from wowy.nba.models import NormalizedGamePlayerRecord, NormalizedGameRecord
 from wowy.nba.season_types import canonicalize_season_type

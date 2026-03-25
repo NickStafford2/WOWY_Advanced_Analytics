@@ -4,7 +4,7 @@ import re
 from pathlib import Path
 from typing import Callable
 
-from wowy.data.game_cache import replace_team_season_normalized_rows
+from wowy.data.game_cache.repository import replace_team_season_normalized_rows
 from wowy.data.player_metrics_db import DEFAULT_PLAYER_METRICS_DB_PATH
 from wowy.nba.build_models import (
     TeamSeasonArtifacts,

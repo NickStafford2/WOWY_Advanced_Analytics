@@ -14,10 +14,8 @@ from wowy.data.db_validation import (
     summarize_validation_report,
 )
 from wowy.data.db_validation_cli import main as db_validation_cli_main
-from wowy.data.game_cache import (
-    build_normalized_cache_fingerprint,
-    replace_team_season_normalized_rows,
-)
+from wowy.data.game_cache.fingerprints import build_normalized_cache_fingerprint
+from wowy.data.game_cache.repository import replace_team_season_normalized_rows
 from wowy.data.player_metrics_db import (
     MetricFullSpanPointRow,
     MetricFullSpanSeriesRow,

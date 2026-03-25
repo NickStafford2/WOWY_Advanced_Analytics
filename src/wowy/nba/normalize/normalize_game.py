@@ -34,7 +34,10 @@ def normalize_source_game(
 ) -> tuple[NormalizedGameRecord, list[NormalizedGamePlayerRecord]]:
     season = canonicalize_season_string(season)
     season_type = canonicalize_season_type(season_type)
-    team_stat, opponent_stat = _resolve_game_teams(schedule_game=schedule_game, box_score=box_score)
+    team_stat, opponent_stat = _resolve_game_teams(
+        schedule_game=schedule_game,
+        box_score=box_score,
+    )
     team_identity = resolve_source_team_identity(
         team_id=team_stat.team_id,
         team_abbreviation=team_stat.team_abbreviation,
@@ -69,10 +72,15 @@ def normalize_source_game(
         raise ValueError(
             f"No active players found for team {team_identity.abbreviation!r} in game "
             f"{schedule_game.game_id!r}; "
-            f"nba_api_box_score_player_rows={format_source_rows([row.raw_row for row in player_rows])}"
+            "nba_api_box_score_player_rows="
+            f"{format_source_rows([row.raw_row for row in player_rows])}"
         )
 
-    margin = _resolve_margin(team_stat=team_stat, opponent_stat=opponent_stat, game_id=schedule_game.game_id)
+    margin = _resolve_margin(
+        team_stat=team_stat,
+        opponent_stat=opponent_stat,
+        game_id=schedule_game.game_id,
+    )
     game = NormalizedGameRecord(
         game_id=schedule_game.game_id,
         season=season,
@@ -176,21 +184,25 @@ def _resolve_game_teams(
         raise ValueError(
             f"Team {schedule_game.team_abbreviation!r} not found in box score for game "
             f"{schedule_game.game_id!r}; "
-            f"nba_api_box_score_team_rows={format_source_rows([team.raw_row for team in box_score.teams])}"
+            "nba_api_box_score_team_rows="
+            f"{format_source_rows([team.raw_row for team in box_score.teams])}"
         )
     if len(matched_teams) > 1:
         raise ValueError(
             f"Multiple team rows matched {schedule_game.team_abbreviation!r} for game "
             f"{schedule_game.game_id!r}; "
-            f"nba_api_box_score_team_rows={format_source_rows([team.raw_row for team in matched_teams])}"
+            "nba_api_box_score_team_rows="
+            f"{format_source_rows([team.raw_row for team in matched_teams])}"
         )
 
     opponent_teams = [team for team in box_score.teams if team is not matched_teams[0]]
     if len(opponent_teams) != 1:
         raise ValueError(
-            f"Expected exactly one opponent row in box score for game {schedule_game.game_id!r}; "
+            "Expected exactly one opponent row in box score for game "
+            f"{schedule_game.game_id!r}; "
             f"found {len(opponent_teams)}; "
-            f"nba_api_box_score_team_rows={format_source_rows([team.raw_row for team in box_score.teams])}"
+            "nba_api_box_score_team_rows="
+            f"{format_source_rows([team.raw_row for team in box_score.teams])}"
         )
     return matched_teams[0], opponent_teams[0]
 
@@ -225,9 +237,9 @@ def _source_row_matches_team(
 ) -> bool:
     if row_team_id is not None:
         return row_team_id == expected_team_id
-    return canonical_team_lookup_abbreviation(row_team_abbreviation) == canonical_team_lookup_abbreviation(
-        expected_team_abbreviation
-    )
+    return canonical_team_lookup_abbreviation(
+        row_team_abbreviation
+    ) == canonical_team_lookup_abbreviation(expected_team_abbreviation)
 
 
 def _split_matchup(matchup: str) -> tuple[str, str, str]:

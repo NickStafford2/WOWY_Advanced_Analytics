@@ -2,8 +2,8 @@ from __future__ import annotations
 
 from typing import TypeAlias
 
-from wowy.data.game_cache import replace_team_season_normalized_rows
-from wowy.data.game_cache import repository as game_cache_repository
+import wowy.data.game_cache.repository as game_cache_repository
+from wowy.data.game_cache.repository import replace_team_season_normalized_rows
 from wowy.nba.models import NormalizedGamePlayerRecord, NormalizedGameRecord
 from wowy.nba.team_identity import resolve_team_id
 

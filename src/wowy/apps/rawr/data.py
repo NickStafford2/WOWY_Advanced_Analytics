@@ -10,7 +10,7 @@ from wowy.apps.rawr.models import (
     RawrPlayerSeasonRecord,
     RawrResult,
 )
-from wowy.data.game_cache import list_cache_load_rows
+from wowy.data.game_cache.repository import list_cache_load_rows
 from wowy.data.player_metrics_db import DEFAULT_PLAYER_METRICS_DB_PATH, PlayerSeasonMetricRow
 from wowy.nba.models import NormalizedGamePlayerRecord, NormalizedGameRecord
 from wowy.nba.prepare import load_normalized_scope_records

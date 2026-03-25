@@ -197,7 +197,10 @@ def _validate_canonical_game(
         raise ValueError(
             f"Canonical game {game.game_id!r} must not use the same team and opponent"
         )
-    expected_team_identity = resolve_team_identity_from_id_and_date(expected_team_id, game.game_date)
+    expected_team_identity = resolve_team_identity_from_id_and_date(
+        expected_team_id,
+        game.game_date,
+    )
     if game.team != expected_team_identity.abbreviation:
         raise ValueError(
             f"Canonical game {game.game_id!r} has team {game.team!r}; "
@@ -258,7 +261,9 @@ def _validate_canonical_game_player(
     minutes = player.minutes
     if minutes is not None:
         if not math.isfinite(minutes) or minutes < 0.0:
-            raise ValueError(f"Canonical player row for {player_ref} has invalid minutes {minutes!r}")
+            raise ValueError(
+                f"Canonical player row for {player_ref} has invalid minutes {minutes!r}"
+            )
         if minutes > 80.0:
             raise ValueError(
                 f"Canonical player row for {player_ref} has implausible minutes {minutes!r}"

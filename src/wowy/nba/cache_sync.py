@@ -3,9 +3,7 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Callable
 
-from wowy.data.game_cache import (
-    load_cache_load_row,
-)
+from wowy.data.game_cache.repository import load_cache_load_row
 from wowy.data.player_metrics_db import DEFAULT_PLAYER_METRICS_DB_PATH
 from wowy.nba.source.cache import DEFAULT_SOURCE_DATA_DIR
 from wowy.nba.team_seasons import TeamSeasonScope
