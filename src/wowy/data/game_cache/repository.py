@@ -18,8 +18,8 @@ from wowy.nba.team_identity import (
 )
 from wowy.nba.team_seasons import TeamSeasonScope
 
-GAME_CACHE_BUILD_VERSION = "normalized-cache-v2"
-REGULAR_SEASON = "Regular Season"
+_GAME_CACHE_BUILD_VERSION = "normalized-cache-v2"
+_REGULAR_SEASON = "Regular Season"
 
 
 def replace_team_season_normalized_rows(
@@ -34,7 +34,7 @@ def replace_team_season_normalized_rows(
     source_path: str,
     source_snapshot: str,
     source_kind: str,
-    build_version: str = GAME_CACHE_BUILD_VERSION,
+    build_version: str = _GAME_CACHE_BUILD_VERSION,
     expected_games_row_count: int | None = None,
     skipped_games_row_count: int | None = None,
 ) -> None:
@@ -575,8 +575,6 @@ def _upsert_team_history_for_games(
 
 
 __all__ = [
-    "GAME_CACHE_BUILD_VERSION",
-    "REGULAR_SEASON",
     "list_cache_load_rows",
     "list_cached_team_seasons_from_db",
     "load_cache_load_row",

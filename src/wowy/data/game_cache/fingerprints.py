@@ -60,7 +60,7 @@ def build_normalized_cache_fingerprint(
     return digest.hexdigest()
 
 
-def ensure_explicit_regular_season_copy(
+def _ensure_explicit_regular_season_copy(
     source_path: Path,
     target_path: Path,
 ) -> bool:
@@ -79,7 +79,7 @@ def ensure_explicit_regular_season_copy(
     return True
 
 
-def build_file_snapshot(*paths: Path) -> str:
+def _build_file_snapshot(*paths: Path) -> str:
     parts = []
     for path in paths:
         stat = path.stat()
@@ -87,8 +87,4 @@ def build_file_snapshot(*paths: Path) -> str:
     return "|".join(parts)
 
 
-__all__ = [
-    "build_file_snapshot",
-    "build_normalized_cache_fingerprint",
-    "ensure_explicit_regular_season_copy",
-]
+__all__ = ["build_normalized_cache_fingerprint"]

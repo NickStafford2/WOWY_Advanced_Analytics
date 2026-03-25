@@ -1,5 +1,25 @@
-"""Normalize package.
+"""Public package API for canonical NBA normalization."""
 
-Import from concrete modules such as `models`, `normalize_game`, and
-`validation` rather than relying on package-level re-exports.
-"""
+from __future__ import annotations
+
+from wowy.nba.normalize.models import (
+    NormalizedGamePlayerRecord,
+    NormalizedGameRecord,
+    NormalizedTeamSeasonBatch,
+)
+from wowy.nba.normalize.normalize_game import normalize_source_game
+from wowy.nba.normalize.validation import (
+    derive_validated_wowy_games,
+    validate_normalized_cache_batch,
+    validate_normalized_team_season_batch,
+)
+
+__all__ = [
+    "NormalizedGamePlayerRecord",
+    "NormalizedGameRecord",
+    "NormalizedTeamSeasonBatch",
+    "derive_validated_wowy_games",
+    "normalize_source_game",
+    "validate_normalized_cache_batch",
+    "validate_normalized_team_season_batch",
+]
