@@ -172,13 +172,14 @@ The codebase is not far from the target, but a few architectural problems still 
 - `web/app.py` now parses shared metric-request context once per handler instead of duplicating request-to-query glue in each endpoint helper
 - `web/app.py` now also shares metric-query argument shaping for leaderboard and export helpers instead of repeating per-endpoint wiring
 - `web/metric_store.py` now delegates catalog and full-span row shaping to private helpers; refresh/update flow is a bit more orchestration-focused
+- `web/metric_store.py` now also delegates per-scope refresh/update flow to private helpers; `refresh_metric_store(...)` is closer to top-level orchestration
 
 The main remaining issues are:
 
 1. web modules are too orchestration-heavy
    - especially `web/app.py` and `web/metric_queries.py`
    - `web/app.py` is smaller, but some cached/custom helper pairs still mirror each other closely
-   - `web/metric_store.py` is narrower, but refresh scope iteration still mixes cache-state decisions with per-scope update flow
+   - `web/metric_store.py` is narrower, but the module still owns cache-validation, warnings, and store-write coordination together
 2. a few large modules have become mixed-responsibility files
    - examples: `data/player_metrics_db.py`, `data/db_validation.py`, `apps/rawr/data.py`
 

@@ -63,6 +63,15 @@ class RefreshMetricStoreResult:
         return sum(scope.row_count for scope in self.scope_results)
 
 
+@dataclass(frozen=True)
+class _RefreshScopeContext:
+    team_ids: list[int] | None
+    scope_key: str
+    team_filter: str
+    scope_label: str
+    available_seasons: list[str]
+
+
 WOWY_METRIC = "wowy"
 WOWY_SHRUNK_METRIC = "wowy_shrunk"
 RAWR_METRIC = "rawr"
@@ -147,13 +156,17 @@ def refresh_metric_store(
     warnings: list[str] = []
     scope_results: list[RefreshScopeResult] = []
     failure_message: str | None = None
+    build_version = (
+        f"{definition.build_version}-alpha-{rawr_ridge_alpha:.4f}"
+        if metric == RAWR_METRIC
+        else definition.build_version
+    )
 
     for index, team_ids in enumerate(team_scopes):
-        scope_key, team_filter = build_scope_key(team_ids=team_ids, season_type=season_type)
-        scope_label = (
-            official_continuity_label_for_team_id(team_ids[0])
-            if team_ids and len(team_ids) == 1
-            else team_filter or "all-teams"
+        scope = _build_refresh_scope_context(
+            team_ids=team_ids,
+            season_type=season_type,
+            cached_team_seasons=cached_team_seasons,
         )
         if metric == RAWR_METRIC and team_ids is None:
             warnings = _print_rawr_incomplete_season_warning(
@@ -161,87 +174,24 @@ def refresh_metric_store(
                 db_path=db_path,
             )
 
-        scope_seasons = sorted(
-            {
-                team_season.season
-                for team_season in cached_team_seasons
-                if team_ids is None or team_season.team_id in team_ids
-            }
+        if progress is not None:
+            progress(index, len(team_scopes), f"building {scope.scope_label}")
+
+        scope_result, should_fail_empty_rawr_scope = _refresh_metric_store_scope(
+            definition=definition,
+            metric=metric,
+            scope=scope,
+            season_type=season_type,
+            db_path=db_path,
+            source_data_dir=source_data_dir,
+            rawr_ridge_alpha=rawr_ridge_alpha,
+            available_teams=available_teams,
+            source_fingerprint=source_fingerprint,
+            build_version=build_version,
         )
         if progress is not None:
-            progress(index, len(team_scopes), f"building {scope_label}")
-
-        metadata = load_metric_store_metadata(db_path, metric, scope_key)
-        catalog_row = load_metric_scope_catalog_row(db_path, metric, scope_key)
-        build_version = (
-            f"{definition.build_version}-alpha-{rawr_ridge_alpha:.4f}"
-            if metric == RAWR_METRIC
-            else definition.build_version
-        )
-        if (
-            metadata is not None
-            and catalog_row is not None
-            and metadata.source_fingerprint == source_fingerprint
-            and metadata.build_version == build_version
-            and metadata.row_count > 0
-        ):
-            if progress is not None:
-                progress(index + 1, len(team_scopes), f"cached {scope_label}")
-            scope_results.append(
-                RefreshScopeResult(
-                    scope_key=scope_key,
-                    scope_label=scope_label,
-                    row_count=metadata.row_count,
-                    status="cached",
-                )
-            )
-            continue
-
-        rows = definition.build_rows(
-            scope_key=scope_key,
-            team_filter=team_filter,
-            season_type=season_type,
-            source_data_dir=source_data_dir,
-            db_path=db_path,
-            teams=None,
-            team_ids=team_ids,
-            rawr_ridge_alpha=rawr_ridge_alpha,
-        )
-        should_fail_empty_rawr_scope = metric == RAWR_METRIC and team_ids is None and not rows
-        if should_fail_empty_rawr_scope:
-            clear_metric_scope_store(
-                db_path,
-                metric=definition.metric,
-                scope_key=scope_key,
-            )
-            status = "empty"
-            if progress is not None:
-                progress(index + 1, len(team_scopes), f"empty {scope_label}")
-        else:
-            _replace_metric_scope_rows(
-                db_path=db_path,
-                definition=definition,
-                scope_key=scope_key,
-                team_filter=team_filter,
-                season_type=season_type,
-                rows=rows,
-                available_teams=available_teams,
-                available_seasons=scope_seasons,
-                build_version=build_version,
-                source_fingerprint=source_fingerprint,
-            )
-            status = "built"
-            if progress is not None:
-                progress(index + 1, len(team_scopes), f"built {scope_label}")
-
-        scope_results.append(
-            RefreshScopeResult(
-                scope_key=scope_key,
-                scope_label=scope_label,
-                row_count=len(rows),
-                status=status,
-            )
-        )
+            progress(index + 1, len(team_scopes), f"{scope_result.status} {scope.scope_label}")
+        scope_results.append(scope_result)
         if should_fail_empty_rawr_scope:
             failure_message = (
                 "RAWR refresh produced no all-teams rows. "
@@ -254,6 +204,108 @@ def refresh_metric_store(
         scope_results=scope_results,
         warnings=warnings,
         failure_message=failure_message,
+    )
+
+
+def _build_refresh_scope_context(
+    *,
+    team_ids: list[int] | None,
+    season_type: str,
+    cached_team_seasons,
+) -> _RefreshScopeContext:
+    scope_key, team_filter = build_scope_key(team_ids=team_ids, season_type=season_type)
+    return _RefreshScopeContext(
+        team_ids=team_ids,
+        scope_key=scope_key,
+        team_filter=team_filter,
+        scope_label=(
+            official_continuity_label_for_team_id(team_ids[0])
+            if team_ids and len(team_ids) == 1
+            else team_filter or "all-teams"
+        ),
+        available_seasons=sorted(
+            {
+                team_season.season
+                for team_season in cached_team_seasons
+                if team_ids is None or team_season.team_id in team_ids
+            }
+        ),
+    )
+
+
+def _refresh_metric_store_scope(
+    *,
+    definition: _MetricDefinition,
+    metric: str,
+    scope: _RefreshScopeContext,
+    season_type: str,
+    db_path: Path,
+    source_data_dir: Path,
+    rawr_ridge_alpha: float,
+    available_teams: list[str],
+    source_fingerprint: str,
+    build_version: str,
+) -> tuple[RefreshScopeResult, bool]:
+    metadata = load_metric_store_metadata(db_path, metric, scope.scope_key)
+    catalog_row = load_metric_scope_catalog_row(db_path, metric, scope.scope_key)
+    if (
+        metadata is not None
+        and catalog_row is not None
+        and metadata.source_fingerprint == source_fingerprint
+        and metadata.build_version == build_version
+        and metadata.row_count > 0
+    ):
+        return (
+            RefreshScopeResult(
+                scope_key=scope.scope_key,
+                scope_label=scope.scope_label,
+                row_count=metadata.row_count,
+                status="cached",
+            ),
+            False,
+        )
+
+    rows = definition.build_rows(
+        scope_key=scope.scope_key,
+        team_filter=scope.team_filter,
+        season_type=season_type,
+        source_data_dir=source_data_dir,
+        db_path=db_path,
+        teams=None,
+        team_ids=scope.team_ids,
+        rawr_ridge_alpha=rawr_ridge_alpha,
+    )
+    should_fail_empty_rawr_scope = metric == RAWR_METRIC and scope.team_ids is None and not rows
+    if should_fail_empty_rawr_scope:
+        clear_metric_scope_store(
+            db_path,
+            metric=definition.metric,
+            scope_key=scope.scope_key,
+        )
+        status = "empty"
+    else:
+        _replace_metric_scope_rows(
+            db_path=db_path,
+            definition=definition,
+            scope_key=scope.scope_key,
+            team_filter=scope.team_filter,
+            season_type=season_type,
+            rows=rows,
+            available_teams=available_teams,
+            available_seasons=scope.available_seasons,
+            build_version=build_version,
+            source_fingerprint=source_fingerprint,
+        )
+        status = "built"
+
+    return (
+        RefreshScopeResult(
+            scope_key=scope.scope_key,
+            scope_label=scope.scope_label,
+            row_count=len(rows),
+            status=status,
+        ),
+        should_fail_empty_rawr_scope,
     )
 
 
