@@ -274,11 +274,7 @@ def _build_cached_metric_leaderboard_payload(
         db_path=player_metrics_db_path,
         scope_key=parsed_request.scope_key,
         top_n=parsed_request.filters["top_n"],
-        seasons=parsed_request.seasons,
-        min_average_minutes=parsed_request.filters["min_average_minutes"],
-        min_total_minutes=parsed_request.filters["min_total_minutes"],
-        min_sample_size=parsed_request.filters["min_sample_size"],
-        min_secondary_sample_size=parsed_request.filters["min_secondary_sample_size"],
+        **_build_metric_row_query_kwargs(parsed_request),
     )
     return _attach_request_filters(payload, request=request, metric=metric, parsed=parsed_request)
 
@@ -299,23 +295,10 @@ def _build_metric_custom_query_payload(
         metric,
         teams=None,
         team_ids=parsed_request.team_ids,
-        seasons=parsed_request.seasons,
-        season_type=parsed_request.season_type,
         top_n=parsed_request.filters["top_n"],
         source_data_dir=source_data_dir,
         player_metrics_db_path=player_metrics_db_path,
-        min_games_with=int(parsed_request.filters["min_sample_size"])
-        if metric in {WOWY_METRIC, WOWY_SHRUNK_METRIC}
-        else None,
-        min_games_without=parsed_request.filters["min_secondary_sample_size"]
-        if metric in {WOWY_METRIC, WOWY_SHRUNK_METRIC}
-        else None,
-        min_games=int(parsed_request.filters["min_sample_size"])
-        if metric == RAWR_METRIC
-        else None,
-        ridge_alpha=parsed_request.filters["ridge_alpha"] if metric == RAWR_METRIC else None,
-        min_average_minutes=parsed_request.filters["min_average_minutes"],
-        min_total_minutes=parsed_request.filters["min_total_minutes"],
+        **_build_metric_query_kwargs(metric=metric, parsed=parsed_request),
     )
     return _attach_request_filters(payload, request=request, metric=metric, parsed=parsed_request)
 
@@ -335,14 +318,12 @@ def _build_cached_metric_leaderboard_csv(
         metric,
         db_path=player_metrics_db_path,
         scope_key=parsed_request.scope_key,
-        seasons=parsed_request.seasons,
-        min_average_minutes=parsed_request.filters["min_average_minutes"],
-        min_total_minutes=parsed_request.filters["min_total_minutes"],
-        min_sample_size=parsed_request.filters["min_sample_size"],
-        min_secondary_sample_size=parsed_request.filters["min_secondary_sample_size"],
+        **_build_metric_row_query_kwargs(parsed_request),
     )
-    return _render_leaderboard_csv(metric_label=metric_label, table_rows=table_rows), (
-        f"{metric}-all-players.csv"
+    return _build_leaderboard_csv_response(
+        metric=metric,
+        metric_label=metric_label,
+        table_rows=table_rows,
     )
 
 
@@ -358,35 +339,18 @@ def _build_metric_custom_query_csv(
         metric=metric,
         include_top_n=True,
     )
-    min_games_with = (
-        int(parsed_request.filters["min_sample_size"])
-        if metric in {WOWY_METRIC, WOWY_SHRUNK_METRIC}
-        else None
-    )
-    min_games_without = (
-        parsed_request.filters["min_secondary_sample_size"]
-        if metric in {WOWY_METRIC, WOWY_SHRUNK_METRIC}
-        else None
-    )
-    min_games = int(parsed_request.filters["min_sample_size"]) if metric == RAWR_METRIC else None
-    ridge_alpha = parsed_request.filters["ridge_alpha"] if metric == RAWR_METRIC else None
     metric_label, table_rows = build_custom_metric_export_table_rows(
         metric,
         teams=None,
         team_ids=parsed_request.team_ids,
-        seasons=parsed_request.seasons,
-        season_type=parsed_request.season_type,
         source_data_dir=source_data_dir,
         player_metrics_db_path=player_metrics_db_path,
-        min_games_with=min_games_with,
-        min_games_without=min_games_without,
-        min_games=min_games,
-        ridge_alpha=ridge_alpha,
-        min_average_minutes=parsed_request.filters["min_average_minutes"],
-        min_total_minutes=parsed_request.filters["min_total_minutes"],
+        **_build_metric_query_kwargs(metric=metric, parsed=parsed_request),
     )
-    return _render_leaderboard_csv(metric_label=metric_label, table_rows=table_rows), (
-        f"{metric}-all-players.csv"
+    return _build_leaderboard_csv_response(
+        metric=metric,
+        metric_label=metric_label,
+        table_rows=table_rows,
     )
 
 
@@ -437,6 +401,49 @@ def _attach_request_filters(
         top_n=request.args.get("top_n"),
     )
     return payload
+
+
+def _build_metric_row_query_kwargs(parsed: _ParsedMetricRequest) -> dict[str, Any]:
+    return {
+        "seasons": parsed.seasons,
+        "min_average_minutes": parsed.filters["min_average_minutes"],
+        "min_total_minutes": parsed.filters["min_total_minutes"],
+        "min_sample_size": parsed.filters["min_sample_size"],
+        "min_secondary_sample_size": parsed.filters["min_secondary_sample_size"],
+    }
+
+
+def _build_metric_query_kwargs(
+    *,
+    metric: str,
+    parsed: _ParsedMetricRequest,
+) -> dict[str, Any]:
+    kwargs = {
+        "seasons": parsed.seasons,
+        "season_type": parsed.season_type,
+        "min_average_minutes": parsed.filters["min_average_minutes"],
+        "min_total_minutes": parsed.filters["min_total_minutes"],
+    }
+    if metric in {WOWY_METRIC, WOWY_SHRUNK_METRIC}:
+        kwargs["min_games_with"] = int(parsed.filters["min_sample_size"])
+        kwargs["min_games_without"] = parsed.filters["min_secondary_sample_size"]
+        return kwargs
+    if metric == RAWR_METRIC:
+        kwargs["min_games"] = int(parsed.filters["min_sample_size"])
+        kwargs["ridge_alpha"] = parsed.filters["ridge_alpha"]
+        return kwargs
+    raise ValueError(f"Unknown metric: {metric}")
+
+
+def _build_leaderboard_csv_response(
+    *,
+    metric: str,
+    metric_label: str,
+    table_rows: list[dict[str, Any]],
+) -> tuple[str, str]:
+    return _render_leaderboard_csv(metric_label=metric_label, table_rows=table_rows), (
+        f"{metric}-all-players.csv"
+    )
 
 
 def _parse_request_filters(
