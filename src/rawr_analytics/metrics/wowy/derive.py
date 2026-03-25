@@ -2,8 +2,8 @@ from __future__ import annotations
 
 from collections import defaultdict
 
-from wowy.metrics.wowy.models import WowyGameRecord
-from wowy.nba.models import NormalizedGamePlayerRecord, NormalizedGameRecord
+from rawr_analytics.metrics.wowy.models import WowyGameRecord
+from rawr_analytics.nba.models import NormalizedGamePlayerRecord, NormalizedGameRecord
 
 
 def derive_wowy_games(

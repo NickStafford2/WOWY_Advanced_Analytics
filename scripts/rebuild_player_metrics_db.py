@@ -5,7 +5,7 @@ import subprocess
 import sys
 from pathlib import Path
 
-from wowy.data.player_metrics_db import DEFAULT_PLAYER_METRICS_DB_PATH
+from rawr_analytics.data.player_metrics_db import DEFAULT_PLAYER_METRICS_DB_PATH
 
 DEFAULT_START_YEAR = 2025
 DEFAULT_FIRST_YEAR = 1998

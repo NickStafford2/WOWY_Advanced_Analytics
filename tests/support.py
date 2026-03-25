@@ -2,10 +2,10 @@ from __future__ import annotations
 
 from typing import TypeAlias
 
-import wowy.data.game_cache.repository as game_cache_repository
-from wowy.data.game_cache.repository import replace_team_season_normalized_rows
-from wowy.nba.models import NormalizedGamePlayerRecord, NormalizedGameRecord
-from wowy.nba.team_identity import resolve_team_id
+import rawr_analytics.data.game_cache.repository as game_cache_repository
+from rawr_analytics.data.game_cache.repository import replace_team_season_normalized_rows
+from rawr_analytics.nba.models import NormalizedGamePlayerRecord, NormalizedGameRecord
+from rawr_analytics.nba.team_identity import resolve_team_id
 
 TeamSeasonSeed: TypeAlias = tuple[
     str,
@@ -68,9 +68,7 @@ def seed_db_from_team_seasons(
     for team, season, games, game_players in team_seasons:
         season_types = {game.season_type for game in games}
         if len(season_types) > 1:
-            raise ValueError(
-                f"Expected one season type per team-season seed for {team} {season}"
-            )
+            raise ValueError(f"Expected one season type per team-season seed for {team} {season}")
         original_validate = game_cache_repository.validate_normalized_cache_batch
         game_cache_repository.validate_normalized_cache_batch = lambda **_kwargs: None
         try:

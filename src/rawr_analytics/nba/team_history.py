@@ -3,7 +3,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from datetime import date
 
-from wowy.nba.seasons import canonicalize_season_string
+from rawr_analytics.nba.seasons import canonicalize_season_string
 
 
 @dataclass(frozen=True)
@@ -115,13 +115,9 @@ for entries in _TEAM_HISTORY_BY_ID.values():
     entries.sort(key=lambda entry: (entry.season_start, entry.season_end or 9999))
 
 for entries in _TEAM_HISTORY_BY_ID.values():
-    latest_entry = max(
-        entries, key=lambda entry: (entry.season_end or 9999, entry.season_start)
-    )
+    latest_entry = max(entries, key=lambda entry: (entry.season_end or 9999, entry.season_start))
     lookup_abbreviation = latest_entry.lookup_abbreviation or latest_entry.abbreviation
-    _TEAM_ID_BY_LOOKUP_ABBREVIATION.setdefault(
-        lookup_abbreviation, latest_entry.team_id
-    )
+    _TEAM_ID_BY_LOOKUP_ABBREVIATION.setdefault(lookup_abbreviation, latest_entry.team_id)
 
 
 def normalize_team_abbreviation(team_abbreviation: str) -> str:
@@ -223,11 +219,7 @@ def resolve_team_history_entry_from_id_for_season_start_year(
 
 def list_expected_team_abbreviations_for_season(season: str) -> list[str]:
     start_year = season_start_year(season)
-    return sorted(
-        entry.abbreviation
-        for entry in TEAM_HISTORY
-        if entry.includes_season(start_year)
-    )
+    return sorted(entry.abbreviation for entry in TEAM_HISTORY if entry.includes_season(start_year))
 
 
 def team_is_active_for_season(team_abbreviation: str, season: str) -> bool:

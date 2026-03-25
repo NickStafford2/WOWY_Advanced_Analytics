@@ -5,12 +5,12 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, TypedDict
 
-from wowy.metrics.rawr.service import validate_filters as validate_rawr_filters
-from wowy.metrics.wowy.service import validate_filters as validate_wowy_filters
-from wowy.data.player_metrics_db import DEFAULT_PLAYER_METRICS_DB_PATH
-from wowy.nba.season_types import canonicalize_season_type
-from wowy.nba.seasons import canonicalize_season_string
-from wowy.web.metric_queries import (
+from rawr_analytics.metrics.rawr.service import validate_filters as validate_rawr_filters
+from rawr_analytics.metrics.wowy.service import validate_filters as validate_wowy_filters
+from rawr_analytics.data.player_metrics_db import DEFAULT_PLAYER_METRICS_DB_PATH
+from rawr_analytics.nba.season_types import canonicalize_season_type
+from rawr_analytics.nba.seasons import canonicalize_season_string
+from rawr_analytics.web.metric_queries import (
     build_cached_metric_export_table_rows,
     build_cached_metric_leaderboard_payload,
     build_custom_metric_export_table_rows,
@@ -20,7 +20,7 @@ from wowy.web.metric_queries import (
     build_metric_player_seasons_payload,
     build_metric_span_chart_payload,
 )
-from wowy.web.metric_store import (
+from rawr_analytics.web.metric_store import (
     DEFAULT_RAWR_RIDGE_ALPHA,
     RAWR_METRIC,
     WOWY_METRIC,

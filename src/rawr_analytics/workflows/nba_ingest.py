@@ -4,27 +4,27 @@ import re
 from pathlib import Path
 from typing import Callable
 
-from wowy.data.game_cache.repository import replace_team_season_normalized_rows
-from wowy.data.player_metrics_db import DEFAULT_PLAYER_METRICS_DB_PATH
-from wowy.nba.build_models import (
+from rawr_analytics.data.game_cache.repository import replace_team_season_normalized_rows
+from rawr_analytics.data.player_metrics_db import DEFAULT_PLAYER_METRICS_DB_PATH
+from rawr_analytics.nba.build_models import (
     TeamSeasonArtifacts,
     TeamSeasonBuildResult,
     TeamSeasonRunSummary,
 )
-from wowy.nba.errors import (
+from rawr_analytics.nba.errors import (
     GameNormalizationFailure,
     PartialTeamSeasonError,
 )
-from wowy.nba.models import (
+from rawr_analytics.nba.models import (
     NormalizedGamePlayerRecord,
     NormalizedGameRecord,
     NormalizedTeamSeasonBatch,
 )
-from wowy.nba.normalize.normalize_game import normalize_source_game
-from wowy.nba.normalize.validation import validate_normalized_team_season_batch
-from wowy.nba.season_types import canonicalize_season_type
-from wowy.nba.seasons import canonicalize_season_string
-from wowy.nba.source.cache import (
+from rawr_analytics.nba.normalize.normalize_game import normalize_source_game
+from rawr_analytics.nba.normalize.validation import validate_normalized_team_season_batch
+from rawr_analytics.nba.season_types import canonicalize_season_type
+from rawr_analytics.nba.seasons import canonicalize_season_string
+from rawr_analytics.nba.source.cache import (
     DEFAULT_SOURCE_DATA_DIR,
     box_score_cache_paths,
     box_score_payload_is_empty,
@@ -34,15 +34,15 @@ from wowy.nba.source.cache import (
     load_or_fetch_box_score_with_source,
     load_or_fetch_league_games_with_source,
 )
-from wowy.nba.source.parsers import (
+from rawr_analytics.nba.source.parsers import (
     dedupe_schedule_games,
     parse_box_score_payload,
     parse_league_schedule_payload,
 )
-from wowy.nba.source.parsers import (
+from rawr_analytics.nba.source.parsers import (
     load_player_names_from_cache as load_cached_player_names,
 )
-from wowy.nba.team_identity import resolve_team_id
+from rawr_analytics.nba.team_identity import resolve_team_id
 
 ProgressFn = Callable[[dict], None]
 
@@ -156,10 +156,7 @@ def ingest_team_season(
                 failure_reason_examples=failure_reason_examples,
             )
             if log is not None:
-                log(
-                    f"failed game {schedule_game.game_id} {requested_team} {season} "
-                    f"reason={exc}"
-                )
+                log(f"failed game {schedule_game.game_id} {requested_team} {season} reason={exc}")
             if progress is not None:
                 progress(
                     {
@@ -206,8 +203,7 @@ def ingest_team_season(
             failed_game_details=failed_game_details,
             failure_reason_counts=dict(sorted(failure_reason_counts.items())),
             failure_reason_examples={
-                reason: examples[:]
-                for reason, examples in sorted(failure_reason_examples.items())
+                reason: examples[:] for reason, examples in sorted(failure_reason_examples.items())
             },
         )
 

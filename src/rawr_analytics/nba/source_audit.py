@@ -8,13 +8,13 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Callable
 
-from wowy.nba.source.cache import DEFAULT_SOURCE_DATA_DIR
-from wowy.nba.source.parsers import (
+from rawr_analytics.nba.source.cache import DEFAULT_SOURCE_DATA_DIR
+from rawr_analytics.nba.source.parsers import (
     dedupe_schedule_games,
     parse_box_score_payload,
     parse_league_schedule_payload,
 )
-from wowy.nba.source.rules import (
+from rawr_analytics.nba.source.rules import (
     classify_source_player_row,
     classify_source_schedule_row,
     classify_source_team_row,

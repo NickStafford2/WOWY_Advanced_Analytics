@@ -1,18 +1,18 @@
 from __future__ import annotations
 
-from wowy.metrics.wowy.analysis import ProgressFn, compute_wowy, filter_results
-from wowy.metrics.wowy.formatting import format_results_table
-from wowy.metrics.wowy.inputs import load_wowy_game_records
-from wowy.metrics.wowy.minutes import (
+from rawr_analytics.metrics.wowy.analysis import ProgressFn, compute_wowy, filter_results
+from rawr_analytics.metrics.wowy.formatting import format_results_table
+from rawr_analytics.metrics.wowy.inputs import load_wowy_game_records
+from rawr_analytics.metrics.wowy.minutes import (
     attach_minute_stats,
     filter_results_by_minutes,
     load_player_minute_stats,
 )
-from wowy.metrics.wowy.models import WowyGameRecord
-from wowy.data.player_metrics_db import DEFAULT_PLAYER_METRICS_DB_PATH
-from wowy.progress import TerminalProgressBar, print_status_box
-from wowy.shared.filters import validate_top_n_and_minutes
-from wowy.shared.scope import format_scope
+from rawr_analytics.metrics.wowy.models import WowyGameRecord
+from rawr_analytics.data.player_metrics_db import DEFAULT_PLAYER_METRICS_DB_PATH
+from rawr_analytics.progress import TerminalProgressBar, print_status_box
+from rawr_analytics.shared.filters import validate_top_n_and_minutes
+from rawr_analytics.shared.scope import format_scope
 
 __all__ = [
     "build_wowy_report",

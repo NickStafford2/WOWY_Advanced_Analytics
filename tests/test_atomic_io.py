@@ -4,7 +4,7 @@ from pathlib import Path
 
 import pytest
 
-from wowy.atomic_io import atomic_text_writer
+from rawr_analytics.atomic_io import atomic_text_writer
 
 
 def test_atomic_text_writer_replaces_file_atomically(tmp_path: Path) -> None:

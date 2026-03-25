@@ -4,7 +4,7 @@ import sqlite3
 from pathlib import Path
 
 from tests.support import game, player
-from wowy.data.db_validation import (
+from rawr_analytics.data.db_validation import (
     DatabaseValidationReport,
     ValidationIssue,
     assert_valid_player_metrics_db,
@@ -13,10 +13,10 @@ from wowy.data.db_validation import (
     render_validation_summary,
     summarize_validation_report,
 )
-from wowy.data.db_validation_cli import main as db_validation_cli_main
-from wowy.data.game_cache.fingerprints import build_normalized_cache_fingerprint
-from wowy.data.game_cache.repository import replace_team_season_normalized_rows
-from wowy.data.player_metrics_db import (
+from rawr_analytics.data.db_validation_cli import main as db_validation_cli_main
+from rawr_analytics.data.game_cache.fingerprints import build_normalized_cache_fingerprint
+from rawr_analytics.data.game_cache.repository import replace_team_season_normalized_rows
+from rawr_analytics.data.player_metrics_db import (
     MetricFullSpanPointRow,
     MetricFullSpanSeriesRow,
     MetricScopeCatalogRow,
@@ -25,7 +25,7 @@ from wowy.data.player_metrics_db import (
     replace_metric_rows,
     replace_metric_scope_catalog_row,
 )
-from wowy.nba.team_identity import resolve_team_id
+from rawr_analytics.nba.team_identity import resolve_team_id
 
 
 def test_audit_player_metrics_db_accepts_valid_seed_data(tmp_path: Path):
@@ -105,8 +105,7 @@ def test_audit_player_metrics_db_reports_noncanonical_persisted_catalog_values(t
 
     assert report.ok is False
     assert any(
-        issue.table == "metric_scope_catalog"
-        and "Invalid team_id filter value" in issue.message
+        issue.table == "metric_scope_catalog" and "Invalid team_id filter value" in issue.message
         for issue in report.issues
     )
 
@@ -197,7 +196,7 @@ def test_db_validation_cli_json_mode_omits_progress_output(tmp_path: Path, capsy
     captured = capsys.readouterr()
 
     assert exit_code == 0
-    assert "\"ok\": true" in captured.out
+    assert '"ok": true' in captured.out
     assert captured.err == ""
 
 

@@ -2,8 +2,8 @@ from __future__ import annotations
 
 import pytest
 
-from wowy.nba.team_history import resolve_team_history_entry
-from wowy.nba.team_identity import (
+from rawr_analytics.nba.team_history import resolve_team_history_entry
+from rawr_analytics.nba.team_identity import (
     canonical_team_lookup_abbreviation,
     list_expected_team_abbreviations_for_season,
     resolve_team_id,

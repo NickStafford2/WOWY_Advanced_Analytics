@@ -10,8 +10,8 @@ from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any, Iterable
 
-from wowy.nba.season_types import canonicalize_season_type
-from wowy.nba.seasons import canonicalize_season_string, season_sort_key
+from rawr_analytics.nba.season_types import canonicalize_season_type
+from rawr_analytics.nba.seasons import canonicalize_season_string, season_sort_key
 
 DEFAULT_PLAYER_METRICS_DB_PATH = Path("data/app/player_metrics.sqlite3")
 LEGACY_METRIC_RENAMES = {
@@ -37,6 +37,7 @@ class PlayerSeasonMetricRow:
     average_minutes: float | None = None
     total_minutes: float | None = None
     details: dict[str, Any] | None = None
+
 
 @dataclass(frozen=True)
 class MetricStoreMetadata:
@@ -978,23 +979,18 @@ def _validate_metric_rows(
         canonical_season = canonicalize_season_string(row.season)
         if canonical_season != row.season:
             raise ValueError(
-                f"Metric row for player {row.player_id!r} uses non-canonical season "
-                f"{row.season!r}"
+                f"Metric row for player {row.player_id!r} uses non-canonical season {row.season!r}"
             )
 
         if expected_team_filter is None:
             expected_team_filter = canonical_team_filter
         elif canonical_team_filter != expected_team_filter:
-            raise ValueError(
-                "Metric rows in the same batch must use one canonical team_filter"
-            )
+            raise ValueError("Metric rows in the same batch must use one canonical team_filter")
 
         if expected_season_type is None:
             expected_season_type = canonical_season_type
         elif canonical_season_type != expected_season_type:
-            raise ValueError(
-                "Metric rows in the same batch must use one canonical season_type"
-            )
+            raise ValueError("Metric rows in the same batch must use one canonical season_type")
 
         if row.player_id <= 0:
             raise ValueError(f"Metric row has invalid player_id {row.player_id!r}")
@@ -1028,14 +1024,13 @@ def _validate_metric_rows(
                 "than average_minutes"
             )
         if row.details is not None and not isinstance(row.details, dict):
-            raise ValueError(
-                f"Metric row for player {row.player_id!r} must use a dict for details"
-            )
+            raise ValueError(f"Metric row for player {row.player_id!r} must use a dict for details")
 
         row_key = (row.season, row.player_id)
         if row_key in row_keys:
             raise ValueError(f"Duplicate metric row for {row_key!r}")
         row_keys.add(row_key)
+
 
 def _validate_metric_scope_catalog_row(row: MetricScopeCatalogRow) -> None:
     _validate_required_text(row.metric, "metric")
@@ -1127,9 +1122,7 @@ def _validate_metric_full_span_rows(
         if row.metric != metric or row.scope_key != scope_key:
             raise ValueError("Full-span point rows must match the requested metric scope")
         if row.player_id not in expected_point_counts:
-            raise ValueError(
-                f"Full-span point row for unknown player {row.player_id!r}"
-            )
+            raise ValueError(f"Full-span point row for unknown player {row.player_id!r}")
         canonical_season = canonicalize_season_string(row.season)
         if canonical_season != row.season:
             raise ValueError(

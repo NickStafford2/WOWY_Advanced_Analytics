@@ -5,14 +5,19 @@ description = "Game-level basketball impact prototypes and advanced analytics."
 readme = "README.md"
 requires-python = ">=3.12,<3.13"
 authors = [{ name = "Nicholas Stafford" }]
-dependencies = ["nba_api>=1.7,<2.0", "numpy>=2.0,<3.0", "matplotlib (>=3.10.8,<4.0.0)", "flask (>=3.1.3,<4.0.0)"]
+dependencies = [
+  "nba_api>=1.7,<2.0",
+  "numpy>=2.0,<3.0",
+  "matplotlib (>=3.10.8,<4.0.0)",
+  "flask (>=3.1.3,<4.0.0)",
+]
 
 [project.scripts]
 wowy = "rawr_analytics.metrics.wowy.cli:main"
 rawr = "rawr_analytics.metrics.rawr.cli:main"
-wowy-web = "rawr_analytics.web.cli:main"
-wowy-refresh-web-store = "rawr_analytics.web.refresh_cli:main"
-wowy-audit-db = "rawr_analytics.data.db_validation_cli:main"
+web = "rawr_analytics.web.cli:main"
+refresh-web-store = "rawr_analytics.web.refresh_cli:main"
+audit-db = "rawr_analytics.data.db_validation_cli:main"
 
 [dependency-groups]
 test = ["pytest>=8.0,<9.0"]
@@ -23,7 +28,7 @@ requires = ["poetry-core>=1.8.0"]
 build-backend = "poetry.core.masonry.api"
 
 [tool.poetry]
-packages = [{ include = "wowy", from = "src" }]
+packages = [{ include = "rawr_analytics", from = "src" }]
 
 [tool.ruff]
 target-version = "py312"

@@ -10,17 +10,17 @@ from requests import RequestException
 from tests.support import game as normalized_game
 from tests.support import player as normalized_player
 from tests.support import seed_db_from_team_seasons
-from wowy.data.game_cache.repository import (
+from rawr_analytics.data.game_cache.repository import (
     load_cache_load_row,
     load_normalized_games_from_db,
     load_normalized_scope_records_from_db,
     replace_team_season_normalized_rows,
 )
-from wowy.data.game_cache.schema import initialize_game_cache_db
-from wowy.nba.errors import BoxScoreFetchError, LeagueGamesFetchError
-from wowy.nba.models import NormalizedGamePlayerRecord, NormalizedGameRecord
-from wowy.nba.season_types import canonicalize_season_type
-from wowy.nba.source.cache import (
+from rawr_analytics.data.game_cache.schema import initialize_game_cache_db
+from rawr_analytics.nba.errors import BoxScoreFetchError, LeagueGamesFetchError
+from rawr_analytics.nba.models import NormalizedGamePlayerRecord, NormalizedGameRecord
+from rawr_analytics.nba.season_types import canonicalize_season_type
+from rawr_analytics.nba.source.cache import (
     BOX_SCORE_REQUEST_TIMEOUT_SECONDS,
     LEAGUE_GAMES_REQUEST_TIMEOUT_SECONDS,
     league_games_cache_path,
@@ -29,8 +29,8 @@ from wowy.nba.source.cache import (
     load_or_fetch_league_games_with_source,
     write_cached_payload,
 )
-from wowy.nba.team_identity import resolve_team_id
-from wowy.nba.team_seasons import TeamSeasonScope, resolve_team_seasons
+from rawr_analytics.nba.team_identity import resolve_team_id
+from rawr_analytics.nba.team_seasons import TeamSeasonScope, resolve_team_seasons
 
 
 def test_write_cached_payload_writes_json_atomically(tmp_path: Path):
@@ -564,9 +564,7 @@ def test_league_games_cache_path_uses_canonical_season_type_slug(tmp_path: Path)
         source_data_dir=tmp_path,
     )
 
-    assert cache_path == (
-        tmp_path / "team_seasons" / "BOS_2023-24_playoffs_leaguegamefinder.json"
-    )
+    assert cache_path == (tmp_path / "team_seasons" / "BOS_2023-24_playoffs_leaguegamefinder.json")
 
 
 def test_initialize_game_cache_db_uses_expected_primary_keys(tmp_path: Path):
@@ -574,9 +572,7 @@ def test_initialize_game_cache_db_uses_expected_primary_keys(tmp_path: Path):
     initialize_game_cache_db(db_path)
 
     with sqlite3.connect(db_path) as connection:
-        normalized_games_pk = connection.execute(
-            "PRAGMA table_info(normalized_games)"
-        ).fetchall()
+        normalized_games_pk = connection.execute("PRAGMA table_info(normalized_games)").fetchall()
         normalized_players_pk = connection.execute(
             "PRAGMA table_info(normalized_game_players)"
         ).fetchall()
@@ -585,9 +581,7 @@ def test_initialize_game_cache_db_uses_expected_primary_keys(tmp_path: Path):
         row[1] for row in sorted(normalized_games_pk, key=lambda row: row[5]) if row[5] > 0
     ] == ["game_id", "team_id", "season", "season_type"]
     assert [
-        row[1]
-        for row in sorted(normalized_players_pk, key=lambda row: row[5])
-        if row[5] > 0
+        row[1] for row in sorted(normalized_players_pk, key=lambda row: row[5]) if row[5] > 0
     ] == ["game_id", "team_id", "player_id", "season", "season_type"]
 
 
@@ -600,9 +594,7 @@ def test_team_id_authoritative_reads_match_historical_alias_scopes(tmp_path: Pat
         team_id=resolve_team_id("NJN", season="2009-10"),
         season="2009-10",
         season_type="Regular Season",
-        games=[
-            normalized_game("0001", "2009-10", "2010-04-01", "NJN", "BOS", True, 3.0)
-        ],
+        games=[normalized_game("0001", "2009-10", "2010-04-01", "NJN", "BOS", True, 3.0)],
         game_players=[
             normalized_player("0001", "NJN", 101, "Player 101", True, 48.0),
             normalized_player("0001", "NJN", 102, "Player 102", True, 48.0),
@@ -645,9 +637,7 @@ def test_resolve_team_seasons_keeps_original_hornets_historical_scope(tmp_path: 
         team_id=resolve_team_id("CHH", season="2001-02"),
         season="2001-02",
         season_type="Regular Season",
-        games=[
-            normalized_game("0001", "2001-02", "2002-04-01", "CHH", "DET", True, 3.0)
-        ],
+        games=[normalized_game("0001", "2001-02", "2002-04-01", "CHH", "DET", True, 3.0)],
         game_players=[
             NormalizedGamePlayerRecord("0001", "CHH", 101, "Player 101", True, 48.0, 1610612766),
             NormalizedGamePlayerRecord("0001", "CHH", 102, "Player 102", True, 48.0, 1610612766),
@@ -667,9 +657,7 @@ def test_resolve_team_seasons_keeps_original_hornets_historical_scope(tmp_path: 
         season_type="Regular Season",
     )
 
-    assert resolved == [
-        TeamSeasonScope(team="CHH", season="2001-02", team_id=1610612766)
-    ]
+    assert resolved == [TeamSeasonScope(team="CHH", season="2001-02", team_id=1610612766)]
 
 
 def test_resolve_team_seasons_accepts_team_id_for_historical_multi_season_scope(tmp_path: Path):
@@ -681,9 +669,7 @@ def test_resolve_team_seasons_accepts_team_id_for_historical_multi_season_scope(
         team_id=resolve_team_id("NOH", season="2002-03"),
         season="2002-03",
         season_type="Regular Season",
-        games=[
-            normalized_game("0001", "2002-03", "2003-04-01", "NOH", "BOS", True, 3.0)
-        ],
+        games=[normalized_game("0001", "2002-03", "2003-04-01", "NOH", "BOS", True, 3.0)],
         game_players=[
             normalized_player("0001", "NOH", 101, "Player 101", True, 48.0),
             normalized_player("0001", "NOH", 102, "Player 102", True, 48.0),
@@ -701,9 +687,7 @@ def test_resolve_team_seasons_accepts_team_id_for_historical_multi_season_scope(
         team_id=resolve_team_id("NOP", season="2013-14"),
         season="2013-14",
         season_type="Regular Season",
-        games=[
-            normalized_game("0002", "2013-14", "2014-04-01", "NOP", "LAL", True, 2.0)
-        ],
+        games=[normalized_game("0002", "2013-14", "2014-04-01", "NOP", "LAL", True, 2.0)],
         game_players=[
             normalized_player("0002", "NOP", 102, "Player 102", True, 48.0),
             normalized_player("0002", "NOP", 103, "Player 103", True, 48.0),
@@ -739,9 +723,7 @@ def test_load_cache_load_row_uses_season_scoped_original_hornets_identity(tmp_pa
         team_id=resolve_team_id("CHH", season="2001-02"),
         season="2001-02",
         season_type="Regular Season",
-        games=[
-            normalized_game("0001", "2001-02", "2002-04-01", "CHH", "DET", True, 3.0)
-        ],
+        games=[normalized_game("0001", "2001-02", "2002-04-01", "CHH", "DET", True, 3.0)],
         game_players=[
             NormalizedGamePlayerRecord("0001", "CHH", 101, "Player 101", True, 48.0, 1610612766),
             NormalizedGamePlayerRecord("0001", "CHH", 102, "Player 102", True, 48.0, 1610612766),
@@ -786,9 +768,7 @@ def test_load_normalized_games_handles_historical_team_filters_across_multiple_s
         team_id=resolve_team_id("CHH", season="2001-02"),
         season="2001-02",
         season_type="Regular Season",
-        games=[
-            normalized_game("0001", "2001-02", "2002-04-01", "CHH", "DET", True, 3.0)
-        ],
+        games=[normalized_game("0001", "2001-02", "2002-04-01", "CHH", "DET", True, 3.0)],
         game_players=[
             NormalizedGamePlayerRecord("0001", "CHH", 101, "Player 101", True, 48.0, 1610612766),
             NormalizedGamePlayerRecord("0001", "CHH", 102, "Player 102", True, 48.0, 1610612766),
@@ -806,9 +786,7 @@ def test_load_normalized_games_handles_historical_team_filters_across_multiple_s
         team_id=resolve_team_id("NOH", season="2002-03"),
         season="2002-03",
         season_type="Regular Season",
-        games=[
-            normalized_game("0002", "2002-03", "2003-03-10", "NOH", "BOS", True, 8.0)
-        ],
+        games=[normalized_game("0002", "2002-03", "2003-03-10", "NOH", "BOS", True, 8.0)],
         game_players=[
             normalized_player("0002", "NOH", 201, "Player 201", True, 48.0),
             normalized_player("0002", "NOH", 202, "Player 202", True, 48.0),
@@ -862,11 +840,21 @@ def test_replace_team_season_normalized_rows_rejects_non_canonical_or_implausibl
                 )
             ],
             game_players=[
-                NormalizedGamePlayerRecord("0001", "BOS", 101, "Player 101", True, 48.0, 1610612738),
-                NormalizedGamePlayerRecord("0001", "BOS", 102, "Player 102", True, 48.0, 1610612738),
-                NormalizedGamePlayerRecord("0001", "BOS", 103, "Player 103", True, 48.0, 1610612738),
-                NormalizedGamePlayerRecord("0001", "BOS", 104, "Player 104", True, 48.0, 1610612738),
-                NormalizedGamePlayerRecord("0001", "BOS", 105, "Player 105", True, 48.0, 1610612738),
+                NormalizedGamePlayerRecord(
+                    "0001", "BOS", 101, "Player 101", True, 48.0, 1610612738
+                ),
+                NormalizedGamePlayerRecord(
+                    "0001", "BOS", 102, "Player 102", True, 48.0, 1610612738
+                ),
+                NormalizedGamePlayerRecord(
+                    "0001", "BOS", 103, "Player 103", True, 48.0, 1610612738
+                ),
+                NormalizedGamePlayerRecord(
+                    "0001", "BOS", 104, "Player 104", True, 48.0, 1610612738
+                ),
+                NormalizedGamePlayerRecord(
+                    "0001", "BOS", 105, "Player 105", True, 48.0, 1610612738
+                ),
             ],
             source_path="sqlite://normalized_games/BOS_2023-24_regular_season",
             source_snapshot="test",
@@ -902,11 +890,21 @@ def test_replace_team_season_normalized_rows_rejects_historically_wrong_team_lab
                 )
             ],
             game_players=[
-                NormalizedGamePlayerRecord("0001", "NOP", 101, "Player 101", True, 48.0, 1610612740),
-                NormalizedGamePlayerRecord("0001", "NOP", 102, "Player 102", True, 48.0, 1610612740),
-                NormalizedGamePlayerRecord("0001", "NOP", 103, "Player 103", True, 48.0, 1610612740),
-                NormalizedGamePlayerRecord("0001", "NOP", 104, "Player 104", True, 48.0, 1610612740),
-                NormalizedGamePlayerRecord("0001", "NOP", 105, "Player 105", True, 48.0, 1610612740),
+                NormalizedGamePlayerRecord(
+                    "0001", "NOP", 101, "Player 101", True, 48.0, 1610612740
+                ),
+                NormalizedGamePlayerRecord(
+                    "0001", "NOP", 102, "Player 102", True, 48.0, 1610612740
+                ),
+                NormalizedGamePlayerRecord(
+                    "0001", "NOP", 103, "Player 103", True, 48.0, 1610612740
+                ),
+                NormalizedGamePlayerRecord(
+                    "0001", "NOP", 104, "Player 104", True, 48.0, 1610612740
+                ),
+                NormalizedGamePlayerRecord(
+                    "0001", "NOP", 105, "Player 105", True, 48.0, 1610612740
+                ),
             ],
             source_path="sqlite://normalized_games/NOP_2002-03_regular_season",
             source_snapshot="test",
@@ -919,7 +917,9 @@ def test_replace_team_season_normalized_rows_rejects_opponent_label_mismatch(
 ) -> None:
     db_path = tmp_path / "app" / "player_metrics.sqlite3"
 
-    with pytest.raises(ValueError, match="opponent 'LAL' does not match opponent_team_id 1610612744"):
+    with pytest.raises(
+        ValueError, match="opponent 'LAL' does not match opponent_team_id 1610612744"
+    ):
         replace_team_season_normalized_rows(
             db_path,
             team="BOS",
@@ -942,11 +942,21 @@ def test_replace_team_season_normalized_rows_rejects_opponent_label_mismatch(
                 )
             ],
             game_players=[
-                NormalizedGamePlayerRecord("0001", "BOS", 101, "Player 101", True, 48.0, 1610612738),
-                NormalizedGamePlayerRecord("0001", "BOS", 102, "Player 102", True, 48.0, 1610612738),
-                NormalizedGamePlayerRecord("0001", "BOS", 103, "Player 103", True, 48.0, 1610612738),
-                NormalizedGamePlayerRecord("0001", "BOS", 104, "Player 104", True, 48.0, 1610612738),
-                NormalizedGamePlayerRecord("0001", "BOS", 105, "Player 105", True, 48.0, 1610612738),
+                NormalizedGamePlayerRecord(
+                    "0001", "BOS", 101, "Player 101", True, 48.0, 1610612738
+                ),
+                NormalizedGamePlayerRecord(
+                    "0001", "BOS", 102, "Player 102", True, 48.0, 1610612738
+                ),
+                NormalizedGamePlayerRecord(
+                    "0001", "BOS", 103, "Player 103", True, 48.0, 1610612738
+                ),
+                NormalizedGamePlayerRecord(
+                    "0001", "BOS", 104, "Player 104", True, 48.0, 1610612738
+                ),
+                NormalizedGamePlayerRecord(
+                    "0001", "BOS", 105, "Player 105", True, 48.0, 1610612738
+                ),
             ],
             source_path="sqlite://normalized_games/BOS_2023-24_regular_season",
             source_snapshot="test",
@@ -976,16 +986,26 @@ def test_replace_team_season_normalized_rows_rejects_opponent_label_mismatch(
                     )
                 ],
                 game_players=[
-                    NormalizedGamePlayerRecord("0002", "BOS", 101, "Player 101", True, None, 1610612738),
-                    NormalizedGamePlayerRecord("0002", "BOS", 102, "Player 102", True, 60.0, 1610612738),
-                    NormalizedGamePlayerRecord("0002", "BOS", 103, "Player 103", True, 60.0, 1610612738),
-                    NormalizedGamePlayerRecord("0002", "BOS", 104, "Player 104", True, 60.0, 1610612738),
-                    NormalizedGamePlayerRecord("0002", "BOS", 105, "Player 105", True, 60.0, 1610612738),
+                    NormalizedGamePlayerRecord(
+                        "0002", "BOS", 101, "Player 101", True, None, 1610612738
+                    ),
+                    NormalizedGamePlayerRecord(
+                        "0002", "BOS", 102, "Player 102", True, 60.0, 1610612738
+                    ),
+                    NormalizedGamePlayerRecord(
+                        "0002", "BOS", 103, "Player 103", True, 60.0, 1610612738
+                    ),
+                    NormalizedGamePlayerRecord(
+                        "0002", "BOS", 104, "Player 104", True, 60.0, 1610612738
+                    ),
+                    NormalizedGamePlayerRecord(
+                        "0002", "BOS", 105, "Player 105", True, 60.0, 1610612738
+                    ),
                 ],
                 source_path="sqlite://normalized_games/BOS_2023-24_regular_season",
                 source_snapshot="test",
-            source_kind="unit-test",
-        )
+                source_kind="unit-test",
+            )
 
     with pytest.raises(ValueError, match="Implausible total appeared minutes"):
         replace_team_season_normalized_rows(
@@ -1010,11 +1030,21 @@ def test_replace_team_season_normalized_rows_rejects_opponent_label_mismatch(
                 )
             ],
             game_players=[
-                NormalizedGamePlayerRecord("0003", "BOS", 101, "Player 101", True, 20.0, 1610612738),
-                NormalizedGamePlayerRecord("0003", "BOS", 102, "Player 102", True, 20.0, 1610612738),
-                NormalizedGamePlayerRecord("0003", "BOS", 103, "Player 103", True, 20.0, 1610612738),
-                NormalizedGamePlayerRecord("0003", "BOS", 104, "Player 104", True, 20.0, 1610612738),
-                NormalizedGamePlayerRecord("0003", "BOS", 105, "Player 105", True, 20.0, 1610612738),
+                NormalizedGamePlayerRecord(
+                    "0003", "BOS", 101, "Player 101", True, 20.0, 1610612738
+                ),
+                NormalizedGamePlayerRecord(
+                    "0003", "BOS", 102, "Player 102", True, 20.0, 1610612738
+                ),
+                NormalizedGamePlayerRecord(
+                    "0003", "BOS", 103, "Player 103", True, 20.0, 1610612738
+                ),
+                NormalizedGamePlayerRecord(
+                    "0003", "BOS", 104, "Player 104", True, 20.0, 1610612738
+                ),
+                NormalizedGamePlayerRecord(
+                    "0003", "BOS", 105, "Player 105", True, 20.0, 1610612738
+                ),
             ],
             source_path="sqlite://normalized_games/BOS_2023-24_regular_season",
             source_snapshot="test",

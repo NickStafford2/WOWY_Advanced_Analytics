@@ -1,7 +1,7 @@
 from __future__ import annotations
 
-from wowy.metrics.rawr.formatting import format_rawr_results
-from wowy.metrics.rawr.models import (
+from rawr_analytics.metrics.rawr.formatting import format_rawr_results
+from rawr_analytics.metrics.rawr.models import (
     RawrPlayerEstimate,
     RawrResult,
 )

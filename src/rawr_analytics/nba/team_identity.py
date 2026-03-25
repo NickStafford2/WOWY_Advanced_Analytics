@@ -3,8 +3,8 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import cast
 
-from wowy.nba import team_history as _team_history
-from wowy.nba.team_history import (
+from rawr_analytics.nba import team_history as _team_history
+from rawr_analytics.nba.team_history import (
     TeamHistoryEntry,
     canonical_team_lookup_abbreviation,
     list_team_history_entries_for_abbreviation,
@@ -59,9 +59,7 @@ def resolve_team_identity(
             )
     if season is not None:
         try:
-            return _identity_from_entry(
-                resolve_team_history_entry(normalized, season=season)
-            )
+            return _identity_from_entry(resolve_team_history_entry(normalized, season=season))
         except ValueError:
             return resolve_team_identity_from_id_and_season(
                 resolve_team_id_for_lookup(normalized),
@@ -97,9 +95,7 @@ def resolve_team_identity_from_id(team_id: int) -> TeamIdentity:
 
 
 def resolve_team_identity_from_id_and_season(team_id: int, season: str) -> TeamIdentity:
-    return _identity_from_entry(
-        resolve_team_history_entry_from_id(team_id, season=season)
-    )
+    return _identity_from_entry(resolve_team_history_entry_from_id(team_id, season=season))
 
 
 def resolve_team_identity_from_id_and_date(team_id: int, game_date: str) -> TeamIdentity:

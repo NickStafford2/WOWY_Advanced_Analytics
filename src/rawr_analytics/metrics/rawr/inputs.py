@@ -2,15 +2,15 @@ from __future__ import annotations
 
 from collections import defaultdict
 
-from wowy.metrics.rawr._observations import build_minute_weights
-from wowy.metrics.rawr.models import (
+from rawr_analytics.metrics.rawr._observations import build_minute_weights
+from rawr_analytics.metrics.rawr.models import (
     RawrObservation,
     RawrPlayerEstimate,
     RawrResult,
 )
-from wowy.nba.models import NormalizedGamePlayerRecord, NormalizedGameRecord
-from wowy.nba.team_identity import resolve_team_id
-from wowy.shared.minutes import passes_minute_filters
+from rawr_analytics.nba.models import NormalizedGamePlayerRecord, NormalizedGameRecord
+from rawr_analytics.nba.team_identity import resolve_team_id
+from rawr_analytics.shared.minutes import passes_minute_filters
 
 __all__ = [
     "attach_minute_stats_to_result",

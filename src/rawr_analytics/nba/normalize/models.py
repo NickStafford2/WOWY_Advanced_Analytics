@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from wowy.nba.models import (
+from rawr_analytics.nba.models import (
     NormalizedGamePlayerRecord,
     NormalizedGameRecord,
     NormalizedTeamSeasonBatch,

@@ -2,12 +2,12 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from wowy.data.game_cache.repository import (
+from rawr_analytics.data.game_cache.repository import (
     load_normalized_scope_records_from_db,
 )
-from wowy.data.player_metrics_db import DEFAULT_PLAYER_METRICS_DB_PATH
-from wowy.nba.models import NormalizedGamePlayerRecord, NormalizedGameRecord
-from wowy.nba.team_seasons import TeamSeasonScope, resolve_team_seasons
+from rawr_analytics.data.player_metrics_db import DEFAULT_PLAYER_METRICS_DB_PATH
+from rawr_analytics.nba.models import NormalizedGamePlayerRecord, NormalizedGameRecord
+from rawr_analytics.nba.team_seasons import TeamSeasonScope, resolve_team_seasons
 
 
 def load_normalized_scope_records(

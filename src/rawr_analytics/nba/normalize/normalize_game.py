@@ -1,15 +1,15 @@
 from __future__ import annotations
 
-from wowy.nba.normalize.models import NormalizedGamePlayerRecord, NormalizedGameRecord
-from wowy.nba.season_types import canonicalize_season_type
-from wowy.nba.seasons import canonicalize_season_string
-from wowy.nba.source.models import (
+from rawr_analytics.nba.normalize.models import NormalizedGamePlayerRecord, NormalizedGameRecord
+from rawr_analytics.nba.season_types import canonicalize_season_type
+from rawr_analytics.nba.seasons import canonicalize_season_string
+from rawr_analytics.nba.source.models import (
     SourceBoxScore,
     SourceBoxScorePlayer,
     SourceBoxScoreTeam,
     SourceLeagueGame,
 )
-from wowy.nba.source.rules import (
+from rawr_analytics.nba.source.rules import (
     classify_source_player_row,
     format_source_row,
     format_source_rows,
@@ -17,7 +17,7 @@ from wowy.nba.source.rules import (
     parse_minutes_to_float,
     played_in_game,
 )
-from wowy.nba.team_identity import (
+from rawr_analytics.nba.team_identity import (
     TeamIdentity,
     canonical_team_lookup_abbreviation,
     resolve_source_team_identity,

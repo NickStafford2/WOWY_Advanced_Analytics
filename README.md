@@ -1,4 +1,4 @@
-# WOWY Advanced Analytics
+# RAWR Analytics
 
 Python project for experimenting with historical basketball impact metrics. Designed for coarse game level analytics for cross generation player comparisons.
 

@@ -2,13 +2,13 @@ from __future__ import annotations
 
 import pytest
 
-from wowy.metrics.rawr.analysis import (
+from rawr_analytics.metrics.rawr.analysis import (
     build_player_penalties,
     count_player_season_minutes,
     fit_player_rawr,
     tune_ridge_alpha,
 )
-from wowy.metrics.rawr.models import RawrObservation
+from rawr_analytics.metrics.rawr.models import RawrObservation
 
 
 def test_fit_player_rawr_returns_expected_coefficients():

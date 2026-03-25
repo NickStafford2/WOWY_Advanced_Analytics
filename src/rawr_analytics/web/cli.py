@@ -3,10 +3,10 @@ from __future__ import annotations
 import argparse
 from pathlib import Path
 
-from wowy.data.player_metrics_db import DEFAULT_PLAYER_METRICS_DB_PATH
-from wowy.nba.season_types import canonicalize_season_type
-from wowy.web.app import create_app
-from wowy.web.metric_store import (
+from rawr_analytics.data.player_metrics_db import DEFAULT_PLAYER_METRICS_DB_PATH
+from rawr_analytics.nba.season_types import canonicalize_season_type
+from rawr_analytics.web.app import create_app
+from rawr_analytics.web.metric_store import (
     DEFAULT_RAWR_RIDGE_ALPHA,
     RAWR_METRIC,
     WOWY_METRIC,
@@ -16,9 +16,7 @@ from wowy.web.metric_store import (
 
 
 def build_parser() -> argparse.ArgumentParser:
-    parser = argparse.ArgumentParser(
-        description="Run the WOWY Flask backend for web development."
-    )
+    parser = argparse.ArgumentParser(description="Run the WOWY Flask backend for web development.")
     parser.add_argument(
         "--host",
         default="127.0.0.1",

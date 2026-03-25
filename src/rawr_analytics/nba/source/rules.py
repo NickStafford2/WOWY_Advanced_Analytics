@@ -4,7 +4,7 @@ import json
 import math
 from dataclasses import dataclass
 
-from wowy.nba.source.models import SourceBoxScorePlayer, SourceBoxScoreTeam
+from rawr_analytics.nba.source.models import SourceBoxScorePlayer, SourceBoxScoreTeam
 
 
 @dataclass(frozen=True)

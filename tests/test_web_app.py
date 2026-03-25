@@ -10,8 +10,8 @@ from tests.support import (
     player,
     seed_db_from_team_seasons,
 )
-from wowy.data.game_cache.fingerprints import build_normalized_cache_fingerprint
-from wowy.data.player_metrics_db import (
+from rawr_analytics.data.game_cache.fingerprints import build_normalized_cache_fingerprint
+from rawr_analytics.data.player_metrics_db import (
     MetricFullSpanPointRow,
     MetricFullSpanSeriesRow,
     MetricScopeCatalogRow,
@@ -20,8 +20,8 @@ from wowy.data.player_metrics_db import (
     load_metric_store_metadata,
     replace_metric_scope_store,
 )
-from wowy.web.app import create_app
-from wowy.web.metric_store import (
+from rawr_analytics.web.app import create_app
+from rawr_analytics.web.metric_store import (
     RAWR_METRIC,
     WOWY_METRIC,
     WOWY_SHRUNK_METRIC,
@@ -30,7 +30,7 @@ from wowy.web.metric_store import (
     build_scope_key,
     refresh_metric_store,
 )
-from wowy.web.refresh_cli import main as refresh_cli_main
+from rawr_analytics.web.refresh_cli import main as refresh_cli_main
 
 
 def _refresh_wowy_store(tmp_path: Path, team_seasons: list[TeamSeasonSeed]) -> Path:
@@ -314,11 +314,14 @@ def test_refresh_metric_store_can_skip_team_scopes(
         season_type="Regular Season",
     )
 
-    assert load_metric_store_metadata(
-        player_metrics_db_path,
-        WOWY_METRIC,
-        all_scope_key,
-    ) is not None
+    assert (
+        load_metric_store_metadata(
+            player_metrics_db_path,
+            WOWY_METRIC,
+            all_scope_key,
+        )
+        is not None
+    )
     assert (
         load_metric_store_metadata(
             player_metrics_db_path,
@@ -756,11 +759,7 @@ def test_rawr_custom_query_endpoint_recalculates_requested_span(
     }
     assert len(payload["table_rows"]) == 3
     assert all(row["season_count"] == 1 for row in payload["table_rows"])
-    assert all(
-        point["season"] == "2023-24"
-        for row in payload["series"]
-        for point in row["points"]
-    )
+    assert all(point["season"] == "2023-24" for row in payload["series"] for point in row["points"])
 
 
 def test_rawr_custom_query_endpoint_rejects_invalid_filters(tmp_path: Path):

@@ -1,7 +1,7 @@
 from __future__ import annotations
 
-from wowy.metrics.wowy.formatting import format_results_table
-from wowy.metrics.wowy.models import WowyPlayerStats
+from rawr_analytics.metrics.wowy.formatting import format_results_table
+from rawr_analytics.metrics.wowy.models import WowyPlayerStats
 
 
 def test_format_results_table_contains_expected_text():

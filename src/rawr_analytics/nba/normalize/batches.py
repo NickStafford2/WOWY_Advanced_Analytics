@@ -1,5 +1,5 @@
 from __future__ import annotations
 
-from wowy.nba.models import NormalizedTeamSeasonBatch
+from rawr_analytics.nba.models import NormalizedTeamSeasonBatch
 
 __all__ = ["NormalizedTeamSeasonBatch"]

@@ -5,14 +5,14 @@ import re
 from collections import defaultdict
 from datetime import date
 
-from wowy.nba.normalize.models import (
+from rawr_analytics.nba.normalize.models import (
     NormalizedGamePlayerRecord,
     NormalizedGameRecord,
     NormalizedTeamSeasonBatch,
 )
-from wowy.nba.season_types import canonicalize_season_type
-from wowy.nba.seasons import canonicalize_season_string
-from wowy.nba.team_identity import (
+from rawr_analytics.nba.season_types import canonicalize_season_type
+from rawr_analytics.nba.seasons import canonicalize_season_string
+from rawr_analytics.nba.team_identity import (
     resolve_team_identity_from_id_and_date,
     resolve_team_identity_from_id_and_season,
 )
@@ -126,8 +126,7 @@ def _validate_canonical_game(
         )
     if _canonical_team_abbreviation(game.team) != _canonical_team_abbreviation(expected_team):
         raise ValueError(
-            f"Canonical game {game.game_id!r} has team {game.team!r}; "
-            f"expected {expected_team!r}"
+            f"Canonical game {game.game_id!r} has team {game.team!r}; expected {expected_team!r}"
         )
     if game.team_id != expected_team_id:
         raise ValueError(
@@ -135,17 +134,13 @@ def _validate_canonical_game(
             f"expected {expected_team_id!r}"
         )
     if game.opponent_team_id is None or game.opponent_team_id <= 0:
-        raise ValueError(
-            f"Canonical game {game.game_id!r} must have a positive opponent_team_id"
-        )
+        raise ValueError(f"Canonical game {game.game_id!r} must have a positive opponent_team_id")
     if game.opponent_team_id == expected_team_id:
         raise ValueError(
             f"Canonical game {game.game_id!r} must not use the same team_id and opponent_team_id"
         )
     if _canonical_team_abbreviation(game.opponent) == _canonical_team_abbreviation(expected_team):
-        raise ValueError(
-            f"Canonical game {game.game_id!r} must not use the same team and opponent"
-        )
+        raise ValueError(f"Canonical game {game.game_id!r} must not use the same team and opponent")
     expected_team_identity = resolve_team_identity_from_id_and_date(
         expected_team_id,
         game.game_date,
@@ -187,8 +182,7 @@ def _validate_canonical_game_player(
     expected_team_id: int,
 ) -> None:
     player_ref = (
-        f"game {player.game_id!r} player_id={player.player_id!r} "
-        f"player_name={player.player_name!r}"
+        f"game {player.game_id!r} player_id={player.player_id!r} player_name={player.player_name!r}"
     )
     if not player.game_id.strip():
         raise ValueError("Canonical player game_id must not be empty")

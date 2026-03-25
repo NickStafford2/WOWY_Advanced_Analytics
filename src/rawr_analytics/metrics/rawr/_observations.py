@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from collections import defaultdict
 
-from wowy.metrics.rawr.models import RawrObservation
+from rawr_analytics.metrics.rawr.models import RawrObservation
 
 _LINEUP_WEIGHT_SUM = 5.0
 

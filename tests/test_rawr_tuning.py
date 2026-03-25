@@ -2,8 +2,8 @@ from __future__ import annotations
 
 from argparse import Namespace
 
-from wowy.metrics.rawr.models import RawrPlayerSeasonRecord
-from wowy.metrics.rawr.tuning import (
+from rawr_analytics.metrics.rawr.models import RawrPlayerSeasonRecord
+from rawr_analytics.metrics.rawr.tuning import (
     aggregate_rawr_training_records,
     aggregate_wowy_training_records,
     count_evaluation_steps,
@@ -11,7 +11,7 @@ from wowy.metrics.rawr.tuning import (
     format_results_table,
     parse_float_grid,
 )
-from wowy.metrics.wowy.models import WowyPlayerSeasonRecord
+from rawr_analytics.metrics.wowy.models import WowyPlayerSeasonRecord
 
 
 def test_parse_float_grid_parses_values():

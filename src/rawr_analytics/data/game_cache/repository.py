@@ -5,18 +5,18 @@ from collections.abc import Sequence
 from datetime import UTC, datetime
 from pathlib import Path
 
-from wowy.data.game_cache.rows import NormalizedCacheLoadRow
-from wowy.data.game_cache.schema import _connect, initialize_game_cache_db
-from wowy.nba.models import NormalizedGamePlayerRecord, NormalizedGameRecord
-from wowy.nba.normalize.validation import validate_normalized_cache_batch
-from wowy.nba.season_types import canonicalize_season_type
-from wowy.nba.seasons import canonicalize_season_string
-from wowy.nba.team_identity import (
+from rawr_analytics.data.game_cache.rows import NormalizedCacheLoadRow
+from rawr_analytics.data.game_cache.schema import _connect, initialize_game_cache_db
+from rawr_analytics.nba.models import NormalizedGamePlayerRecord, NormalizedGameRecord
+from rawr_analytics.nba.normalize.validation import validate_normalized_cache_batch
+from rawr_analytics.nba.season_types import canonicalize_season_type
+from rawr_analytics.nba.seasons import canonicalize_season_string
+from rawr_analytics.nba.team_identity import (
     canonical_team_lookup_abbreviation,
     resolve_team_id,
     resolve_team_identity_from_id_and_season,
 )
-from wowy.nba.team_seasons import TeamSeasonScope
+from rawr_analytics.nba.team_seasons import TeamSeasonScope
 
 _GAME_CACHE_BUILD_VERSION = "normalized-cache-v2"
 _REGULAR_SEASON = "Regular Season"
@@ -536,16 +536,10 @@ def _filter_records_to_team_seasons(
     allowed_team_seasons = {
         (team_season.team_id, team_season.season) for team_season in team_seasons
     }
-    filtered_games = [
-        game
-        for game in games
-        if (game.team_id, game.season) in allowed_team_seasons
-    ]
+    filtered_games = [game for game in games if (game.team_id, game.season) in allowed_team_seasons]
     allowed_game_teams = {(game.game_id, game.team_id) for game in filtered_games}
     filtered_game_players = [
-        player
-        for player in game_players
-        if (player.game_id, player.team_id) in allowed_game_teams
+        player for player in game_players if (player.game_id, player.team_id) in allowed_game_teams
     ]
     return filtered_games, filtered_game_players
 

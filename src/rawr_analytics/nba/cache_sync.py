@@ -3,11 +3,11 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Callable
 
-from wowy.data.game_cache import has_cached_team_season_scope
-from wowy.data.player_metrics_db import DEFAULT_PLAYER_METRICS_DB_PATH
-from wowy.nba.source.cache import DEFAULT_SOURCE_DATA_DIR
-from wowy.nba.team_seasons import TeamSeasonScope
-from wowy.workflows.nba_ingest import refresh_normalized_team_season_cache
+from rawr_analytics.data.game_cache import has_cached_team_season_scope
+from rawr_analytics.data.player_metrics_db import DEFAULT_PLAYER_METRICS_DB_PATH
+from rawr_analytics.nba.source.cache import DEFAULT_SOURCE_DATA_DIR
+from rawr_analytics.nba.team_seasons import TeamSeasonScope
+from rawr_analytics.workflows.nba_ingest import refresh_normalized_team_season_cache
 
 LogFn = Callable[[str], None]
 

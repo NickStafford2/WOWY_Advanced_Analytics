@@ -5,15 +5,15 @@ from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any, Callable
 
-from wowy.metrics.rawr.data import build_rawr_metric_rows, list_incomplete_rawr_seasons
-from wowy.metrics.wowy.records import (
+from rawr_analytics.metrics.rawr.data import build_rawr_metric_rows, list_incomplete_rawr_seasons
+from rawr_analytics.metrics.wowy.records import (
     build_wowy_metric_rows,
     build_wowy_shrunk_metric_rows,
 )
-from wowy.data.game_cache import list_cached_team_seasons
-from wowy.data.game_cache.fingerprints import build_normalized_cache_fingerprint
-from wowy.data.game_cache.repository import list_cache_load_rows
-from wowy.data.player_metrics_db import (
+from rawr_analytics.data.game_cache import list_cached_team_seasons
+from rawr_analytics.data.game_cache.fingerprints import build_normalized_cache_fingerprint
+from rawr_analytics.data.game_cache.repository import list_cache_load_rows
+from rawr_analytics.data.player_metrics_db import (
     DEFAULT_PLAYER_METRICS_DB_PATH,
     MetricFullSpanPointRow,
     MetricFullSpanSeriesRow,
@@ -24,8 +24,8 @@ from wowy.data.player_metrics_db import (
     load_metric_store_metadata,
     replace_metric_scope_store,
 )
-from wowy.nba.season_types import canonicalize_season_type
-from wowy.nba.team_history import official_continuity_label_for_team_id
+from rawr_analytics.nba.season_types import canonicalize_season_type
+from rawr_analytics.nba.team_history import official_continuity_label_for_team_id
 
 BuildRowsFn = Callable[..., list[PlayerSeasonMetricRow]]
 RefreshProgressFn = Callable[[int, int, str], None]

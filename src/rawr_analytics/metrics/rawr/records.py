@@ -2,18 +2,18 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from wowy.metrics.rawr._observations import build_rawr_player_season_minute_stats
-from wowy.metrics.rawr.analysis import fit_player_rawr
-from wowy.metrics.rawr.inputs import (
+from rawr_analytics.metrics.rawr._observations import build_rawr_player_season_minute_stats
+from rawr_analytics.metrics.rawr.analysis import fit_player_rawr
+from rawr_analytics.metrics.rawr.inputs import (
     attach_minute_stats_to_result,
     build_rawr_observations,
     filter_rawr_estimates_by_minutes,
     filter_rawr_scope,
 )
-from wowy.metrics.rawr.models import RawrPlayerSeasonRecord
-from wowy.data.player_metrics_db import DEFAULT_PLAYER_METRICS_DB_PATH
-from wowy.nba.prepare import load_normalized_scope_records
-from wowy.nba.team_seasons import resolve_team_seasons
+from rawr_analytics.metrics.rawr.models import RawrPlayerSeasonRecord
+from rawr_analytics.data.player_metrics_db import DEFAULT_PLAYER_METRICS_DB_PATH
+from rawr_analytics.nba.prepare import load_normalized_scope_records
+from rawr_analytics.nba.team_seasons import resolve_team_seasons
 
 __all__ = [
     "prepare_rawr_player_season_records",
@@ -45,7 +45,7 @@ def prepare_rawr_player_season_records(
     teams_by_season: dict[str, list[str]] = {}
     for team_season in team_seasons:
         teams_by_season.setdefault(team_season.season, []).append(team_season.team)
-    from wowy.metrics.rawr.data import select_complete_rawr_scope_seasons
+    from rawr_analytics.metrics.rawr.data import select_complete_rawr_scope_seasons
 
     complete_seasons = set(
         select_complete_rawr_scope_seasons(

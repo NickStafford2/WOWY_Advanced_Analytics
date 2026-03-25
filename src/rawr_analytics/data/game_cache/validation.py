@@ -4,22 +4,22 @@ import sqlite3
 from collections import defaultdict
 from typing import Callable, TypeVar
 
-from wowy.data.game_cache.rows import NormalizedCacheLoadRow
-from wowy.data.player_metrics_db import (
+from rawr_analytics.data.game_cache.rows import NormalizedCacheLoadRow
+from rawr_analytics.data.player_metrics_db import (
     _validate_iso_datetime,
     _validate_optional_non_negative_int,
     _validate_required_text,
 )
-from wowy.nba.models import NormalizedGamePlayerRecord, NormalizedGameRecord
-from wowy.nba.normalize.validation import (
+from rawr_analytics.nba.models import NormalizedGamePlayerRecord, NormalizedGameRecord
+from rawr_analytics.nba.normalize.validation import (
     _canonical_team_abbreviation,
     _validate_canonical_game,
     _validate_canonical_game_player,
     validate_normalized_cache_batch,
 )
-from wowy.nba.season_types import canonicalize_season_type
-from wowy.nba.seasons import canonicalize_season_string
-from wowy.nba.team_identity import (
+from rawr_analytics.nba.season_types import canonicalize_season_type
+from rawr_analytics.nba.seasons import canonicalize_season_string
+from rawr_analytics.nba.team_identity import (
     canonical_team_lookup_abbreviation,
     resolve_team_history_entry,
     resolve_team_id,
@@ -555,8 +555,7 @@ def _validate_team_history_table(
             if row["abbreviation"] != expected_history.abbreviation:
                 raise ValueError("abbreviation does not match official team history")
             expected_franchise_id = (
-                expected_history.franchise_id
-                or expected_history.abbreviation.lower()
+                expected_history.franchise_id or expected_history.abbreviation.lower()
             )
             if row["franchise_id"] != expected_franchise_id:
                 raise ValueError("franchise_id does not match official team history")

@@ -4,8 +4,8 @@ import hashlib
 import shutil
 from pathlib import Path
 
-from wowy.data.game_cache.schema import _connect, initialize_game_cache_db
-from wowy.nba.season_types import canonicalize_season_type
+from rawr_analytics.data.game_cache.schema import _connect, initialize_game_cache_db
+from rawr_analytics.nba.season_types import canonicalize_season_type
 
 
 def build_normalized_cache_fingerprint(

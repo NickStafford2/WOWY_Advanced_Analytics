@@ -3,21 +3,21 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Callable
 
-from wowy.nba.season_types import canonicalize_season_type
-from wowy.nba.seasons import canonicalize_season_string
-from wowy.nba.source.cache import (
+from rawr_analytics.nba.season_types import canonicalize_season_type
+from rawr_analytics.nba.seasons import canonicalize_season_string
+from rawr_analytics.nba.source.cache import (
     box_score_payload_is_empty,
     discard_invalid_cached_payload,
     load_cached_payload,
 )
-from wowy.nba.source.models import (
+from rawr_analytics.nba.source.models import (
     SourceBoxScore,
     SourceBoxScorePlayer,
     SourceBoxScoreTeam,
     SourceLeagueGame,
     SourceLeagueSchedule,
 )
-from wowy.nba.source.rules import (
+from rawr_analytics.nba.source.rules import (
     classify_source_player_row,
     classify_source_schedule_row,
     classify_source_team_row,
@@ -25,7 +25,7 @@ from wowy.nba.source.rules import (
     parse_box_score_numeric_value,
     parse_minutes_to_float,
 )
-from wowy.nba.team_identity import resolve_source_team_identity
+from rawr_analytics.nba.team_identity import resolve_source_team_identity
 
 
 def load_player_names_from_cache(
@@ -177,8 +177,7 @@ def _parse_result_set_box_score(
     game_id: str,
 ) -> SourceBoxScore:
     players = [
-        _parse_result_set_player_row(row, game_id=game_id)
-        for row in _result_set_rows(player_set)
+        _parse_result_set_player_row(row, game_id=game_id) for row in _result_set_rows(player_set)
     ]
     teams = [_parse_result_set_team_row(row) for row in _result_set_rows(team_set)]
     return SourceBoxScore(game_id=game_id, players=players, teams=teams)
@@ -352,9 +351,7 @@ def _parse_result_set_player_row(
         _validate_source_player_row(parsed_row)
         return parsed_row
     except ValueError as exc:
-        raise ValueError(
-            f"{exc}; nba_api_box_score_player_row={format_source_row(row)}"
-        ) from exc
+        raise ValueError(f"{exc}; nba_api_box_score_player_row={format_source_row(row)}") from exc
 
 
 def _parse_result_set_team_row(row: dict[str, object]) -> SourceBoxScoreTeam:
@@ -369,9 +366,7 @@ def _parse_result_set_team_row(row: dict[str, object]) -> SourceBoxScoreTeam:
         _validate_source_team_row(parsed_row)
         return parsed_row
     except ValueError as exc:
-        raise ValueError(
-            f"{exc}; nba_api_box_score_team_row={format_source_row(row)}"
-        ) from exc
+        raise ValueError(f"{exc}; nba_api_box_score_team_row={format_source_row(row)}") from exc
 
 
 def _validate_source_player_row(row: SourceBoxScorePlayer) -> None:
@@ -386,23 +381,19 @@ def _validate_source_player_row(row: SourceBoxScorePlayer) -> None:
 
     if row.game_id.strip() == "":
         raise ValueError(
-            "Missing GAME_ID; "
-            f"nba_api_box_score_player_row={format_source_row(row.raw_row)}"
+            f"Missing GAME_ID; nba_api_box_score_player_row={format_source_row(row.raw_row)}"
         )
     if row.player_id is None or row.player_id <= 0:
         raise ValueError(
-            "Missing PLAYER_ID; "
-            f"nba_api_box_score_player_row={format_source_row(row.raw_row)}"
+            f"Missing PLAYER_ID; nba_api_box_score_player_row={format_source_row(row.raw_row)}"
         )
     if row.player_name.strip() == "":
         raise ValueError(
-            "Missing PLAYER_NAME; "
-            f"nba_api_box_score_player_row={format_source_row(row.raw_row)}"
+            f"Missing PLAYER_NAME; nba_api_box_score_player_row={format_source_row(row.raw_row)}"
         )
     if parse_minutes_to_float(row.minutes_raw) is None:
         raise ValueError(
-            "Unparseable MIN value; "
-            f"nba_api_box_score_player_row={format_source_row(row.raw_row)}"
+            f"Unparseable MIN value; nba_api_box_score_player_row={format_source_row(row.raw_row)}"
         )
 
 
@@ -418,8 +409,7 @@ def _validate_source_team_row(row: SourceBoxScoreTeam) -> None:
 
     if row.team_id is None or row.team_id <= 0:
         raise ValueError(
-            "Missing TEAM_ID; "
-            f"nba_api_box_score_team_row={format_source_row(row.raw_row)}"
+            f"Missing TEAM_ID; nba_api_box_score_team_row={format_source_row(row.raw_row)}"
         )
     if row.team_abbreviation.strip() == "":
         raise ValueError(
@@ -428,8 +418,7 @@ def _validate_source_team_row(row: SourceBoxScoreTeam) -> None:
         )
     if parse_box_score_numeric_value(row.points_raw) is None:
         raise ValueError(
-            "Unparseable PTS value; "
-            f"nba_api_box_score_team_row={format_source_row(row.raw_row)}"
+            f"Unparseable PTS value; nba_api_box_score_team_row={format_source_row(row.raw_row)}"
         )
 
 

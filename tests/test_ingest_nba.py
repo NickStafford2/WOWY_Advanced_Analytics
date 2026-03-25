@@ -4,19 +4,19 @@ from pathlib import Path
 
 import pytest
 
-from wowy.nba.errors import PartialTeamSeasonError
-from wowy.nba.normalize.normalize_game import normalize_source_game
-from wowy.nba.source.models import (
+from rawr_analytics.nba.errors import PartialTeamSeasonError
+from rawr_analytics.nba.normalize.normalize_game import normalize_source_game
+from rawr_analytics.nba.source.models import (
     SourceBoxScorePlayer,
     SourceBoxScoreTeam,
     SourceLeagueGame,
 )
-from wowy.nba.source.parsers import (
+from rawr_analytics.nba.source.parsers import (
     dedupe_schedule_games,
     parse_box_score_payload,
     parse_league_schedule_payload,
 )
-from wowy.nba.source.rules import (
+from rawr_analytics.nba.source.rules import (
     CANONICAL_SCHEDULE_SOURCE_ROW,
     CANONICAL_TEAM_SOURCE_ROW,
     INACTIVE_PLAYER_STATUS_ROW,
@@ -25,7 +25,7 @@ from wowy.nba.source.rules import (
     classify_source_schedule_row,
     classify_source_team_row,
 )
-from wowy.workflows.nba_ingest import ingest_team_season
+from rawr_analytics.workflows.nba_ingest import ingest_team_season
 
 SOURCE_DATA_DIR = Path("data/source/nba")
 
@@ -39,9 +39,7 @@ def _sample_cached_team_seasons() -> list[tuple[str, str]]:
     )
     latest_season = max(path.stem.split("_", maxsplit=2)[1] for path in cache_paths)
     cache_paths = [
-        path
-        for path in cache_paths
-        if path.stem.split("_", maxsplit=2)[1] != latest_season
+        path for path in cache_paths if path.stem.split("_", maxsplit=2)[1] != latest_season
     ]
     sample_indices = sorted({0, len(cache_paths) // 2, len(cache_paths) - 1})
     samples: list[tuple[str, str]] = []
@@ -59,9 +57,7 @@ def _latest_cached_scope() -> tuple[str, str] | None:
     if not cache_paths:
         return None
     latest_path = max(cache_paths, key=lambda path: path.stem.split("_", maxsplit=2)[1])
-    team, season, _season_type_slug = latest_path.stem.removesuffix(
-        "_leaguegamefinder"
-    ).split(
+    team, season, _season_type_slug = latest_path.stem.removesuffix("_leaguegamefinder").split(
         "_",
         maxsplit=2,
     )
@@ -92,8 +88,7 @@ def test_ingest_team_season_from_cached_nba_source(team: str, season: str) -> No
     assert result.summary.cached_box_scores == result.summary.total_games
     assert len(result.artifacts.normalized_games) == result.summary.total_games
     assert (
-        len(result.artifacts.normalized_game_players)
-        > len(result.artifacts.normalized_games) * 5
+        len(result.artifacts.normalized_game_players) > len(result.artifacts.normalized_games) * 5
     )
 
 
@@ -159,10 +154,7 @@ def test_ingest_team_season_cached_only_rejects_empty_cached_box_score(
         )
 
     assert exc_info.value.failed_game_ids == ["0001"]
-    assert (
-        "Missing valid cached box score payload"
-        in exc_info.value.failed_game_details[0].message
-    )
+    assert "Missing valid cached box score payload" in exc_info.value.failed_game_details[0].message
     assert not (boxscores_dir / "0001_boxscoretraditionalv2.json").exists()
 
 
@@ -228,9 +220,7 @@ def test_ingest_team_season_cached_only_rejects_empty_cached_league_games(
 ) -> None:
     team_season_dir = tmp_path / "team_seasons"
     team_season_dir.mkdir(parents=True, exist_ok=True)
-    league_games_path = (
-        team_season_dir / "BOS_2023-24_regular_season_leaguegamefinder.json"
-    )
+    league_games_path = team_season_dir / "BOS_2023-24_regular_season_leaguegamefinder.json"
     league_games_path.write_text(
         """
         {
@@ -269,9 +259,7 @@ def test_normalize_source_game_skips_sentinel_player_id_zero_rows() -> None:
                         "TEAM_ID",
                         "TEAM_ABBREVIATION",
                     ],
-                    "rowSet": [
-                        ["0001", "2003-03-10", "MEM vs. BOS", 1610612763, "MEM"]
-                    ],
+                    "rowSet": [["0001", "2003-03-10", "MEM vs. BOS", 1610612763, "MEM"]],
                 }
             ]
         },
@@ -338,9 +326,7 @@ def test_normalize_source_game_skips_player_did_not_play_placeholder_rows() -> N
                         "TEAM_ID",
                         "TEAM_ABBREVIATION",
                     ],
-                    "rowSet": [
-                        ["0001", "2003-03-10", "MEM vs. BOS", 1610612763, "MEM"]
-                    ],
+                    "rowSet": [["0001", "2003-03-10", "MEM vs. BOS", 1610612763, "MEM"]],
                 }
             ]
         },
@@ -707,9 +693,7 @@ def test_classify_source_player_row_names_known_skip_patterns() -> None:
 
     assert classify_source_player_row(placeholder) == PLAYER_DID_NOT_PLAY_PLACEHOLDER
     assert classify_source_player_row(inactive) == INACTIVE_PLAYER_STATUS_ROW
-    assert (
-        classify_source_player_row(inactive_blank_status) == INACTIVE_PLAYER_STATUS_ROW
-    )
+    assert classify_source_player_row(inactive_blank_status) == INACTIVE_PLAYER_STATUS_ROW
 
 
 def test_classify_source_player_row_treats_historical_out_status_as_inactive() -> None:
@@ -781,10 +765,7 @@ def test_classify_source_player_row_treats_historical_out_status_as_inactive() -
     )
 
     assert classify_source_player_row(inactive_out_status) == INACTIVE_PLAYER_STATUS_ROW
-    assert (
-        classify_source_player_row(inactive_out_no_space_status)
-        == INACTIVE_PLAYER_STATUS_ROW
-    )
+    assert classify_source_player_row(inactive_out_no_space_status) == INACTIVE_PLAYER_STATUS_ROW
 
 
 def test_classify_source_team_row_defaults_to_canonical_team_source_row() -> None:
@@ -804,9 +785,7 @@ def test_classify_source_team_row_defaults_to_canonical_team_source_row() -> Non
     assert classify_source_team_row(team_row) == CANONICAL_TEAM_SOURCE_ROW
 
 
-def test_classify_source_schedule_row_defaults_to_canonical_schedule_source_row() -> (
-    None
-):
+def test_classify_source_schedule_row_defaults_to_canonical_schedule_source_row() -> None:
     schedule_row = {
         "GAME_ID": "0001",
         "GAME_DATE": "2003-03-10",
@@ -819,9 +798,7 @@ def test_classify_source_schedule_row_defaults_to_canonical_schedule_source_row(
 
 
 def test_dedupe_schedule_games_raises_on_conflicting_duplicate_rows() -> None:
-    with pytest.raises(
-        ValueError, match="Conflicting duplicate schedule rows for game '0001'"
-    ):
+    with pytest.raises(ValueError, match="Conflicting duplicate schedule rows for game '0001'"):
         dedupe_schedule_games(
             [
                 SourceLeagueGame(
@@ -868,9 +845,7 @@ def test_normalize_source_game_skips_inactive_player_status_rows() -> None:
                         "TEAM_ID",
                         "TEAM_ABBREVIATION",
                     ],
-                    "rowSet": [
-                        ["0001", "2003-03-10", "MEM vs. BOS", 1610612763, "MEM"]
-                    ],
+                    "rowSet": [["0001", "2003-03-10", "MEM vs. BOS", 1610612763, "MEM"]],
                 }
             ]
         },
@@ -1180,15 +1155,13 @@ def test_parse_box_score_payload_accepts_v3_result_set_shape() -> None:
     )
 
     assert [
-        (player.player_id, player.player_name, player.minutes_raw)
-        for player in box_score.players
+        (player.player_id, player.player_name, player.minutes_raw) for player in box_score.players
     ] == [
         (101, "Test Player", "12:00"),
         (201, "Other Player", "DNP - COACH'S DECISION"),
     ]
     assert [
-        (team.team_id, team.team_abbreviation, team.points_raw)
-        for team in box_score.teams
+        (team.team_id, team.team_abbreviation, team.points_raw) for team in box_score.teams
     ] == [
         (1610612737, "ATL", 110),
         (1610612738, "BOS", 105),
@@ -1324,9 +1297,7 @@ def test_parse_box_score_payload_raises_with_raw_row_for_missing_minutes_outside
         )
 
 
-def test_parse_box_score_payload_skips_historical_inactive_status_rows_with_null_minutes() -> (
-    None
-):
+def test_parse_box_score_payload_skips_historical_inactive_status_rows_with_null_minutes() -> None:
     box_score = parse_box_score_payload(
         {
             "resultSets": [
@@ -1430,8 +1401,7 @@ def test_parse_box_score_payload_skips_historical_inactive_status_rows_with_null
     )
 
     assert [
-        (player.player_id, player.player_name, player.minutes_raw)
-        for player in box_score.players
+        (player.player_id, player.player_name, player.minutes_raw) for player in box_score.players
     ] == [
         (1, "Active Player", "48:00"),
         (2, "Inactive DNT", None),
@@ -1444,9 +1414,7 @@ def test_parse_box_score_payload_skips_historical_inactive_status_rows_with_null
     ]
 
 
-def test_parse_box_score_payload_skips_historical_out_status_rows_with_null_minutes() -> (
-    None
-):
+def test_parse_box_score_payload_skips_historical_out_status_rows_with_null_minutes() -> None:
     box_score = parse_box_score_payload(
         {
             "resultSets": [
@@ -1501,8 +1469,7 @@ def test_parse_box_score_payload_skips_historical_out_status_rows_with_null_minu
     )
 
     assert [
-        (player.player_id, player.player_name, player.minutes_raw)
-        for player in box_score.players
+        (player.player_id, player.player_name, player.minutes_raw) for player in box_score.players
     ] == [
         (1, "Active Net", "38:40"),
         (2734, "Devin Harris", None),
@@ -1511,9 +1478,7 @@ def test_parse_box_score_payload_skips_historical_out_status_rows_with_null_minu
     ]
 
 
-def test_normalize_source_game_skips_inactive_status_rows_with_missing_name_and_id() -> (
-    None
-):
+def test_normalize_source_game_skips_inactive_status_rows_with_missing_name_and_id() -> None:
     schedule = parse_league_schedule_payload(
         {
             "resultSets": [
@@ -1525,9 +1490,7 @@ def test_normalize_source_game_skips_inactive_status_rows_with_missing_name_and_
                         "TEAM_ID",
                         "TEAM_ABBREVIATION",
                     ],
-                    "rowSet": [
-                        ["0001", "2003-03-10", "MEM vs. BOS", 1610612763, "MEM"]
-                    ],
+                    "rowSet": [["0001", "2003-03-10", "MEM vs. BOS", 1610612763, "MEM"]],
                 },
             ]
         },
@@ -1790,9 +1753,7 @@ def test_normalize_source_game_skips_inactive_status_rows_with_missing_name_and_
     assert [player.player_id for player in players] == [1, 2, 3, 4, 5]
 
 
-def test_parse_league_schedule_payload_raises_with_raw_row_for_conflicting_team_identity() -> (
-    None
-):
+def test_parse_league_schedule_payload_raises_with_raw_row_for_conflicting_team_identity() -> None:
     with pytest.raises(
         ValueError,
         match="Conflicting source team identity values: TEAM_ABBREVIATION='LAL' expected='MEM' for TEAM_ID=1610612763; nba_api_league_schedule_row=",
@@ -1808,9 +1769,7 @@ def test_parse_league_schedule_payload_raises_with_raw_row_for_conflicting_team_
                             "TEAM_ID",
                             "TEAM_ABBREVIATION",
                         ],
-                        "rowSet": [
-                            ["0001", "2003-03-10", "MEM vs. BOS", 1610612763, "LAL"]
-                        ],
+                        "rowSet": [["0001", "2003-03-10", "MEM vs. BOS", 1610612763, "LAL"]],
                     }
                 ]
             },
@@ -1836,9 +1795,7 @@ def test_parse_league_schedule_payload_rejects_historically_wrong_team_label() -
                             "TEAM_ID",
                             "TEAM_ABBREVIATION",
                         ],
-                        "rowSet": [
-                            ["0001", "2003-03-10", "NOP vs. BOS", 1610612740, "NOP"]
-                        ],
+                        "rowSet": [["0001", "2003-03-10", "NOP vs. BOS", 1610612740, "NOP"]],
                     }
                 ]
             },
@@ -1848,9 +1805,7 @@ def test_parse_league_schedule_payload_rejects_historically_wrong_team_label() -
         )
 
 
-def test_parse_box_score_payload_raises_with_raw_row_for_conflicting_player_team_identity() -> (
-    None
-):
+def test_parse_box_score_payload_raises_with_raw_row_for_conflicting_player_team_identity() -> None:
     with pytest.raises(
         ValueError,
         match="Conflicting source team identity values: TEAM_ID=1610612763 TEAM_ABBREVIATION='LAL'",
@@ -1892,9 +1847,7 @@ def test_parse_box_score_payload_raises_with_raw_row_for_conflicting_player_team
         )
 
 
-def test_parse_box_score_payload_raises_with_raw_values_for_conflicting_team_identity() -> (
-    None
-):
+def test_parse_box_score_payload_raises_with_raw_values_for_conflicting_team_identity() -> None:
     schedule = parse_league_schedule_payload(
         {
             "resultSets": [
@@ -1906,9 +1859,7 @@ def test_parse_box_score_payload_raises_with_raw_values_for_conflicting_team_ide
                         "TEAM_ID",
                         "TEAM_ABBREVIATION",
                     ],
-                    "rowSet": [
-                        ["0001", "2003-03-10", "MEM vs. BOS", 1610612763, "MEM"]
-                    ],
+                    "rowSet": [["0001", "2003-03-10", "MEM vs. BOS", 1610612763, "MEM"]],
                 }
             ]
         },

@@ -5,23 +5,23 @@ import json
 import sys
 from pathlib import Path
 
-from wowy.nba.errors import (
+from rawr_analytics.nba.errors import (
     FetchError,
     GameNormalizationFailure,
     PartialTeamSeasonError,
 )
-from wowy.nba.ingest_logging import (
+from rawr_analytics.nba.ingest_logging import (
     DEFAULT_INGEST_FAILURE_LOG_PATH,
     append_ingest_failure_log,
 )
-from wowy.nba.season_types import canonicalize_season_type
-from wowy.nba.seasons import canonicalize_season_string
-from wowy.nba.source.cache import DEFAULT_SOURCE_DATA_DIR
-from wowy.nba.team_identity import (
+from rawr_analytics.nba.season_types import canonicalize_season_type
+from rawr_analytics.nba.seasons import canonicalize_season_string
+from rawr_analytics.nba.source.cache import DEFAULT_SOURCE_DATA_DIR
+from rawr_analytics.nba.team_identity import (
     list_expected_team_abbreviations_for_season,
     team_is_active_for_season,
 )
-from wowy.workflows.nba_ingest import refresh_normalized_team_season_cache
+from rawr_analytics.workflows.nba_ingest import refresh_normalized_team_season_cache
 
 _LAST_STATUS_LINE_LENGTH = 0
 DEFAULT_START_YEAR = 2024
@@ -169,9 +169,7 @@ def render_team_failed_line(
     season: str,
     reason: str,
 ) -> None:
-    line = (
-        f"  [{team_index:>2}/{team_total}] {team} {season} failed consistency={reason}"
-    )
+    line = f"  [{team_index:>2}/{team_total}] {team} {season} failed consistency={reason}"
     write_status_line(line)
 
 
@@ -192,9 +190,7 @@ def render_team_partial_failed_line(
 
 def render_partial_failure_details(error: PartialTeamSeasonError) -> str:
     lines = ["Failure reasons:"]
-    details_by_game_id = {
-        failure.game_id: failure for failure in error.failed_game_details
-    }
+    details_by_game_id = {failure.game_id: failure for failure in error.failed_game_details}
     ranked_reasons = sorted(
         error.failure_reason_counts.items(),
         key=lambda item: (-item[1], item[0]),
@@ -253,10 +249,7 @@ def render_team_validation_failed_line(
     season: str,
     reason: str,
 ) -> None:
-    line = (
-        f"  [{team_index:>2}/{team_total}] {team} {season} "
-        f"failed validation={reason}"
-    )
+    line = f"  [{team_index:>2}/{team_total}] {team} {season} failed validation={reason}"
     write_status_line(line)
 
 
@@ -319,8 +312,7 @@ def main(argv: list[str] | None = None) -> int:
                     source_data_dir=DEFAULT_SOURCE_DATA_DIR,
                     player_metrics_db_path=args.player_metrics_db_path,
                     log=filtered_log,
-                    progress=lambda payload,
-                    team_index=team_index: render_progress_line(
+                    progress=lambda payload, team_index=team_index: render_progress_line(
                         team_index,
                         team_total,
                         payload,
@@ -407,9 +399,7 @@ def main(argv: list[str] | None = None) -> int:
                     reason=reason,
                 )
                 sys.stdout.write("\n")
-                sys.stderr.write(
-                    f"Validation failed for {team_code} {season}: {reason}\n"
-                )
+                sys.stderr.write(f"Validation failed for {team_code} {season}: {reason}\n")
                 sys.stderr.flush()
                 continue
             render_team_complete_line(team_index, team_total, summary)
@@ -440,20 +430,14 @@ def _render_failure_summary(
     failed_scopes: list[str],
 ) -> None:
     total_failures = len(failed_scopes)
-    summary = ", ".join(
-        f"{kind}={count}" for kind, count in sorted(failure_counts.items())
-    )
+    summary = ", ".join(f"{kind}={count}" for kind, count in sorted(failure_counts.items()))
     scope_preview = ", ".join(failed_scopes[:10])
     suffix = "" if len(failed_scopes) <= 10 else ", ..."
     banner = "!" * 72
     sys.stderr.write(f"{banner}\n")
-    sys.stderr.write(
-        f"ERROR: season cache finished with {total_failures} failed team-seasons\n"
-    )
+    sys.stderr.write(f"ERROR: season cache finished with {total_failures} failed team-seasons\n")
     sys.stderr.write(f"{banner}\n")
-    sys.stderr.write(
-        f"Completed with failures across {total_failures} team-seasons: {summary}\n"
-    )
+    sys.stderr.write(f"Completed with failures across {total_failures} team-seasons: {summary}\n")
     sys.stderr.write(f"Failed scopes: {scope_preview}{suffix}\n")
     sys.stderr.flush()
 

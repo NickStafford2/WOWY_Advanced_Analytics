@@ -7,13 +7,13 @@ from pathlib import Path
 
 import numpy as np
 
-from wowy.metrics.rawr.models import RawrPlayerSeasonRecord
-from wowy.metrics.rawr.records import prepare_rawr_player_season_records
-from wowy.metrics.wowy.models import WowyPlayerSeasonRecord
-from wowy.metrics.wowy.records import prepare_wowy_player_season_records
-from wowy.data.player_metrics_db import DEFAULT_PLAYER_METRICS_DB_PATH
-from wowy.nba.source.cache import DEFAULT_SOURCE_DATA_DIR
-from wowy.progress import TerminalProgressBar, print_status_box
+from rawr_analytics.metrics.rawr.models import RawrPlayerSeasonRecord
+from rawr_analytics.metrics.rawr.records import prepare_rawr_player_season_records
+from rawr_analytics.metrics.wowy.models import WowyPlayerSeasonRecord
+from rawr_analytics.metrics.wowy.records import prepare_wowy_player_season_records
+from rawr_analytics.data.player_metrics_db import DEFAULT_PLAYER_METRICS_DB_PATH
+from rawr_analytics.nba.source.cache import DEFAULT_SOURCE_DATA_DIR
+from rawr_analytics.progress import TerminalProgressBar, print_status_box
 
 
 @dataclass(frozen=True)

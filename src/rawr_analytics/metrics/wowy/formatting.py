@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from wowy.metrics.wowy.models import WowyPlayerStats
+from rawr_analytics.metrics.wowy.models import WowyPlayerStats
 
 
 def sort_score(item: tuple[int, WowyPlayerStats]) -> float:

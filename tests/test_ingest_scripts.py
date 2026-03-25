@@ -3,8 +3,8 @@ from __future__ import annotations
 import subprocess
 
 from scripts import cache_all_seasons, cache_season_data
-from wowy.nba.build_models import TeamSeasonRunSummary
-from wowy.nba.errors import (
+from rawr_analytics.nba.build_models import TeamSeasonRunSummary
+from rawr_analytics.nba.errors import (
     BoxScoreFetchError,
     GameNormalizationFailure,
     PartialTeamSeasonError,
@@ -135,7 +135,7 @@ def test_render_partial_failure_details_includes_short_per_game_examples() -> No
                 game_id="0020600382",
                 error_type="ValueError",
                 message=(
-                    'Unparseable MIN value; nba_api_box_score_player_row='
+                    "Unparseable MIN value; nba_api_box_score_player_row="
                     '{"COMMENT": "OUT - Sprained ankle", "MIN": null, '
                     '"PLAYER_NAME": "David Newble", "TEAM_ABBREVIATION": "CHI"}'
                 ),
@@ -144,7 +144,7 @@ def test_render_partial_failure_details_includes_short_per_game_examples() -> No
                 game_id="0020600368",
                 error_type="ValueError",
                 message=(
-                    'Unparseable MIN value; nba_api_box_score_player_row='
+                    "Unparseable MIN value; nba_api_box_score_player_row="
                     '{"MIN": "bogus", "PLAYER_NAME": "Example Player", '
                     '"TEAM_ABBREVIATION": "CHA"}'
                 ),
@@ -167,8 +167,7 @@ def test_render_partial_failure_details_includes_short_per_game_examples() -> No
     )
     assert (
         "    0020600368: Unparseable MIN value "
-        "(player='Example Player', min='bogus', team_abbreviation='CHA')"
-        in rendered
+        "(player='Example Player', min='bogus', team_abbreviation='CHA')" in rendered
     )
     assert "examples=" not in rendered
     assert "nba_api_box_score_player_row" not in rendered

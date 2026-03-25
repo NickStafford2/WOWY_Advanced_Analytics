@@ -3,20 +3,20 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Any
 
-from wowy.metrics.rawr.models import RawrPlayerSeasonRecord
-from wowy.metrics.rawr.records import prepare_rawr_player_season_records
-from wowy.metrics.wowy.analysis import (
+from rawr_analytics.metrics.rawr.models import RawrPlayerSeasonRecord
+from rawr_analytics.metrics.rawr.records import prepare_rawr_player_season_records
+from rawr_analytics.metrics.wowy.analysis import (
     DEFAULT_WOWY_SHRINKAGE_PRIOR_GAMES,
     compute_wowy_shrinkage_score,
 )
-from wowy.metrics.wowy.models import WowyPlayerSeasonRecord
-from wowy.metrics.wowy.records import (
+from rawr_analytics.metrics.wowy.models import WowyPlayerSeasonRecord
+from rawr_analytics.metrics.wowy.records import (
     prepare_wowy_player_season_records,
 )
-from wowy.data.game_cache import list_cached_team_seasons
-from wowy.data.game_cache.fingerprints import build_normalized_cache_fingerprint
-from wowy.data.game_cache.repository import list_cache_load_rows
-from wowy.data.player_metrics_db import (
+from rawr_analytics.data.game_cache import list_cached_team_seasons
+from rawr_analytics.data.game_cache.fingerprints import build_normalized_cache_fingerprint
+from rawr_analytics.data.game_cache.repository import list_cache_load_rows
+from rawr_analytics.data.player_metrics_db import (
     DEFAULT_PLAYER_METRICS_DB_PATH,
     MetricScopeCatalogRow,
     PlayerSeasonMetricRow,
@@ -26,9 +26,9 @@ from wowy.data.player_metrics_db import (
     load_metric_scope_catalog_row,
     load_metric_store_metadata,
 )
-from wowy.nba.season_types import canonicalize_season_type
-from wowy.nba.team_history import official_continuity_label_for_team_id
-from wowy.web.metric_store import (
+from rawr_analytics.nba.season_types import canonicalize_season_type
+from rawr_analytics.nba.team_history import official_continuity_label_for_team_id
+from rawr_analytics.web.metric_store import (
     DEFAULT_RAWR_RIDGE_ALPHA,
     RAWR_METRIC,
     WOWY_METRIC,

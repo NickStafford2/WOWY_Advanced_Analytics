@@ -5,9 +5,9 @@ from pathlib import Path
 import pytest
 
 from tests.support import game, player, seed_db_from_team_seasons
-from wowy.data.game_cache import list_cached_team_seasons
-from wowy.nba.seasons import canonicalize_season_string
-from wowy.nba.team_seasons import TeamSeasonScope
+from rawr_analytics.data.game_cache import list_cached_team_seasons
+from rawr_analytics.nba.seasons import canonicalize_season_string
+from rawr_analytics.nba.team_seasons import TeamSeasonScope
 
 
 def test_canonicalize_season_string_accepts_single_year_input():
@@ -30,12 +30,8 @@ def test_list_cached_team_seasons_returns_db_rows(
             (
                 "BOS",
                 "2014-15",
-                [
-                    game("1", "2014-15", "2015-04-01", "BOS", "ATL", True, 5.0)
-                ],
-                [
-                    player("1", "BOS", 101, "Player 101", True, 34.0)
-                ],
+                [game("1", "2014-15", "2015-04-01", "BOS", "ATL", True, 5.0)],
+                [player("1", "BOS", 101, "Player 101", True, 34.0)],
             )
         ],
     )
@@ -56,22 +52,14 @@ def test_list_cached_team_seasons_returns_multiple_db_rows(
             (
                 "BOS",
                 "2014-15",
-                [
-                    game("1", "2014-15", "2015-04-01", "BOS", "ATL", True, 5.0)
-                ],
-                [
-                    player("1", "BOS", 101, "Player 101", True, 34.0)
-                ],
+                [game("1", "2014-15", "2015-04-01", "BOS", "ATL", True, 5.0)],
+                [player("1", "BOS", 101, "Player 101", True, 34.0)],
             ),
             (
                 "LAL",
                 "2015-16",
-                [
-                    game("2", "2015-16", "2016-04-01", "LAL", "BOS", True, 2.0)
-                ],
-                [
-                    player("2", "LAL", 24, "Player 24", True, 36.0)
-                ],
+                [game("2", "2015-16", "2016-04-01", "LAL", "BOS", True, 2.0)],
+                [player("2", "LAL", 24, "Player 24", True, 36.0)],
             ),
         ],
     )

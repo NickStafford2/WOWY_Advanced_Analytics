@@ -5,7 +5,7 @@ from pathlib import Path
 
 import pytest
 
-from wowy.nba.source.parsers import (
+from rawr_analytics.nba.source.parsers import (
     load_player_names_from_cache,
     parse_box_score_payload,
     parse_league_schedule_payload,
@@ -103,7 +103,15 @@ def test_parse_box_score_payload_uses_alias_keys_in_v3_rows() -> None:
         {
             "resultSets": {
                 "PlayerStats": {
-                    "headers": ["gameId", "teamId", "teamTricode", "personId", "firstName", "familyName", "minutes"],
+                    "headers": [
+                        "gameId",
+                        "teamId",
+                        "teamTricode",
+                        "personId",
+                        "firstName",
+                        "familyName",
+                        "minutes",
+                    ],
                     "data": [["0001", 1610612763, "MEM", 1, "Mike", "Miller", "PT30M00S"]],
                 },
                 "TeamStats": {
@@ -154,7 +162,14 @@ def test_load_player_names_from_cache_reads_valid_payloads_only(tmp_path: Path) 
                 "resultSets": [
                     {
                         "name": "PlayerStats",
-                        "headers": ["GAME_ID", "TEAM_ID", "TEAM_ABBREVIATION", "PLAYER_ID", "PLAYER_NAME", "MIN"],
+                        "headers": [
+                            "GAME_ID",
+                            "TEAM_ID",
+                            "TEAM_ABBREVIATION",
+                            "PLAYER_ID",
+                            "PLAYER_NAME",
+                            "MIN",
+                        ],
                         "rowSet": [["0001", 1610612763, "MEM", 1, "Mike Miller", "12:00"]],
                     },
                     {
@@ -184,7 +199,14 @@ def test_load_player_names_from_cache_discards_empty_and_unparseable_payloads(
                 "resultSets": [
                     {
                         "name": "PlayerStats",
-                        "headers": ["GAME_ID", "TEAM_ID", "TEAM_ABBREVIATION", "PLAYER_ID", "PLAYER_NAME", "MIN"],
+                        "headers": [
+                            "GAME_ID",
+                            "TEAM_ID",
+                            "TEAM_ABBREVIATION",
+                            "PLAYER_ID",
+                            "PLAYER_NAME",
+                            "MIN",
+                        ],
                         "rowSet": [],
                     },
                     {
@@ -204,7 +226,14 @@ def test_load_player_names_from_cache_discards_empty_and_unparseable_payloads(
                 "resultSets": [
                     {
                         "name": "PlayerStats",
-                        "headers": ["GAME_ID", "TEAM_ID", "TEAM_ABBREVIATION", "PLAYER_ID", "PLAYER_NAME", "MIN"],
+                        "headers": [
+                            "GAME_ID",
+                            "TEAM_ID",
+                            "TEAM_ABBREVIATION",
+                            "PLAYER_ID",
+                            "PLAYER_NAME",
+                            "MIN",
+                        ],
                         "rowSet": [["0002", 1610612763, "MEM", 2, "Broken Player", "12:00"]],
                     },
                     {
@@ -224,7 +253,14 @@ def test_load_player_names_from_cache_discards_empty_and_unparseable_payloads(
                 "resultSets": [
                     {
                         "name": "PlayerStats",
-                        "headers": ["GAME_ID", "TEAM_ID", "TEAM_ABBREVIATION", "PLAYER_ID", "PLAYER_NAME", "MIN"],
+                        "headers": [
+                            "GAME_ID",
+                            "TEAM_ID",
+                            "TEAM_ABBREVIATION",
+                            "PLAYER_ID",
+                            "PLAYER_NAME",
+                            "MIN",
+                        ],
                         "rowSet": [["0003", 1610612763, "MEM", 3, "Good Player", "12:00"]],
                     },
                     {
@@ -243,5 +279,10 @@ def test_load_player_names_from_cache_discards_empty_and_unparseable_payloads(
     assert not empty_path.exists()
     assert not invalid_path.exists()
     assert valid_path.exists()
-    assert any("cache discard" in message and "invalid_or_empty_payload" in message for message in logs)
-    assert any("cache discard" in message and "unparseable_box_score_payload" in message for message in logs)
+    assert any(
+        "cache discard" in message and "invalid_or_empty_payload" in message for message in logs
+    )
+    assert any(
+        "cache discard" in message and "unparseable_box_score_payload" in message
+        for message in logs
+    )

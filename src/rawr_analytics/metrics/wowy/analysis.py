@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from typing import Callable, overload
 
-from wowy.metrics.wowy.models import WowyGameRecord, WowyPlayerStats
+from rawr_analytics.metrics.wowy.models import WowyGameRecord, WowyPlayerStats
 
 ProgressFn = Callable[[int, int, str | None], None]
 DEFAULT_WOWY_SHRINKAGE_PRIOR_GAMES = 10.0

@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
-from wowy.nba.models import NormalizedGamePlayerRecord, NormalizedGameRecord
+from rawr_analytics.nba.models import NormalizedGamePlayerRecord, NormalizedGameRecord
 
 
 @dataclass(frozen=True)

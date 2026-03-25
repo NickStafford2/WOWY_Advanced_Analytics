@@ -14,9 +14,9 @@ from nba_api.stats.endpoints import (
 )
 from requests import RequestException
 
-from wowy.nba.errors import BoxScoreFetchError, LeagueGamesFetchError
-from wowy.nba.season_types import canonicalize_season_type
-from wowy.nba.seasons import canonicalize_season_string
+from rawr_analytics.nba.errors import BoxScoreFetchError, LeagueGamesFetchError
+from rawr_analytics.nba.season_types import canonicalize_season_type
+from rawr_analytics.nba.seasons import canonicalize_season_string
 
 DEFAULT_SOURCE_DATA_DIR = Path("data/source/nba")
 _LEAGUE_GAMES_REQUEST_RETRIES = 3
@@ -62,8 +62,7 @@ def load_or_fetch_league_games_with_source(
             time.sleep(_LEAGUE_GAMES_REQUEST_DELAY_SECONDS)
             if log is not None:
                 log(
-                    f"api league_games {team_abbreviation} {season} {season_type} "
-                    f"attempt={attempt}"
+                    f"api league_games {team_abbreviation} {season} {season_type} attempt={attempt}"
                 )
             finder = leaguegamefinder.LeagueGameFinder(
                 team_id_nullable=str(team_id),
@@ -102,9 +101,7 @@ def load_or_fetch_league_games_with_source(
             season_type=season_type,
         ) from last_error
 
-    raise RuntimeError(
-        f"Failed to fetch league games for {team_abbreviation!r} in {season!r}"
-    )
+    raise RuntimeError(f"Failed to fetch league games for {team_abbreviation!r} in {season!r}")
 
 
 def _load_or_fetch_league_games(
@@ -173,9 +170,7 @@ def load_or_fetch_box_score_with_source(
                     timeout=BOX_SCORE_REQUEST_TIMEOUT_SECONDS,
                 ).get_dict()
                 if box_score_payload_is_empty(live_payload):
-                    raise ValueError(
-                        f"Box score endpoint returned empty data for game {game_id!r}"
-                    )
+                    raise ValueError(f"Box score endpoint returned empty data for game {game_id!r}")
                 write_cached_payload(
                     box_score_live_cache_path(game_id, source_data_dir=source_data_dir),
                     live_payload,
@@ -336,8 +331,8 @@ def league_games_payload_is_valid(payload: dict) -> bool:
 def box_score_payload_is_empty(payload: dict) -> bool:
     game_payload = payload.get("game")
     if isinstance(game_payload, dict):
-        home_players = ((game_payload.get("homeTeam") or {}).get("players") or [])
-        away_players = ((game_payload.get("awayTeam") or {}).get("players") or [])
+        home_players = (game_payload.get("homeTeam") or {}).get("players") or []
+        away_players = (game_payload.get("awayTeam") or {}).get("players") or []
         return not home_players and not away_players
 
     result_sets = payload.get("resultSets")

@@ -2,8 +2,8 @@
 
 from __future__ import annotations
 
-from wowy.data.game_cache.fingerprints import build_normalized_cache_fingerprint
-from wowy.data.game_cache.repository import (
+from rawr_analytics.data.game_cache.fingerprints import build_normalized_cache_fingerprint
+from rawr_analytics.data.game_cache.repository import (
     has_cached_team_season_scope,
     list_cache_load_rows,
     list_cached_team_seasons,
@@ -13,8 +13,8 @@ from wowy.data.game_cache.repository import (
     load_normalized_scope_records_from_db,
     replace_team_season_normalized_rows,
 )
-from wowy.data.game_cache.rows import NormalizedCacheLoadRow
-from wowy.data.game_cache.schema import initialize_game_cache_db
+from rawr_analytics.data.game_cache.rows import NormalizedCacheLoadRow
+from rawr_analytics.data.game_cache.schema import initialize_game_cache_db
 
 __all__ = [
     "NormalizedCacheLoadRow",

@@ -3,9 +3,9 @@ from __future__ import annotations
 import argparse
 from pathlib import Path
 
-from wowy.data.player_metrics_db import DEFAULT_PLAYER_METRICS_DB_PATH
-from wowy.progress import TerminalProgressBar, print_status_box
-from wowy.web.metric_store import (
+from rawr_analytics.data.player_metrics_db import DEFAULT_PLAYER_METRICS_DB_PATH
+from rawr_analytics.progress import TerminalProgressBar, print_status_box
+from rawr_analytics.web.metric_store import (
     DEFAULT_RAWR_RIDGE_ALPHA,
     RAWR_METRIC,
     WOWY_METRIC,
@@ -57,8 +57,7 @@ def main(argv: list[str] | None = None) -> int:
             f"Metrics: {', '.join(metrics)}",
             "Refreshing cached player-season rows and full-span leaderboard"
             " slices used by the Flask and React web app.",
-            "The progress bar below tracks each built team scope in the SQLite"
-            " metric store.",
+            "The progress bar below tracks each built team scope in the SQLite metric store.",
         ],
     )
     for metric in metrics:
@@ -82,8 +81,7 @@ def main(argv: list[str] | None = None) -> int:
             print(result.failure_message)
             return 1
         print(
-            f"refreshed {metric} store at {args.player_metrics_db_path} "
-            f"({result.total_rows} rows)"
+            f"refreshed {metric} store at {args.player_metrics_db_path} ({result.total_rows} rows)"
         )
     return 0
 

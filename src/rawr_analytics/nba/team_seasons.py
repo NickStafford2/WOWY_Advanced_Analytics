@@ -3,11 +3,11 @@ from __future__ import annotations
 from dataclasses import dataclass
 from pathlib import Path
 
-from wowy.data.player_metrics_db import DEFAULT_PLAYER_METRICS_DB_PATH
-from wowy.nba.season_types import canonicalize_season_type
-from wowy.nba.seasons import canonicalize_season_string
-from wowy.nba.team_history import resolve_team_history_entry_from_id
-from wowy.nba.team_identity import (
+from rawr_analytics.data.player_metrics_db import DEFAULT_PLAYER_METRICS_DB_PATH
+from rawr_analytics.nba.season_types import canonicalize_season_type
+from rawr_analytics.nba.seasons import canonicalize_season_string
+from rawr_analytics.nba.team_history import resolve_team_history_entry_from_id
+from rawr_analytics.nba.team_identity import (
     list_expected_team_abbreviations_for_season,
     resolve_team_id,
 )
@@ -24,7 +24,7 @@ def _list_cached_team_seasons(
     player_metrics_db_path: Path = DEFAULT_PLAYER_METRICS_DB_PATH,
     season_type: str | None = None,
 ) -> list[TeamSeasonScope]:
-    from wowy.data.game_cache.repository import list_cached_team_seasons
+    from rawr_analytics.data.game_cache.repository import list_cached_team_seasons
 
     if season_type is not None:
         season_type = canonicalize_season_type(season_type)
@@ -43,14 +43,10 @@ def resolve_team_seasons(
     season_type: str | None = None,
 ) -> list[TeamSeasonScope]:
     normalized_seasons = (
-        [canonicalize_season_string(season) for season in seasons]
-        if seasons
-        else None
+        [canonicalize_season_string(season) for season in seasons] if seasons else None
     )
     normalized_team_ids = (
-        sorted({int(team_id) for team_id in team_ids if int(team_id) > 0})
-        if team_ids
-        else None
+        sorted({int(team_id) for team_id in team_ids if int(team_id) > 0}) if team_ids else None
     )
     if season_type is not None:
         season_type = canonicalize_season_type(season_type)
@@ -79,9 +75,7 @@ def resolve_team_seasons(
         resolved: list[TeamSeasonScope] = []
         for season in normalized_seasons:
             season_rows = [
-                team_season
-                for team_season in cached_team_seasons
-                if team_season.season == season
+                team_season for team_season in cached_team_seasons if team_season.season == season
             ]
             if season_rows:
                 resolved.extend(season_rows)

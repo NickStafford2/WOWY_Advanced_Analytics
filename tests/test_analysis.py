@@ -7,19 +7,19 @@ from tests.support import (
     player,
     seed_db_from_team_seasons,
 )
-from wowy.metrics.wowy.analysis import (
+from rawr_analytics.metrics.wowy.analysis import (
     DEFAULT_WOWY_SHRINKAGE_PRIOR_GAMES,
     apply_wowy_shrinkage,
     compute_wowy,
     compute_wowy_shrinkage_score,
     filter_results,
 )
-from wowy.metrics.wowy.models import (
+from rawr_analytics.metrics.wowy.models import (
     WowyGameRecord,
     WowyPlayerSeasonRecord,
     WowyPlayerStats,
 )
-from wowy.metrics.wowy.records import (
+from rawr_analytics.metrics.wowy.records import (
     available_wowy_seasons,
     build_wowy_player_season_records,
     build_wowy_span_chart_rows,

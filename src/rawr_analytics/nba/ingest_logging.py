@@ -6,7 +6,7 @@ from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
-from wowy.nba.errors import (
+from rawr_analytics.nba.errors import (
     FetchError,
     PartialTeamSeasonError,
 )
@@ -76,8 +76,4 @@ def _build_error_details(error: Exception) -> dict[str, object]:
 def _dataclass_fields(error: Exception, *, exclude: set[str]) -> dict[str, object]:
     if not is_dataclass(error):
         return {}
-    return {
-        key: value
-        for key, value in asdict(error).items()
-        if key not in exclude
-    }
+    return {key: value for key, value in asdict(error).items() if key not in exclude}

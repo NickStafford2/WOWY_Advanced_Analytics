@@ -2,12 +2,12 @@ from __future__ import annotations
 
 import pytest
 
-from wowy.nba.normalize.normalize_game import (
+from rawr_analytics.nba.normalize.normalize_game import (
     extract_is_home,
     extract_opponent,
     normalize_source_game,
 )
-from wowy.nba.source.models import (
+from rawr_analytics.nba.source.models import (
     SourceBoxScore,
     SourceBoxScorePlayer,
     SourceBoxScoreTeam,

@@ -5,11 +5,11 @@ from typing import Callable
 
 import numpy as np
 
-from wowy.metrics.rawr._observations import (
+from rawr_analytics.metrics.rawr._observations import (
     count_player_season_games,
     count_player_season_minutes,
 )
-from wowy.metrics.rawr.models import (
+from rawr_analytics.metrics.rawr.models import (
     RawrModel,
     RawrObservation,
     RawrPlayerEstimate,

@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from typing import Iterable
 
-from wowy.nba.models import NormalizedGamePlayerRecord
+from rawr_analytics.nba.models import NormalizedGamePlayerRecord
 
 MinuteStats = dict[int, tuple[float, float]]
 

@@ -2,23 +2,23 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from wowy.metrics.wowy.analysis import (
+from rawr_analytics.metrics.wowy.analysis import (
     DEFAULT_WOWY_SHRINKAGE_PRIOR_GAMES,
     compute_wowy,
     compute_wowy_shrinkage_score,
     filter_results,
 )
-from wowy.metrics.wowy.inputs import load_wowy_game_records
-from wowy.metrics.wowy.minutes import (
+from rawr_analytics.metrics.wowy.inputs import load_wowy_game_records
+from rawr_analytics.metrics.wowy.minutes import (
     attach_minute_stats,
     filter_results_by_minutes,
     load_player_season_minute_stats,
 )
-from wowy.metrics.wowy.models import (
+from rawr_analytics.metrics.wowy.models import (
     WowyGameRecord,
     WowyPlayerSeasonRecord,
 )
-from wowy.data.player_metrics_db import (
+from rawr_analytics.data.player_metrics_db import (
     DEFAULT_PLAYER_METRICS_DB_PATH,
     PlayerSeasonMetricRow,
     build_wowy_player_season_metric_rows,

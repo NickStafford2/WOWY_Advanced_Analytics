@@ -9,23 +9,23 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Callable
 
-from wowy.data.game_cache.schema import initialize_game_cache_db
-from wowy.data.game_cache.validation import (
+from rawr_analytics.data.game_cache.schema import initialize_game_cache_db
+from rawr_analytics.data.game_cache.validation import (
     _validate_normalized_cache_loads_table as _validate_normalized_cache_loads_table_impl,
 )
-from wowy.data.game_cache.validation import (
+from rawr_analytics.data.game_cache.validation import (
     _validate_normalized_cache_relations as _validate_normalized_cache_relations_impl,
 )
-from wowy.data.game_cache.validation import (
+from rawr_analytics.data.game_cache.validation import (
     _validate_normalized_game_players_table as _validate_normalized_game_players_table_impl,
 )
-from wowy.data.game_cache.validation import (
+from rawr_analytics.data.game_cache.validation import (
     _validate_normalized_games_table as _validate_normalized_games_table_impl,
 )
-from wowy.data.game_cache.validation import (
+from rawr_analytics.data.game_cache.validation import (
     _validate_team_history_table as _validate_team_history_table_impl,
 )
-from wowy.data.player_metrics_db import (
+from rawr_analytics.data.player_metrics_db import (
     DEFAULT_PLAYER_METRICS_DB_PATH,
     MetricFullSpanPointRow,
     MetricFullSpanSeriesRow,
@@ -35,7 +35,7 @@ from wowy.data.player_metrics_db import (
     _validate_metric_rows,
     _validate_metric_scope_catalog_row,
 )
-from wowy.data.player_metrics_db import (
+from rawr_analytics.data.player_metrics_db import (
     _connect as _connect_player_metrics_db,
 )
 
@@ -573,16 +573,15 @@ def _validate_metric_store_relations(
                 )
             )
         elif metadata_row[3] != len(rows):
-                issues.append(
-                    ValidationIssue(
-                        table="metric_store_metadata_v2",
-                        key=f"metric={metric!r},scope_key={scope_key!r}",
-                        message=(
-                            "row_count does not match metric rows: "
-                            f"{metadata_row[3]} != {len(rows)}"
-                        ),
-                    )
+            issues.append(
+                ValidationIssue(
+                    table="metric_store_metadata_v2",
+                    key=f"metric={metric!r},scope_key={scope_key!r}",
+                    message=(
+                        f"row_count does not match metric rows: {metadata_row[3]} != {len(rows)}"
+                    ),
                 )
+            )
         catalog_row = catalog_rows.get(key)
         if catalog_row is None:
             issues.append(
@@ -612,7 +611,9 @@ def _validate_metric_store_relations(
         season_type = (
             catalog_row.season_type
             if catalog_row is not None
-            else group_rows[0].season_type if group_rows else None
+            else group_rows[0].season_type
+            if group_rows
+            else None
         )
         if season_type is None:
             continue

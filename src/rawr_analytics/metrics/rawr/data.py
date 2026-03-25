@@ -3,14 +3,14 @@ from __future__ import annotations
 from dataclasses import dataclass
 from pathlib import Path
 
-from wowy.metrics.rawr._observations import count_player_games
-from wowy.data.game_cache.repository import list_cache_load_rows
-from wowy.data.player_metrics_db import (
+from rawr_analytics.metrics.rawr._observations import count_player_games
+from rawr_analytics.data.game_cache.repository import list_cache_load_rows
+from rawr_analytics.data.player_metrics_db import (
     PlayerSeasonMetricRow,
     build_rawr_player_season_metric_rows,
 )
-from wowy.nba.team_identity import list_expected_team_abbreviations_for_season
-from wowy.nba.team_seasons import resolve_team_seasons
+from rawr_analytics.nba.team_identity import list_expected_team_abbreviations_for_season
+from rawr_analytics.nba.team_seasons import resolve_team_seasons
 
 RAWR_METRIC = "rawr"
 DEFAULT_RAWR_SHRINKAGE_MODE = "uniform"
@@ -184,7 +184,7 @@ def build_rawr_metric_rows(
     team_ids: list[int] | None,
     rawr_ridge_alpha: float,
 ) -> list[PlayerSeasonMetricRow]:
-    from wowy.metrics.rawr.records import prepare_rawr_player_season_records
+    from rawr_analytics.metrics.rawr.records import prepare_rawr_player_season_records
 
     records = prepare_rawr_player_season_records(
         teams=teams,

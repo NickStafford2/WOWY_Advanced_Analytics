@@ -5,12 +5,12 @@ import json
 import sys
 from pathlib import Path
 
-from wowy.data.db_validation import (
+from rawr_analytics.data.db_validation import (
     audit_player_metrics_db,
     render_validation_summary,
     summarize_validation_report,
 )
-from wowy.data.player_metrics_db import DEFAULT_PLAYER_METRICS_DB_PATH
+from rawr_analytics.data.player_metrics_db import DEFAULT_PLAYER_METRICS_DB_PATH
 
 _LAST_PROGRESS_LINE_LENGTH = 0
 
