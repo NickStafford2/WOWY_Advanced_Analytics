@@ -30,10 +30,10 @@ from wowy.nba.season_types import canonicalize_season_type
 from wowy.nba.seasons import canonicalize_season_string
 from wowy.nba.source.cache import (
     DEFAULT_SOURCE_DATA_DIR,
-    _box_score_payload_is_empty,
-    _league_games_payload_is_valid,
     box_score_cache_paths,
+    box_score_payload_is_empty,
     league_games_cache_path,
+    league_games_payload_is_valid,
     load_cached_payload,
     load_or_fetch_box_score_with_source,
     load_or_fetch_league_games_with_source,
@@ -330,7 +330,7 @@ def _load_team_season_payload(
     )
     cached_payload = load_cached_payload(
         cache_path,
-        validator=_league_games_payload_is_valid,
+        validator=league_games_payload_is_valid,
         log=log,
     )
     if cached_payload is None:
@@ -355,7 +355,7 @@ def _load_box_score_payload(
     for cache_path in box_score_cache_paths(game_id, source_data_dir=source_data_dir):
         cached_payload = load_cached_payload(
             cache_path,
-            validator=lambda payload: not _box_score_payload_is_empty(payload),
+            validator=lambda payload: not box_score_payload_is_empty(payload),
             log=log,
         )
         if cached_payload is not None:

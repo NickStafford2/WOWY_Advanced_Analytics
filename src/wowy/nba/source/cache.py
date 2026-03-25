@@ -19,13 +19,13 @@ from wowy.nba.season_types import canonicalize_season_type
 from wowy.nba.seasons import canonicalize_season_string
 
 DEFAULT_SOURCE_DATA_DIR = Path("data/source/nba")
-LEAGUE_GAMES_REQUEST_RETRIES = 3
-LEAGUE_GAMES_RETRY_BACKOFF_SECONDS = 2.0
-LEAGUE_GAMES_REQUEST_DELAY_SECONDS = 0.6
+_LEAGUE_GAMES_REQUEST_RETRIES = 3
+_LEAGUE_GAMES_RETRY_BACKOFF_SECONDS = 2.0
+_LEAGUE_GAMES_REQUEST_DELAY_SECONDS = 0.6
 LEAGUE_GAMES_REQUEST_TIMEOUT_SECONDS = 60
-BOX_SCORE_REQUEST_RETRIES = 5
-BOX_SCORE_RETRY_BACKOFF_SECONDS = 2.0
-BOX_SCORE_REQUEST_DELAY_SECONDS = 0.6
+_BOX_SCORE_REQUEST_RETRIES = 5
+_BOX_SCORE_RETRY_BACKOFF_SECONDS = 2.0
+_BOX_SCORE_REQUEST_DELAY_SECONDS = 0.6
 BOX_SCORE_REQUEST_TIMEOUT_SECONDS = 60
 LogFn = Callable[[str], None]
 PayloadValidator = Callable[[dict], bool]
@@ -49,7 +49,7 @@ def load_or_fetch_league_games_with_source(
     )
     cached_payload = load_cached_payload(
         cache_path,
-        validator=_league_games_payload_is_valid,
+        validator=league_games_payload_is_valid,
         log=log,
     )
     if cached_payload is not None:
@@ -57,9 +57,9 @@ def load_or_fetch_league_games_with_source(
 
     last_error: Exception | None = None
 
-    for attempt in range(1, LEAGUE_GAMES_REQUEST_RETRIES + 1):
+    for attempt in range(1, _LEAGUE_GAMES_REQUEST_RETRIES + 1):
         try:
-            time.sleep(LEAGUE_GAMES_REQUEST_DELAY_SECONDS)
+            time.sleep(_LEAGUE_GAMES_REQUEST_DELAY_SECONDS)
             if log is not None:
                 log(
                     f"api league_games {team_abbreviation} {season} {season_type} "
@@ -72,7 +72,7 @@ def load_or_fetch_league_games_with_source(
                 timeout=LEAGUE_GAMES_REQUEST_TIMEOUT_SECONDS,
             )
             payload = finder.get_dict()
-            if not _league_games_payload_is_valid(payload):
+            if not league_games_payload_is_valid(payload):
                 raise ValueError(
                     f"League games endpoint returned empty data for "
                     f"{team_abbreviation} {season} {season_type}"
@@ -81,20 +81,20 @@ def load_or_fetch_league_games_with_source(
             return payload, "fetched"
         except (json.JSONDecodeError, RequestException, ValueError) as exc:
             last_error = exc
-            if attempt == LEAGUE_GAMES_REQUEST_RETRIES:
+            if attempt == _LEAGUE_GAMES_REQUEST_RETRIES:
                 break
-            time.sleep(LEAGUE_GAMES_RETRY_BACKOFF_SECONDS * attempt)
+            time.sleep(_LEAGUE_GAMES_RETRY_BACKOFF_SECONDS * attempt)
 
     if last_error is not None:
         raise LeagueGamesFetchError(
             message=(
                 f"Failed to fetch league games for {team_abbreviation} {season} "
-                f"{season_type} after {LEAGUE_GAMES_REQUEST_RETRIES} attempts: "
+                f"{season_type} after {_LEAGUE_GAMES_REQUEST_RETRIES} attempts: "
                 f"{type(last_error).__name__}: {last_error}"
             ),
             resource="league_games",
             identifier=f"{team_abbreviation}:{season}:{season_type}",
-            attempts=LEAGUE_GAMES_REQUEST_RETRIES,
+            attempts=_LEAGUE_GAMES_REQUEST_RETRIES,
             last_error_type=type(last_error).__name__,
             last_error_message=str(last_error),
             team=team_abbreviation,
@@ -107,7 +107,7 @@ def load_or_fetch_league_games_with_source(
     )
 
 
-def load_or_fetch_league_games(
+def _load_or_fetch_league_games(
     team_id: int,
     team_abbreviation: str,
     season: str,
@@ -134,7 +134,7 @@ def load_or_fetch_box_score_with_source(
     for cache_path in box_score_cache_paths(game_id, source_data_dir=source_data_dir):
         cached_payload = load_cached_payload(
             cache_path,
-            validator=lambda payload: not _box_score_payload_is_empty(payload),
+            validator=lambda payload: not box_score_payload_is_empty(payload),
             log=log,
         )
         if cached_payload is None:
@@ -143,9 +143,9 @@ def load_or_fetch_box_score_with_source(
 
     last_error: Exception | None = None
 
-    for attempt in range(1, BOX_SCORE_REQUEST_RETRIES + 1):
+    for attempt in range(1, _BOX_SCORE_REQUEST_RETRIES + 1):
         try:
-            time.sleep(BOX_SCORE_REQUEST_DELAY_SECONDS)
+            time.sleep(_BOX_SCORE_REQUEST_DELAY_SECONDS)
             if log is not None:
                 log(f"api box_score {game_id} attempt={attempt}")
             box_score = boxscoretraditionalv2.BoxScoreTraditionalV2(
@@ -153,7 +153,7 @@ def load_or_fetch_box_score_with_source(
                 timeout=BOX_SCORE_REQUEST_TIMEOUT_SECONDS,
             )
             payload = box_score.get_dict()
-            if not _box_score_payload_is_empty(payload):
+            if not box_score_payload_is_empty(payload):
                 write_cached_payload(
                     box_score_cache_path(game_id, source_data_dir=source_data_dir),
                     payload,
@@ -165,14 +165,14 @@ def load_or_fetch_box_score_with_source(
                 game_id=game_id,
                 timeout=BOX_SCORE_REQUEST_TIMEOUT_SECONDS,
             ).get_dict()
-            if _box_score_payload_is_empty(v3_payload):
+            if box_score_payload_is_empty(v3_payload):
                 if log is not None:
                     log(f"api box_score {game_id} attempt={attempt} empty-v3 fallback=live")
                 live_payload = live_boxscore.BoxScore(
                     game_id=game_id,
                     timeout=BOX_SCORE_REQUEST_TIMEOUT_SECONDS,
                 ).get_dict()
-                if _box_score_payload_is_empty(live_payload):
+                if box_score_payload_is_empty(live_payload):
                     raise ValueError(
                         f"Box score endpoint returned empty data for game {game_id!r}"
                     )
@@ -188,20 +188,20 @@ def load_or_fetch_box_score_with_source(
             return v3_payload, "fetched"
         except (json.JSONDecodeError, RequestException, ValueError) as exc:
             last_error = exc
-            if attempt == BOX_SCORE_REQUEST_RETRIES:
+            if attempt == _BOX_SCORE_REQUEST_RETRIES:
                 break
-            time.sleep(BOX_SCORE_RETRY_BACKOFF_SECONDS * attempt)
+            time.sleep(_BOX_SCORE_RETRY_BACKOFF_SECONDS * attempt)
 
     if last_error is not None:
         raise BoxScoreFetchError(
             message=(
                 f"Failed to fetch box score for game {game_id} after "
-                f"{BOX_SCORE_REQUEST_RETRIES} attempts: "
+                f"{_BOX_SCORE_REQUEST_RETRIES} attempts: "
                 f"{type(last_error).__name__}: {last_error}"
             ),
             resource="box_score",
             identifier=game_id,
-            attempts=BOX_SCORE_REQUEST_RETRIES,
+            attempts=_BOX_SCORE_REQUEST_RETRIES,
             last_error_type=type(last_error).__name__,
             last_error_message=str(last_error),
             game_id=game_id,
@@ -210,7 +210,7 @@ def load_or_fetch_box_score_with_source(
     raise RuntimeError(f"Failed to fetch box score for game {game_id!r}")
 
 
-def load_or_fetch_box_score(
+def _load_or_fetch_box_score(
     game_id: str,
     source_data_dir: Path,
     log: LogFn | None = print,
@@ -322,7 +322,7 @@ def write_cached_payload(cache_path: Path, payload: dict) -> None:
     temp_path.replace(cache_path)
 
 
-def _league_games_payload_is_valid(payload: dict) -> bool:
+def league_games_payload_is_valid(payload: dict) -> bool:
     result_sets = payload.get("resultSets")
     if not isinstance(result_sets, list) or not result_sets:
         return False
@@ -333,7 +333,7 @@ def _league_games_payload_is_valid(payload: dict) -> bool:
     return isinstance(row_set, list) and len(row_set) > 0
 
 
-def _box_score_payload_is_empty(payload: dict) -> bool:
+def box_score_payload_is_empty(payload: dict) -> bool:
     game_payload = payload.get("game")
     if isinstance(game_payload, dict):
         home_players = ((game_payload.get("homeTeam") or {}).get("players") or [])
@@ -365,27 +365,19 @@ def _box_score_payload_is_empty(payload: dict) -> bool:
 
 
 __all__ = [
-    "BOX_SCORE_REQUEST_DELAY_SECONDS",
-    "BOX_SCORE_REQUEST_RETRIES",
     "BOX_SCORE_REQUEST_TIMEOUT_SECONDS",
-    "BOX_SCORE_RETRY_BACKOFF_SECONDS",
     "DEFAULT_SOURCE_DATA_DIR",
-    "LEAGUE_GAMES_REQUEST_DELAY_SECONDS",
-    "LEAGUE_GAMES_REQUEST_RETRIES",
     "LEAGUE_GAMES_REQUEST_TIMEOUT_SECONDS",
-    "LEAGUE_GAMES_RETRY_BACKOFF_SECONDS",
+    "box_score_payload_is_empty",
     "box_score_cache_path",
     "box_score_cache_paths",
     "box_score_live_cache_path",
     "box_score_v3_cache_path",
     "discard_invalid_cached_payload",
+    "league_games_payload_is_valid",
     "league_games_cache_path",
     "load_cached_payload",
-    "load_or_fetch_box_score",
     "load_or_fetch_box_score_with_source",
-    "load_or_fetch_league_games",
     "load_or_fetch_league_games_with_source",
     "write_cached_payload",
-    "_box_score_payload_is_empty",
-    "_league_games_payload_is_valid",
 ]

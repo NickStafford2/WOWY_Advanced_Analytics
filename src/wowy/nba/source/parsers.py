@@ -6,7 +6,7 @@ from typing import Callable
 from wowy.nba.season_types import canonicalize_season_type
 from wowy.nba.seasons import canonicalize_season_string
 from wowy.nba.source.cache import (
-    _box_score_payload_is_empty,
+    box_score_payload_is_empty,
     discard_invalid_cached_payload,
     load_cached_payload,
 )
@@ -36,7 +36,7 @@ def load_player_names_from_cache(
     for cache_path in sorted((source_data_dir / "boxscores").glob("*.json")):
         payload = load_cached_payload(
             cache_path,
-            validator=lambda cached_payload: not _box_score_payload_is_empty(cached_payload),
+            validator=lambda cached_payload: not box_score_payload_is_empty(cached_payload),
             log=log,
         )
         if payload is None:
