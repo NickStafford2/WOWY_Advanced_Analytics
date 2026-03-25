@@ -1,31 +1,6 @@
 # Architecture
 
-This document is the working architectural guide for the repository.
-
-It has two jobs:
-
-1. describe the intended long-term shape of the codebase
-2. tell the next Codex instance what to refactor next
-
-Keep this file short. After each major refactor, update:
-
-- the "Current Status" section
-- the "Next Refactors" list
-
-Do not turn this into a changelog.
-
-This document is guidance, not a script.
-
-- do not mechanically delete code just because this file says a boundary is wrong
-- first determine whether the behavior is still useful
-- if it is useful but misplaced, move it or narrow it
-- if it is redundant or low-value, delete it
-- prefer the smallest change that improves ownership and dependency direction
-- during this refactor, you are free to avoid making shims and compatibility code. Tests are not as important as clarity and speed.
-
 ## Goal
-
-Make the codebase easy to reason about by making ownership and dependency direction explicit.
 
 The system is a layered pipeline:
 
@@ -55,138 +30,15 @@ If a lower layer needs code from a higher layer, use judgment. Usually either:
 - the code belongs in the lower layer and should move down, or
 - the dependency is wrong and should be removed
 
-## Layer Ownership
-
-### `src/wowy/nba`
-
-Owns canonical basketball-domain logic.
-
-Examples:
-
-- source payload parsing
-- normalization into canonical game/player/team records
-- canonical validation
-- team identity and historical continuity rules
-
-This layer should know nothing about WOWY, RAWR, or any other derived metric.
-
-### `src/wowy/data`
-
-Owns persistence and retrieval.
-
-Examples:
-
-- SQLite schema and repositories
-- metric-store persistence
-- cache metadata persistence
-- loading canonical rows from the database
-- writing derived metric results to the database
-
-This layer should not contain metric math.
-
-### `src/wowy/metrics`
-
-This is the target home for what currently lives under `src/wowy/apps/`.
-
-Owns derived analytics built from canonical inputs.
-
-Examples:
-
-- metric-specific input shaping
-- metric computation
-- metric-native derived records
-- metric-specific CLI/report orchestration
-
-Each metric package should prefer a small set of owner modules such as:
-
-- `analysis.py`: metric math
-- `inputs.py` or `derive.py`: canonical -> metric-native inputs
-- `records.py`: metric-native derived records
-- `service.py` or `cli.py`: CLI/report orchestration
-- `formatting.py`: human-facing formatting only
-
-### `src/wowy/web`
-
-Owns presentation and endpoint wiring.
-
-Examples:
-
-- Flask route wiring
-- payload shaping for frontend routes
-- use of cached metric-store rows
-
-This layer should depend on stable metric and data entrypoints, not low-level helpers from many modules.
-
-### `src/wowy/shared`
-
-Owns genuinely cross-cutting helpers that are neither metric-specific nor NBA-specific.
-
-Keep this package small.
-
 ## Persistence Boundary
 
 Derived metrics should not save themselves.
 
 The intended direction is:
 
-1. `metrics` computes derived outputs
-2. `data` persists those outputs
+1. `metrics` computes derived outputs, owns metric-native records
+2. `data` persists those outputs and owns DB row types and write operations.
 
-Short term, two shapes are acceptable:
-
-- `metrics` returns metric-native records and `data` maps them to DB rows
-- `metrics` returns persistence-ready rows and `data` writes them
-
-Long term, prefer the stricter shape:
-
-- `metrics` owns metric-native records
-- `data` owns DB row types and write operations
-
-## Recent Progress
-
-Recent refactors have improved dependency direction without broad reorganization:
-
-- canonical validation now checks only canonical NBA invariants
-- ingest workflows now return canonical artifacts only
-- WOWY-specific input shaping moved out of `nba` and into the WOWY package
-- DB-backed canonical scope loading now lives in `data`; `nba/prepare.py` only resolves scope and opponent expansion
-- cached team-season listing and cache-presence checks now also live behind `data`
-
-## Current Status
-
-The codebase is not far from the target, and the Step 2 web-layer cleanup is now
-effectively complete:
-
-- the NBA source parsing, normalization, and team identity code is in good shape
-- `shared` is small and mostly well scoped
-- metric packages already have some useful internal separation
-- canonical validation is now metric-agnostic, and ingest returns canonical artifacts only
-- `nba` no longer imports WOWY code; WOWY input shaping now lives in the WOWY package
-- `nba/prepare.py` no longer performs repository reads directly; DB-backed canonical scope loading is now behind `data`
-- web callers now get cached team-season metadata from `data`, and `nba/cache_sync.py` uses a data-owned cache-presence check
-- WOWY `WowyPlayerSeasonRecord` -> `PlayerSeasonMetricRow` mapping now lives in `data`
-- RAWR observation building, scope filtering, and result minute-shaping now live in `apps/rawr/inputs.py`; `apps/rawr/data.py` is narrower
-- RAWR metric-native `RawrPlayerSeasonRecord` preparation now lives in `apps/rawr/records.py`
-- RAWR `RawrPlayerSeasonRecord` -> `PlayerSeasonMetricRow` mapping now lives in `data`
-- web filter-payload shaping now lives in `web/metric_queries.py`; `web/app.py` is a bit closer to routing and request parsing only
-- custom metric-query branching now lives in `web/metric_queries.py`; `web/app.py` no longer chooses metric-specific query builders directly
-- `web/app.py` now parses shared metric-request context once per handler instead of duplicating request-to-query glue in each endpoint helper
-- `web/app.py` now also shares metric-query argument shaping for leaderboard and export helpers instead of repeating per-endpoint wiring
-- `web/metric_store.py` now delegates catalog and full-span row shaping to private helpers; refresh/update flow is a bit more orchestration-focused
-- `web/metric_store.py` now also delegates per-scope refresh/update flow to private helpers; `refresh_metric_store(...)` is closer to top-level orchestration
-- `web/metric_store.py` now also delegates cache preflight, warning collection, and shared refresh inputs to private helpers
-- web request and refresh paths no longer carry an unused `source_data_dir` dependency; the current web metric flow is explicitly DB-backed
-
-The main remaining issues are:
-
-1. package naming still lags actual ownership
-   - `apps` is now mostly serving as the metrics layer in practice
-   - the rename to `metrics` should now be lower-risk than before
-2. web still reaches into several metric-internal modules directly
-   - this is not a blocker for the rename
-   - after the rename, consider tightening metric package entrypoints so web imports fewer low-level helpers
-3. a few large modules have become mixed-responsibility files
-   - examples: `data/player_metrics_db.py`, `data/db_validation.py`, `apps/rawr/data.py`
 
 ## Next Refactors
 
@@ -226,13 +78,11 @@ Examples:
 
 When changing structure:
 
-- prefer moving code to the layer that already owns the concept
 - prefer deleting glue code over preserving weak abstractions
 - prefer pure functions over multi-role service modules
 - keep package `__init__.py` files minimal
 - do not add new cross-layer shortcuts just because they are convenient
 - do not preserve a misplaced abstraction just because it already exists
-- do not delete useful behavior until its new owner is clear
 
 When unsure where code belongs:
 
@@ -248,5 +98,6 @@ After a major refactor:
 1. update "Current Status" to reflect what is still true
 2. delete completed items from "Next Refactors"
 3. rewrite the remaining steps so the next Codex instance can continue without rereading old work
+4. Suggest a simple commit message for me to use. 
 
 If this file starts feeling long, shorten it. The goal is direction, not exhaustiveness.
