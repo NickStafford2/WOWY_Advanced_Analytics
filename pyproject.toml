@@ -1,18 +1,18 @@
 [project]
-name = "wowy"
-version = "0.0.1"
-description = "Simple game-level WOWY basketball impact prototype"
+name = "rawr_analytics"
+version = "0.0.2"
+description = "Game-level basketball impact prototypes and advanced analytics."
 readme = "README.md"
 requires-python = ">=3.12,<3.13"
 authors = [{ name = "Nicholas Stafford" }]
 dependencies = ["nba_api>=1.7,<2.0", "numpy>=2.0,<3.0", "matplotlib (>=3.10.8,<4.0.0)", "flask (>=3.1.3,<4.0.0)"]
 
 [project.scripts]
-wowy = "wowy.metrics.wowy.cli:main"
-rawr = "wowy.metrics.rawr.cli:main"
-wowy-web = "wowy.web.cli:main"
-wowy-refresh-web-store = "wowy.web.refresh_cli:main"
-wowy-audit-db = "wowy.data.db_validation_cli:main"
+wowy = "rawr_analytics.metrics.wowy.cli:main"
+rawr = "rawr_analytics.metrics.rawr.cli:main"
+wowy-web = "rawr_analytics.web.cli:main"
+wowy-refresh-web-store = "rawr_analytics.web.refresh_cli:main"
+wowy-audit-db = "rawr_analytics.data.db_validation_cli:main"
 
 [dependency-groups]
 test = ["pytest>=8.0,<9.0"]
