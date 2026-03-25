@@ -3,7 +3,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from pathlib import Path
 
-from wowy.apps.rawr._observations import count_player_games
+from wowy.metrics.rawr._observations import count_player_games
 from wowy.data.game_cache.repository import list_cache_load_rows
 from wowy.data.player_metrics_db import (
     PlayerSeasonMetricRow,
@@ -87,8 +87,7 @@ def list_incomplete_rawr_seasons(
             )
         if row.skipped_games_row_count:
             season_rows.issues.add(
-                f"skipped games present for {row.team} "
-                f"({row.skipped_games_row_count} skipped)"
+                f"skipped games present for {row.team} ({row.skipped_games_row_count} skipped)"
             )
 
     issues: list[RawrSeasonCompletenessIssue] = []
@@ -173,6 +172,8 @@ def select_complete_rawr_scope_seasons(
         player_metrics_db_path=player_metrics_db_path,
     )
     return [season for season in candidate_seasons if season in complete_seasons]
+
+
 def build_rawr_metric_rows(
     *,
     scope_key: str,
@@ -183,7 +184,7 @@ def build_rawr_metric_rows(
     team_ids: list[int] | None,
     rawr_ridge_alpha: float,
 ) -> list[PlayerSeasonMetricRow]:
-    from wowy.apps.rawr.records import prepare_rawr_player_season_records
+    from wowy.metrics.rawr.records import prepare_rawr_player_season_records
 
     records = prepare_rawr_player_season_records(
         teams=teams,

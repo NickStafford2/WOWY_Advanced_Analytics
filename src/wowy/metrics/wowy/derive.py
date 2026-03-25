@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from collections import defaultdict
 
-from wowy.apps.wowy.models import WowyGameRecord
+from wowy.metrics.wowy.models import WowyGameRecord
 from wowy.nba.models import NormalizedGamePlayerRecord, NormalizedGameRecord
 
 

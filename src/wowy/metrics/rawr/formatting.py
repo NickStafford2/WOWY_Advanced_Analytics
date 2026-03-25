@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from wowy.apps.rawr.models import RawrResult
+from wowy.metrics.rawr.models import RawrResult
 
 
 def format_rawr_results(

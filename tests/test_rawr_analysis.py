@@ -2,13 +2,13 @@ from __future__ import annotations
 
 import pytest
 
-from wowy.apps.rawr.analysis import (
+from wowy.metrics.rawr.analysis import (
     build_player_penalties,
     count_player_season_minutes,
     fit_player_rawr,
     tune_ridge_alpha,
 )
-from wowy.apps.rawr.models import RawrObservation
+from wowy.metrics.rawr.models import RawrObservation
 
 
 def test_fit_player_rawr_returns_expected_coefficients():
@@ -197,10 +197,7 @@ def test_fit_player_rawr_uses_separate_coefficients_per_player_season():
         ridge_alpha=1.0,
     )
 
-    estimates = {
-        (estimate.season, estimate.player_id): estimate
-        for estimate in result.estimates
-    }
+    estimates = {(estimate.season, estimate.player_id): estimate for estimate in result.estimates}
 
     assert ("2022-23", 101) in estimates
     assert ("2023-24", 101) in estimates
@@ -357,12 +354,8 @@ def test_fit_player_rawr_rejects_non_positive_minute_scale():
 
 def test_fit_player_rawr_rejects_singular_system_without_ridge():
     observations = [
-        RawrObservation(
-            "1", "2023-24", "2024-04-01", "BOS", "MIL", 2.0, {101: 1.0}
-        ),
-        RawrObservation(
-            "2", "2023-24", "2024-04-03", "BOS", "NYK", 3.0, {101: 1.0}
-        ),
+        RawrObservation("1", "2023-24", "2024-04-01", "BOS", "MIL", 2.0, {101: 1.0}),
+        RawrObservation("2", "2023-24", "2024-04-03", "BOS", "NYK", 3.0, {101: 1.0}),
     ]
 
     with pytest.raises(ValueError, match="singular"):
@@ -375,12 +368,8 @@ def test_fit_player_rawr_rejects_singular_system_without_ridge():
 
 def test_fit_player_rawr_handles_singular_system_with_ridge():
     observations = [
-        RawrObservation(
-            "1", "2023-24", "2024-04-01", "BOS", "MIL", 2.0, {101: 1.0, 201: -1.0}
-        ),
-        RawrObservation(
-            "2", "2023-24", "2024-04-03", "BOS", "NYK", 3.0, {101: 1.0, 201: -1.0}
-        ),
+        RawrObservation("1", "2023-24", "2024-04-01", "BOS", "MIL", 2.0, {101: 1.0, 201: -1.0}),
+        RawrObservation("2", "2023-24", "2024-04-03", "BOS", "NYK", 3.0, {101: 1.0, 201: -1.0}),
     ]
 
     result = fit_player_rawr(
@@ -400,21 +389,11 @@ def test_fit_player_rawr_handles_singular_system_with_ridge():
 
 def test_tune_ridge_alpha_returns_best_value_from_grid():
     observations = [
-        RawrObservation(
-            "1", "2023-24", "2024-04-01", "BOS", "MIL", 4.0, {101: 1.0, 201: -1.0}
-        ),
-        RawrObservation(
-            "2", "2023-24", "2024-04-03", "BOS", "MIL", 3.0, {101: 1.0, 201: -1.0}
-        ),
-        RawrObservation(
-            "3", "2023-24", "2024-04-05", "BOS", "MIL", 5.0, {101: 1.0, 201: -1.0}
-        ),
-        RawrObservation(
-            "4", "2023-24", "2024-04-07", "BOS", "MIL", 4.0, {101: 1.0, 201: -1.0}
-        ),
-        RawrObservation(
-            "5", "2023-24", "2024-04-09", "BOS", "MIL", 4.5, {101: 1.0, 201: -1.0}
-        ),
+        RawrObservation("1", "2023-24", "2024-04-01", "BOS", "MIL", 4.0, {101: 1.0, 201: -1.0}),
+        RawrObservation("2", "2023-24", "2024-04-03", "BOS", "MIL", 3.0, {101: 1.0, 201: -1.0}),
+        RawrObservation("3", "2023-24", "2024-04-05", "BOS", "MIL", 5.0, {101: 1.0, 201: -1.0}),
+        RawrObservation("4", "2023-24", "2024-04-07", "BOS", "MIL", 4.0, {101: 1.0, 201: -1.0}),
+        RawrObservation("5", "2023-24", "2024-04-09", "BOS", "MIL", 4.5, {101: 1.0, 201: -1.0}),
     ]
 
     summary = tune_ridge_alpha(

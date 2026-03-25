@@ -5,11 +5,11 @@ from typing import Callable
 
 import numpy as np
 
-from wowy.apps.rawr._observations import (
+from wowy.metrics.rawr._observations import (
     count_player_season_games,
     count_player_season_minutes,
 )
-from wowy.apps.rawr.models import (
+from wowy.metrics.rawr.models import (
     RawrModel,
     RawrObservation,
     RawrPlayerEstimate,
@@ -54,9 +54,7 @@ def fit_player_rawr(
 
     games_by_player_season = count_player_season_games(observations)
     included_player_keys = sorted(
-        player_key
-        for player_key, games in games_by_player_season.items()
-        if games >= min_games
+        player_key for player_key, games in games_by_player_season.items() if games >= min_games
     )
     if not included_player_keys:
         raise ValueError("No players met the minimum games requirement")
@@ -129,12 +127,9 @@ def fit_regression_model(
     team_effect_offset = player_offset + len(player_keys)
     opponent_effect_offset = team_effect_offset + len(team_seasons)
     feature_count = opponent_effect_offset + len(team_seasons)
-    player_index = {
-        player_key: index + 2 for index, player_key in enumerate(player_keys)
-    }
+    player_index = {player_key: index + 2 for index, player_key in enumerate(player_keys)}
     team_effect_index = {
-        team_season: team_effect_offset + index
-        for index, team_season in enumerate(team_seasons)
+        team_season: team_effect_offset + index for index, team_season in enumerate(team_seasons)
     }
     opponent_effect_index = {
         team_season: opponent_effect_offset + index
@@ -193,8 +188,7 @@ def fit_regression_model(
                 opponent_effect_index=opponent_effect_index,
                 season=observation.season,
                 player_weights={
-                    player_id: -weight
-                    for player_id, weight in observation.player_weights.items()
+                    player_id: -weight for player_id, weight in observation.player_weights.items()
                 },
                 home_court_sign=-1.0,
                 team_effect_key=away_team_season,
@@ -237,9 +231,7 @@ def predict_margin(
 ) -> float:
     row = build_feature_row(
         feature_count=len(model.coefficients),
-        player_index={
-            player_key: index + 2 for index, player_key in enumerate(model.player_keys)
-        },
+        player_index={player_key: index + 2 for index, player_key in enumerate(model.player_keys)},
         team_effect_index={
             team_season: len(model.player_keys) + 2 + index
             for index, team_season in enumerate(model.team_seasons)
@@ -261,8 +253,7 @@ def predict_margin(
         ),
     )
     return sum(
-        weight * coefficient
-        for weight, coefficient in zip(row, model.coefficients, strict=True)
+        weight * coefficient for weight, coefficient in zip(row, model.coefficients, strict=True)
     )
 
 
@@ -305,9 +296,7 @@ def tune_ridge_alpha(
         if games >= min_games and player_key[1] in player_names
     )
     if not included_player_keys:
-        raise ValueError(
-            "No players met the minimum games requirement in training data"
-        )
+        raise ValueError("No players met the minimum games requirement in training data")
 
     results: list[RidgeTuningResult] = []
     for alpha in alphas:
@@ -395,6 +384,7 @@ def build_player_penalties(
         scaled_minutes = minutes_by_player_season[player_key] / shrinkage_minute_scale
         penalties[player_key] = ridge_alpha / (scaled_minutes**shrinkage_strength)
     return penalties
+
 
 def accumulate_row(
     gram: np.ndarray,

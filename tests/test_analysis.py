@@ -7,19 +7,19 @@ from tests.support import (
     player,
     seed_db_from_team_seasons,
 )
-from wowy.apps.wowy.analysis import (
+from wowy.metrics.wowy.analysis import (
     DEFAULT_WOWY_SHRINKAGE_PRIOR_GAMES,
     apply_wowy_shrinkage,
     compute_wowy,
     compute_wowy_shrinkage_score,
     filter_results,
 )
-from wowy.apps.wowy.models import (
+from wowy.metrics.wowy.models import (
     WowyGameRecord,
     WowyPlayerSeasonRecord,
     WowyPlayerStats,
 )
-from wowy.apps.wowy.records import (
+from wowy.metrics.wowy.records import (
     available_wowy_seasons,
     build_wowy_player_season_records,
     build_wowy_span_chart_rows,
@@ -302,18 +302,10 @@ def test_prepare_wowy_player_season_records_uses_db_without_file_fixture_dirs(
 
 def test_build_wowy_span_chart_rows_ranks_players_across_selected_seasons():
     records = [
-        WowyPlayerSeasonRecord(
-            "2022-23", 101, "Player 101", 2, 1, 7.0, -5.0, 12.0, 34.0, 68.0
-        ),
-        WowyPlayerSeasonRecord(
-            "2022-23", 102, "Player 102", 2, 1, 2.5, 4.0, -1.5, 31.0, 62.0
-        ),
-        WowyPlayerSeasonRecord(
-            "2023-24", 101, "Player 101", 2, 1, 3.0, 1.0, 2.0, 34.0, 68.0
-        ),
-        WowyPlayerSeasonRecord(
-            "2023-24", 103, "Player 103", 2, 1, 4.5, -2.0, 6.5, 30.0, 60.0
-        ),
+        WowyPlayerSeasonRecord("2022-23", 101, "Player 101", 2, 1, 7.0, -5.0, 12.0, 34.0, 68.0),
+        WowyPlayerSeasonRecord("2022-23", 102, "Player 102", 2, 1, 2.5, 4.0, -1.5, 31.0, 62.0),
+        WowyPlayerSeasonRecord("2023-24", 101, "Player 101", 2, 1, 3.0, 1.0, 2.0, 34.0, 68.0),
+        WowyPlayerSeasonRecord("2023-24", 103, "Player 103", 2, 1, 4.5, -2.0, 6.5, 30.0, 60.0),
     ]
 
     assert available_wowy_seasons(records) == ["2022-23", "2023-24"]

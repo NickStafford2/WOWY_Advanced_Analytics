@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from typing import Callable, overload
 
-from wowy.apps.wowy.models import WowyGameRecord, WowyPlayerStats
+from wowy.metrics.wowy.models import WowyGameRecord, WowyPlayerStats
 
 ProgressFn = Callable[[int, int, str | None], None]
 DEFAULT_WOWY_SHRINKAGE_PRIOR_GAMES = 10.0
@@ -37,9 +37,7 @@ def compute_wowy(
                 margins_without.append(game.margin)
 
         avg_with = sum(margins_with) / len(margins_with) if margins_with else None
-        avg_without = (
-            sum(margins_without) / len(margins_without) if margins_without else None
-        )
+        avg_without = sum(margins_without) / len(margins_without) if margins_without else None
 
         wowy_score: float | None = None
         if avg_with is not None and avg_without is not None:

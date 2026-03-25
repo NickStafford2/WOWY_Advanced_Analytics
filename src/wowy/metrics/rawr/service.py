@@ -1,10 +1,10 @@
 from __future__ import annotations
 
-from wowy.apps.rawr._observations import build_rawr_player_season_minute_stats
-from wowy.apps.rawr.analysis import ProgressFn, fit_player_rawr, tune_ridge_alpha
-from wowy.apps.rawr.data import count_player_games, select_complete_rawr_scope_seasons
-from wowy.apps.rawr.formatting import format_rawr_results
-from wowy.apps.rawr.inputs import (
+from wowy.metrics.rawr._observations import build_rawr_player_season_minute_stats
+from wowy.metrics.rawr.analysis import ProgressFn, fit_player_rawr, tune_ridge_alpha
+from wowy.metrics.rawr.data import count_player_games, select_complete_rawr_scope_seasons
+from wowy.metrics.rawr.formatting import format_rawr_results
+from wowy.metrics.rawr.inputs import (
     attach_minute_stats_to_result,
     build_rawr_observations,
     filter_rawr_estimates_by_minutes,
@@ -106,12 +106,12 @@ def run_rawr_records(
             for game in games
         }
         feature_count = 2 + player_count + (2 * len(team_seasons))
-        total_steps = (
-            (len(observations) * 2) + max(feature_count - 2, 0) + feature_count
-        )
+        total_steps = (len(observations) * 2) + max(feature_count - 2, 0) + feature_count
         progress_bar = TerminalProgressBar("RAWR", total=total_steps)
+
         def _report_progress(current: int, _total: int, detail: str | None) -> None:
             progress_bar.update(current, detail)
+
         progress = _report_progress
     result = fit_player_rawr(
         observations,
@@ -161,9 +161,7 @@ def build_tuning_report(best_alpha: float, results) -> str:
 
 def _require_team_id(team_id: int | None, game_id: str, field_name: str) -> int:
     if team_id is None or team_id <= 0:
-        raise ValueError(
-            f"Normalized cache-backed game {game_id!r} is missing {field_name}"
-        )
+        raise ValueError(f"Normalized cache-backed game {game_id!r} is missing {field_name}")
     return team_id
 
 

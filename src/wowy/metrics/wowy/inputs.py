@@ -2,8 +2,8 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from wowy.apps.wowy.derive import derive_wowy_games
-from wowy.apps.wowy.models import WowyGameRecord
+from wowy.metrics.wowy.derive import derive_wowy_games
+from wowy.metrics.wowy.models import WowyGameRecord
 from wowy.data.player_metrics_db import DEFAULT_PLAYER_METRICS_DB_PATH
 from wowy.nba.prepare import load_normalized_scope_records
 

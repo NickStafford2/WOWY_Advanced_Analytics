@@ -59,7 +59,7 @@ def _seed_rawr_cache_inputs(
     monkeypatch,
 ) -> list[TeamSeasonSeed]:
     monkeypatch.setattr(
-        "wowy.apps.rawr.data.list_expected_rawr_teams_for_season",
+        "wowy.metrics.rawr.data.list_expected_rawr_teams_for_season",
         lambda _season: ["BOS", "LAL", "MIL", "NYK"],
     )
     return [

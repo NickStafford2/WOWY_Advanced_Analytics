@@ -2,8 +2,8 @@ from __future__ import annotations
 
 from argparse import Namespace
 
-from wowy.apps.rawr.models import RawrPlayerSeasonRecord
-from wowy.apps.rawr.tuning import (
+from wowy.metrics.rawr.models import RawrPlayerSeasonRecord
+from wowy.metrics.rawr.tuning import (
     aggregate_rawr_training_records,
     aggregate_wowy_training_records,
     count_evaluation_steps,
@@ -11,7 +11,7 @@ from wowy.apps.rawr.tuning import (
     format_results_table,
     parse_float_grid,
 )
-from wowy.apps.wowy.models import WowyPlayerSeasonRecord
+from wowy.metrics.wowy.models import WowyPlayerSeasonRecord
 
 
 def test_parse_float_grid_parses_values():
@@ -55,18 +55,12 @@ def test_evaluate_configs_compares_wowy_and_rawr(monkeypatch):
                 ),
             ]
         return [
-            WowyPlayerSeasonRecord(
-                "2021-22", 101, "Player 101", 20, 5, 0.0, 0.0, 9.0, 34.0, 680.0
-            ),
+            WowyPlayerSeasonRecord("2021-22", 101, "Player 101", 20, 5, 0.0, 0.0, 9.0, 34.0, 680.0),
             WowyPlayerSeasonRecord(
                 "2022-23", 101, "Player 101", 20, 5, 0.0, 0.0, 11.0, 35.0, 700.0
             ),
-            WowyPlayerSeasonRecord(
-                "2021-22", 102, "Player 102", 20, 5, 0.0, 0.0, 3.0, 33.0, 660.0
-            ),
-            WowyPlayerSeasonRecord(
-                "2022-23", 102, "Player 102", 20, 5, 0.0, 0.0, 4.0, 32.0, 640.0
-            ),
+            WowyPlayerSeasonRecord("2021-22", 102, "Player 102", 20, 5, 0.0, 0.0, 3.0, 33.0, 660.0),
+            WowyPlayerSeasonRecord("2022-23", 102, "Player 102", 20, 5, 0.0, 0.0, 4.0, 32.0, 640.0),
         ]
 
     def fake_prepare_rawr_player_season_records(
@@ -78,8 +72,8 @@ def test_evaluate_configs_compares_wowy_and_rawr(monkeypatch):
         **_kwargs,
     ):
         if shrinkage_mode == "minutes":
-            player_101_score = 8.0 + ridge_alpha + shrinkage_strength + (
-                shrinkage_minute_scale / 1000.0
+            player_101_score = (
+                8.0 + ridge_alpha + shrinkage_strength + (shrinkage_minute_scale / 1000.0)
             )
         else:
             player_101_score = 8.0
@@ -101,11 +95,11 @@ def test_evaluate_configs_compares_wowy_and_rawr(monkeypatch):
         ]
 
     monkeypatch.setattr(
-        "wowy.apps.rawr.tuning.prepare_wowy_player_season_records",
+        "wowy.metrics.rawr.tuning.prepare_wowy_player_season_records",
         fake_prepare_wowy_player_season_records,
     )
     monkeypatch.setattr(
-        "wowy.apps.rawr.tuning.prepare_rawr_player_season_records",
+        "wowy.metrics.rawr.tuning.prepare_rawr_player_season_records",
         fake_prepare_rawr_player_season_records,
     )
 

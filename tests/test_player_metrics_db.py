@@ -5,9 +5,9 @@ from pathlib import Path
 
 import pytest
 
-from wowy.apps.rawr.models import RawrPlayerSeasonRecord
-from wowy.apps.wowy.analysis import compute_wowy_shrinkage_score
-from wowy.apps.wowy.models import WowyPlayerSeasonRecord
+from wowy.metrics.rawr.models import RawrPlayerSeasonRecord
+from wowy.metrics.wowy.analysis import compute_wowy_shrinkage_score
+from wowy.metrics.wowy.models import WowyPlayerSeasonRecord
 from wowy.data.player_metrics_db import (
     MetricFullSpanPointRow,
     MetricFullSpanSeriesRow,

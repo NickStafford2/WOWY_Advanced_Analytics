@@ -2,8 +2,8 @@ from __future__ import annotations
 
 from collections import defaultdict
 
-from wowy.apps.rawr._observations import build_minute_weights
-from wowy.apps.rawr.models import (
+from wowy.metrics.rawr._observations import build_minute_weights
+from wowy.metrics.rawr.models import (
     RawrObservation,
     RawrPlayerEstimate,
     RawrResult,
@@ -24,9 +24,7 @@ def build_rawr_observations(
     games: list[NormalizedGameRecord],
     game_players: list[NormalizedGamePlayerRecord],
 ) -> tuple[list[RawrObservation], dict[int, str]]:
-    player_minutes_by_game_team: dict[tuple[str, int], dict[int, float]] = defaultdict(
-        dict
-    )
+    player_minutes_by_game_team: dict[tuple[str, int], dict[int, float]] = defaultdict(dict)
     player_names: dict[int, str] = {}
 
     for player in game_players:
@@ -39,9 +37,9 @@ def build_rawr_observations(
                 f"Missing positive minutes for appeared player {player.player_id!r} "
                 f"in game {player.game_id!r} and team {player.team!r}"
             )
-        player_minutes_by_game_team[(player.game_id, player.identity_team)][
-            player.player_id
-        ] = minutes
+        player_minutes_by_game_team[(player.game_id, player.identity_team)][player.player_id] = (
+            minutes
+        )
 
     games_by_id: dict[str, list[NormalizedGameRecord]] = defaultdict(list)
     for game in games:
@@ -57,9 +55,7 @@ def build_rawr_observations(
         home_games = [game for game in game_rows if game.is_home]
         away_games = [game for game in game_rows if not game.is_home]
         if len(home_games) != 1 or len(away_games) != 1:
-            raise ValueError(
-                f"Expected one home row and one away row for game {game_id!r}"
-            )
+            raise ValueError(f"Expected one home row and one away row for game {game_id!r}")
 
         home_game = home_games[0]
         away_game = away_games[0]

@@ -3,7 +3,7 @@ from __future__ import annotations
 import argparse
 from pathlib import Path
 
-from wowy.apps.rawr.service import prepare_and_run_rawr
+from wowy.metrics.rawr.service import prepare_and_run_rawr
 from wowy.data.player_metrics_db import DEFAULT_PLAYER_METRICS_DB_PATH
 from wowy.nba.source.cache import DEFAULT_SOURCE_DATA_DIR
 

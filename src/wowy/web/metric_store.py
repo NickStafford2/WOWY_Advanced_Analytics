@@ -5,8 +5,8 @@ from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any, Callable
 
-from wowy.apps.rawr.data import build_rawr_metric_rows, list_incomplete_rawr_seasons
-from wowy.apps.wowy.records import (
+from wowy.metrics.rawr.data import build_rawr_metric_rows, list_incomplete_rawr_seasons
+from wowy.metrics.wowy.records import (
     build_wowy_metric_rows,
     build_wowy_shrunk_metric_rows,
 )

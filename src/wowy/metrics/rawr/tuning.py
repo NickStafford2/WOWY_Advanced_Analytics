@@ -7,10 +7,10 @@ from pathlib import Path
 
 import numpy as np
 
-from wowy.apps.rawr.models import RawrPlayerSeasonRecord
-from wowy.apps.rawr.records import prepare_rawr_player_season_records
-from wowy.apps.wowy.models import WowyPlayerSeasonRecord
-from wowy.apps.wowy.records import prepare_wowy_player_season_records
+from wowy.metrics.rawr.models import RawrPlayerSeasonRecord
+from wowy.metrics.rawr.records import prepare_rawr_player_season_records
+from wowy.metrics.wowy.models import WowyPlayerSeasonRecord
+from wowy.metrics.wowy.records import prepare_wowy_player_season_records
 from wowy.data.player_metrics_db import DEFAULT_PLAYER_METRICS_DB_PATH
 from wowy.nba.source.cache import DEFAULT_SOURCE_DATA_DIR
 from wowy.progress import TerminalProgressBar, print_status_box
@@ -40,8 +40,7 @@ class ComparisonResult:
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
         description=(
-            "Compare WOWY and RAWR training configurations against a holdout-season "
-            "WOWY target."
+            "Compare WOWY and RAWR training configurations against a holdout-season WOWY target."
         )
     )
     parser.add_argument(
@@ -380,13 +379,8 @@ def evaluate_configs(args) -> list[ComparisonResult]:
         )
         for minute_scale in minute_scales:
             minute_scale = float(minute_scale)
-            detail = (
-                f"alpha={ridge_alpha:.2f} mode={shrinkage_mode}"
-                + (
-                    f" min_scale={minute_scale:.1f}"
-                    if shrinkage_mode == "minutes"
-                    else ""
-                )
+            detail = f"alpha={ridge_alpha:.2f} mode={shrinkage_mode}" + (
+                f" min_scale={minute_scale:.1f}" if shrinkage_mode == "minutes" else ""
             )
             rawr_records = prepare_rawr_player_season_records(
                 teams=args.team,
@@ -419,9 +413,7 @@ def evaluate_configs(args) -> list[ComparisonResult]:
                     ridge_alpha=ridge_alpha,
                     shrinkage_mode=shrinkage_mode,
                     shrinkage_strength=shrinkage_strength,
-                    shrinkage_minute_scale=(
-                        minute_scale if shrinkage_mode == "minutes" else None
-                    ),
+                    shrinkage_minute_scale=(minute_scale if shrinkage_mode == "minutes" else None),
                 )
             )
 
@@ -510,20 +502,14 @@ def build_summary(args, results: list[ComparisonResult]) -> str:
         best_suffix = ""
         if best.model != "wowy-baseline":
             minute_scale = (
-                f"{best.shrinkage_minute_scale}"
-                if best.shrinkage_minute_scale is not None
-                else "-"
+                f"{best.shrinkage_minute_scale}" if best.shrinkage_minute_scale is not None else "-"
             )
             best_suffix = (
                 f"(alpha={best.ridge_alpha:.2f},mode={best.shrinkage_mode},"
                 f"strength={best.shrinkage_strength:.2f},"
                 f"minute_scale={minute_scale})"
             )
-        lines.append(
-            "best_by_spearman="
-            f"{best.model}"
-            + best_suffix
-        )
+        lines.append(f"best_by_spearman={best.model}" + best_suffix)
     return "\n".join(lines)
 
 
@@ -532,9 +518,7 @@ def main(argv: list[str] | None = None) -> int:
     args = parser.parse_args(argv)
     args.rawr_ridge_values = parse_float_grid(args.rawr_ridge_grid)
     args.shrinkage_strength_values = parse_float_grid(args.shrinkage_strength_grid)
-    args.shrinkage_minute_scale_values = parse_float_grid(
-        args.shrinkage_minute_scale_grid
-    )
+    args.shrinkage_minute_scale_values = parse_float_grid(args.shrinkage_minute_scale_grid)
     if args.top_n <= 0:
         raise ValueError("top_n must be positive")
     if args.holdout_season in set(args.train_season):

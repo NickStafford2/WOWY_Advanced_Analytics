@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from wowy.apps.wowy.models import WowyPlayerStats
+from wowy.metrics.wowy.models import WowyPlayerStats
 from wowy.data.player_metrics_db import DEFAULT_PLAYER_METRICS_DB_PATH
 from wowy.nba.prepare import load_normalized_scope_records
 from wowy.shared.minutes import build_player_minute_stats, passes_minute_filters
@@ -54,12 +54,7 @@ def load_player_season_minute_stats(
     seasons_by_game_id = {game.game_id: game.season for game in games}
     for player in game_players:
         season = seasons_by_game_id.get(player.game_id)
-        if (
-            season is None
-            or not player.appeared
-            or player.minutes is None
-            or player.minutes <= 0.0
-        ):
+        if season is None or not player.appeared or player.minutes is None or player.minutes <= 0.0:
             continue
         key = (season, player.player_id)
         totals[key] = totals.get(key, 0.0) + player.minutes

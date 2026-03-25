@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from collections import defaultdict
 
-from wowy.apps.rawr.models import RawrObservation
+from wowy.metrics.rawr.models import RawrObservation
 
 _LINEUP_WEIGHT_SUM = 5.0
 
@@ -45,9 +45,7 @@ def count_player_season_minutes(
             continue
         for player_id, minutes in observation.player_minutes.items():
             key = (observation.season, player_id)
-            minutes_by_player_season[key] = (
-                minutes_by_player_season.get(key, 0.0) + minutes
-            )
+            minutes_by_player_season[key] = minutes_by_player_season.get(key, 0.0) + minutes
     return minutes_by_player_season
 
 
@@ -61,12 +59,7 @@ def build_rawr_player_season_minute_stats(
 
     for player in game_players:
         season = season_by_game_id.get(player.game_id)
-        if (
-            season is None
-            or not player.appeared
-            or player.minutes is None
-            or player.minutes <= 0.0
-        ):
+        if season is None or not player.appeared or player.minutes is None or player.minutes <= 0.0:
             continue
         key = (season, player.player_id)
         totals[key] = totals.get(key, 0.0) + player.minutes

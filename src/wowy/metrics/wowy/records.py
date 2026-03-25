@@ -2,19 +2,19 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from wowy.apps.wowy.analysis import (
+from wowy.metrics.wowy.analysis import (
     DEFAULT_WOWY_SHRINKAGE_PRIOR_GAMES,
     compute_wowy,
     compute_wowy_shrinkage_score,
     filter_results,
 )
-from wowy.apps.wowy.inputs import load_wowy_game_records
-from wowy.apps.wowy.minutes import (
+from wowy.metrics.wowy.inputs import load_wowy_game_records
+from wowy.metrics.wowy.minutes import (
     attach_minute_stats,
     filter_results_by_minutes,
     load_player_season_minute_stats,
 )
-from wowy.apps.wowy.models import (
+from wowy.metrics.wowy.models import (
     WowyGameRecord,
     WowyPlayerSeasonRecord,
 )
@@ -48,8 +48,7 @@ def build_wowy_player_season_records(
     min_games_with: int,
     min_games_without: int,
     player_names: dict[int, str] | None = None,
-    player_season_minute_stats: dict[tuple[str, int], tuple[float, float]]
-    | None = None,
+    player_season_minute_stats: dict[tuple[str, int], tuple[float, float]] | None = None,
     min_average_minutes: float | None = None,
     min_total_minutes: float | None = None,
 ) -> list[WowyPlayerSeasonRecord]:
@@ -153,9 +152,7 @@ def build_wowy_span_chart_rows(
     if start_season > end_season:
         raise ValueError("start_season must be less than or equal to end_season")
 
-    span_records = [
-        record for record in records if start_season <= record.season <= end_season
-    ]
+    span_records = [record for record in records if start_season <= record.season <= end_season]
     if not span_records:
         return []
 
@@ -165,14 +162,10 @@ def build_wowy_span_chart_rows(
     season_scores: dict[int, dict[str, float]] = {}
 
     for record in span_records:
-        score_totals[record.player_id] = (
-            score_totals.get(record.player_id, 0.0) + record.wowy_score
-        )
+        score_totals[record.player_id] = score_totals.get(record.player_id, 0.0) + record.wowy_score
         season_counts[record.player_id] = season_counts.get(record.player_id, 0) + 1
         player_names[record.player_id] = record.player_name
-        season_scores.setdefault(record.player_id, {})[record.season] = (
-            record.wowy_score
-        )
+        season_scores.setdefault(record.player_id, {})[record.season] = record.wowy_score
 
     ranked_player_ids = sorted(
         score_totals,

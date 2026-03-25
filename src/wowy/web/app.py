@@ -5,8 +5,8 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, TypedDict
 
-from wowy.apps.rawr.service import validate_filters as validate_rawr_filters
-from wowy.apps.wowy.service import validate_filters as validate_wowy_filters
+from wowy.metrics.rawr.service import validate_filters as validate_rawr_filters
+from wowy.metrics.wowy.service import validate_filters as validate_wowy_filters
 from wowy.data.player_metrics_db import DEFAULT_PLAYER_METRICS_DB_PATH
 from wowy.nba.season_types import canonicalize_season_type
 from wowy.nba.seasons import canonicalize_season_string
@@ -352,9 +352,7 @@ def _parse_metric_request(
     metric: str,
     include_top_n: bool,
 ) -> _ParsedMetricRequest:
-    season_type = canonicalize_season_type(
-        request.args.get("season_type", "Regular Season")
-    )
+    season_type = canonicalize_season_type(request.args.get("season_type", "Regular Season"))
     team_ids = _parse_positive_int_list(request.args.getlist("team_id"))
     scope_key, _team_filter = build_scope_key(team_ids=team_ids, season_type=season_type)
     return _ParsedMetricRequest(
@@ -557,11 +555,7 @@ def _build_csv_column_order(table_rows: list[dict[str, Any]]) -> list[str]:
         "season_count",
         "points",
     ]
-    available_columns = {
-        key
-        for row in table_rows
-        for key in row
-    }
+    available_columns = {key for row in table_rows for key in row}
     ordered_columns = [column for column in preferred_order if column in available_columns]
     ordered_columns.extend(sorted(available_columns - set(ordered_columns)))
     return ordered_columns

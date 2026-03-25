@@ -3,14 +3,14 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Any
 
-from wowy.apps.rawr.models import RawrPlayerSeasonRecord
-from wowy.apps.rawr.records import prepare_rawr_player_season_records
-from wowy.apps.wowy.analysis import (
+from wowy.metrics.rawr.models import RawrPlayerSeasonRecord
+from wowy.metrics.rawr.records import prepare_rawr_player_season_records
+from wowy.metrics.wowy.analysis import (
     DEFAULT_WOWY_SHRINKAGE_PRIOR_GAMES,
     compute_wowy_shrinkage_score,
 )
-from wowy.apps.wowy.models import WowyPlayerSeasonRecord
-from wowy.apps.wowy.records import (
+from wowy.metrics.wowy.models import WowyPlayerSeasonRecord
+from wowy.metrics.wowy.records import (
     prepare_wowy_player_season_records,
 )
 from wowy.data.game_cache import list_cached_team_seasons
@@ -792,8 +792,7 @@ def _build_ranked_table_rows(
     for player_id, player_rows in rows_by_player.items():
         player_name = player_rows[0]["player_name"]
         games_with = sum(
-            (row.get("games_with") or row.get("sample_size") or 0)
-            for row in player_rows
+            (row.get("games_with") or row.get("sample_size") or 0) for row in player_rows
         )
         games_without = sum(
             (row.get("games_without") or row.get("secondary_sample_size") or 0)

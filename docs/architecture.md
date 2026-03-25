@@ -44,35 +44,20 @@ The intended direction is:
 
 Do these in order. Prefer medium PRs.
 
-### 1. Rename `apps` to `metrics`
-
-The boundary cleanup is now good enough to do this directly.
-
-Target:
-
-- `src/wowy/apps/wowy` -> `src/wowy/metrics/wowy`
-- `src/wowy/apps/rawr` -> `src/wowy/metrics/rawr`
-
-Safest order:
-
-- move the packages
-- rewrite imports everywhere in one pass
-- run focused checks on metrics, web, and CLI entrypoints
-
-### 2. Tighten metric package entrypoints
+### 1. Tighten metric package entrypoints
 
 After the rename:
 
 - reduce direct web imports from metric internals where convenient
 - prefer a smaller set of stable metric-owned entrypoints for validation, custom-query building, and cached-row construction
 
-### 3. Continue shrinking mixed-responsibility files
+### 1. Continue shrinking mixed-responsibility files
 
 Examples:
 
 - `data/player_metrics_db.py`
 - `data/db_validation.py`
-- `apps/rawr/data.py`
+- `metrics/rawr/data.py`
 
 ## Working Rules For Future Refactors
 
