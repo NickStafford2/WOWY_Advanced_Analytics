@@ -14,7 +14,6 @@ from wowy.nba.build_models import (
 from wowy.nba.errors import (
     GameNormalizationFailure,
     PartialTeamSeasonError,
-    TeamSeasonConsistencyError,
 )
 from wowy.nba.models import (
     NormalizedGamePlayerRecord,
@@ -22,10 +21,7 @@ from wowy.nba.models import (
     NormalizedTeamSeasonBatch,
 )
 from wowy.nba.normalize.normalize_game import normalize_source_game
-from wowy.nba.normalize.validation import (
-    derive_validated_wowy_games,
-    validate_team_season_records,
-)
+from wowy.nba.normalize.validation import validate_normalized_team_season_batch
 from wowy.nba.season_types import canonicalize_season_type
 from wowy.nba.seasons import canonicalize_season_string
 from wowy.nba.source.cache import (
@@ -108,7 +104,7 @@ def ingest_team_season(
     schedule_games = dedupe_schedule_games(schedule.games)
     if not schedule_games:
         return TeamSeasonBuildResult(
-            artifacts=TeamSeasonArtifacts([], [], []),
+            artifacts=TeamSeasonArtifacts([], []),
             summary=TeamSeasonRunSummary(
                 team=requested_team,
                 season=season,
@@ -223,12 +219,11 @@ def ingest_team_season(
         games=normalized_games,
         game_players=normalized_game_players,
     )
-    wowy_games = derive_validated_wowy_games(batch)
+    validate_normalized_team_season_batch(batch)
     return TeamSeasonBuildResult(
         artifacts=TeamSeasonArtifacts(
             normalized_games=normalized_games,
             normalized_game_players=normalized_game_players,
-            wowy_games=wowy_games,
         ),
         summary=TeamSeasonRunSummary(
             team=requested_team,
@@ -281,18 +276,6 @@ def refresh_normalized_team_season_cache(
         expected_games_row_count=result.summary.total_games,
         skipped_games_row_count=result.summary.skipped_games,
     )
-    consistency = validate_team_season_records(
-        result.artifacts.normalized_games,
-        result.artifacts.normalized_game_players,
-        result.artifacts.wowy_games,
-    )
-    if consistency != "ok":
-        raise TeamSeasonConsistencyError(
-            message=f"Inconsistent team-season cache for {team} {season}: {consistency}",
-            team=team,
-            season=season,
-            reason=consistency,
-        )
     return result.summary
 
 

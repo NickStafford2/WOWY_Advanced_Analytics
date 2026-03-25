@@ -9,7 +9,6 @@ from wowy.nba.normalize.models import (
 )
 from wowy.nba.normalize.normalize_game import normalize_source_game
 from wowy.nba.normalize.validation import (
-    derive_validated_wowy_games,
     validate_normalized_cache_batch,
     validate_normalized_team_season_batch,
 )
@@ -18,7 +17,6 @@ __all__ = [
     "NormalizedGamePlayerRecord",
     "NormalizedGameRecord",
     "NormalizedTeamSeasonBatch",
-    "derive_validated_wowy_games",
     "normalize_source_game",
     "validate_normalized_cache_batch",
     "validate_normalized_team_season_batch",

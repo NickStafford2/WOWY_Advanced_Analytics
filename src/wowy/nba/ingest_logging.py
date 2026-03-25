@@ -9,7 +9,6 @@ from typing import Any
 from wowy.nba.errors import (
     FetchError,
     PartialTeamSeasonError,
-    TeamSeasonConsistencyError,
 )
 
 DEFAULT_INGEST_FAILURE_LOG_PATH = Path("data/logs/ingest_failures.jsonl")
@@ -52,12 +51,6 @@ def _build_error_details(error: Exception) -> dict[str, object]:
         }
         details.update(_dataclass_fields(error, exclude={"message"}))
         return details
-    if isinstance(error, TeamSeasonConsistencyError):
-        return {
-            "reason": error.reason,
-            "team_scope": error.team,
-            "season_scope": error.season,
-        }
     if isinstance(error, PartialTeamSeasonError):
         return {
             "team_scope": error.team,

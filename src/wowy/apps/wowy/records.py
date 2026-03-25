@@ -8,6 +8,7 @@ from wowy.apps.wowy.analysis import (
     compute_wowy_shrinkage_score,
     filter_results,
 )
+from wowy.apps.wowy.inputs import load_wowy_game_records
 from wowy.apps.wowy.minutes import (
     attach_minute_stats,
     filter_results_by_minutes,
@@ -21,7 +22,6 @@ from wowy.data.player_metrics_db import (
     DEFAULT_PLAYER_METRICS_DB_PATH,
     PlayerSeasonMetricRow,
 )
-from wowy.nba.prepare import load_wowy_game_records
 
 type WowyPlayerSeasonRow = dict[str, str | int | float | None]
 

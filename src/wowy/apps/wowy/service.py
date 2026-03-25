@@ -1,15 +1,15 @@
 from __future__ import annotations
 
 from wowy.apps.wowy.analysis import ProgressFn, compute_wowy, filter_results
+from wowy.apps.wowy.formatting import format_results_table
+from wowy.apps.wowy.inputs import load_wowy_game_records
 from wowy.apps.wowy.minutes import (
     attach_minute_stats,
     filter_results_by_minutes,
     load_player_minute_stats,
 )
-from wowy.apps.wowy.formatting import format_results_table
 from wowy.apps.wowy.models import WowyGameRecord
 from wowy.data.player_metrics_db import DEFAULT_PLAYER_METRICS_DB_PATH
-from wowy.nba.prepare import load_wowy_game_records
 from wowy.progress import TerminalProgressBar, print_status_box
 from wowy.shared.filters import validate_top_n_and_minutes
 from wowy.shared.scope import format_scope

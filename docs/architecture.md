@@ -142,6 +142,14 @@ Long term, prefer the stricter shape:
 - `metrics` owns metric-native records
 - `data` owns DB row types and write operations
 
+## Recent Progress
+
+Recent refactors have improved dependency direction without broad reorganization:
+
+- canonical validation now checks only canonical NBA invariants
+- ingest workflows now return canonical artifacts only
+- WOWY-specific input shaping moved out of `nba` and into the WOWY package
+
 ## Current Status
 
 The codebase is not far from the target, but a few architectural problems still matter:
@@ -149,68 +157,25 @@ The codebase is not far from the target, but a few architectural problems still 
 - the NBA source parsing, normalization, and team identity code is in good shape
 - `shared` is small and mostly well scoped
 - metric packages already have some useful internal separation
+- canonical validation is now metric-agnostic, and ingest returns canonical artifacts only
+- `nba` no longer imports WOWY code; WOWY input shaping now lives in the WOWY package
 
 The main remaining issues are:
 
-1. `nba` still imports WOWY code
-   - examples: `nba/prepare.py`, `nba/build_models.py`, `nba/normalize/validation.py`
-2. canonical validation still depends on WOWY-derived records
-   - this is the biggest conceptual violation
-3. some DB-backed retrieval still lives in `nba`
+1. some DB-backed retrieval still lives in `nba`
    - examples: `nba/prepare.py`, `nba/team_seasons.py`, `nba/cache_sync.py`
-4. metric packages still build persistence-shaped rows directly
+2. metric packages still build persistence-shaped rows directly
    - acceptable temporarily, but not the long-term target
-5. web modules are too orchestration-heavy
+3. web modules are too orchestration-heavy
    - especially `web/app.py` and `web/metric_queries.py`
-6. a few large modules have become mixed-responsibility files
+4. a few large modules have become mixed-responsibility files
    - examples: `data/player_metrics_db.py`, `data/db_validation.py`, `apps/rawr/data.py`
 
 ## Next Refactors
 
 Do these in order. Prefer medium PRs.
 
-### 1. Remove `nba -> wowy`
-
-This is the first priority.
-
-Default direction:
-
-- move `load_wowy_game_records(...)` out of `nba/prepare.py`
-- remove `WowyGameRecord` from `nba/build_models.py`
-- remove WOWY-derived validation from `nba/normalize/validation.py`
-
-Important:
-
-- "remove" does not always mean "delete permanently"
-- if a WOWY-specific check is still useful, move it to the WOWY metric layer instead of keeping it in `nba`
-
-After this step:
-
-- `nba` should only produce and validate canonical records
-- ingest workflows should return canonical artifacts only
-
-### 2. Make canonical validation metric-agnostic
-
-`nba/normalize/validation.py` should validate only canonical invariants.
-
-Keep checks like:
-
-- duplicate keys
-- game/player key alignment
-- team identity consistency
-- appeared-player minute rulesThis is simple and avoids hidden imports.
-When __init__.py should NOT be empty (often better)
-
-If you care about clean public API design, you should use __init__.py to define it.
-
-Example:
-- plausible minute totals
-
-Remove checks that derive or compare WOWY-specific records from canonical validation.
-
-If those checks still provide value, move them to a metric-level validation helper.
-
-### 3. Move DB-backed canonical loading behind `data`
+### 1. Move DB-backed canonical loading behind `data`
 
 The repository/query boundary is still blurry.
 
@@ -225,7 +190,7 @@ Likely files to change:
 - `nba/team_seasons.py`
 - `nba/cache_sync.py`
 
-### 4. Finish cleanup inside metric packages
+### 2. Finish cleanup inside metric packages
 
 WOWY:
 
@@ -242,7 +207,7 @@ RAWR:
 - keep metric-native outputs in `records.py`
 - keep CLI/report orchestration in `service.py`
 
-### 5. Move metric row mapping into `data`
+### 3. Move metric row mapping into `data`
 
 Metric packages should stop constructing `PlayerSeasonMetricRow` directly.
 
@@ -254,7 +219,7 @@ Target:
 
 Do not force this in one pass if it creates extra glue. Incremental cleanup is fine.
 
-### 6. Shrink the web layer
+### 4. Shrink the web layer
 
 Target:
 
@@ -264,7 +229,7 @@ Target:
 
 Do not let the web layer become the place where all cross-layer glue accumulates.
 
-### 7. Rename `apps` to `metrics`
+### 5. Rename `apps` to `metrics`
 
 Do this after the boundary cleanup, not before.
 

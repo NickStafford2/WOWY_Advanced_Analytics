@@ -33,13 +33,6 @@ class BoxScoreFetchError(FetchError):
 
 
 @dataclass
-class TeamSeasonConsistencyError(NbaIngestError):
-    team: str
-    season: str
-    reason: str
-
-
-@dataclass(frozen=True)
 class GameNormalizationFailure:
     game_id: str
     error_type: str

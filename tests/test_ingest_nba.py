@@ -91,7 +91,6 @@ def test_ingest_team_season_from_cached_nba_source(team: str, season: str) -> No
     assert result.summary.fetched_box_scores == 0
     assert result.summary.cached_box_scores == result.summary.total_games
     assert len(result.artifacts.normalized_games) == result.summary.total_games
-    assert len(result.artifacts.wowy_games) == len(result.artifacts.normalized_games)
     assert (
         len(result.artifacts.normalized_game_players)
         > len(result.artifacts.normalized_games) * 5
