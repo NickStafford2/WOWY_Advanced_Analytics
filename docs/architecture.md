@@ -165,10 +165,12 @@ The codebase is not far from the target, but a few architectural problems still 
 - web callers now get cached team-season metadata from `data`, and `nba/cache_sync.py` uses a data-owned cache-presence check
 - RAWR observation building, scope filtering, and result minute-shaping now live in `apps/rawr/inputs.py`; `apps/rawr/data.py` is narrower
 - RAWR metric-native `RawrPlayerSeasonRecord` preparation now lives in `apps/rawr/records.py`
+- RAWR `RawrPlayerSeasonRecord` -> `PlayerSeasonMetricRow` mapping now lives in `data`
 
 The main remaining issues are:
 
-1. metric packages still build persistence-shaped rows directly
+1. some metric packages still build persistence-shaped rows directly
+   - RAWR no longer does; WOWY still does
    - acceptable temporarily, but not the long-term target
 2. web modules are too orchestration-heavy
    - especially `web/app.py` and `web/metric_queries.py`
@@ -194,6 +196,7 @@ RAWR:
 - continue shrinking `apps/rawr/data.py`
 - `apps/rawr/inputs.py` now owns observation building and input/result shaping
 - `apps/rawr/records.py` now owns metric-native player-season record construction
+- `data` now owns RAWR persistence-row mapping
 - keep CLI/report orchestration in `service.py`
 
 ### 2. Move metric row mapping into `data`
@@ -207,6 +210,7 @@ Target:
 - `web/metric_store.py` talks to stable `metrics` + `data` entrypoints
 
 Do not force this in one pass if it creates extra glue. Incremental cleanup is fine.
+Next smallest step: move WOWY row mapping over the same boundary.
 
 ### 3. Shrink the web layer
 

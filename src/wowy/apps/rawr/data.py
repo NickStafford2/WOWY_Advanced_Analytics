@@ -5,7 +5,10 @@ from pathlib import Path
 
 from wowy.apps.rawr._observations import count_player_games
 from wowy.data.game_cache.repository import list_cache_load_rows
-from wowy.data.player_metrics_db import PlayerSeasonMetricRow
+from wowy.data.player_metrics_db import (
+    PlayerSeasonMetricRow,
+    build_rawr_player_season_metric_rows,
+)
 from wowy.nba.team_identity import list_expected_team_abbreviations_for_season
 from wowy.nba.team_seasons import resolve_team_seasons
 
@@ -198,23 +201,9 @@ def build_rawr_metric_rows(
         min_average_minutes=None,
         min_total_minutes=None,
     )
-    return [
-        PlayerSeasonMetricRow(
-            metric=RAWR_METRIC,
-            metric_label="RAWR",
-            scope_key=scope_key,
-            team_filter=team_filter,
-            season_type=season_type,
-            season=record.season,
-            player_id=record.player_id,
-            player_name=record.player_name,
-            value=record.coefficient,
-            sample_size=record.games,
-            average_minutes=record.average_minutes,
-            total_minutes=record.total_minutes,
-            details={
-                "games": record.games,
-            },
-        )
-        for record in records
-    ]
+    return build_rawr_player_season_metric_rows(
+        scope_key=scope_key,
+        team_filter=team_filter,
+        season_type=season_type,
+        records=records,
+    )

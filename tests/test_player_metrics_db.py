@@ -5,11 +5,13 @@ from pathlib import Path
 
 import pytest
 
+from wowy.apps.rawr.models import RawrPlayerSeasonRecord
 from wowy.data.player_metrics_db import (
     MetricFullSpanPointRow,
     MetricFullSpanSeriesRow,
     MetricScopeCatalogRow,
     PlayerSeasonMetricRow,
+    build_rawr_player_season_metric_rows,
     initialize_player_metrics_db,
     list_metric_seasons,
     load_metric_full_span_points_map,
@@ -23,13 +25,50 @@ from wowy.data.player_metrics_db import (
 )
 
 
+def test_build_rawr_player_season_metric_rows_maps_metric_native_records():
+    rows = build_rawr_player_season_metric_rows(
+        scope_key="team_ids=all-teams|season_type=Regular Season",
+        team_filter="",
+        season_type="Regular Season",
+        records=[
+            RawrPlayerSeasonRecord(
+                season="2023-24",
+                player_id=101,
+                player_name="Player 101",
+                games=12,
+                average_minutes=31.5,
+                total_minutes=378.0,
+                coefficient=4.25,
+            )
+        ],
+    )
+
+    assert rows == [
+        PlayerSeasonMetricRow(
+            metric="rawr",
+            metric_label="RAWR",
+            scope_key="team_ids=all-teams|season_type=Regular Season",
+            team_filter="",
+            season_type="Regular Season",
+            season="2023-24",
+            player_id=101,
+            player_name="Player 101",
+            value=4.25,
+            sample_size=12,
+            average_minutes=31.5,
+            total_minutes=378.0,
+            details={"games": 12},
+        )
+    ]
+
+
 def test_replace_metric_rows_persists_metadata_and_queryable_rows(tmp_path: Path):
     db_path = tmp_path / "app" / "player_metrics.sqlite3"
 
     replace_metric_rows(
         db_path,
         metric="wowy",
-        scope_key="teams=all-teams|season_type=Regular Season",
+        scope_key="team_ids=all-teams|season_type=Regular Season",
         metric_label="WOWY",
         build_version="v1",
         source_fingerprint="fingerprint-1",
@@ -37,7 +76,7 @@ def test_replace_metric_rows_persists_metadata_and_queryable_rows(tmp_path: Path
             PlayerSeasonMetricRow(
                 metric="wowy",
                 metric_label="WOWY",
-                scope_key="teams=all-teams|season_type=Regular Season",
+                scope_key="team_ids=all-teams|season_type=Regular Season",
                 team_filter="",
                 season_type="Regular Season",
                 season="2022-23",
@@ -53,7 +92,7 @@ def test_replace_metric_rows_persists_metadata_and_queryable_rows(tmp_path: Path
             PlayerSeasonMetricRow(
                 metric="wowy",
                 metric_label="WOWY",
-                scope_key="teams=all-teams|season_type=Regular Season",
+                scope_key="team_ids=all-teams|season_type=Regular Season",
                 team_filter="",
                 season_type="Regular Season",
                 season="2023-24",
@@ -69,7 +108,7 @@ def test_replace_metric_rows_persists_metadata_and_queryable_rows(tmp_path: Path
             PlayerSeasonMetricRow(
                 metric="wowy",
                 metric_label="WOWY",
-                scope_key="teams=all-teams|season_type=Regular Season",
+                scope_key="team_ids=all-teams|season_type=Regular Season",
                 team_filter="",
                 season_type="Regular Season",
                 season="2023-24",
@@ -88,7 +127,7 @@ def test_replace_metric_rows_persists_metadata_and_queryable_rows(tmp_path: Path
     metadata = load_metric_store_metadata(
         db_path,
         "wowy",
-        "teams=all-teams|season_type=Regular Season",
+        "team_ids=all-teams|season_type=Regular Season",
     )
     assert metadata is not None
     assert metadata.metric_label == "WOWY"
@@ -98,13 +137,13 @@ def test_replace_metric_rows_persists_metadata_and_queryable_rows(tmp_path: Path
     assert list_metric_seasons(
         db_path,
         "wowy",
-        "teams=all-teams|season_type=Regular Season",
+        "team_ids=all-teams|season_type=Regular Season",
     ) == ["2022-23", "2023-24"]
 
     rows = load_metric_rows(
         db_path,
         metric="wowy",
-        scope_key="teams=all-teams|season_type=Regular Season",
+        scope_key="team_ids=all-teams|season_type=Regular Season",
         seasons=["2023-24"],
         min_sample_size=2,
         min_secondary_sample_size=1,
@@ -125,7 +164,7 @@ def test_full_span_rows_and_scope_catalog_are_queryable(tmp_path: Path):
         db_path,
         row=MetricScopeCatalogRow(
             metric="wowy",
-            scope_key="teams=all-teams|season_type=Regular Season",
+            scope_key="team_ids=all-teams|season_type=Regular Season",
             metric_label="WOWY",
             team_filter="",
             season_type="Regular Season",
@@ -139,11 +178,11 @@ def test_full_span_rows_and_scope_catalog_are_queryable(tmp_path: Path):
     replace_metric_full_span_rows(
         db_path,
         metric="wowy",
-        scope_key="teams=all-teams|season_type=Regular Season",
+        scope_key="team_ids=all-teams|season_type=Regular Season",
         series_rows=[
             MetricFullSpanSeriesRow(
                 metric="wowy",
-                scope_key="teams=all-teams|season_type=Regular Season",
+                scope_key="team_ids=all-teams|season_type=Regular Season",
                 player_id=101,
                 player_name="Player 101",
                 span_average_value=7.0,
@@ -154,14 +193,14 @@ def test_full_span_rows_and_scope_catalog_are_queryable(tmp_path: Path):
         point_rows=[
             MetricFullSpanPointRow(
                 metric="wowy",
-                scope_key="teams=all-teams|season_type=Regular Season",
+                scope_key="team_ids=all-teams|season_type=Regular Season",
                 player_id=101,
                 season="2022-23",
                 value=12.0,
             ),
             MetricFullSpanPointRow(
                 metric="wowy",
-                scope_key="teams=all-teams|season_type=Regular Season",
+                scope_key="team_ids=all-teams|season_type=Regular Season",
                 player_id=101,
                 season="2023-24",
                 value=2.0,
@@ -172,7 +211,7 @@ def test_full_span_rows_and_scope_catalog_are_queryable(tmp_path: Path):
     catalog_row = load_metric_scope_catalog_row(
         db_path,
         "wowy",
-        "teams=all-teams|season_type=Regular Season",
+        "team_ids=all-teams|season_type=Regular Season",
     )
     assert catalog_row is not None
     assert catalog_row.available_teams == ["BOS", "NYK"]
@@ -181,13 +220,13 @@ def test_full_span_rows_and_scope_catalog_are_queryable(tmp_path: Path):
     series_rows = load_metric_full_span_series_rows(
         db_path,
         metric="wowy",
-        scope_key="teams=all-teams|season_type=Regular Season",
+        scope_key="team_ids=all-teams|season_type=Regular Season",
         top_n=1,
     )
     assert series_rows == [
         MetricFullSpanSeriesRow(
             metric="wowy",
-            scope_key="teams=all-teams|season_type=Regular Season",
+            scope_key="team_ids=all-teams|season_type=Regular Season",
             player_id=101,
             player_name="Player 101",
             span_average_value=7.0,
@@ -199,7 +238,7 @@ def test_full_span_rows_and_scope_catalog_are_queryable(tmp_path: Path):
     assert load_metric_full_span_points_map(
         db_path,
         metric="wowy",
-        scope_key="teams=all-teams|season_type=Regular Season",
+        scope_key="team_ids=all-teams|season_type=Regular Season",
         player_ids=[101],
     ) == {101: {"2022-23": 12.0, "2023-24": 2.0}}
 
@@ -233,7 +272,7 @@ def test_initialize_player_metrics_db_migrates_legacy_wowy_shrinkage_metric_name
             (
                 "shrinkage_wowy",
                 "Shrinkage WOWY",
-                "teams=all-teams|season_type=Regular Season",
+                "team_ids=all-teams|season_type=Regular Season",
                 "",
                 "Regular Season",
                 "2023-24",
@@ -261,7 +300,7 @@ def test_initialize_player_metrics_db_migrates_legacy_wowy_shrinkage_metric_name
             """,
             (
                 "shrinkage_wowy",
-                "teams=all-teams|season_type=Regular Season",
+                "team_ids=all-teams|season_type=Regular Season",
                 "Shrinkage WOWY",
                 "v1",
                 "fingerprint-1",
@@ -286,7 +325,7 @@ def test_initialize_player_metrics_db_migrates_legacy_wowy_shrinkage_metric_name
             """,
             (
                 "shrinkage_wowy",
-                "teams=all-teams|season_type=Regular Season",
+                "team_ids=all-teams|season_type=Regular Season",
                 "Shrinkage WOWY",
                 "",
                 "Regular Season",
@@ -311,7 +350,7 @@ def test_initialize_player_metrics_db_migrates_legacy_wowy_shrinkage_metric_name
             """,
             (
                 "shrinkage_wowy",
-                "teams=all-teams|season_type=Regular Season",
+                "team_ids=all-teams|season_type=Regular Season",
                 101,
                 "Player 101",
                 1.5,
@@ -331,7 +370,7 @@ def test_initialize_player_metrics_db_migrates_legacy_wowy_shrinkage_metric_name
             """,
             (
                 "shrinkage_wowy",
-                "teams=all-teams|season_type=Regular Season",
+                "team_ids=all-teams|season_type=Regular Season",
                 101,
                 "2023-24",
                 1.5,
@@ -344,27 +383,27 @@ def test_initialize_player_metrics_db_migrates_legacy_wowy_shrinkage_metric_name
     rows = load_metric_rows(
         db_path,
         metric="wowy_shrunk",
-        scope_key="teams=all-teams|season_type=Regular Season",
+        scope_key="team_ids=all-teams|season_type=Regular Season",
     )
     metadata = load_metric_store_metadata(
         db_path,
         "wowy_shrunk",
-        "teams=all-teams|season_type=Regular Season",
+        "team_ids=all-teams|season_type=Regular Season",
     )
     catalog_row = load_metric_scope_catalog_row(
         db_path,
         "wowy_shrunk",
-        "teams=all-teams|season_type=Regular Season",
+        "team_ids=all-teams|season_type=Regular Season",
     )
     series_rows = load_metric_full_span_series_rows(
         db_path,
         metric="wowy_shrunk",
-        scope_key="teams=all-teams|season_type=Regular Season",
+        scope_key="team_ids=all-teams|season_type=Regular Season",
     )
     point_map = load_metric_full_span_points_map(
         db_path,
         metric="wowy_shrunk",
-        scope_key="teams=all-teams|season_type=Regular Season",
+        scope_key="team_ids=all-teams|season_type=Regular Season",
         player_ids=[101],
     )
 
@@ -416,7 +455,7 @@ def test_replace_metric_rows_rejects_non_canonical_scope_values(
         replace_metric_rows(
             db_path,
             metric="wowy",
-            scope_key="teams=BOS|season_type=regular season",
+            scope_key="team_ids=1610612738|season_type=regular season",
             metric_label="WOWY",
             build_version="v1",
             source_fingerprint="fingerprint-1",
@@ -424,8 +463,8 @@ def test_replace_metric_rows_rejects_non_canonical_scope_values(
                 PlayerSeasonMetricRow(
                     metric="wowy",
                     metric_label="WOWY",
-                    scope_key="teams=BOS|season_type=regular season",
-                    team_filter="BOS",
+                    scope_key="team_ids=1610612738|season_type=regular season",
+                    team_filter="1610612738",
                     season_type="regular season",
                     season="2023-24",
                     player_id=101,
@@ -443,7 +482,7 @@ def test_replace_metric_rows_rejects_non_canonical_scope_values(
         replace_metric_rows(
             db_path,
             metric="wowy",
-            scope_key="teams=BOS|season_type=Regular Season",
+            scope_key="team_ids=1610612738|season_type=Regular Season",
             metric_label="WOWY",
             build_version="v1",
             source_fingerprint="fingerprint-1",
@@ -451,8 +490,8 @@ def test_replace_metric_rows_rejects_non_canonical_scope_values(
                 PlayerSeasonMetricRow(
                     metric="wowy",
                     metric_label="WOWY",
-                    scope_key="teams=BOS|season_type=Regular Season",
-                    team_filter="BOS",
+                    scope_key="team_ids=1610612738|season_type=Regular Season",
+                    team_filter="1610612738",
                     season_type="regular season",
                     season="2023-24",
                     player_id=101,
@@ -466,11 +505,11 @@ def test_replace_metric_rows_rejects_non_canonical_scope_values(
             ],
         )
 
-    with pytest.raises(ValueError, match="non-canonical team_filter"):
+    with pytest.raises(ValueError, match="Invalid team_id filter value"):
         replace_metric_rows(
             db_path,
             metric="wowy",
-            scope_key="teams=BOS|season_type=Regular Season",
+            scope_key="team_ids=1610612738|season_type=Regular Season",
             metric_label="WOWY",
             build_version="v1",
             source_fingerprint="fingerprint-1",
@@ -478,7 +517,7 @@ def test_replace_metric_rows_rejects_non_canonical_scope_values(
                 PlayerSeasonMetricRow(
                     metric="wowy",
                     metric_label="WOWY",
-                    scope_key="teams=BOS|season_type=Regular Season",
+                    scope_key="team_ids=1610612738|season_type=Regular Season",
                     team_filter="bos",
                     season_type="Regular Season",
                     season="2023-24",
@@ -502,7 +541,7 @@ def test_metric_catalog_and_full_span_writes_reject_inconsistent_shapes(tmp_path
             db_path,
             row=MetricScopeCatalogRow(
                 metric="wowy",
-                scope_key="teams=all-teams|season_type=Regular Season",
+                scope_key="team_ids=all-teams|season_type=Regular Season",
                 metric_label="WOWY",
                 team_filter="",
                 season_type="Regular Season",
@@ -518,11 +557,11 @@ def test_metric_catalog_and_full_span_writes_reject_inconsistent_shapes(tmp_path
         replace_metric_full_span_rows(
             db_path,
             metric="wowy",
-            scope_key="teams=all-teams|season_type=Regular Season",
+            scope_key="team_ids=all-teams|season_type=Regular Season",
             series_rows=[
                 MetricFullSpanSeriesRow(
                     metric="wowy",
-                    scope_key="teams=all-teams|season_type=Regular Season",
+                    scope_key="team_ids=all-teams|season_type=Regular Season",
                     player_id=101,
                     player_name="Player 101",
                     span_average_value=7.0,
@@ -533,14 +572,14 @@ def test_metric_catalog_and_full_span_writes_reject_inconsistent_shapes(tmp_path
             point_rows=[
                 MetricFullSpanPointRow(
                     metric="wowy",
-                    scope_key="teams=all-teams|season_type=Regular Season",
+                    scope_key="team_ids=all-teams|season_type=Regular Season",
                     player_id=101,
                     season="2022-23",
                     value=12.0,
                 ),
                 MetricFullSpanPointRow(
                     metric="wowy",
-                    scope_key="teams=all-teams|season_type=Regular Season",
+                    scope_key="team_ids=all-teams|season_type=Regular Season",
                     player_id=101,
                     season="2023-24",
                     value=2.0,
@@ -552,11 +591,11 @@ def test_metric_catalog_and_full_span_writes_reject_inconsistent_shapes(tmp_path
         replace_metric_full_span_rows(
             db_path,
             metric="wowy",
-            scope_key="teams=all-teams|season_type=Regular Season",
+            scope_key="team_ids=all-teams|season_type=Regular Season",
             series_rows=[
                 MetricFullSpanSeriesRow(
                     metric="wowy",
-                    scope_key="teams=all-teams|season_type=Regular Season",
+                    scope_key="team_ids=all-teams|season_type=Regular Season",
                     player_id=101,
                     player_name="Player 101",
                     span_average_value=7.0,
@@ -567,7 +606,7 @@ def test_metric_catalog_and_full_span_writes_reject_inconsistent_shapes(tmp_path
             point_rows=[
                 MetricFullSpanPointRow(
                     metric="wowy",
-                    scope_key="teams=all-teams|season_type=Regular Season",
+                    scope_key="team_ids=all-teams|season_type=Regular Season",
                     player_id=101,
                     season="2022-23",
                     value=12.0,

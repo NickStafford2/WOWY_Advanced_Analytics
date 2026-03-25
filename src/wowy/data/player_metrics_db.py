@@ -8,7 +8,7 @@ from collections import defaultdict
 from dataclasses import dataclass
 from datetime import UTC, datetime
 from pathlib import Path
-from typing import Any
+from typing import Any, Iterable
 
 from wowy.nba.season_types import canonicalize_season_type
 from wowy.nba.seasons import canonicalize_season_string, season_sort_key
@@ -37,7 +37,6 @@ class PlayerSeasonMetricRow:
     average_minutes: float | None = None
     total_minutes: float | None = None
     details: dict[str, Any] | None = None
-
 
 @dataclass(frozen=True)
 class MetricStoreMetadata:
@@ -262,6 +261,33 @@ def replace_metric_rows(
             ),
         )
         connection.commit()
+
+
+def build_rawr_player_season_metric_rows(
+    *,
+    scope_key: str,
+    team_filter: str,
+    season_type: str,
+    records: Iterable[Any],
+) -> list[PlayerSeasonMetricRow]:
+    return [
+        PlayerSeasonMetricRow(
+            metric="rawr",
+            metric_label="RAWR",
+            scope_key=scope_key,
+            team_filter=team_filter,
+            season_type=season_type,
+            season=record.season,
+            player_id=record.player_id,
+            player_name=record.player_name,
+            value=record.coefficient,
+            sample_size=record.games,
+            average_minutes=record.average_minutes,
+            total_minutes=record.total_minutes,
+            details={"games": record.games},
+        )
+        for record in records
+    ]
 
 
 def replace_metric_scope_store(
