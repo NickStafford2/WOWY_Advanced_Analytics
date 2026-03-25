@@ -24,7 +24,7 @@ from rawr_analytics.nba.team_identity import (
 from rawr_analytics.workflows.nba_ingest import refresh_normalized_team_season_cache
 
 _LAST_STATUS_LINE_LENGTH = 0
-DEFAULT_START_YEAR = 2024
+DEFAULT_START_YEAR = 2000
 DEFAULT_FIRST_YEAR = 1946
 
 

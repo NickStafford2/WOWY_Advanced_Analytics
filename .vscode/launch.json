@@ -1,0 +1,13 @@
+{
+  "version": "0.0.2",
+  "configurations": [
+    {
+      "name": "Run Python Script",
+      "type": "python",
+      "request": "launch",
+      "program": "${workspaceFolder}/scripts/cache_season_data.py",
+      "cwd": "${workspaceFolder}",
+      "console": "integratedTerminal"
+    }
+  ]
+}

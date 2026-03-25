@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from pathlib import Path
+from types import NoneType
 from typing import Callable
 
 from rawr_analytics.nba.season_types import canonicalize_season_type
@@ -18,6 +19,7 @@ from rawr_analytics.nba.source.models import (
     SourceLeagueSchedule,
 )
 from rawr_analytics.nba.source.rules import (
+    _row_has_any_box_score_stats,
     classify_source_player_row,
     classify_source_schedule_row,
     classify_source_team_row,
@@ -306,6 +308,24 @@ def _optional_int(row: dict[str, object], key: str) -> int | None:
         raise ValueError(f"Invalid integer value for {key}: {value!r}") from exc
 
 
+def _optional_minutes(row: dict[str, object], key: str) -> str | int | None:
+    value = _row_value(row, key)
+    if value is None or value == "":
+        return None
+    if isinstance(value, int) and value == 0:
+        return None
+    if isinstance(value, int | str):
+        return value
+    raise ValueError(f"Invalid mintue value for {key}: {value!r}")
+
+
+def _optional_plus_minus(row: dict[str, object], key: str) -> int | float | None:
+    value = _row_value(row, key)
+    if isinstance(value, int | float | NoneType):
+        return value
+    raise ValueError(f"Invalid mintue value for {key}: {value!r}")
+
+
 def _row_value(row: dict[str, object], key: str) -> object | None:
     if key in row:
         return row[key]
@@ -345,7 +365,7 @@ def _parse_result_set_player_row(
             team_abbreviation=_optional_text(row, "TEAM_ABBREVIATION"),
             player_id=_optional_int(row, "PLAYER_ID"),
             player_name=_player_name_from_row(row),
-            minutes_raw=_row_value(row, "MIN"),
+            minutes_raw=_optional_minutes(row, "MIN"),
             raw_row=row,
         )
         _validate_source_player_row(parsed_row)
@@ -359,7 +379,7 @@ def _parse_result_set_team_row(row: dict[str, object]) -> SourceBoxScoreTeam:
         parsed_row = SourceBoxScoreTeam(
             team_id=_optional_int(row, "TEAM_ID"),
             team_abbreviation=_optional_text(row, "TEAM_ABBREVIATION"),
-            plus_minus_raw=_row_value(row, "PLUS_MINUS"),
+            plus_minus_raw=_optional_plus_minus(row, "PLUS_MINUS"),
             points_raw=_row_value(row, "PTS"),
             raw_row=row,
         )
@@ -369,32 +389,58 @@ def _parse_result_set_team_row(row: dict[str, object]) -> SourceBoxScoreTeam:
         raise ValueError(f"{exc}; nba_api_box_score_team_row={format_source_row(row)}") from exc
 
 
-def _validate_source_player_row(row: SourceBoxScorePlayer) -> None:
-    classification = classify_source_player_row(row)
+def _validate_source_player_row(player: SourceBoxScorePlayer) -> None:
+    classification = classify_source_player_row(player)
     if classification.should_skip:
         return
 
     resolve_source_team_identity(
-        team_id=row.team_id,
-        team_abbreviation=row.team_abbreviation,
+        team_id=player.team_id,
+        team_abbreviation=player.team_abbreviation,
     )
 
-    if row.game_id.strip() == "":
+    if player.game_id.strip() == "":
         raise ValueError(
-            f"Missing GAME_ID; nba_api_box_score_player_row={format_source_row(row.raw_row)}"
+            f"Missing GAME_ID; nba_api_box_score_player_row={format_source_row(player.raw_row)}"
         )
-    if row.player_id is None or row.player_id <= 0:
+    if player.player_id is None or player.player_id <= 0:
         raise ValueError(
-            f"Missing PLAYER_ID; nba_api_box_score_player_row={format_source_row(row.raw_row)}"
+            f"Missing PLAYER_ID; nba_api_box_score_player_row={format_source_row(player.raw_row)}"
         )
-    if row.player_name.strip() == "":
+    if player.player_name.strip() == "":
         raise ValueError(
-            f"Missing PLAYER_NAME; nba_api_box_score_player_row={format_source_row(row.raw_row)}"
+            f"Missing PLAYER_NAME; nba_api_box_score_player_row={format_source_row(player.raw_row)}"
         )
-    if parse_minutes_to_float(row.minutes_raw) is None:
+    if not _played_in_game(player):
         raise ValueError(
-            f"Unparseable MIN value; nba_api_box_score_player_row={format_source_row(row.raw_row)}"
+            f"Player Did Not Play; nba_api_box_score_player_row={format_source_row(player.raw_row)}"
         )
+
+
+def _player_has_minutes(player: SourceBoxScorePlayer) -> bool:
+    assert player is not None
+
+    minutes: int | str | None = player.minutes_raw
+    if minutes is None:
+        return False
+
+    minutes_float: float | None = parse_minutes_to_float(minutes)
+    if minutes_float is None or minutes_float <= 0:
+        return False
+    return True
+
+
+def _played_in_game(player: SourceBoxScorePlayer) -> bool:
+    assert player is not None
+    has_stats = _row_has_any_box_score_stats(player.raw_row)
+    has_minutes = _player_has_minutes(player)
+
+    if has_stats:
+        if not has_minutes:
+            "debug"
+        assert has_minutes
+
+    return has_minutes or has_stats
 
 
 def _validate_source_team_row(row: SourceBoxScoreTeam) -> None:

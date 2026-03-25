@@ -68,7 +68,7 @@ def parse_box_score_numeric_value(value: object) -> float | None:
     return numeric_value
 
 
-def parse_minutes_to_float(minutes: object) -> float | None:
+def parse_minutes_to_float(minutes: int | str | None) -> float | None:
     if minutes is None or isinstance(minutes, bool):
         return None
     if isinstance(minutes, int | float):
@@ -82,8 +82,6 @@ def parse_minutes_to_float(minutes: object) -> float | None:
         return None
     if minute_text.startswith("PT"):
         return _parse_iso_duration_minutes(minute_text)
-    if _is_known_inactive_status(minute_text):
-        return None
     if minute_text in {"0", "0:00", "0.0"}:
         return 0.0
     if ":" not in minute_text:
@@ -103,13 +101,6 @@ def parse_minutes_to_float(minutes: object) -> float | None:
     if not math.isfinite(parsed_minutes):
         return None
     return parsed_minutes
-
-
-def played_in_game(minutes: object) -> bool:
-    parsed_minutes = parse_minutes_to_float(minutes)
-    if parsed_minutes is None:
-        return False
-    return parsed_minutes > 0.0
 
 
 # todo: find out why I made this.
@@ -247,7 +238,22 @@ def _row_has_any_box_score_stats(raw_row: dict[str, object]) -> bool:
         "STL",
         "TO",
     )
-    return any(raw_row.get(key) is not None for key in stat_keys)
+    for key in stat_keys:
+        value = raw_row.get(key)
+        if value is None:
+            continue
+
+        if isinstance(value, (int, float)):  # ints / floats
+            if value != 0:
+                return True
+            continue
+        if isinstance(value, str):  # strings like "0", "0.0"
+            stripped = value.strip()
+            if stripped == "":
+                continue
+            if stripped not in {"0", "0.0"}:
+                return True
+    return False
 
 
 def _is_known_inactive_status(minute_text: str) -> bool:
@@ -293,5 +299,4 @@ __all__ = [
     "format_source_rows",
     "parse_box_score_numeric_value",
     "parse_minutes_to_float",
-    "played_in_game",
 ]

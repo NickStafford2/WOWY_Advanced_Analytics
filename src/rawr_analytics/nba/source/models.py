@@ -10,7 +10,7 @@ class SourceLeagueGame:
     matchup: str
     team_id: int
     team_abbreviation: str
-    raw_row: dict[str, object]
+    raw_row: dict[str, object]  # todo: see what sort of object this can be
 
 
 @dataclass(frozen=True)
@@ -28,17 +28,17 @@ class SourceBoxScorePlayer:
     team_abbreviation: str
     player_id: int | None
     player_name: str
-    minutes_raw: object
-    raw_row: dict[str, object]
+    minutes_raw: str | int | None  # todo: see what sort of object this can be
+    raw_row: dict[str, object]  # todo: see what sort of object this can be
 
 
 @dataclass(frozen=True)
 class SourceBoxScoreTeam:
     team_id: int | None
     team_abbreviation: str
-    plus_minus_raw: object
-    points_raw: object
-    raw_row: dict[str, object]
+    plus_minus_raw: int | float | None  # todo: see what sort of object this can be
+    points_raw: object  # todo: see what sort of object this can be
+    raw_row: dict[str, object]  # todo: see what sort of object this can be
 
 
 @dataclass(frozen=True)
@@ -46,6 +46,7 @@ class SourceBoxScore:
     game_id: str
     players: list[SourceBoxScorePlayer]
     teams: list[SourceBoxScoreTeam]
+
 
 __all__ = [
     "SourceBoxScore",
