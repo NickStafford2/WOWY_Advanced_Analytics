@@ -4,7 +4,6 @@ import argparse
 import subprocess
 import sys
 
-
 DEFAULT_START_YEAR = 2024
 DEFAULT_FIRST_YEAR = 1946
 

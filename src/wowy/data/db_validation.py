@@ -573,13 +573,16 @@ def _validate_metric_store_relations(
                 )
             )
         elif metadata_row[3] != len(rows):
-            issues.append(
-                ValidationIssue(
-                    table="metric_store_metadata_v2",
-                    key=f"metric={metric!r},scope_key={scope_key!r}",
-                    message=f"row_count does not match metric rows: {metadata_row[3]} != {len(rows)}",
+                issues.append(
+                    ValidationIssue(
+                        table="metric_store_metadata_v2",
+                        key=f"metric={metric!r},scope_key={scope_key!r}",
+                        message=(
+                            "row_count does not match metric rows: "
+                            f"{metadata_row[3]} != {len(rows)}"
+                        ),
+                    )
                 )
-            )
         catalog_row = catalog_rows.get(key)
         if catalog_row is None:
             issues.append(
@@ -731,7 +734,7 @@ def _load_normalized_cache_state(
         """
     ).fetchall()
     counts: dict[str, int] = Counter()
-    digests: dict[str, object] = {}
+    digests: dict[str, hashlib._Hash] = {}
     for row in rows:
         season_type = row["season_type"]
         counts[season_type] += 1

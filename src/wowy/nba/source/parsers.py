@@ -176,7 +176,10 @@ def _parse_result_set_box_score(
     team_set: dict,
     game_id: str,
 ) -> SourceBoxScore:
-    players = [_parse_result_set_player_row(row, game_id=game_id) for row in _result_set_rows(player_set)]
+    players = [
+        _parse_result_set_player_row(row, game_id=game_id)
+        for row in _result_set_rows(player_set)
+    ]
     teams = [_parse_result_set_team_row(row) for row in _result_set_rows(team_set)]
     return SourceBoxScore(game_id=game_id, players=players, teams=teams)
 
@@ -295,6 +298,8 @@ def _optional_int(row: dict[str, object], key: str) -> int | None:
     if value is None or value == "":
         return None
     if isinstance(value, bool):
+        raise ValueError(f"Invalid integer value for {key}: {value!r}")
+    if not isinstance(value, int | float | str):
         raise ValueError(f"Invalid integer value for {key}: {value!r}")
     try:
         return int(value)

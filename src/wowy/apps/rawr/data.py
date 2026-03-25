@@ -28,6 +28,18 @@ DEFAULT_RAWR_SHRINKAGE_STRENGTH = 1.0
 DEFAULT_RAWR_SHRINKAGE_MINUTE_SCALE = 48.0
 
 
+@dataclass
+class _SeasonIssueState:
+    teams: dict[str, object]
+    issues: set[str]
+
+
+@dataclass
+class _SeasonCompletionState:
+    teams: dict[str, object]
+    all_complete: bool = True
+
+
 def build_rawr_observations(
     games: list[NormalizedGameRecord],
     game_players: list[NormalizedGamePlayerRecord],
@@ -255,15 +267,15 @@ def list_incomplete_rawr_seasons(
         season_type=season_type,
         seasons=seasons,
     )
-    rows_by_season: dict[str, dict[str, object]] = {}
+    rows_by_season: dict[str, _SeasonIssueState] = {}
     for row in cache_load_rows:
         season_rows = rows_by_season.setdefault(
             row.season,
-            {"teams": {}, "issues": set()},
+            _SeasonIssueState(teams={}, issues=set()),
         )
-        season_rows["teams"][row.team] = row
+        season_rows.teams[row.team] = row
         if row.expected_games_row_count is None or row.skipped_games_row_count is None:
-            season_rows["issues"].add(
+            season_rows.issues.add(
                 "ERROR: MetaData incomplete/out of date. "
                 f"Run `poetry run python scripts/cache_season_data.py {row.season}` "
                 "or repopulate DB."
@@ -272,12 +284,12 @@ def list_incomplete_rawr_seasons(
             row.expected_games_row_count is not None
             and row.games_row_count != row.expected_games_row_count
         ):
-            season_rows["issues"].add(
+            season_rows.issues.add(
                 f"partial team-season cache for {row.team} "
                 f"({row.games_row_count}/{row.expected_games_row_count} games)"
             )
         if row.skipped_games_row_count:
-            season_rows["issues"].add(
+            season_rows.issues.add(
                 f"skipped games present for {row.team} "
                 f"({row.skipped_games_row_count} skipped)"
             )
@@ -294,12 +306,10 @@ def list_incomplete_rawr_seasons(
                 )
             )
             continue
-        missing_teams = sorted(expected_teams - set(season_rows["teams"]))
+        missing_teams = sorted(expected_teams - set(season_rows.teams))
         if missing_teams:
-            season_rows["issues"].add(
-                f"missing team-seasons: {', '.join(missing_teams)}"
-            )
-        for reason in sorted(season_rows["issues"]):
+            season_rows.issues.add(f"missing team-seasons: {', '.join(missing_teams)}")
+        for reason in sorted(season_rows.issues):
             issues.append(RawrSeasonCompletenessIssue(season=season, reason=reason))
     return issues
 
@@ -315,28 +325,28 @@ def list_complete_rawr_seasons(
         season_type=season_type,
         seasons=seasons,
     )
-    rows_by_season: dict[str, dict[str, object]] = {}
+    rows_by_season: dict[str, _SeasonCompletionState] = {}
     for row in cache_load_rows:
         season_rows = rows_by_season.setdefault(
             row.season,
-            {"teams": {}, "all_complete": True},
+            _SeasonCompletionState(teams={}),
         )
-        season_rows["teams"][row.team] = row
+        season_rows.teams[row.team] = row
         if (
             row.expected_games_row_count is None
             or row.skipped_games_row_count is None
             or row.games_row_count != row.expected_games_row_count
             or row.skipped_games_row_count != 0
         ):
-            season_rows["all_complete"] = False
+            season_rows.all_complete = False
 
     complete_seasons: set[str] = set()
     for season in seasons:
         season_rows = rows_by_season.get(season)
-        if season_rows is None or not season_rows["all_complete"]:
+        if season_rows is None or not season_rows.all_complete:
             continue
         expected_teams = set(list_expected_rawr_teams_for_season(season))
-        if set(season_rows["teams"]) != expected_teams:
+        if set(season_rows.teams) != expected_teams:
             continue
         complete_seasons.add(season)
     return complete_seasons

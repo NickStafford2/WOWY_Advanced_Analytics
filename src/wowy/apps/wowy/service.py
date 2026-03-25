@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from wowy.apps.wowy.analysis import compute_wowy, filter_results
+from wowy.apps.wowy.analysis import ProgressFn, compute_wowy, filter_results
 from wowy.apps.wowy.data import (
     attach_minute_stats,
     filter_results_by_minutes,
@@ -47,12 +47,14 @@ def build_wowy_report(
 ) -> str:
     """Score WOWY from derived game rows, then apply output filters and formatting."""
     progress_bar = None
-    progress = None
+    progress: ProgressFn | None = None
     if show_progress:
         all_players = {player_id for game in games for player_id in game.players}
         progress_bar = TerminalProgressBar("WOWY", total=len(all_players))
-        def progress(current: int, _total: int, detail: str) -> None:
+
+        def _report_progress(current: int, _total: int, detail: str | None) -> None:
             progress_bar.update(current, detail)
+        progress = _report_progress
     results = compute_wowy(games, progress=progress)
     if progress_bar is not None:
         progress_bar.finish("done")

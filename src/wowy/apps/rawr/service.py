@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from wowy.apps.rawr.analysis import fit_player_rawr, tune_ridge_alpha
+from wowy.apps.rawr.analysis import ProgressFn, fit_player_rawr, tune_ridge_alpha
 from wowy.apps.rawr.data import (
     attach_minute_stats_to_result,
     build_player_season_minute_stats,
@@ -83,7 +83,7 @@ def run_rawr_records(
         player_minute_stats = build_player_season_minute_stats(games, game_players)
     observations, player_names = build_rawr_observations(games, game_players)
     progress_bar = None
-    progress = None
+    progress: ProgressFn | None = None
     if show_progress:
         player_count = sum(
             1
@@ -103,8 +103,9 @@ def run_rawr_records(
             (len(observations) * 2) + max(feature_count - 2, 0) + feature_count
         )
         progress_bar = TerminalProgressBar("RAWR", total=total_steps)
-        def progress(current: int, _total: int, detail: str) -> None:
+        def _report_progress(current: int, _total: int, detail: str | None) -> None:
             progress_bar.update(current, detail)
+        progress = _report_progress
     result = fit_player_rawr(
         observations,
         player_names=player_names,

@@ -15,15 +15,14 @@ from wowy.nba.ingest_logging import (
     DEFAULT_INGEST_FAILURE_LOG_PATH,
     append_ingest_failure_log,
 )
-from wowy.nba.seasons import canonicalize_season_string
 from wowy.nba.season_types import canonicalize_season_type
+from wowy.nba.seasons import canonicalize_season_string
 from wowy.nba.source.cache import DEFAULT_SOURCE_DATA_DIR
 from wowy.nba.team_identity import (
     list_expected_team_abbreviations_for_season,
     team_is_active_for_season,
 )
 from wowy.workflows.nba_ingest import refresh_normalized_team_season_cache
-
 
 _LAST_STATUS_LINE_LENGTH = 0
 DEFAULT_START_YEAR = 2024

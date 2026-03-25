@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import sqlite3
+from collections.abc import Sequence
 from datetime import UTC, datetime
 from pathlib import Path
 
@@ -477,7 +478,7 @@ def _append_in_filter(
     params: list[object],
     *,
     column: str,
-    values: list[object],
+    values: Sequence[object],
 ) -> tuple[str, list[object]]:
     if not values:
         return query, params

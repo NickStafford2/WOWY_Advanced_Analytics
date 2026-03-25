@@ -4,6 +4,7 @@ import json
 from dataclasses import asdict, is_dataclass
 from datetime import UTC, datetime
 from pathlib import Path
+from typing import Any
 
 from wowy.nba.errors import (
     FetchError,
@@ -23,7 +24,7 @@ def append_ingest_failure_log(
     error: Exception,
     log_path: Path = DEFAULT_INGEST_FAILURE_LOG_PATH,
 ) -> None:
-    record = {
+    record: dict[str, Any] = {
         "timestamp_utc": datetime.now(UTC).isoformat(),
         "team": team,
         "season": season,

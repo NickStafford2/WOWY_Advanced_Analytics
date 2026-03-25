@@ -3,6 +3,7 @@ from __future__ import annotations
 import sys
 from dataclasses import dataclass
 from textwrap import wrap
+from typing import TextIO
 
 
 @dataclass
@@ -10,7 +11,7 @@ class TerminalProgressBar:
     label: str
     total: int
     width: int = 32
-    stream: object | None = None
+    stream: TextIO | None = None
 
     def __post_init__(self) -> None:
         self.total = max(1, self.total)
@@ -19,6 +20,7 @@ class TerminalProgressBar:
         self._last_line: str | None = None
 
     def update(self, current: int, detail: str | None = None) -> None:
+        assert self.stream is not None
         current = min(max(current, 0), self.total)
         filled = int((current / self.total) * self.width)
         bar = "#" * filled + "-" * (self.width - filled)
@@ -32,6 +34,7 @@ class TerminalProgressBar:
         self._last_line = line
 
     def finish(self, detail: str | None = None) -> None:
+        assert self.stream is not None
         self.update(self.total, detail=detail)
         self.stream.write("\n")
         self.stream.flush()
@@ -43,10 +46,11 @@ def print_status_box(
     lines: list[str],
     *,
     width: int = 78,
-    stream = None,
+    stream: TextIO | None = None,
 ) -> None:
     if stream is None:
         stream = sys.stderr
+    assert stream is not None
     content_width = max(24, width - 4)
     wrapped_lines: list[str] = []
     for line in lines:

@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import Callable
+from typing import Callable, overload
 
 from wowy.apps.wowy.models import WowyGameRecord, WowyPlayerStats
 
@@ -76,6 +76,26 @@ def filter_results(
         filtered[player] = stats
 
     return filtered
+
+
+@overload
+def compute_wowy_shrinkage_score(
+    *,
+    games_with: int,
+    games_without: int,
+    wowy_score: float,
+    prior_games: float = DEFAULT_WOWY_SHRINKAGE_PRIOR_GAMES,
+) -> float: ...
+
+
+@overload
+def compute_wowy_shrinkage_score(
+    *,
+    games_with: int,
+    games_without: int,
+    wowy_score: None,
+    prior_games: float = DEFAULT_WOWY_SHRINKAGE_PRIOR_GAMES,
+) -> None: ...
 
 
 def compute_wowy_shrinkage_score(
