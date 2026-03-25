@@ -17,7 +17,7 @@ from wowy.web.metric_queries import (
     build_custom_rawr_leaderboard_payload,
     build_custom_wowy_leaderboard_payload,
     build_custom_wowy_shrunk_leaderboard_payload,
-    build_metric_default_filters_payload,
+    build_metric_filters_payload,
     build_metric_options_payload,
     build_metric_player_seasons_payload,
     build_metric_span_chart_payload,
@@ -233,7 +233,7 @@ def _build_metric_player_seasons_payload(
         min_sample_size=filter_values["min_sample_size"],
         min_secondary_sample_size=filter_values["min_secondary_sample_size"],
     )
-    payload["filters"] = _build_filters_payload(
+    payload["filters"] = build_metric_filters_payload(
         metric=metric,
         teams=None,
         team_ids=team_ids,
@@ -273,7 +273,7 @@ def _build_metric_span_chart_payload(
         scope_key=scope_key,
         top_n=filter_values["top_n"],
     )
-    payload["filters"] = _build_filters_payload(
+    payload["filters"] = build_metric_filters_payload(
         metric=metric,
         teams=None,
         team_ids=team_ids,
@@ -319,7 +319,7 @@ def _build_cached_metric_leaderboard_payload(
         min_sample_size=filter_values["min_sample_size"],
         min_secondary_sample_size=filter_values["min_secondary_sample_size"],
     )
-    payload["filters"] = _build_filters_payload(
+    payload["filters"] = build_metric_filters_payload(
         metric=metric,
         teams=None,
         team_ids=team_ids,
@@ -407,7 +407,7 @@ def _build_metric_custom_query_payload(
         )
     else:
         raise ValueError(f"Unknown metric: {metric}")
-    payload["filters"] = _build_filters_payload(
+    payload["filters"] = build_metric_filters_payload(
         metric=metric,
         teams=None,
         team_ids=team_ids,
@@ -589,64 +589,6 @@ def _parse_request_seasons(request) -> list[str] | None:
     if not raw_seasons:
         return None
     return [canonicalize_season_string(season) for season in raw_seasons]
-
-
-def _build_filters_payload(
-    *,
-    metric: str,
-    teams: list[str] | None,
-    team_ids: list[int] | None,
-    seasons: list[str] | None,
-    season_type: str,
-    min_sample_size: str | None,
-    min_secondary_sample_size: str | None,
-    ridge_alpha: str | None,
-    min_average_minutes: str | None,
-    min_total_minutes: str | None,
-    top_n: str | None = None,
-) -> dict[str, Any]:
-    defaults = build_metric_default_filters_payload(
-        metric,
-        teams=teams,
-        team_ids=team_ids,
-        season_type=season_type,
-    )
-    payload = {
-        "team": teams,
-        "team_id": team_ids,
-        "season": seasons,
-        "season_type": season_type,
-        "min_average_minutes": _parse_optional_float(
-            min_average_minutes,
-            default=30.0,
-        ),
-        "min_total_minutes": _parse_optional_float(
-            min_total_minutes,
-            default=600.0,
-        ),
-        "top_n": _parse_optional_int(top_n, default=30),
-    }
-    if metric in {WOWY_METRIC, WOWY_SHRUNK_METRIC}:
-        payload["min_games_with"] = _parse_optional_int(
-            min_sample_size,
-            default=int(defaults["min_games_with"]),
-        )
-        payload["min_games_without"] = _parse_optional_int(
-            min_secondary_sample_size,
-            default=int(defaults["min_games_without"]),
-        )
-        return payload
-    if metric == RAWR_METRIC:
-        payload["min_games"] = _parse_optional_int(
-            min_sample_size,
-            default=int(defaults["min_games"]),
-        )
-        payload["ridge_alpha"] = _parse_optional_float(
-            ridge_alpha,
-            default=float(defaults["ridge_alpha"]),
-        )
-        return payload
-    raise ValueError(f"Unknown metric: {metric}")
 
 
 def _render_leaderboard_csv(

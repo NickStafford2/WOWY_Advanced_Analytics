@@ -475,6 +475,64 @@ def build_metric_default_filters_payload(
     raise ValueError(f"Unknown metric: {metric}")
 
 
+def build_metric_filters_payload(
+    metric: str,
+    *,
+    teams: list[str] | None,
+    team_ids: list[int] | None,
+    seasons: list[str] | None,
+    season_type: str,
+    min_sample_size: str | None,
+    min_secondary_sample_size: str | None,
+    ridge_alpha: str | None,
+    min_average_minutes: str | None,
+    min_total_minutes: str | None,
+    top_n: str | None = None,
+) -> dict[str, Any]:
+    defaults = build_metric_default_filters_payload(
+        metric,
+        teams=teams,
+        team_ids=team_ids,
+        season_type=season_type,
+    )
+    payload = {
+        "team": teams,
+        "team_id": team_ids,
+        "season": seasons,
+        "season_type": canonicalize_season_type(season_type),
+        "min_average_minutes": _parse_optional_float(
+            min_average_minutes,
+            default=30.0,
+        ),
+        "min_total_minutes": _parse_optional_float(
+            min_total_minutes,
+            default=600.0,
+        ),
+        "top_n": _parse_optional_int(top_n, default=30),
+    }
+    if metric in {WOWY_METRIC, WOWY_SHRUNK_METRIC}:
+        payload["min_games_with"] = _parse_optional_int(
+            min_sample_size,
+            default=int(defaults["min_games_with"]),
+        )
+        payload["min_games_without"] = _parse_optional_int(
+            min_secondary_sample_size,
+            default=int(defaults["min_games_without"]),
+        )
+        return payload
+    if metric == RAWR_METRIC:
+        payload["min_games"] = _parse_optional_int(
+            min_sample_size,
+            default=int(defaults["min_games"]),
+        )
+        payload["ridge_alpha"] = _parse_optional_float(
+            ridge_alpha,
+            default=float(defaults["ridge_alpha"]),
+        )
+        return payload
+    raise ValueError(f"Unknown metric: {metric}")
+
+
 def build_metric_span_chart_payload(
     metric: str,
     *,
@@ -526,6 +584,18 @@ def build_metric_span_chart_payload(
             for row in series_rows
         ],
     }
+
+
+def _parse_optional_int(raw_value: str | None, default: int) -> int:
+    if raw_value is None:
+        return default
+    return int(raw_value)
+
+
+def _parse_optional_float(raw_value: str | None, default: float) -> float:
+    if raw_value is None:
+        return default
+    return float(raw_value)
 
 
 def _serialize_metric_player_season_row(row: PlayerSeasonMetricRow) -> dict[str, Any]:

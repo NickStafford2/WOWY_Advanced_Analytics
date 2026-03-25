@@ -167,11 +167,13 @@ The codebase is not far from the target, but a few architectural problems still 
 - RAWR observation building, scope filtering, and result minute-shaping now live in `apps/rawr/inputs.py`; `apps/rawr/data.py` is narrower
 - RAWR metric-native `RawrPlayerSeasonRecord` preparation now lives in `apps/rawr/records.py`
 - RAWR `RawrPlayerSeasonRecord` -> `PlayerSeasonMetricRow` mapping now lives in `data`
+- web filter-payload shaping now lives in `web/metric_queries.py`; `web/app.py` is a bit closer to routing and request parsing only
 
 The main remaining issues are:
 
 1. web modules are too orchestration-heavy
    - especially `web/app.py` and `web/metric_queries.py`
+   - `web/app.py` no longer owns filter-payload shaping, but route handlers still duplicate metric-specific orchestration
 2. a few large modules have become mixed-responsibility files
    - examples: `data/player_metrics_db.py`, `data/db_validation.py`, `apps/rawr/data.py`
 
@@ -202,7 +204,7 @@ RAWR:
 Target:
 
 - `web/app.py` handles routing and request parsing
-- `web/metric_queries.py` is split into smaller query/payload helpers
+- `web/metric_queries.py` continues splitting toward smaller query/payload helpers
 - `web/metric_store.py` only orchestrates cached-store refreshes
 
 Do not let the web layer become the place where all cross-layer glue accumulates.
