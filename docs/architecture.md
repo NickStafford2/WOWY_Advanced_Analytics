@@ -163,18 +163,16 @@ The codebase is not far from the target, but a few architectural problems still 
 - `nba` no longer imports WOWY code; WOWY input shaping now lives in the WOWY package
 - `nba/prepare.py` no longer performs repository reads directly; DB-backed canonical scope loading is now behind `data`
 - web callers now get cached team-season metadata from `data`, and `nba/cache_sync.py` uses a data-owned cache-presence check
+- WOWY `WowyPlayerSeasonRecord` -> `PlayerSeasonMetricRow` mapping now lives in `data`
 - RAWR observation building, scope filtering, and result minute-shaping now live in `apps/rawr/inputs.py`; `apps/rawr/data.py` is narrower
 - RAWR metric-native `RawrPlayerSeasonRecord` preparation now lives in `apps/rawr/records.py`
 - RAWR `RawrPlayerSeasonRecord` -> `PlayerSeasonMetricRow` mapping now lives in `data`
 
 The main remaining issues are:
 
-1. some metric packages still build persistence-shaped rows directly
-   - RAWR no longer does; WOWY still does
-   - acceptable temporarily, but not the long-term target
-2. web modules are too orchestration-heavy
+1. web modules are too orchestration-heavy
    - especially `web/app.py` and `web/metric_queries.py`
-3. a few large modules have become mixed-responsibility files
+2. a few large modules have become mixed-responsibility files
    - examples: `data/player_metrics_db.py`, `data/db_validation.py`, `apps/rawr/data.py`
 
 ## Next Refactors
@@ -189,7 +187,7 @@ WOWY:
 - keep canonical -> WOWY conversion in `derive.py` or `inputs.py`
 - keep metric-native derived records in `records.py`
 - keep CLI/report wiring in `service.py`
-- move persistence-row construction toward `data`
+- `data` now owns WOWY persistence-row mapping
 
 RAWR:
 
@@ -199,20 +197,7 @@ RAWR:
 - `data` now owns RAWR persistence-row mapping
 - keep CLI/report orchestration in `service.py`
 
-### 2. Move metric row mapping into `data`
-
-Metric packages should stop constructing `PlayerSeasonMetricRow` directly.
-
-Target:
-
-- `metrics` returns metric-native records
-- `data` maps them to persistence rows
-- `web/metric_store.py` talks to stable `metrics` + `data` entrypoints
-
-Do not force this in one pass if it creates extra glue. Incremental cleanup is fine.
-Next smallest step: move WOWY row mapping over the same boundary.
-
-### 3. Shrink the web layer
+### 2. Shrink the web layer
 
 Target:
 

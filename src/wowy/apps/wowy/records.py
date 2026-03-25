@@ -21,6 +21,7 @@ from wowy.apps.wowy.models import (
 from wowy.data.player_metrics_db import (
     DEFAULT_PLAYER_METRICS_DB_PATH,
     PlayerSeasonMetricRow,
+    build_wowy_player_season_metric_rows,
 )
 
 type WowyPlayerSeasonRow = dict[str, str | int | float | None]
@@ -261,30 +262,14 @@ def build_wowy_metric_rows(
         min_average_minutes=None,
         min_total_minutes=None,
     )
-    return [
-        PlayerSeasonMetricRow(
-            metric=WOWY_METRIC,
-            metric_label="WOWY",
-            scope_key=scope_key,
-            team_filter=team_filter,
-            season_type=season_type,
-            season=record.season,
-            player_id=record.player_id,
-            player_name=record.player_name,
-            value=record.wowy_score,
-            sample_size=record.games_with,
-            secondary_sample_size=record.games_without,
-            average_minutes=record.average_minutes,
-            total_minutes=record.total_minutes,
-            details={
-                "games_with": record.games_with,
-                "games_without": record.games_without,
-                "avg_margin_with": record.avg_margin_with,
-                "avg_margin_without": record.avg_margin_without,
-            },
-        )
-        for record in records
-    ]
+    return build_wowy_player_season_metric_rows(
+        scope_key=scope_key,
+        team_filter=team_filter,
+        season_type=season_type,
+        metric=WOWY_METRIC,
+        metric_label="WOWY",
+        records=records,
+    )
 
 
 def build_wowy_shrunk_metric_rows(
@@ -310,33 +295,22 @@ def build_wowy_shrunk_metric_rows(
         min_average_minutes=None,
         min_total_minutes=None,
     )
-    return [
-        PlayerSeasonMetricRow(
-            metric=WOWY_SHRUNK_METRIC,
-            metric_label="WOWY Shrunk",
-            scope_key=scope_key,
-            team_filter=team_filter,
-            season_type=season_type,
-            season=record.season,
-            player_id=record.player_id,
-            player_name=record.player_name,
-            value=compute_wowy_shrinkage_score(
-                games_with=record.games_with,
-                games_without=record.games_without,
-                wowy_score=record.wowy_score,
-                prior_games=DEFAULT_WOWY_SHRINKAGE_PRIOR_GAMES,
-            ),
-            sample_size=record.games_with,
-            secondary_sample_size=record.games_without,
-            average_minutes=record.average_minutes,
-            total_minutes=record.total_minutes,
-            details={
-                "games_with": record.games_with,
-                "games_without": record.games_without,
-                "avg_margin_with": record.avg_margin_with,
-                "avg_margin_without": record.avg_margin_without,
-                "raw_wowy_score": record.wowy_score,
-            },
+    values_by_player_season = {
+        (record.season, record.player_id): compute_wowy_shrinkage_score(
+            games_with=record.games_with,
+            games_without=record.games_without,
+            wowy_score=record.wowy_score,
+            prior_games=DEFAULT_WOWY_SHRINKAGE_PRIOR_GAMES,
         )
         for record in records
-    ]
+    }
+    return build_wowy_player_season_metric_rows(
+        scope_key=scope_key,
+        team_filter=team_filter,
+        season_type=season_type,
+        metric=WOWY_SHRUNK_METRIC,
+        metric_label="WOWY Shrunk",
+        records=records,
+        values_by_player_season=values_by_player_season,
+        include_raw_wowy_score=True,
+    )

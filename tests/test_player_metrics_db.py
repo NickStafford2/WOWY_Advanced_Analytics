@@ -6,12 +6,15 @@ from pathlib import Path
 import pytest
 
 from wowy.apps.rawr.models import RawrPlayerSeasonRecord
+from wowy.apps.wowy.analysis import compute_wowy_shrinkage_score
+from wowy.apps.wowy.models import WowyPlayerSeasonRecord
 from wowy.data.player_metrics_db import (
     MetricFullSpanPointRow,
     MetricFullSpanSeriesRow,
     MetricScopeCatalogRow,
     PlayerSeasonMetricRow,
     build_rawr_player_season_metric_rows,
+    build_wowy_player_season_metric_rows,
     initialize_player_metrics_db,
     list_metric_seasons,
     load_metric_full_span_points_map,
@@ -58,6 +61,110 @@ def test_build_rawr_player_season_metric_rows_maps_metric_native_records():
             average_minutes=31.5,
             total_minutes=378.0,
             details={"games": 12},
+        )
+    ]
+
+
+def test_build_wowy_player_season_metric_rows_maps_metric_native_records():
+    rows = build_wowy_player_season_metric_rows(
+        scope_key="team_ids=all-teams|season_type=Regular Season",
+        team_filter="",
+        season_type="Regular Season",
+        metric="wowy",
+        metric_label="WOWY",
+        records=[
+            WowyPlayerSeasonRecord(
+                season="2023-24",
+                player_id=101,
+                player_name="Player 101",
+                games_with=12,
+                games_without=9,
+                avg_margin_with=5.0,
+                avg_margin_without=-1.0,
+                wowy_score=6.0,
+                average_minutes=31.5,
+                total_minutes=378.0,
+            )
+        ],
+    )
+
+    assert rows == [
+        PlayerSeasonMetricRow(
+            metric="wowy",
+            metric_label="WOWY",
+            scope_key="team_ids=all-teams|season_type=Regular Season",
+            team_filter="",
+            season_type="Regular Season",
+            season="2023-24",
+            player_id=101,
+            player_name="Player 101",
+            value=6.0,
+            sample_size=12,
+            secondary_sample_size=9,
+            average_minutes=31.5,
+            total_minutes=378.0,
+            details={
+                "games_with": 12,
+                "games_without": 9,
+                "avg_margin_with": 5.0,
+                "avg_margin_without": -1.0,
+            },
+        )
+    ]
+
+
+def test_build_wowy_player_season_metric_rows_supports_precomputed_shrunk_values():
+    record = WowyPlayerSeasonRecord(
+        season="2023-24",
+        player_id=101,
+        player_name="Player 101",
+        games_with=12,
+        games_without=9,
+        avg_margin_with=5.0,
+        avg_margin_without=-1.0,
+        wowy_score=6.0,
+        average_minutes=31.5,
+        total_minutes=378.0,
+    )
+    shrunk_value = compute_wowy_shrinkage_score(
+        games_with=record.games_with,
+        games_without=record.games_without,
+        wowy_score=record.wowy_score,
+    )
+
+    rows = build_wowy_player_season_metric_rows(
+        scope_key="team_ids=all-teams|season_type=Regular Season",
+        team_filter="",
+        season_type="Regular Season",
+        metric="wowy_shrunk",
+        metric_label="WOWY Shrunk",
+        records=[record],
+        values_by_player_season={(record.season, record.player_id): shrunk_value},
+        include_raw_wowy_score=True,
+    )
+
+    assert rows == [
+        PlayerSeasonMetricRow(
+            metric="wowy_shrunk",
+            metric_label="WOWY Shrunk",
+            scope_key="team_ids=all-teams|season_type=Regular Season",
+            team_filter="",
+            season_type="Regular Season",
+            season="2023-24",
+            player_id=101,
+            player_name="Player 101",
+            value=shrunk_value,
+            sample_size=12,
+            secondary_sample_size=9,
+            average_minutes=31.5,
+            total_minutes=378.0,
+            details={
+                "games_with": 12,
+                "games_without": 9,
+                "avg_margin_with": 5.0,
+                "avg_margin_without": -1.0,
+                "raw_wowy_score": 6.0,
+            },
         )
     ]
 
