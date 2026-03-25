@@ -9,7 +9,7 @@ import numpy as np
 
 from wowy.apps.rawr.data import prepare_rawr_player_season_records
 from wowy.apps.rawr.models import RawrPlayerSeasonRecord
-from wowy.apps.wowy.data import prepare_wowy_player_season_records
+from wowy.apps.wowy.records import prepare_wowy_player_season_records
 from wowy.apps.wowy.models import WowyPlayerSeasonRecord
 from wowy.data.player_metrics_db import DEFAULT_PLAYER_METRICS_DB_PATH
 from wowy.nba.source.cache import DEFAULT_SOURCE_DATA_DIR

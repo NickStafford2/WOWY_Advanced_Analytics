@@ -6,7 +6,7 @@ from pathlib import Path
 from typing import Any, Callable
 
 from wowy.apps.rawr.data import build_rawr_metric_rows, list_incomplete_rawr_seasons
-from wowy.apps.wowy.data import (
+from wowy.apps.wowy.records import (
     build_wowy_metric_rows,
     build_wowy_shrunk_metric_rows,
 )

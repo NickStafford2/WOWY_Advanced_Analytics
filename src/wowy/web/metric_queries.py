@@ -5,9 +5,11 @@ from typing import Any
 
 from wowy.apps.rawr.data import prepare_rawr_player_season_records
 from wowy.apps.rawr.models import RawrPlayerSeasonRecord
-from wowy.apps.wowy.analysis import compute_wowy_shrinkage_score
-from wowy.apps.wowy.data import (
+from wowy.apps.wowy.analysis import (
     DEFAULT_WOWY_SHRINKAGE_PRIOR_GAMES,
+    compute_wowy_shrinkage_score,
+)
+from wowy.apps.wowy.records import (
     prepare_wowy_player_season_records,
 )
 from wowy.apps.wowy.models import WowyPlayerSeasonRecord
