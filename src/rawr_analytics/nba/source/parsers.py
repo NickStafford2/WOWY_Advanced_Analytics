@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import math
 import re
+from typing import NoReturn
 
 from rawr_analytics.nba.season_types import canonicalize_season_type
 from rawr_analytics.nba.seasons import canonicalize_season_string
