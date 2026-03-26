@@ -3,7 +3,6 @@ from __future__ import annotations
 import argparse
 from pathlib import Path
 
-from rawr_analytics.data.player_metrics_db.constants import DEFAULT_PLAYER_METRICS_DB_PATH
 from rawr_analytics.nba.season_types import canonicalize_season_type
 from rawr_analytics.web.app import create_app
 from rawr_analytics.web.metric_store import (
@@ -58,12 +57,6 @@ def build_parser() -> argparse.ArgumentParser:
         default=DEFAULT_RAWR_RIDGE_ALPHA,
         help="Ridge alpha used when building cached RAWR web rows.",
     )
-    parser.add_argument(
-        "--player-metrics-db-path",
-        type=Path,
-        default=DEFAULT_PLAYER_METRICS_DB_PATH,
-        help="SQLite path for the web metric store.",
-    )
     return parser
 
 
@@ -78,17 +71,16 @@ def main(argv: list[str] | None = None) -> int:
             RAWR_METRIC,
         ]
         for metric in refresh_metrics:
-            print(f"refreshing {metric} web store at {args.player_metrics_db_path}")
+            print(f"refreshing {metric} web store")
             result = refresh_metric_store(
                 metric,
                 season_type=season_type,
-                db_path=args.player_metrics_db_path,
                 rawr_ridge_alpha=args.rawr_ridge_alpha,
                 include_team_scopes=False,
             )
             if not result.ok:
                 print(result.failure_message)
                 return 1
-    app = create_app(player_metrics_db_path=args.player_metrics_db_path)
+    app = create_app()
     app.run(host=args.host, port=args.port, debug=args.debug)
     return 0

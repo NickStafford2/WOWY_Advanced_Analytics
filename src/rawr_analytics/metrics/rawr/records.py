@@ -1,8 +1,5 @@
 from __future__ import annotations
 
-from pathlib import Path
-
-from rawr_analytics.data.player_metrics_db.constants import DEFAULT_PLAYER_METRICS_DB_PATH
 from rawr_analytics.data.scope_resolver import (
     load_normalized_scope_records,
     resolve_team_seasons,
@@ -35,13 +32,11 @@ def prepare_rawr_player_season_records(
     shrinkage_minute_scale: float,
     min_average_minutes: float | None = None,
     min_total_minutes: float | None = None,
-    player_metrics_db_path: Path = DEFAULT_PLAYER_METRICS_DB_PATH,
 ) -> list[RawrPlayerSeasonRecord]:
     team_seasons = resolve_team_seasons(
         teams,
         seasons,
         team_ids=team_ids,
-        player_metrics_db_path=player_metrics_db_path,
         season_type=season_type,
     )
     teams_by_season: dict[str, list[str]] = {}
@@ -55,7 +50,6 @@ def prepare_rawr_player_season_records(
             seasons=seasons,
             team_ids=team_ids,
             season_type=season_type,
-            player_metrics_db_path=player_metrics_db_path,
         )
     )
     records: list[RawrPlayerSeasonRecord] = []
@@ -67,7 +61,6 @@ def prepare_rawr_player_season_records(
             teams=sorted(set(teams_by_season[season])),
             seasons=[season],
             season_type=season_type,
-            player_metrics_db_path=player_metrics_db_path,
             include_opponents_for_team_scope=True,
         )
         try:

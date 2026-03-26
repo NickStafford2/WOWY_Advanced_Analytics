@@ -3,11 +3,11 @@ from __future__ import annotations
 import sqlite3
 from pathlib import Path
 
-from rawr_analytics.data.player_metrics_db.constants import DEFAULT_PLAYER_METRICS_DB_PATH
+from rawr_analytics.data.constants import DB_PATH
 
 
-def initialize_game_cache_db(db_path: Path = DEFAULT_PLAYER_METRICS_DB_PATH) -> None:
-    with _connect(db_path) as connection:
+def initialize_game_cache_db() -> None:
+    with _connect(DB_PATH) as connection:
         _migrate_cache_schema_if_needed(connection)
         connection.executescript(
             """

@@ -5,9 +5,9 @@ import re
 import sqlite3
 from collections import Counter, defaultdict
 from dataclasses import dataclass
-from pathlib import Path
 from typing import Callable
 
+from rawr_analytics.data.constants import DB_PATH
 from rawr_analytics.data.game_cache.audit import (
     audit_normalized_cache_loads_table,
     audit_normalized_cache_relations,
@@ -20,7 +20,6 @@ from rawr_analytics.data.player_metrics_db.audit import (
     MetricStoreAuditMetadata,
     audit_metric_store_tables,
 )
-from rawr_analytics.data.player_metrics_db.constants import DEFAULT_PLAYER_METRICS_DB_PATH
 from rawr_analytics.data.player_metrics_db.models import (
     MetricFullSpanPointRow,
     MetricFullSpanSeriesRow,
@@ -94,10 +93,9 @@ ValidationProgressFn = Callable[[int, int, str], None]
 
 
 def audit_player_metrics_db(
-    db_path: Path = DEFAULT_PLAYER_METRICS_DB_PATH,
     progress: ValidationProgressFn | None = None,
 ) -> DatabaseValidationReport:
-    initialize_game_cache_db(db_path)
+    initialize_game_cache_db()
     issues: list[ValidationIssue] = []
     steps = (
         "team history",
@@ -116,7 +114,7 @@ def audit_player_metrics_db(
         if progress is not None:
             progress(current_step, total_steps, label)
 
-    with sqlite3.connect(db_path) as connection:
+    with sqlite3.connect(DB_PATH) as connection:
         connection.row_factory = sqlite3.Row
         current_step = 1
         report_progress("Validating team history")
@@ -158,10 +156,8 @@ def audit_player_metrics_db(
     return DatabaseValidationReport(issues=issues)
 
 
-def assert_valid_player_metrics_db(
-    db_path: Path = DEFAULT_PLAYER_METRICS_DB_PATH,
-) -> None:
-    report = audit_player_metrics_db(db_path)
+def assert_valid_player_metrics_db() -> None:
+    report = audit_player_metrics_db()
     if report.ok:
         return
     preview = "; ".join(
@@ -242,7 +238,6 @@ def normalize_issue_message(message: str) -> str:
     normalized = _QUOTED_VALUE_PATTERN.sub("'<value>'", message)
     normalized = _NUMBER_PATTERN.sub("<num>", normalized)
     return " ".join(normalized.split())
-
 
 
 def _validate_metric_store_relations(

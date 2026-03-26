@@ -3,7 +3,6 @@ from __future__ import annotations
 import argparse
 from pathlib import Path
 
-from rawr_analytics.data.player_metrics_db.constants import DEFAULT_PLAYER_METRICS_DB_PATH
 from rawr_analytics.metrics.wowy.service import prepare_and_run_wowy
 
 
@@ -55,12 +54,6 @@ def build_parser() -> argparse.ArgumentParser:
         type=float,
         default=600,
         help="Minimum total minutes required to include a player in output",
-    )
-    parser.add_argument(
-        "--player-metrics-db-path",
-        type=Path,
-        default=DEFAULT_PLAYER_METRICS_DB_PATH,
-        help=argparse.SUPPRESS,
     )
     return parser
 

@@ -1,18 +1,17 @@
 from __future__ import annotations
 
 import hashlib
-from pathlib import Path
 
+from rawr_analytics.data.constants import DB_PATH
 from rawr_analytics.data.game_cache.schema import _connect, initialize_game_cache_db
 from rawr_analytics.nba.season_types import canonicalize_season_type
 
 
 def build_normalized_cache_fingerprint(
-    db_path: Path,
     *,
     season_type: str | None = None,
 ) -> str:
-    initialize_game_cache_db(db_path)
+    initialize_game_cache_db(DB_PATH)
     if season_type is not None:
         season_type = canonicalize_season_type(season_type)
     query = """
@@ -41,7 +40,7 @@ def build_normalized_cache_fingerprint(
     query += " ORDER BY load.season_type, load.season, load.team_id"
 
     digest = hashlib.sha256()
-    with _connect(db_path) as connection:
+    with _connect(DB_PATH) as connection:
         rows = connection.execute(query, params).fetchall()
     for row in rows:
         digest.update(row["team"].encode("utf-8"))

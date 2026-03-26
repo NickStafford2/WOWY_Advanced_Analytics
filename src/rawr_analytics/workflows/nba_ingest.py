@@ -5,7 +5,6 @@ from pathlib import Path
 from typing import Callable
 
 from rawr_analytics.data.game_cache.repository import replace_team_season_normalized_rows
-from rawr_analytics.data.player_metrics_db.constants import DEFAULT_PLAYER_METRICS_DB_PATH
 from rawr_analytics.nba.build_models import (
     TeamSeasonArtifacts,
     TeamSeasonBuildResult,
@@ -240,7 +239,6 @@ def refresh_normalized_team_season_cache(
     season: str,
     season_type: str = "Regular Season",
     source_data_dir: Path = DEFAULT_SOURCE_DATA_DIR,
-    player_metrics_db_path: Path = DEFAULT_PLAYER_METRICS_DB_PATH,
     log: Callable[[str], None] | None = print,
     progress: ProgressFn | None = None,
     cached_only: bool = False,
@@ -259,7 +257,6 @@ def refresh_normalized_team_season_cache(
     team = team_abbreviation.upper()
     team_id = resolve_team_id(team, season=season)
     replace_team_season_normalized_rows(
-        player_metrics_db_path,
         team=team,
         team_id=team_id,
         season=season,

@@ -3,9 +3,8 @@ from __future__ import annotations
 import argparse
 import subprocess
 import sys
-from pathlib import Path
 
-from rawr_analytics.data.player_metrics_db.constants import DEFAULT_PLAYER_METRICS_DB_PATH
+from rawr_analytics.data.constants import DB_PATH
 
 DEFAULT_START_YEAR = 2025
 DEFAULT_FIRST_YEAR = 1998
@@ -48,12 +47,6 @@ def build_parser() -> argparse.ArgumentParser:
         help="Optional web metric to refresh. Repeat to select multiple. Defaults to all.",
     )
     parser.add_argument(
-        "--db-path",
-        type=Path,
-        default=DEFAULT_PLAYER_METRICS_DB_PATH,
-        help=f"SQLite database path to rebuild (default: {DEFAULT_PLAYER_METRICS_DB_PATH})",
-    )
-    parser.add_argument(
         "--keep-existing-db",
         action="store_true",
         help="Do not delete the existing database before rebuilding.",
@@ -68,11 +61,10 @@ def main(argv: list[str] | None = None) -> int:
     if args.start_year < args.first_year:
         raise ValueError("Start year must be greater than or equal to first year")
 
-    db_path = args.db_path
-    if not args.keep_existing_db and db_path.exists():
-        print(f"Deleting existing database: {db_path}")
-        db_path.unlink()
-    db_path.parent.mkdir(parents=True, exist_ok=True)
+    if not args.keep_existing_db and DB_PATH.exists():
+        print(f"Deleting existing database: {DB_PATH}")
+        DB_PATH.unlink()
+    DB_PATH.parent.mkdir(parents=True, exist_ok=True)
 
     run_step(
         "Rebuilding normalized cache",
@@ -81,22 +73,20 @@ def main(argv: list[str] | None = None) -> int:
             first_year=args.first_year,
             season_type=args.season_type,
             teams=args.teams,
-            db_path=db_path,
         ),
     )
     run_step(
         "Refreshing web metric store",
         build_refresh_command(
             season_type=args.season_type,
-            db_path=db_path,
             metrics=args.metric,
         ),
     )
     run_step(
         "Validating rebuilt database",
-        build_validate_command(db_path=db_path),
+        build_validate_command(),
     )
-    print(f"Rebuild complete: {db_path}")
+    print(f"Rebuild complete: {DB_PATH}")
     return 0
 
 
@@ -112,7 +102,6 @@ def build_cache_command(
     first_year: int,
     season_type: str,
     teams: list[str] | None,
-    db_path: Path,
 ) -> list[str]:
     command = [
         sys.executable,
@@ -122,8 +111,6 @@ def build_cache_command(
         str(start_year),
         "--first-year",
         str(first_year),
-        "--player-metrics-db-path",
-        str(db_path),
     ]
     if season_type != "Regular Season":
         command.extend(["--season-type", season_type])
@@ -135,15 +122,12 @@ def build_cache_command(
 def build_refresh_command(
     *,
     season_type: str,
-    db_path: Path,
     metrics: list[str] | None,
 ) -> list[str]:
     command = [
         sys.executable,
         "-m",
         "wowy.web.refresh_cli",
-        "--player-metrics-db-path",
-        str(db_path),
     ]
     if season_type != "Regular Season":
         command.extend(["--season-type", season_type])
@@ -152,13 +136,11 @@ def build_refresh_command(
     return command
 
 
-def build_validate_command(*, db_path: Path) -> list[str]:
+def build_validate_command() -> list[str]:
     return [
         sys.executable,
         "-m",
         "wowy.data.db_validation_cli",
-        "--db-path",
-        str(db_path),
     ]
 
 

@@ -7,7 +7,6 @@ from pathlib import Path
 
 import numpy as np
 
-from rawr_analytics.data.player_metrics_db.constants import DEFAULT_PLAYER_METRICS_DB_PATH
 from rawr_analytics.metrics.rawr.models import RawrPlayerSeasonRecord
 from rawr_analytics.metrics.rawr.records import prepare_rawr_player_season_records
 from rawr_analytics.metrics.wowy.models import WowyPlayerSeasonRecord
@@ -320,11 +319,6 @@ def evaluate_configs(args) -> list[ComparisonResult]:
         teams=args.team,
         seasons=[args.holdout_season],
         season_type=args.season_type,
-        player_metrics_db_path=getattr(
-            args,
-            "player_metrics_db_path",
-            DEFAULT_PLAYER_METRICS_DB_PATH,
-        ),
         min_games_with=args.holdout_min_games_with,
         min_games_without=args.holdout_min_games_without,
         min_average_minutes=args.min_average_minutes,
@@ -338,11 +332,6 @@ def evaluate_configs(args) -> list[ComparisonResult]:
         teams=args.team,
         seasons=args.train_season,
         season_type=args.season_type,
-        player_metrics_db_path=getattr(
-            args,
-            "player_metrics_db_path",
-            DEFAULT_PLAYER_METRICS_DB_PATH,
-        ),
         min_games_with=args.holdout_min_games_with,
         min_games_without=args.holdout_min_games_without,
         min_average_minutes=args.min_average_minutes,
@@ -386,11 +375,6 @@ def evaluate_configs(args) -> list[ComparisonResult]:
                 teams=args.team,
                 seasons=args.train_season,
                 season_type=args.season_type,
-                player_metrics_db_path=getattr(
-                    args,
-                    "player_metrics_db_path",
-                    DEFAULT_PLAYER_METRICS_DB_PATH,
-                ),
                 min_games=args.rawr_min_games,
                 ridge_alpha=ridge_alpha,
                 shrinkage_mode=shrinkage_mode,

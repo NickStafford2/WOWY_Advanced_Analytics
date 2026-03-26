@@ -1,9 +1,7 @@
 from __future__ import annotations
 
-from pathlib import Path
 from typing import Any
 
-from rawr_analytics.data.player_metrics_db.constants import DEFAULT_PLAYER_METRICS_DB_PATH
 from rawr_analytics.data.player_metrics_db.models import PlayerSeasonMetricRow
 from rawr_analytics.metrics.wowy.analysis import (
     DEFAULT_WOWY_SHRINKAGE_PRIOR_GAMES,
@@ -62,7 +60,6 @@ def build_cached_rows(
     scope_key: str,
     team_filter: str,
     season_type: str,
-    db_path: Path,
     teams: list[str] | None,
     team_ids: list[int] | None,
     rawr_ridge_alpha: float,
@@ -72,7 +69,6 @@ def build_cached_rows(
             scope_key=scope_key,
             team_filter=team_filter,
             season_type=season_type,
-            db_path=db_path,
             teams=teams,
             team_ids=team_ids,
             rawr_ridge_alpha=rawr_ridge_alpha,
@@ -82,7 +78,6 @@ def build_cached_rows(
             scope_key=scope_key,
             team_filter=team_filter,
             season_type=season_type,
-            db_path=db_path,
             teams=teams,
             team_ids=team_ids,
             rawr_ridge_alpha=rawr_ridge_alpha,
@@ -97,7 +92,6 @@ def build_custom_query(
     team_ids: list[int] | None,
     seasons: list[str] | None,
     season_type: str,
-    player_metrics_db_path: Path = DEFAULT_PLAYER_METRICS_DB_PATH,
     min_games_with: int,
     min_games_without: int,
     min_average_minutes: float | None,
@@ -112,7 +106,6 @@ def build_custom_query(
             team_ids=team_ids,
             seasons=seasons,
             season_type=season_type,
-            player_metrics_db_path=player_metrics_db_path,
             min_games_with=min_games_with,
             min_games_without=min_games_without,
             min_average_minutes=min_average_minutes,
@@ -128,7 +121,6 @@ def build_custom_query_rows(
     team_ids: list[int] | None,
     seasons: list[str] | None,
     season_type: str,
-    player_metrics_db_path: Path = DEFAULT_PLAYER_METRICS_DB_PATH,
     min_games_with: int,
     min_games_without: int,
     min_average_minutes: float | None,
@@ -139,7 +131,6 @@ def build_custom_query_rows(
         team_ids=team_ids,
         seasons=seasons,
         season_type=season_type,
-        player_metrics_db_path=player_metrics_db_path,
         min_games_with=min_games_with,
         min_games_without=min_games_without,
         min_average_minutes=min_average_minutes,

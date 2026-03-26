@@ -3,26 +3,18 @@ from __future__ import annotations
 import argparse
 import json
 import sys
-from pathlib import Path
 
 from rawr_analytics.data.db_validation import (
     audit_player_metrics_db,
     render_validation_summary,
     summarize_validation_report,
 )
-from rawr_analytics.data.player_metrics_db.constants import DEFAULT_PLAYER_METRICS_DB_PATH
 
 _LAST_PROGRESS_LINE_LENGTH = 0
 
 
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(description="Audit the SQLite cache and summarize errors.")
-    parser.add_argument(
-        "--db-path",
-        type=Path,
-        default=DEFAULT_PLAYER_METRICS_DB_PATH,
-        help="SQLite database path to audit.",
-    )
     parser.add_argument(
         "--top",
         type=int,
@@ -64,11 +56,11 @@ def main(argv: list[str] | None = None) -> int:
     parser = build_parser()
     args = parser.parse_args(argv)
 
-    progress = None if args.json else render_progress
+    progress_callback = None if args.json else render_progress
     try:
-        report = audit_player_metrics_db(args.db_path, progress=progress)
+        report = audit_player_metrics_db(progress=progress_callback)
     finally:
-        if progress is not None:
+        if progress_callback is not None:
             clear_progress_line()
     summary = summarize_validation_report(report)
     if args.json:

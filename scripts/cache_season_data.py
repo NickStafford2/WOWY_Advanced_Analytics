@@ -310,7 +310,6 @@ def main(argv: list[str] | None = None) -> int:
                     season=season,
                     season_type=season_type,
                     source_data_dir=DEFAULT_SOURCE_DATA_DIR,
-                    player_metrics_db_path=args.player_metrics_db_path,
                     log=filtered_log,
                     progress=lambda payload, team_index=team_index: render_progress_line(
                         team_index,

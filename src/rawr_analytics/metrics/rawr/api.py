@@ -3,7 +3,6 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Any
 
-from rawr_analytics.data.player_metrics_db.constants import DEFAULT_PLAYER_METRICS_DB_PATH
 from rawr_analytics.data.player_metrics_db.models import PlayerSeasonMetricRow
 from rawr_analytics.metrics.rawr.data import (
     DEFAULT_RAWR_SHRINKAGE_MINUTE_SCALE,
@@ -73,7 +72,6 @@ def build_custom_query(
     team_ids: list[int] | None,
     seasons: list[str] | None,
     season_type: str,
-    player_metrics_db_path: Path = DEFAULT_PLAYER_METRICS_DB_PATH,
     min_games: int,
     ridge_alpha: float,
     min_average_minutes: float | None,
@@ -87,7 +85,6 @@ def build_custom_query(
             team_ids=team_ids,
             seasons=seasons,
             season_type=season_type,
-            player_metrics_db_path=player_metrics_db_path,
             min_games=min_games,
             ridge_alpha=ridge_alpha,
             min_average_minutes=min_average_minutes,
@@ -102,7 +99,6 @@ def build_custom_query_rows(
     team_ids: list[int] | None,
     seasons: list[str] | None,
     season_type: str,
-    player_metrics_db_path: Path = DEFAULT_PLAYER_METRICS_DB_PATH,
     min_games: int,
     ridge_alpha: float,
     min_average_minutes: float | None,
@@ -113,7 +109,6 @@ def build_custom_query_rows(
         team_ids=team_ids,
         seasons=seasons,
         season_type=season_type,
-        player_metrics_db_path=player_metrics_db_path,
         min_games=min_games,
         ridge_alpha=ridge_alpha,
         shrinkage_mode=DEFAULT_RAWR_SHRINKAGE_MODE,

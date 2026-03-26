@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-from rawr_analytics.data.player_metrics_db.constants import DEFAULT_PLAYER_METRICS_DB_PATH
 from rawr_analytics.data.scope_resolver import load_normalized_scope_records
 from rawr_analytics.metrics.rawr._observations import build_rawr_player_season_minute_stats
 from rawr_analytics.metrics.rawr.analysis import ProgressFn, fit_player_rawr, tune_ridge_alpha
@@ -194,11 +193,6 @@ def prepare_and_run_rawr(args) -> str:
         seasons=args.season,
         team_ids=None,
         season_type=args.season_type,
-        player_metrics_db_path=getattr(
-            args,
-            "player_metrics_db_path",
-            DEFAULT_PLAYER_METRICS_DB_PATH,
-        ),
     )
     if not complete_seasons:
         raise ValueError("No complete cached seasons matched the requested RAWR scope")
@@ -207,11 +201,6 @@ def prepare_and_run_rawr(args) -> str:
         teams=args.team,
         seasons=complete_seasons,
         season_type=args.season_type,
-        player_metrics_db_path=getattr(
-            args,
-            "player_metrics_db_path",
-            DEFAULT_PLAYER_METRICS_DB_PATH,
-        ),
         include_opponents_for_team_scope=True,
     )
     print(

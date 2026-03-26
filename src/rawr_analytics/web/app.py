@@ -1,10 +1,8 @@
 from __future__ import annotations
 
 import json
-from pathlib import Path
 from typing import Any
 
-from rawr_analytics.data.player_metrics_db.constants import DEFAULT_PLAYER_METRICS_DB_PATH
 from rawr_analytics.metrics.frontend import (
     MetricQuery,
     build_metric_export_table,
@@ -36,10 +34,7 @@ def _parse_positive_int_list(raw_values: list[str]) -> list[int] | None:
     return parsed_values
 
 
-def create_app(
-    *,
-    player_metrics_db_path: Path = DEFAULT_PLAYER_METRICS_DB_PATH,
-):
+def create_app():
     from flask import Flask, Response, jsonify, request
 
     app = Flask(__name__)
@@ -65,7 +60,6 @@ def create_app(
             metric,
             view=view,
             query=query,
-            db_path=player_metrics_db_path,
         )
         return jsonify(payload)
 
@@ -75,7 +69,6 @@ def create_app(
             metric,
             view=view,
             query=query,
-            db_path=player_metrics_db_path,
         )
         filename = f"{metric}-all-players.csv"
         return Response(
@@ -96,7 +89,6 @@ def create_app(
             lambda: jsonify(
                 build_metric_options_payload(
                     metric,
-                    db_path=player_metrics_db_path,
                     team_ids=_parse_positive_int_list(request.args.getlist("team_id")),
                     season_type=request.args.get("season_type", "Regular Season"),
                 )

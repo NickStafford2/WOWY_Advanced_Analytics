@@ -1,9 +1,6 @@
 from __future__ import annotations
 
-from pathlib import Path
-
 from rawr_analytics.data.player_metrics_db.builders import build_wowy_player_season_metric_rows
-from rawr_analytics.data.player_metrics_db.constants import DEFAULT_PLAYER_METRICS_DB_PATH
 from rawr_analytics.data.player_metrics_db.models import (
     PlayerSeasonMetricRow,
 )
@@ -202,7 +199,6 @@ def prepare_wowy_player_season_records(
     season_type: str,
     min_games_with: int,
     min_games_without: int,
-    player_metrics_db_path: Path = DEFAULT_PLAYER_METRICS_DB_PATH,
     team_ids: list[int] | None = None,
     min_average_minutes: float | None = None,
     min_total_minutes: float | None = None,
@@ -212,14 +208,12 @@ def prepare_wowy_player_season_records(
         seasons=seasons,
         team_ids=team_ids,
         season_type=season_type,
-        player_metrics_db_path=player_metrics_db_path,
     )
     player_season_minute_stats = load_player_season_minute_stats(
         teams=teams,
         seasons=seasons,
         team_ids=team_ids,
         season_type=season_type,
-        player_metrics_db_path=player_metrics_db_path,
     )
     return build_wowy_player_season_records(
         games,
@@ -237,7 +231,6 @@ def build_wowy_metric_rows(
     scope_key: str,
     team_filter: str,
     season_type: str,
-    db_path: Path,
     teams: list[str] | None,
     team_ids: list[int] | None,
     rawr_ridge_alpha: float,
@@ -248,7 +241,6 @@ def build_wowy_metric_rows(
         team_ids=team_ids,
         seasons=None,
         season_type=season_type,
-        player_metrics_db_path=db_path,
         min_games_with=0,
         min_games_without=0,
         min_average_minutes=None,
@@ -269,7 +261,6 @@ def build_wowy_shrunk_metric_rows(
     scope_key: str,
     team_filter: str,
     season_type: str,
-    db_path: Path,
     teams: list[str] | None,
     team_ids: list[int] | None,
     rawr_ridge_alpha: float,
@@ -280,7 +271,6 @@ def build_wowy_shrunk_metric_rows(
         team_ids=team_ids,
         seasons=None,
         season_type=season_type,
-        player_metrics_db_path=db_path,
         min_games_with=0,
         min_games_without=0,
         min_average_minutes=None,

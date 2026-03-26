@@ -4,6 +4,7 @@ import json
 from datetime import UTC, datetime
 from pathlib import Path
 
+from rawr_analytics.data.constants import DB_PATH
 from rawr_analytics.data.player_metrics_db.models import (
     MetricFullSpanPointRow,
     MetricFullSpanSeriesRow,
@@ -28,7 +29,7 @@ def replace_metric_rows(
     source_fingerprint: str,
     rows: list[PlayerSeasonMetricRow],
 ) -> None:
-    initialize_player_metrics_db(db_path)
+    initialize_player_metrics_db()
     _validate_metric_rows(
         metric=metric,
         scope_key=scope_key,
@@ -116,7 +117,6 @@ def replace_metric_rows(
 
 
 def replace_metric_scope_store(
-    db_path: Path,
     *,
     metric: str,
     scope_key: str,
@@ -128,7 +128,7 @@ def replace_metric_scope_store(
     series_rows: list[MetricFullSpanSeriesRow],
     point_rows: list[MetricFullSpanPointRow],
 ) -> None:
-    initialize_player_metrics_db(db_path)
+    initialize_player_metrics_db()
     _validate_metric_rows(
         metric=metric,
         scope_key=scope_key,
@@ -146,7 +146,7 @@ def replace_metric_scope_store(
     )
     updated_at = datetime.now(UTC).isoformat()
 
-    with _connect(db_path) as connection:
+    with _connect(DB_PATH) as connection:
         connection.execute("BEGIN")
         connection.execute(
             "DELETE FROM metric_full_span_points WHERE metric = ? AND scope_key = ?",
@@ -307,13 +307,11 @@ def replace_metric_scope_store(
 
 
 def clear_metric_scope_store(
-    db_path: Path,
-    *,
     metric: str,
     scope_key: str,
 ) -> None:
-    initialize_player_metrics_db(db_path)
-    with _connect(db_path) as connection:
+    initialize_player_metrics_db()
+    with _connect(DB_PATH) as connection:
         connection.execute("BEGIN")
         connection.execute(
             "DELETE FROM metric_full_span_points WHERE metric = ? AND scope_key = ?",
@@ -343,7 +341,7 @@ def replace_metric_scope_catalog_row(
     *,
     row: MetricScopeCatalogRow,
 ) -> None:
-    initialize_player_metrics_db(db_path)
+    initialize_player_metrics_db()
     _validate_metric_scope_catalog_row(row)
     with _connect(db_path) as connection:
         connection.execute(
@@ -394,7 +392,7 @@ def replace_metric_full_span_rows(
     series_rows: list[MetricFullSpanSeriesRow],
     point_rows: list[MetricFullSpanPointRow],
 ) -> None:
-    initialize_player_metrics_db(db_path)
+    initialize_player_metrics_db()
     _validate_metric_full_span_rows(
         metric=metric,
         scope_key=scope_key,

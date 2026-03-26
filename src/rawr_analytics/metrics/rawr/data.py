@@ -114,10 +114,8 @@ def list_complete_rawr_seasons(
     *,
     seasons: list[str],
     season_type: str,
-    player_metrics_db_path: Path,
 ) -> set[str]:
     cache_load_rows = list_cache_load_rows(
-        player_metrics_db_path,
         season_type=season_type,
         seasons=seasons,
     )
@@ -154,13 +152,11 @@ def select_complete_rawr_scope_seasons(
     seasons: list[str] | None,
     team_ids: list[int] | None,
     season_type: str,
-    player_metrics_db_path: Path,
 ) -> list[str]:
     team_seasons = resolve_team_seasons(
         teams,
         seasons,
         team_ids=team_ids,
-        player_metrics_db_path=player_metrics_db_path,
         season_type=season_type,
     )
     candidate_seasons = sorted({team_season.season for team_season in team_seasons})
@@ -169,7 +165,6 @@ def select_complete_rawr_scope_seasons(
     complete_seasons = list_complete_rawr_seasons(
         seasons=candidate_seasons,
         season_type=season_type,
-        player_metrics_db_path=player_metrics_db_path,
     )
     return [season for season in candidate_seasons if season in complete_seasons]
 

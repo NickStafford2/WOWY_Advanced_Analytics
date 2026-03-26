@@ -4,7 +4,6 @@ from pathlib import Path
 from typing import Callable
 
 from rawr_analytics.data.game_cache import has_cached_team_season_scope
-from rawr_analytics.data.player_metrics_db.constants import DEFAULT_PLAYER_METRICS_DB_PATH
 from rawr_analytics.data.scopes import TeamSeasonScope
 from rawr_analytics.nba.source.cache import DEFAULT_SOURCE_DATA_DIR
 from rawr_analytics.workflows.nba_ingest import refresh_normalized_team_season_cache
@@ -16,11 +15,9 @@ def ensure_team_season_data(
     team_season: TeamSeasonScope,
     season_type: str = "Regular Season",
     source_data_dir: Path = DEFAULT_SOURCE_DATA_DIR,
-    player_metrics_db_path: Path = DEFAULT_PLAYER_METRICS_DB_PATH,
     log: LogFn | None = print,
 ) -> None:
     if has_cached_team_season_scope(
-        player_metrics_db_path,
         team=team_season.team,
         season=team_season.season,
         season_type=season_type,
@@ -33,6 +30,5 @@ def ensure_team_season_data(
         season=team_season.season,
         season_type=season_type,
         source_data_dir=source_data_dir,
-        player_metrics_db_path=player_metrics_db_path,
         log=log,
     )

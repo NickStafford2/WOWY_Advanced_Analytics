@@ -2,7 +2,6 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from rawr_analytics.data.player_metrics_db.constants import DEFAULT_PLAYER_METRICS_DB_PATH
 from rawr_analytics.data.scope_resolver import load_normalized_scope_records
 from rawr_analytics.metrics.wowy.models import WowyPlayerStats
 from rawr_analytics.shared.minutes import build_player_minute_stats, passes_minute_filters
@@ -19,7 +18,6 @@ def load_player_minute_stats(
     teams: list[str] | None,
     seasons: list[str] | None,
     season_type: str = "Regular Season",
-    player_metrics_db_path: Path = DEFAULT_PLAYER_METRICS_DB_PATH,
     team_ids: list[int] | None = None,
 ) -> dict[int, tuple[float, float]]:
     _, game_players = load_normalized_scope_records(
@@ -27,7 +25,6 @@ def load_player_minute_stats(
         seasons=seasons,
         team_ids=team_ids,
         season_type=season_type,
-        player_metrics_db_path=player_metrics_db_path,
         include_opponents_for_team_scope=False,
     )
     return build_player_minute_stats(game_players)
@@ -37,7 +34,6 @@ def load_player_season_minute_stats(
     teams: list[str] | None,
     seasons: list[str] | None,
     season_type: str = "Regular Season",
-    player_metrics_db_path: Path = DEFAULT_PLAYER_METRICS_DB_PATH,
     team_ids: list[int] | None = None,
 ) -> dict[tuple[str, int], tuple[float, float]]:
     totals: dict[tuple[str, int], float] = {}
@@ -48,7 +44,6 @@ def load_player_season_minute_stats(
         seasons=seasons,
         team_ids=team_ids,
         season_type=season_type,
-        player_metrics_db_path=player_metrics_db_path,
         include_opponents_for_team_scope=False,
     )
     seasons_by_game_id = {game.game_id: game.season for game in games}

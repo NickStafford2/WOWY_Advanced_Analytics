@@ -3,11 +3,12 @@ from __future__ import annotations
 import sqlite3
 from pathlib import Path
 
+from rawr_analytics.data.constants import DB_PATH
 from rawr_analytics.data.player_metrics_db.constants import LEGACY_METRIC_RENAMES
 
 
-def initialize_player_metrics_db(db_path: Path) -> None:
-    with _connect(db_path) as connection:
+def initialize_player_metrics_db() -> None:
+    with _connect(DB_PATH) as connection:
         connection.executescript(
             """
             CREATE TABLE IF NOT EXISTS metric_player_season_values (
