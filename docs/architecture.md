@@ -66,6 +66,7 @@ When changing structure:
 - prefer deleting glue code over preserving weak abstractions
 - prefer pure functions over multi-role service modules
 - keep package `__init__.py` files minimal
+- treat tests and scripts as public-API consumers; if they import a deep module, that module is effectively public until the imports are changed
 - do not add new cross-layer shortcuts just because they are convenient
 - do not preserve a misplaced abstraction just because it already exists
 

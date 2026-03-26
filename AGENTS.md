@@ -22,6 +22,13 @@
 - Prefer private functions and files in submodules.
 - Follow Python 3.12 best practices.
 
+## Test boundaries
+- Prefer tests that exercise the package public API rather than internal helper functions or deep module paths.
+- Treat tests as API consumers. If a test imports an internal module directly, that module becomes harder to refactor.
+- When changing structure, rewrite or remove tests that are tightly coupled to internal implementation details unless that internal contract is intentionally public.
+- Favor behavior-focused tests over structure-focused tests. Test observable inputs and outputs, not intermediate steps.
+- Do not preserve internal-only tests just to protect the current file layout. Prefer broad refactors that simplify the design and then update tests to match the intended public surface.
+
 ## Refactoring
 - When simplifying, bias toward deleting glue code, collapsing redundant transformations, and making the current data shape explicit at every step.
 - Do not preserve legacy compatibility at the expense of data quality. Rebuild or recalculate bad data instead of adding workarounds that keep invalid rows alive.
