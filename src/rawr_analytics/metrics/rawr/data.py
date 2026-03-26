@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from pathlib import Path
 
 from rawr_analytics.data.game_cache.repository import list_cache_load_rows
 from rawr_analytics.data.player_metrics_db.builders import build_rawr_player_season_metric_rows
@@ -57,13 +56,8 @@ def list_incomplete_rawr_seasons(
     *,
     seasons: list[str],
     season_type: str,
-    player_metrics_db_path: Path,
 ) -> list[RawrSeasonCompletenessIssue]:
-    cache_load_rows = list_cache_load_rows(
-        player_metrics_db_path,
-        season_type=season_type,
-        seasons=seasons,
-    )
+    cache_load_rows = list_cache_load_rows(season_type=season_type, seasons=seasons)
     rows_by_season: dict[str, _SeasonIssueState] = {}
     for row in cache_load_rows:
         season_rows = rows_by_season.setdefault(
@@ -174,7 +168,6 @@ def build_rawr_metric_rows(
     scope_key: str,
     team_filter: str,
     season_type: str,
-    db_path: Path,
     teams: list[str] | None,
     team_ids: list[int] | None,
     rawr_ridge_alpha: float,
@@ -186,7 +179,6 @@ def build_rawr_metric_rows(
         team_ids=team_ids,
         seasons=None,
         season_type=season_type,
-        player_metrics_db_path=db_path,
         min_games=1,
         ridge_alpha=rawr_ridge_alpha,
         shrinkage_mode=DEFAULT_RAWR_SHRINKAGE_MODE,

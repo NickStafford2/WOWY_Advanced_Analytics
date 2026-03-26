@@ -11,7 +11,7 @@ def build_normalized_cache_fingerprint(
     *,
     season_type: str | None = None,
 ) -> str:
-    initialize_game_cache_db(DB_PATH)
+    initialize_game_cache_db()
     if season_type is not None:
         season_type = canonicalize_season_type(season_type)
     query = """

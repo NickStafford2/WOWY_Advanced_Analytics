@@ -3,7 +3,6 @@ from __future__ import annotations
 import sqlite3
 from collections.abc import Sequence
 from datetime import UTC, datetime
-from pathlib import Path
 
 from rawr_analytics.data.constants import DB_PATH
 from rawr_analytics.data.game_cache.rows import NormalizedCacheLoadRow
@@ -179,7 +178,6 @@ def replace_team_season_normalized_rows(
 
 
 def load_normalized_games_from_db(
-    db_path: Path,
     *,
     season_type: str,
     teams: list[str] | None = None,
@@ -232,7 +230,7 @@ def load_normalized_games_from_db(
     )
     query += " ORDER BY game.season, game.game_date, team_history.abbreviation, game.game_id"
 
-    with _connect(db_path) as connection:
+    with _connect(DB_PATH) as connection:
         rows = connection.execute(query, params).fetchall()
     return [
         NormalizedGameRecord(
@@ -253,7 +251,6 @@ def load_normalized_games_from_db(
 
 
 def load_normalized_game_players_from_db(
-    db_path: Path,
     *,
     season_type: str,
     teams: list[str] | None = None,
@@ -299,7 +296,7 @@ def load_normalized_game_players_from_db(
     )
     query += " ORDER BY player.season, team_history.abbreviation, player.game_id, player.player_id"
 
-    with _connect(db_path) as connection:
+    with _connect(DB_PATH) as connection:
         rows = connection.execute(query, params).fetchall()
     return [
         NormalizedGamePlayerRecord(
@@ -379,13 +376,11 @@ def load_normalized_scope_records_from_db(
         )
 
     games = load_normalized_games_from_db(
-        db_path,
         season_type=season_type,
         teams=[team_season.team for team_season in team_seasons],
         seasons=sorted({team_season.season for team_season in team_seasons}),
     )
     game_players = load_normalized_game_players_from_db(
-        db_path,
         season_type=season_type,
         teams=[team_season.team for team_season in team_seasons],
         seasons=sorted({team_season.season for team_season in team_seasons}),
@@ -465,7 +460,7 @@ def list_cache_load_rows(
         values=_resolve_team_ids(teams, seasons=normalized_seasons),
     )
     query += " ORDER BY load.season, load.team_id"
-    with _connect(db_path) as connection:
+    with _connect(DB_PATH) as connection:
         rows = connection.execute(query, params).fetchall()
     return [
         NormalizedCacheLoadRow(
