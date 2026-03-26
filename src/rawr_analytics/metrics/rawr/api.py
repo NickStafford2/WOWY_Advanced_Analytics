@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-from pathlib import Path
 from typing import Any
 
 from rawr_analytics.data.player_metrics_db.models import PlayerSeasonMetricRow
@@ -50,7 +49,6 @@ def build_cached_rows(
     scope_key: str,
     team_filter: str,
     season_type: str,
-    db_path: Path,
     teams: list[str] | None,
     team_ids: list[int] | None,
     rawr_ridge_alpha: float,
@@ -59,7 +57,6 @@ def build_cached_rows(
         scope_key=scope_key,
         team_filter=team_filter,
         season_type=season_type,
-        db_path=db_path,
         teams=teams,
         team_ids=team_ids,
         rawr_ridge_alpha=rawr_ridge_alpha,

@@ -2,7 +2,6 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from datetime import UTC, datetime
-from pathlib import Path
 from typing import Any, Callable, TypedDict
 
 from rawr_analytics.data.game_cache import list_cached_team_seasons
@@ -137,7 +136,6 @@ def refresh_metric_store(
     warnings = _build_refresh_warnings(
         metric=metric,
         season_type=season_type,
-        db_path=db_path,
     )
     scope_results: list[RefreshScopeResult] = []
     failure_message: str | None = None
@@ -189,8 +187,8 @@ def refresh_metric_store(
     )
 
 
-def _has_refreshable_cache(*, db_path: Path, season_type: str) -> bool:
-    return bool(list_cache_load_rows(db_path, season_type=season_type))
+def _has_refreshable_cache(*, season_type: str) -> bool:
+    return bool(list_cache_load_rows(season_type=season_type))
 
 
 def _build_empty_cache_refresh_result(metric: str) -> RefreshMetricStoreResult:
@@ -231,14 +229,10 @@ def _build_refresh_warnings(
     *,
     metric: str,
     season_type: str,
-    db_path: Path,
 ) -> list[str]:
     if metric != RAWR_METRIC:
         return []
-    return _print_rawr_incomplete_season_warning(
-        season_type=season_type,
-        db_path=db_path,
-    )
+    return _print_rawr_incomplete_season_warning(season_type=season_type)
 
 
 def _build_refresh_scope_context(
@@ -379,11 +373,7 @@ def _build_metric_series(
     ]
 
 
-def _print_rawr_incomplete_season_warning(
-    *,
-    season_type: str,
-    db_path: Path,
-) -> list[str]:
+def _print_rawr_incomplete_season_warning(season_type: str) -> list[str]:
     cached_team_seasons = list_cached_team_seasons(season_type=season_type)
     candidate_seasons = sorted({team_season.season for team_season in cached_team_seasons})
     if not candidate_seasons:
@@ -392,7 +382,6 @@ def _print_rawr_incomplete_season_warning(
     issues = list_incomplete_rawr_seasons(
         seasons=candidate_seasons,
         season_type=season_type,
-        player_metrics_db_path=db_path,
     )
     if not issues:
         return []

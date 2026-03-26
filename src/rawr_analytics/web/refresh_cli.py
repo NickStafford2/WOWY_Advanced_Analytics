@@ -57,7 +57,6 @@ def main(argv: list[str] | None = None) -> int:
         result = refresh_metric_store(
             metric,
             season_type=args.season_type,
-            db_path=args.player_metrics_db_path,
             rawr_ridge_alpha=args.rawr_ridge_alpha,
             include_team_scopes=False,
             progress=lambda current, total, detail, progress_bar=progress_bar: _update_progress(
