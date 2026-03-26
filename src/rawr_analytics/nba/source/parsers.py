@@ -61,29 +61,6 @@ def parse_league_schedule_payload(
     )
 
 
-def dedupe_schedule_games(games: list[SourceLeagueGame]) -> list[SourceLeagueGame]:
-    deduped: list[SourceLeagueGame] = []
-    seen_games_by_id: dict[str, SourceLeagueGame] = {}
-    for game in games:
-        existing_game = seen_games_by_id.get(game.game_id)
-        if existing_game is not None:
-            if (
-                existing_game.game_date != game.game_date
-                or existing_game.matchup != game.matchup
-                or existing_game.team_id != game.team_id
-                or existing_game.team_abbreviation != game.team_abbreviation
-            ):
-                raise ValueError(
-                    f"Conflicting duplicate schedule rows for game {game.game_id!r}; "
-                    f"first_row={format_source_row(existing_game.raw_row)} "
-                    f"second_row={format_source_row(game.raw_row)}"
-                )
-            continue
-        deduped.append(game)
-        seen_games_by_id[game.game_id] = game
-    return deduped
-
-
 def parse_box_score_payload(payload: dict, *, game_id: str) -> SourceBoxScore:
     game_payload = payload.get("game")
     if isinstance(game_payload, dict):
@@ -498,7 +475,6 @@ def _fail_on_row(row_label: str, row: dict[str, object], message: str) -> NoRetu
 
 
 __all__ = [
-    "dedupe_schedule_games",
     "parse_box_score_payload",
     "parse_league_schedule_payload",
 ]

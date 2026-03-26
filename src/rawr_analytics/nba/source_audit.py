@@ -9,8 +9,8 @@ from pathlib import Path
 from typing import Callable
 
 from rawr_analytics.nba.source.cache import DEFAULT_SOURCE_DATA_DIR
+from rawr_analytics.nba.source.dedupe import dedupe_schedule_games
 from rawr_analytics.nba.source.parsers import (
-    dedupe_schedule_games,
     parse_box_score_payload,
     parse_league_schedule_payload,
 )

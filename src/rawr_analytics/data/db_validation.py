@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import hashlib
-import json
 import re
 import sqlite3
 from collections import Counter, defaultdict
@@ -25,20 +24,16 @@ from rawr_analytics.data.game_cache.validation import (
 from rawr_analytics.data.game_cache.validation import (
     _validate_team_history_table as _validate_team_history_table_impl,
 )
+from rawr_analytics.data.player_metrics_db.audit import (
+    MetricStoreAuditMetadata,
+    audit_metric_store_tables,
+)
 from rawr_analytics.data.player_metrics_db.constants import DEFAULT_PLAYER_METRICS_DB_PATH
 from rawr_analytics.data.player_metrics_db.models import (
     MetricFullSpanPointRow,
     MetricFullSpanSeriesRow,
     MetricScopeCatalogRow,
     PlayerSeasonMetricRow,
-)
-from rawr_analytics.data.player_metrics_db.schema import (
-    _connect as _connect_player_metrics_db,
-)
-from rawr_analytics.data.player_metrics_db.validation import (
-    _validate_metric_full_span_rows,
-    _validate_metric_rows,
-    _validate_metric_scope_catalog_row,
 )
 
 
@@ -113,14 +108,14 @@ def audit_player_metrics_db(
     initialize_game_cache_db(db_path)
     issues: list[ValidationIssue] = []
     steps = (
-        ("team history", _validate_team_history_table),
-        ("normalized games", _validate_normalized_games_table),
-        ("normalized game players", _validate_normalized_game_players_table),
-        ("normalized cache loads", _validate_normalized_cache_loads_table),
-        ("normalized cache relations", _validate_normalized_cache_relations),
-        ("metric player season values", _validate_metric_player_season_values_table),
-        ("metric scope catalog", _validate_metric_scope_catalog_table),
-        ("metric full span tables", _validate_metric_full_span_tables),
+        "team history",
+        "normalized games",
+        "normalized game players",
+        "normalized cache loads",
+        "normalized cache relations",
+        "metric player season values",
+        "metric scope catalog",
+        "metric full span tables",
     )
     total_steps = len(steps) + 1
     current_step = 0
@@ -129,7 +124,8 @@ def audit_player_metrics_db(
         if progress is not None:
             progress(current_step, total_steps, label)
 
-    with _connect_player_metrics_db(db_path) as connection:
+    with sqlite3.connect(db_path) as connection:
+        connection.row_factory = sqlite3.Row
         current_step = 1
         report_progress("Validating team history")
         _validate_team_history_table(connection, issues)
@@ -147,24 +143,23 @@ def audit_player_metrics_db(
         _validate_normalized_cache_relations(connection, issues)
         current_step = 6
         report_progress("Validating metric player season values")
-        metric_row_groups, metadata_rows = _validate_metric_player_season_values_table(
+        metric_audit_state = audit_metric_store_tables(
             connection,
             issues,
+            issue_factory=ValidationIssue,
         )
         current_step = 7
         report_progress("Validating metric scope catalog")
-        catalog_rows = _validate_metric_scope_catalog_table(connection, issues)
         current_step = 8
         report_progress("Validating metric full span tables")
-        full_span_groups = _validate_metric_full_span_tables(connection, issues)
         current_step = 9
         report_progress("Validating metric store relations")
         _validate_metric_store_relations(
             connection=connection,
-            metric_row_groups=metric_row_groups,
-            metadata_rows=metadata_rows,
-            catalog_rows=catalog_rows,
-            full_span_groups=full_span_groups,
+            metric_row_groups=metric_audit_state.metric_row_groups,
+            metadata_rows=metric_audit_state.metadata_rows,
+            catalog_rows=metric_audit_state.catalog_rows,
+            full_span_groups=metric_audit_state.full_span_groups,
             issues=issues,
         )
 
@@ -312,243 +307,11 @@ def _validate_team_history_table(
     )
 
 
-def _validate_metric_player_season_values_table(
-    connection: sqlite3.Connection,
-    issues: list[ValidationIssue],
-) -> tuple[
-    dict[tuple[str, str], list[PlayerSeasonMetricRow]],
-    dict[tuple[str, str], tuple[str, str, str, int]],
-]:
-    metadata_rows = connection.execute(
-        """
-        SELECT
-            metric,
-            scope_key,
-            metric_label,
-            build_version,
-            source_fingerprint,
-            row_count
-        FROM metric_store_metadata_v2
-        """
-    ).fetchall()
-    metadata_by_key = {
-        (row["metric"], row["scope_key"]): (
-            row["metric_label"],
-            row["build_version"],
-            row["source_fingerprint"],
-            row["row_count"],
-        )
-        for row in metadata_rows
-    }
-
-    rows = connection.execute(
-        """
-        SELECT
-            metric,
-            metric_label,
-            scope_key,
-            team_filter,
-            season_type,
-            season,
-            player_id,
-            player_name,
-            value,
-            sample_size,
-            secondary_sample_size,
-            average_minutes,
-            total_minutes,
-            details_json
-        FROM metric_player_season_values
-        ORDER BY metric, scope_key, season, player_id
-        """
-    ).fetchall()
-
-    groups: dict[tuple[str, str], list[PlayerSeasonMetricRow]] = defaultdict(list)
-    for row in rows:
-        groups[(row["metric"], row["scope_key"])].append(
-            PlayerSeasonMetricRow(
-                metric=row["metric"],
-                metric_label=row["metric_label"],
-                scope_key=row["scope_key"],
-                team_filter=row["team_filter"],
-                season_type=row["season_type"],
-                season=row["season"],
-                player_id=row["player_id"],
-                player_name=row["player_name"],
-                value=row["value"],
-                sample_size=row["sample_size"],
-                secondary_sample_size=row["secondary_sample_size"],
-                average_minutes=row["average_minutes"],
-                total_minutes=row["total_minutes"],
-                details=json.loads(row["details_json"]),
-            )
-        )
-
-    for key, group_rows in groups.items():
-        metric, scope_key = key
-        metric_label, build_version, source_fingerprint, _ = metadata_by_key.get(
-            key,
-            (group_rows[0].metric_label, "missing-metadata", "missing-metadata", -1),
-        )
-        try:
-            _validate_metric_rows(
-                metric=metric,
-                scope_key=scope_key,
-                metric_label=metric_label,
-                build_version=build_version,
-                source_fingerprint=source_fingerprint,
-                rows=group_rows,
-            )
-        except ValueError as exc:
-            issues.append(
-                ValidationIssue(
-                    table="metric_player_season_values",
-                    key=f"metric={metric!r},scope_key={scope_key!r}",
-                    message=str(exc),
-                )
-            )
-
-    return groups, metadata_by_key
-
-
-def _validate_metric_scope_catalog_table(
-    connection: sqlite3.Connection,
-    issues: list[ValidationIssue],
-) -> dict[tuple[str, str], MetricScopeCatalogRow]:
-    rows = connection.execute(
-        """
-        SELECT
-            metric,
-            scope_key,
-            metric_label,
-            team_filter,
-            season_type,
-            available_seasons_json,
-            available_teams_json,
-            full_span_start_season,
-            full_span_end_season,
-            updated_at
-        FROM metric_scope_catalog
-        ORDER BY metric, scope_key
-        """
-    ).fetchall()
-    catalog_rows: dict[tuple[str, str], MetricScopeCatalogRow] = {}
-    for row in rows:
-        catalog_row = MetricScopeCatalogRow(
-            metric=row["metric"],
-            scope_key=row["scope_key"],
-            metric_label=row["metric_label"],
-            team_filter=row["team_filter"],
-            season_type=row["season_type"],
-            available_seasons=json.loads(row["available_seasons_json"]),
-            available_teams=json.loads(row["available_teams_json"]),
-            full_span_start_season=row["full_span_start_season"],
-            full_span_end_season=row["full_span_end_season"],
-            updated_at=row["updated_at"],
-        )
-        key = (catalog_row.metric, catalog_row.scope_key)
-        catalog_rows[key] = catalog_row
-        try:
-            _validate_metric_scope_catalog_row(catalog_row)
-        except ValueError as exc:
-            issues.append(
-                ValidationIssue(
-                    table="metric_scope_catalog",
-                    key=f"metric={catalog_row.metric!r},scope_key={catalog_row.scope_key!r}",
-                    message=str(exc),
-                )
-            )
-    return catalog_rows
-
-
-def _validate_metric_full_span_tables(
-    connection: sqlite3.Connection,
-    issues: list[ValidationIssue],
-) -> dict[tuple[str, str], tuple[list[MetricFullSpanSeriesRow], list[MetricFullSpanPointRow]]]:
-    series_rows = connection.execute(
-        """
-        SELECT
-            metric,
-            scope_key,
-            player_id,
-            player_name,
-            span_average_value,
-            season_count,
-            rank_order
-        FROM metric_full_span_series
-        ORDER BY metric, scope_key, rank_order, player_id
-        """
-    ).fetchall()
-    point_rows = connection.execute(
-        """
-        SELECT
-            metric,
-            scope_key,
-            player_id,
-            season,
-            value
-        FROM metric_full_span_points
-        ORDER BY metric, scope_key, player_id, season
-        """
-    ).fetchall()
-
-    series_groups: dict[tuple[str, str], list[MetricFullSpanSeriesRow]] = defaultdict(list)
-    point_groups: dict[tuple[str, str], list[MetricFullSpanPointRow]] = defaultdict(list)
-
-    for row in series_rows:
-        series_groups[(row["metric"], row["scope_key"])].append(
-            MetricFullSpanSeriesRow(
-                metric=row["metric"],
-                scope_key=row["scope_key"],
-                player_id=row["player_id"],
-                player_name=row["player_name"],
-                span_average_value=row["span_average_value"],
-                season_count=row["season_count"],
-                rank_order=row["rank_order"],
-            )
-        )
-    for row in point_rows:
-        point_groups[(row["metric"], row["scope_key"])].append(
-            MetricFullSpanPointRow(
-                metric=row["metric"],
-                scope_key=row["scope_key"],
-                player_id=row["player_id"],
-                season=row["season"],
-                value=row["value"],
-            )
-        )
-
-    groups: dict[
-        tuple[str, str], tuple[list[MetricFullSpanSeriesRow], list[MetricFullSpanPointRow]]
-    ] = {}
-    for key in sorted(set(series_groups) | set(point_groups)):
-        series = series_groups.get(key, [])
-        points = point_groups.get(key, [])
-        groups[key] = (series, points)
-        try:
-            _validate_metric_full_span_rows(
-                metric=key[0],
-                scope_key=key[1],
-                series_rows=series,
-                point_rows=points,
-            )
-        except ValueError as exc:
-            issues.append(
-                ValidationIssue(
-                    table="metric_full_span",
-                    key=f"metric={key[0]!r},scope_key={key[1]!r}",
-                    message=str(exc),
-                )
-            )
-
-    return groups
-
-
 def _validate_metric_store_relations(
     *,
     connection: sqlite3.Connection,
     metric_row_groups: dict[tuple[str, str], list[PlayerSeasonMetricRow]],
-    metadata_rows: dict[tuple[str, str], tuple[str, str, str, int]],
+    metadata_rows: dict[tuple[str, str], MetricStoreAuditMetadata],
     catalog_rows: dict[tuple[str, str], MetricScopeCatalogRow],
     full_span_groups: dict[
         tuple[str, str], tuple[list[MetricFullSpanSeriesRow], list[MetricFullSpanPointRow]]
@@ -574,13 +337,13 @@ def _validate_metric_store_relations(
                     message="missing metadata row for metric scope",
                 )
             )
-        elif metadata_row[3] != len(rows):
+        elif metadata_row.row_count != len(rows):
             issues.append(
                 ValidationIssue(
                     table="metric_store_metadata_v2",
                     key=f"metric={metric!r},scope_key={scope_key!r}",
                     message=(
-                        f"row_count does not match metric rows: {metadata_row[3]} != {len(rows)}"
+                        f"row_count does not match metric rows: {metadata_row.row_count} != {len(rows)}"
                     ),
                 )
             )
@@ -637,7 +400,7 @@ def _validate_metric_store_relations(
         current_fingerprint = fingerprint_by_season_type.get(season_type)
         if current_fingerprint is None:
             continue
-        if metadata_row[2] != current_fingerprint:
+        if metadata_row.source_fingerprint != current_fingerprint:
             issues.append(
                 ValidationIssue(
                     table="metric_store_metadata_v2",

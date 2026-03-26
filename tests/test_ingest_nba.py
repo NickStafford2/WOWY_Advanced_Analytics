@@ -6,13 +6,14 @@ import pytest
 
 from rawr_analytics.nba.errors import PartialTeamSeasonError
 from rawr_analytics.nba.normalize.normalize_game import normalize_source_game
+from rawr_analytics.nba.source.dedupe import dedupe_schedule_games
 from rawr_analytics.nba.source.models import (
     SourceBoxScorePlayer,
     SourceBoxScoreTeam,
     SourceLeagueGame,
 )
+
 from rawr_analytics.nba.source.parsers import (
-    dedupe_schedule_games,
     parse_box_score_payload,
     parse_league_schedule_payload,
 )
