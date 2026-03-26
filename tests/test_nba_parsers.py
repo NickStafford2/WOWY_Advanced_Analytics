@@ -5,8 +5,8 @@ from pathlib import Path
 
 import pytest
 
+from rawr_analytics.nba.source.load import load_player_names_from_cache
 from rawr_analytics.nba.source.parsers import (
-    load_player_names_from_cache,
     parse_box_score_payload,
     parse_league_schedule_payload,
 )

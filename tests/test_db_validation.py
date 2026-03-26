@@ -15,11 +15,13 @@ from rawr_analytics.data.db_validation import (
 from rawr_analytics.data.db_validation_cli import main as db_validation_cli_main
 from rawr_analytics.data.game_cache.fingerprints import build_normalized_cache_fingerprint
 from rawr_analytics.data.game_cache.repository import replace_team_season_normalized_rows
-from rawr_analytics.data.player_metrics_db import (
+from rawr_analytics.data.player_metrics_db.models import (
     MetricFullSpanPointRow,
     MetricFullSpanSeriesRow,
     MetricScopeCatalogRow,
     PlayerSeasonMetricRow,
+)
+from rawr_analytics.data.player_metrics_db.store import (
     replace_metric_full_span_rows,
     replace_metric_rows,
     replace_metric_scope_catalog_row,

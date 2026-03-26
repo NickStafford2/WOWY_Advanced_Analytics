@@ -4,9 +4,9 @@ from dataclasses import dataclass
 from pathlib import Path
 
 from rawr_analytics.data.game_cache.repository import list_cache_load_rows
-from rawr_analytics.data.player_metrics_db import (
+from rawr_analytics.data.player_metrics_db.builders import build_rawr_player_season_metric_rows
+from rawr_analytics.data.player_metrics_db.models import (
     PlayerSeasonMetricRow,
-    build_rawr_player_season_metric_rows,
 )
 from rawr_analytics.metrics.rawr._observations import count_player_games
 from rawr_analytics.nba.team_identity import list_expected_team_abbreviations_for_season

@@ -25,18 +25,20 @@ from rawr_analytics.data.game_cache.validation import (
 from rawr_analytics.data.game_cache.validation import (
     _validate_team_history_table as _validate_team_history_table_impl,
 )
-from rawr_analytics.data.player_metrics_db import (
-    DEFAULT_PLAYER_METRICS_DB_PATH,
+from rawr_analytics.data.player_metrics_db.constants import DEFAULT_PLAYER_METRICS_DB_PATH
+from rawr_analytics.data.player_metrics_db.models import (
     MetricFullSpanPointRow,
     MetricFullSpanSeriesRow,
     MetricScopeCatalogRow,
     PlayerSeasonMetricRow,
+)
+from rawr_analytics.data.player_metrics_db.schema import (
+    _connect as _connect_player_metrics_db,
+)
+from rawr_analytics.data.player_metrics_db.validation import (
     _validate_metric_full_span_rows,
     _validate_metric_rows,
     _validate_metric_scope_catalog_row,
-)
-from rawr_analytics.data.player_metrics_db import (
-    _connect as _connect_player_metrics_db,
 )
 
 

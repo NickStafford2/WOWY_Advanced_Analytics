@@ -6,10 +6,12 @@ from typing import Any
 from rawr_analytics.data.game_cache import list_cached_team_seasons
 from rawr_analytics.data.game_cache.fingerprints import build_normalized_cache_fingerprint
 from rawr_analytics.data.game_cache.repository import list_cache_load_rows
-from rawr_analytics.data.player_metrics_db import (
-    DEFAULT_PLAYER_METRICS_DB_PATH,
+from rawr_analytics.data.player_metrics_db.constants import DEFAULT_PLAYER_METRICS_DB_PATH
+from rawr_analytics.data.player_metrics_db.models import (
     MetricScopeCatalogRow,
     PlayerSeasonMetricRow,
+)
+from rawr_analytics.data.player_metrics_db.queries import (
     load_metric_full_span_points_map,
     load_metric_full_span_series_rows,
     load_metric_rows,

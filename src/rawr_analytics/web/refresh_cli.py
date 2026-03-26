@@ -3,7 +3,7 @@ from __future__ import annotations
 import argparse
 from pathlib import Path
 
-from rawr_analytics.data.player_metrics_db import DEFAULT_PLAYER_METRICS_DB_PATH
+from rawr_analytics.data.player_metrics_db.constants import DEFAULT_PLAYER_METRICS_DB_PATH
 from rawr_analytics.progress import TerminalProgressBar, print_status_box
 from rawr_analytics.web.metric_store import (
     DEFAULT_RAWR_RIDGE_ALPHA,

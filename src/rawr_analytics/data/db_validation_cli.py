@@ -10,7 +10,7 @@ from rawr_analytics.data.db_validation import (
     render_validation_summary,
     summarize_validation_report,
 )
-from rawr_analytics.data.player_metrics_db import DEFAULT_PLAYER_METRICS_DB_PATH
+from rawr_analytics.data.player_metrics_db.constants import DEFAULT_PLAYER_METRICS_DB_PATH
 
 _LAST_PROGRESS_LINE_LENGTH = 0
 

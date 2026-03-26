@@ -5,7 +5,7 @@ from collections import defaultdict
 from typing import Callable, TypeVar
 
 from rawr_analytics.data.game_cache.rows import NormalizedCacheLoadRow
-from rawr_analytics.data.player_metrics_db import (
+from rawr_analytics.data.player_metrics_db.validation import (
     _validate_iso_datetime,
     _validate_optional_non_negative_int,
     _validate_required_text,

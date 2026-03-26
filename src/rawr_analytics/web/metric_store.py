@@ -3,20 +3,24 @@ from __future__ import annotations
 from dataclasses import dataclass
 from datetime import UTC, datetime
 from pathlib import Path
-from typing import Any, Callable
+from typing import Any, Callable, TypedDict
 
 from rawr_analytics.data.game_cache import list_cached_team_seasons
 from rawr_analytics.data.game_cache.fingerprints import build_normalized_cache_fingerprint
 from rawr_analytics.data.game_cache.repository import list_cache_load_rows
-from rawr_analytics.data.player_metrics_db import (
-    DEFAULT_PLAYER_METRICS_DB_PATH,
+from rawr_analytics.data.player_metrics_db.constants import DEFAULT_PLAYER_METRICS_DB_PATH
+from rawr_analytics.data.player_metrics_db.models import (
     MetricFullSpanPointRow,
     MetricFullSpanSeriesRow,
     MetricScopeCatalogRow,
     PlayerSeasonMetricRow,
-    clear_metric_scope_store,
+)
+from rawr_analytics.data.player_metrics_db.queries import (
     load_metric_scope_catalog_row,
     load_metric_store_metadata,
+)
+from rawr_analytics.data.player_metrics_db.store import (
+    clear_metric_scope_store,
     replace_metric_scope_store,
 )
 from rawr_analytics.metrics.rawr.data import build_rawr_metric_rows, list_incomplete_rawr_seasons
@@ -78,6 +82,11 @@ class _RefreshStoreInputs:
     cached_team_seasons: list[Any]
     available_teams: list[str]
     team_scopes: list[list[int] | None]
+
+
+class _MetricScopeStoreRows(TypedDict):
+    series_rows: list[MetricFullSpanSeriesRow]
+    point_rows: list[MetricFullSpanPointRow]
 
 
 WOWY_METRIC = "wowy"
@@ -491,7 +500,7 @@ def _build_metric_scope_store_rows(
     definition: _MetricDefinition,
     scope_key: str,
     seasons: list[str],
-) -> dict[str, list[MetricFullSpanSeriesRow] | list[MetricFullSpanPointRow]]:
+) -> _MetricScopeStoreRows:
     span_series = _build_metric_series(
         rows,
         seasons=seasons,

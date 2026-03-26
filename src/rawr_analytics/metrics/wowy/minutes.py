@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from rawr_analytics.data.player_metrics_db import DEFAULT_PLAYER_METRICS_DB_PATH
+from rawr_analytics.data.player_metrics_db.constants import DEFAULT_PLAYER_METRICS_DB_PATH
 from rawr_analytics.metrics.wowy.models import WowyPlayerStats
 from rawr_analytics.nba.prepare import load_normalized_scope_records
 from rawr_analytics.shared.minutes import build_player_minute_stats, passes_minute_filters

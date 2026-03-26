@@ -28,7 +28,7 @@ class SourceBoxScorePlayer:
     team_abbreviation: str
     player_id: int | None
     player_name: str
-    minutes_raw: str | int | None  # todo: see what sort of object this can be
+    minutes_raw: str | int | None
     raw_row: dict[str, object]  # todo: see what sort of object this can be
 
 

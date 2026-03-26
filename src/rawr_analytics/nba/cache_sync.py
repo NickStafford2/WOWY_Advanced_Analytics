@@ -4,7 +4,7 @@ from pathlib import Path
 from typing import Callable
 
 from rawr_analytics.data.game_cache import has_cached_team_season_scope
-from rawr_analytics.data.player_metrics_db import DEFAULT_PLAYER_METRICS_DB_PATH
+from rawr_analytics.data.player_metrics_db.constants import DEFAULT_PLAYER_METRICS_DB_PATH
 from rawr_analytics.nba.source.cache import DEFAULT_SOURCE_DATA_DIR
 from rawr_analytics.nba.team_seasons import TeamSeasonScope
 from rawr_analytics.workflows.nba_ingest import refresh_normalized_team_season_cache

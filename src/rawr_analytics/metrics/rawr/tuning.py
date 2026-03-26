@@ -7,7 +7,7 @@ from pathlib import Path
 
 import numpy as np
 
-from rawr_analytics.data.player_metrics_db import DEFAULT_PLAYER_METRICS_DB_PATH
+from rawr_analytics.data.player_metrics_db.constants import DEFAULT_PLAYER_METRICS_DB_PATH
 from rawr_analytics.metrics.rawr.models import RawrPlayerSeasonRecord
 from rawr_analytics.metrics.rawr.records import prepare_rawr_player_season_records
 from rawr_analytics.metrics.wowy.models import WowyPlayerSeasonRecord

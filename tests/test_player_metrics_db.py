@@ -5,20 +5,28 @@ from pathlib import Path
 
 import pytest
 
-from rawr_analytics.data.player_metrics_db import (
+from rawr_analytics.data.player_metrics_db.builders import (
+    build_rawr_player_season_metric_rows,
+    build_wowy_player_season_metric_rows,
+)
+from rawr_analytics.data.player_metrics_db.models import (
     MetricFullSpanPointRow,
     MetricFullSpanSeriesRow,
     MetricScopeCatalogRow,
     PlayerSeasonMetricRow,
-    build_rawr_player_season_metric_rows,
-    build_wowy_player_season_metric_rows,
-    initialize_player_metrics_db,
+)
+from rawr_analytics.data.player_metrics_db.queries import (
     list_metric_seasons,
     load_metric_full_span_points_map,
     load_metric_full_span_series_rows,
     load_metric_rows,
     load_metric_scope_catalog_row,
     load_metric_store_metadata,
+)
+from rawr_analytics.data.player_metrics_db.schema import (
+    initialize_player_metrics_db,
+)
+from rawr_analytics.data.player_metrics_db.store import (
     replace_metric_full_span_rows,
     replace_metric_rows,
     replace_metric_scope_catalog_row,

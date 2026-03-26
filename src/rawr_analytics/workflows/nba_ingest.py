@@ -5,7 +5,7 @@ from pathlib import Path
 from typing import Callable
 
 from rawr_analytics.data.game_cache.repository import replace_team_season_normalized_rows
-from rawr_analytics.data.player_metrics_db import DEFAULT_PLAYER_METRICS_DB_PATH
+from rawr_analytics.data.player_metrics_db.constants import DEFAULT_PLAYER_METRICS_DB_PATH
 from rawr_analytics.nba.build_models import (
     TeamSeasonArtifacts,
     TeamSeasonBuildResult,
@@ -34,13 +34,13 @@ from rawr_analytics.nba.source.cache import (
     load_or_fetch_box_score_with_source,
     load_or_fetch_league_games_with_source,
 )
+from rawr_analytics.nba.source.load import (
+    load_player_names_from_cache as load_cached_player_names,
+)
 from rawr_analytics.nba.source.parsers import (
     dedupe_schedule_games,
     parse_box_score_payload,
     parse_league_schedule_payload,
-)
-from rawr_analytics.nba.source.parsers import (
-    load_player_names_from_cache as load_cached_player_names,
 )
 from rawr_analytics.nba.team_identity import resolve_team_id
 

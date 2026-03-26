@@ -2,10 +2,10 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from rawr_analytics.data.player_metrics_db import (
-    DEFAULT_PLAYER_METRICS_DB_PATH,
+from rawr_analytics.data.player_metrics_db.builders import build_wowy_player_season_metric_rows
+from rawr_analytics.data.player_metrics_db.constants import DEFAULT_PLAYER_METRICS_DB_PATH
+from rawr_analytics.data.player_metrics_db.models import (
     PlayerSeasonMetricRow,
-    build_wowy_player_season_metric_rows,
 )
 from rawr_analytics.metrics.wowy.analysis import (
     DEFAULT_WOWY_SHRINKAGE_PRIOR_GAMES,

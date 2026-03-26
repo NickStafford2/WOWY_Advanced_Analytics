@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from rawr_analytics.data.player_metrics_db import DEFAULT_PLAYER_METRICS_DB_PATH
+from rawr_analytics.data.player_metrics_db.constants import DEFAULT_PLAYER_METRICS_DB_PATH
 from rawr_analytics.metrics.wowy.analysis import ProgressFn, compute_wowy, filter_results
 from rawr_analytics.metrics.wowy.formatting import format_results_table
 from rawr_analytics.metrics.wowy.inputs import load_wowy_game_records

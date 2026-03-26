@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from rawr_analytics.data.player_metrics_db import DEFAULT_PLAYER_METRICS_DB_PATH
+from rawr_analytics.data.player_metrics_db.constants import DEFAULT_PLAYER_METRICS_DB_PATH
 from rawr_analytics.metrics.rawr._observations import build_rawr_player_season_minute_stats
 from rawr_analytics.metrics.rawr.analysis import ProgressFn, fit_player_rawr, tune_ridge_alpha
 from rawr_analytics.metrics.rawr.data import count_player_games, select_complete_rawr_scope_seasons

@@ -3,7 +3,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from pathlib import Path
 
-from rawr_analytics.data.player_metrics_db import DEFAULT_PLAYER_METRICS_DB_PATH
+from rawr_analytics.data.player_metrics_db.constants import DEFAULT_PLAYER_METRICS_DB_PATH
 from rawr_analytics.nba.season_types import canonicalize_season_type
 from rawr_analytics.nba.seasons import canonicalize_season_string
 from rawr_analytics.nba.team_history import resolve_team_history_entry_from_id
