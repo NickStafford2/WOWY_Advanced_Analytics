@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
@@ -19,211 +20,129 @@ from rawr_analytics.data.player_metrics_db.queries import (
     load_metric_store_metadata,
 )
 from rawr_analytics.metrics.rawr import (
+    RAWR_METRIC,
+)
+from rawr_analytics.metrics.rawr import (
     build_custom_query as build_rawr_custom_query,
 )
-from rawr_analytics.metrics.rawr import default_filters as rawr_default_filters
-from rawr_analytics.metrics.rawr import describe_metric as describe_rawr_metric
+from rawr_analytics.metrics.rawr import (
+    default_filters as rawr_default_filters,
+)
+from rawr_analytics.metrics.rawr import (
+    validate_filters as validate_rawr_filters,
+)
+from rawr_analytics.metrics.scope import build_scope_key
+from rawr_analytics.metrics.wowy import (
+    WOWY_METRIC,
+    WOWY_SHRUNK_METRIC,
+)
 from rawr_analytics.metrics.wowy import (
     build_custom_query as build_wowy_custom_query,
 )
-from rawr_analytics.metrics.wowy import default_filters as wowy_default_filters
-from rawr_analytics.metrics.wowy import describe_metric as describe_wowy_metric
-from rawr_analytics.nba.season_types import canonicalize_season_type
-from rawr_analytics.nba.team_history import official_continuity_label_for_team_id
-from rawr_analytics.web.metric_store import (
-    DEFAULT_RAWR_RIDGE_ALPHA,
-    RAWR_METRIC,
-    WOWY_METRIC,
-    WOWY_SHRUNK_METRIC,
-    build_scope_key,
+from rawr_analytics.metrics.wowy import (
+    default_filters as wowy_default_filters,
 )
+from rawr_analytics.metrics.wowy import (
+    validate_filters as validate_wowy_filters,
+)
+from rawr_analytics.nba.season_types import canonicalize_season_type
+from rawr_analytics.nba.seasons import canonicalize_season_string
+from rawr_analytics.nba.team_history import official_continuity_label_for_team_id
+
+MetricView = str
 
 
-def build_metric_player_seasons_payload(
+@dataclass(frozen=True)
+class MetricQuery:
+    season_type: str
+    team_ids: list[int] | None
+    seasons: list[str] | None
+    top_n: int
+    min_average_minutes: float
+    min_total_minutes: float
+    min_games: int | None = None
+    ridge_alpha: float | None = None
+    min_games_with: int | None = None
+    min_games_without: int | None = None
+
+
+def build_metric_query(
     metric: str,
     *,
-    db_path: Path = DEFAULT_PLAYER_METRICS_DB_PATH,
-    scope_key: str,
-    seasons: list[str] | None,
-    min_average_minutes: float | None,
-    min_total_minutes: float | None,
-    min_sample_size: int | None,
-    min_secondary_sample_size: int | None,
-) -> dict[str, Any]:
-    catalog_row = _require_current_metric_scope(
-        db_path=db_path,
-        metric=metric,
-        scope_key=scope_key,
-    )
-    rows = load_metric_rows(
-        db_path,
-        metric=metric,
-        scope_key=scope_key,
-        seasons=seasons,
-        min_average_minutes=min_average_minutes,
-        min_total_minutes=min_total_minutes,
-        min_sample_size=min_sample_size,
-        min_secondary_sample_size=min_secondary_sample_size,
-    )
-    return {
-        "metric": metric,
-        "metric_label": catalog_row.metric_label,
-        "rows": [_serialize_metric_player_season_row(row) for row in rows],
-    }
-
-
-def build_cached_metric_leaderboard_payload(
-    metric: str,
-    *,
-    db_path: Path = DEFAULT_PLAYER_METRICS_DB_PATH,
-    scope_key: str,
-    top_n: int,
-    seasons: list[str] | None,
-    min_average_minutes: float | None,
-    min_total_minutes: float | None,
-    min_sample_size: int | None,
-    min_secondary_sample_size: int | None,
-) -> dict[str, Any]:
-    catalog_row = _require_current_metric_scope(
-        db_path=db_path,
-        metric=metric,
-        scope_key=scope_key,
-    )
-    rows = load_metric_rows(
-        db_path,
-        metric=metric,
-        scope_key=scope_key,
-        seasons=seasons,
-        min_average_minutes=min_average_minutes,
-        min_total_minutes=min_total_minutes,
-        min_sample_size=min_sample_size,
-        min_secondary_sample_size=min_secondary_sample_size,
-    )
-    leaderboard = _build_leaderboard_payload_from_rows(
-        metric=metric,
-        metric_label=catalog_row.metric_label,
-        rows=rows,
-        seasons=seasons or catalog_row.available_seasons,
-        top_n=top_n,
-        mode="cached",
-    )
-    leaderboard["available_seasons"] = catalog_row.available_seasons
-    leaderboard["available_teams"] = catalog_row.available_teams
-    return leaderboard
-
-
-def build_cached_metric_export_table_rows(
-    metric: str,
-    *,
-    db_path: Path = DEFAULT_PLAYER_METRICS_DB_PATH,
-    scope_key: str,
-    seasons: list[str] | None,
-    min_average_minutes: float | None,
-    min_total_minutes: float | None,
-    min_sample_size: int | None,
-    min_secondary_sample_size: int | None,
-) -> tuple[str, list[dict[str, Any]]]:
-    catalog_row = _require_current_metric_scope(
-        db_path=db_path,
-        metric=metric,
-        scope_key=scope_key,
-    )
-    rows = load_metric_rows(
-        db_path,
-        metric=metric,
-        scope_key=scope_key,
-        seasons=seasons,
-        min_average_minutes=min_average_minutes,
-        min_total_minutes=min_total_minutes,
-        min_sample_size=min_sample_size,
-        min_secondary_sample_size=min_secondary_sample_size,
-    )
-    table_rows = _build_ranked_table_rows(
-        [_serialize_metric_player_season_row(row) for row in rows],
-        seasons=seasons or catalog_row.available_seasons,
-        top_n=None,
-    )
-    return catalog_row.metric_label, table_rows
-
-
-def build_custom_metric_leaderboard_payload(
-    metric: str,
-    *,
-    teams: list[str] | None,
-    team_ids: list[int] | None,
-    seasons: list[str] | None,
-    season_type: str,
-    top_n: int,
-    player_metrics_db_path: Path = DEFAULT_PLAYER_METRICS_DB_PATH,
-    min_games_with: int | None = None,
-    min_games_without: int | None = None,
-    min_games: int | None = None,
-    ridge_alpha: float | None = None,
+    season_type: str = "Regular Season",
+    team_ids: list[int] | None = None,
+    seasons: list[str] | None = None,
+    top_n: int | None = None,
     min_average_minutes: float | None = None,
     min_total_minutes: float | None = None,
-) -> dict[str, Any]:
-    custom_query = _build_custom_metric_query(
-        metric,
-        teams=teams,
-        team_ids=team_ids,
-        seasons=seasons,
-        season_type=season_type,
-        player_metrics_db_path=player_metrics_db_path,
-        min_games_with=min_games_with,
-        min_games_without=min_games_without,
-        min_games=min_games,
-        ridge_alpha=ridge_alpha,
-        min_average_minutes=min_average_minutes,
-        min_total_minutes=min_total_minutes,
-    )
-    rows = custom_query["rows"]
-    seasons_in_scope = sorted({row["season"] for row in rows})
-    return _build_leaderboard_payload_from_custom_rows(
-        metric=custom_query["metric"],
-        metric_label=custom_query["metric_label"],
-        rows=rows,
-        seasons=seasons_in_scope,
-        top_n=top_n,
-        mode="custom",
-    )
-
-
-def build_custom_metric_export_table_rows(
-    metric: str,
-    *,
-    teams: list[str] | None,
-    team_ids: list[int] | None,
-    seasons: list[str] | None,
-    season_type: str,
-    player_metrics_db_path: Path = DEFAULT_PLAYER_METRICS_DB_PATH,
-    min_games_with: int | None = None,
-    min_games_without: int | None = None,
     min_games: int | None = None,
     ridge_alpha: float | None = None,
-    min_average_minutes: float | None = None,
-    min_total_minutes: float | None = None,
-) -> tuple[str, list[dict[str, Any]]]:
-    custom_query = _build_custom_metric_query(
-        metric,
-        teams=teams,
-        team_ids=team_ids,
-        seasons=seasons,
-        season_type=season_type,
-        player_metrics_db_path=player_metrics_db_path,
-        min_games_with=min_games_with,
-        min_games_without=min_games_without,
-        min_games=min_games,
-        ridge_alpha=ridge_alpha,
-        min_average_minutes=min_average_minutes,
-        min_total_minutes=min_total_minutes,
-        require_explicit_filters=False,
+    min_games_with: int | None = None,
+    min_games_without: int | None = None,
+) -> MetricQuery:
+    defaults = _metric_default_filters(metric)
+    normalized_team_ids = sorted({team_id for team_id in team_ids or [] if team_id > 0}) or None
+    normalized_seasons = (
+        [canonicalize_season_string(season) for season in seasons] if seasons else None
     )
-    rows = custom_query["rows"]
-    seasons_in_scope = sorted({row["season"] for row in rows})
-    return (
-        custom_query["metric_label"],
-        _build_ranked_table_rows(rows, seasons=seasons_in_scope, top_n=None),
+    season_type = canonicalize_season_type(season_type)
+    top_n = int(top_n if top_n is not None else defaults["top_n"])
+    min_average_minutes = float(
+        min_average_minutes
+        if min_average_minutes is not None
+        else defaults["min_average_minutes"]
     )
+    min_total_minutes = float(
+        min_total_minutes if min_total_minutes is not None else defaults["min_total_minutes"]
+    )
+
+    if metric in {WOWY_METRIC, WOWY_SHRUNK_METRIC}:
+        min_games_with = int(
+            min_games_with if min_games_with is not None else defaults["min_games_with"]
+        )
+        min_games_without = int(
+            min_games_without if min_games_without is not None else defaults["min_games_without"]
+        )
+        validate_wowy_filters(
+            min_games_with,
+            min_games_without,
+            top_n=top_n,
+            min_average_minutes=min_average_minutes,
+            min_total_minutes=min_total_minutes,
+        )
+        return MetricQuery(
+            season_type=season_type,
+            team_ids=normalized_team_ids,
+            seasons=normalized_seasons,
+            top_n=top_n,
+            min_average_minutes=min_average_minutes,
+            min_total_minutes=min_total_minutes,
+            min_games_with=min_games_with,
+            min_games_without=min_games_without,
+        )
+
+    if metric == RAWR_METRIC:
+        min_games = int(min_games if min_games is not None else defaults["min_games"])
+        ridge_alpha = float(ridge_alpha if ridge_alpha is not None else defaults["ridge_alpha"])
+        validate_rawr_filters(
+            min_games,
+            ridge_alpha=ridge_alpha,
+            top_n=top_n,
+            min_average_minutes=min_average_minutes,
+            min_total_minutes=min_total_minutes,
+        )
+        return MetricQuery(
+            season_type=season_type,
+            team_ids=normalized_team_ids,
+            seasons=normalized_seasons,
+            top_n=top_n,
+            min_average_minutes=min_average_minutes,
+            min_total_minutes=min_total_minutes,
+            min_games=min_games,
+            ridge_alpha=ridge_alpha,
+        )
+
+    raise ValueError(f"Unknown metric: {metric}")
 
 
 def build_metric_options_payload(
@@ -233,7 +152,10 @@ def build_metric_options_payload(
     team_ids: list[int] | None,
     season_type: str,
 ) -> dict[str, Any]:
-    scope_key, _ = build_scope_key(team_ids=team_ids, season_type=season_type)
+    query = build_metric_query(metric, team_ids=team_ids, season_type=season_type)
+    filters = _build_filters_payload(query)
+    filters.pop("season", None)
+    scope_key, _ = build_scope_key(team_ids=query.team_ids, season_type=query.season_type)
     catalog_row = _require_current_metric_scope(
         db_path=db_path,
         metric=metric,
@@ -256,88 +178,94 @@ def build_metric_options_payload(
             available_teams=catalog_row.available_teams,
             available_seasons=catalog_row.available_seasons,
         ),
-        "filters": build_metric_default_filters_payload(
-            metric,
-            teams=None,
-            team_ids=team_ids,
-            season_type=catalog_row.season_type,
-        ),
+        "filters": filters,
     }
 
 
-def build_metric_default_filters_payload(
+def build_metric_view_payload(
     metric: str,
     *,
-    teams: list[str] | None,
-    team_ids: list[int] | None = None,
-    season_type: str,
+    view: MetricView,
+    query: MetricQuery,
+    db_path: Path = DEFAULT_PLAYER_METRICS_DB_PATH,
 ) -> dict[str, Any]:
-    season_type = canonicalize_season_type(season_type)
-    payload: dict[str, Any] = {
-        "team": teams,
-        "team_id": team_ids,
-        "season_type": season_type,
-    }
-    payload.update(_metric_default_filters(metric))
+    scope_key, _ = build_scope_key(team_ids=query.team_ids, season_type=query.season_type)
+    if view == "player-seasons":
+        payload = _build_metric_player_seasons_payload(
+            metric,
+            db_path=db_path,
+            scope_key=scope_key,
+            query=query,
+        )
+    elif view == "span-chart":
+        payload = _build_metric_span_chart_payload(
+            metric,
+            db_path=db_path,
+            scope_key=scope_key,
+            top_n=query.top_n,
+        )
+    elif view == "cached-leaderboard":
+        payload = _build_cached_metric_leaderboard_payload(
+            metric,
+            db_path=db_path,
+            scope_key=scope_key,
+            query=query,
+        )
+    elif view == "custom-query":
+        payload = _build_custom_metric_leaderboard_payload(
+            metric,
+            db_path=db_path,
+            query=query,
+        )
+    else:
+        raise ValueError(f"Unknown metric view: {view}")
+    payload["filters"] = _build_filters_payload(query)
     return payload
 
 
-def build_metric_filters_payload(
+def build_metric_export_table(
     metric: str,
     *,
-    teams: list[str] | None,
-    team_ids: list[int] | None,
-    seasons: list[str] | None,
-    season_type: str,
-    min_sample_size: str | None,
-    min_secondary_sample_size: str | None,
-    ridge_alpha: str | None,
-    min_average_minutes: str | None,
-    min_total_minutes: str | None,
-    top_n: str | None = None,
-) -> dict[str, Any]:
-    defaults = build_metric_default_filters_payload(
-        metric,
-        teams=teams,
-        team_ids=team_ids,
-        season_type=season_type,
-    )
-    payload = {
-        "team": teams,
-        "team_id": team_ids,
-        "season": seasons,
-        "season_type": canonicalize_season_type(season_type),
-        "min_average_minutes": _parse_optional_float(
-            min_average_minutes,
-            default=float(defaults["min_average_minutes"]),
-        ),
-        "min_total_minutes": _parse_optional_float(
-            min_total_minutes,
-            default=float(defaults["min_total_minutes"]),
-        ),
-        "top_n": _parse_optional_int(top_n, default=int(defaults["top_n"])),
+    view: MetricView,
+    query: MetricQuery,
+    db_path: Path = DEFAULT_PLAYER_METRICS_DB_PATH,
+) -> tuple[str, list[dict[str, Any]]]:
+    scope_key, _ = build_scope_key(team_ids=query.team_ids, season_type=query.season_type)
+    if view == "cached-leaderboard":
+        return _build_cached_metric_export_table_rows(
+            metric,
+            db_path=db_path,
+            scope_key=scope_key,
+            query=query,
+        )
+    if view == "custom-query":
+        return _build_custom_metric_export_table_rows(
+            metric,
+            db_path=db_path,
+            query=query,
+        )
+    raise ValueError(f"Metric view {view!r} does not support CSV export")
+
+
+def _build_filters_payload(query: MetricQuery) -> dict[str, Any]:
+    payload: dict[str, Any] = {
+        "team": None,
+        "team_id": query.team_ids,
+        "season": query.seasons,
+        "season_type": query.season_type,
+        "min_average_minutes": query.min_average_minutes,
+        "min_total_minutes": query.min_total_minutes,
+        "top_n": query.top_n,
     }
-    if metric in {WOWY_METRIC, WOWY_SHRUNK_METRIC}:
-        payload["min_games_with"] = _parse_optional_int(
-            min_sample_size,
-            default=int(defaults["min_games_with"]),
-        )
-        payload["min_games_without"] = _parse_optional_int(
-            min_secondary_sample_size,
-            default=int(defaults["min_games_without"]),
-        )
-        return payload
-    if metric == RAWR_METRIC:
-        payload["min_games"] = _parse_optional_int(
-            min_sample_size,
-            default=int(defaults["min_games"]),
-        )
-        payload["ridge_alpha"] = _parse_optional_float(
-            ridge_alpha,
-            default=float(defaults["ridge_alpha"]),
-        )
-        return payload
-    raise ValueError(f"Unknown metric: {metric}")
+    if query.min_games is not None:
+        payload["min_games"] = query.min_games
+    if query.ridge_alpha is not None:
+        payload["ridge_alpha"] = query.ridge_alpha
+    if query.min_games_with is not None:
+        payload["min_games_with"] = query.min_games_with
+    if query.min_games_without is not None:
+        payload["min_games_without"] = query.min_games_without
+    return payload
 
 
 def _metric_default_filters(metric: str) -> dict[str, int | float]:
@@ -348,67 +276,180 @@ def _metric_default_filters(metric: str) -> dict[str, int | float]:
     raise ValueError(f"Unknown metric: {metric}")
 
 
-def _metric_label(metric: str) -> str:
-    if metric in {WOWY_METRIC, WOWY_SHRUNK_METRIC}:
-        return describe_wowy_metric(metric)["label"]
-    if metric == RAWR_METRIC:
-        return describe_rawr_metric(metric)["label"]
-    raise ValueError(f"Unknown metric: {metric}")
+def _build_metric_player_seasons_payload(
+    metric: str,
+    *,
+    db_path: Path,
+    scope_key: str,
+    query: MetricQuery,
+) -> dict[str, Any]:
+    catalog_row = _require_current_metric_scope(
+        db_path=db_path,
+        metric=metric,
+        scope_key=scope_key,
+    )
+    rows = load_metric_rows(
+        db_path,
+        metric=metric,
+        scope_key=scope_key,
+        seasons=query.seasons,
+        min_average_minutes=query.min_average_minutes,
+        min_total_minutes=query.min_total_minutes,
+        min_sample_size=_metric_min_sample_size(query),
+        min_secondary_sample_size=_metric_secondary_sample_size(query),
+    )
+    return {
+        "metric": metric,
+        "metric_label": catalog_row.metric_label,
+        "rows": [_serialize_metric_player_season_row(row) for row in rows],
+    }
+
+
+def _build_cached_metric_leaderboard_payload(
+    metric: str,
+    *,
+    db_path: Path,
+    scope_key: str,
+    query: MetricQuery,
+) -> dict[str, Any]:
+    catalog_row = _require_current_metric_scope(
+        db_path=db_path,
+        metric=metric,
+        scope_key=scope_key,
+    )
+    rows = load_metric_rows(
+        db_path,
+        metric=metric,
+        scope_key=scope_key,
+        seasons=query.seasons,
+        min_average_minutes=query.min_average_minutes,
+        min_total_minutes=query.min_total_minutes,
+        min_sample_size=_metric_min_sample_size(query),
+        min_secondary_sample_size=_metric_secondary_sample_size(query),
+    )
+    payload = _build_leaderboard_payload_from_rows(
+        metric=metric,
+        metric_label=catalog_row.metric_label,
+        rows=rows,
+        seasons=query.seasons or catalog_row.available_seasons,
+        top_n=query.top_n,
+        mode="cached",
+    )
+    payload["available_seasons"] = catalog_row.available_seasons
+    payload["available_teams"] = catalog_row.available_teams
+    return payload
+
+
+def _build_cached_metric_export_table_rows(
+    metric: str,
+    *,
+    db_path: Path,
+    scope_key: str,
+    query: MetricQuery,
+) -> tuple[str, list[dict[str, Any]]]:
+    catalog_row = _require_current_metric_scope(
+        db_path=db_path,
+        metric=metric,
+        scope_key=scope_key,
+    )
+    rows = load_metric_rows(
+        db_path,
+        metric=metric,
+        scope_key=scope_key,
+        seasons=query.seasons,
+        min_average_minutes=query.min_average_minutes,
+        min_total_minutes=query.min_total_minutes,
+        min_sample_size=_metric_min_sample_size(query),
+        min_secondary_sample_size=_metric_secondary_sample_size(query),
+    )
+    table_rows = _build_ranked_table_rows(
+        [_serialize_metric_player_season_row(row) for row in rows],
+        seasons=query.seasons or catalog_row.available_seasons,
+        top_n=None,
+    )
+    return catalog_row.metric_label, table_rows
+
+
+def _build_custom_metric_leaderboard_payload(
+    metric: str,
+    *,
+    db_path: Path,
+    query: MetricQuery,
+) -> dict[str, Any]:
+    custom_query = _build_custom_metric_query(
+        metric,
+        player_metrics_db_path=db_path,
+        query=query,
+    )
+    rows = custom_query["rows"]
+    seasons_in_scope = sorted({row["season"] for row in rows})
+    return _build_leaderboard_payload_from_custom_rows(
+        metric=custom_query["metric"],
+        metric_label=custom_query["metric_label"],
+        rows=rows,
+        seasons=seasons_in_scope,
+        top_n=query.top_n,
+        mode="custom",
+    )
+
+
+def _build_custom_metric_export_table_rows(
+    metric: str,
+    *,
+    db_path: Path,
+    query: MetricQuery,
+) -> tuple[str, list[dict[str, Any]]]:
+    custom_query = _build_custom_metric_query(
+        metric,
+        player_metrics_db_path=db_path,
+        query=query,
+    )
+    rows = custom_query["rows"]
+    seasons_in_scope = sorted({row["season"] for row in rows})
+    return (
+        custom_query["metric_label"],
+        _build_ranked_table_rows(rows, seasons=seasons_in_scope, top_n=None),
+    )
 
 
 def _build_custom_metric_query(
     metric: str,
     *,
-    teams: list[str] | None,
-    team_ids: list[int] | None,
-    seasons: list[str] | None,
-    season_type: str,
     player_metrics_db_path: Path,
-    min_games_with: int | None,
-    min_games_without: int | None,
-    min_games: int | None,
-    ridge_alpha: float | None,
-    min_average_minutes: float | None,
-    min_total_minutes: float | None,
-    require_explicit_filters: bool = True,
+    query: MetricQuery,
 ) -> dict[str, Any]:
     if metric in {WOWY_METRIC, WOWY_SHRUNK_METRIC}:
-        if require_explicit_filters and min_games_without is None:
-            metric_name = "WOWY shrunk" if metric == WOWY_SHRUNK_METRIC else "WOWY"
-            raise ValueError(f"{metric_name} custom query requires min_games_without")
         return build_wowy_custom_query(
             metric,
-            teams=teams,
-            team_ids=team_ids,
-            seasons=seasons,
-            season_type=season_type,
+            teams=None,
+            team_ids=query.team_ids,
+            seasons=query.seasons,
+            season_type=query.season_type,
             player_metrics_db_path=player_metrics_db_path,
-            min_games_with=int(min_games_with or 0),
-            min_games_without=int(min_games_without or 0),
-            min_average_minutes=min_average_minutes,
-            min_total_minutes=min_total_minutes,
+            min_games_with=int(query.min_games_with or 0),
+            min_games_without=int(query.min_games_without or 0),
+            min_average_minutes=query.min_average_minutes,
+            min_total_minutes=query.min_total_minutes,
         )
     if metric == RAWR_METRIC:
-        if require_explicit_filters and ridge_alpha is None:
-            raise ValueError("RAWR custom query requires ridge_alpha")
         return build_rawr_custom_query(
-            teams=teams,
-            team_ids=team_ids,
-            seasons=seasons,
-            season_type=season_type,
+            teams=None,
+            team_ids=query.team_ids,
+            seasons=query.seasons,
+            season_type=query.season_type,
             player_metrics_db_path=player_metrics_db_path,
-            min_games=int(min_games or 0),
-            ridge_alpha=float(ridge_alpha or DEFAULT_RAWR_RIDGE_ALPHA),
-            min_average_minutes=min_average_minutes,
-            min_total_minutes=min_total_minutes,
+            min_games=int(query.min_games or 0),
+            ridge_alpha=float(query.ridge_alpha or rawr_default_filters()["ridge_alpha"]),
+            min_average_minutes=query.min_average_minutes,
+            min_total_minutes=query.min_total_minutes,
         )
     raise ValueError(f"Unknown metric: {metric}")
 
 
-def build_metric_span_chart_payload(
+def _build_metric_span_chart_payload(
     metric: str,
     *,
-    db_path: Path = DEFAULT_PLAYER_METRICS_DB_PATH,
+    db_path: Path,
     scope_key: str,
     top_n: int,
 ) -> dict[str, Any]:
@@ -458,16 +499,12 @@ def build_metric_span_chart_payload(
     }
 
 
-def _parse_optional_int(raw_value: str | None, default: int) -> int:
-    if raw_value is None:
-        return default
-    return int(raw_value)
+def _metric_min_sample_size(query: MetricQuery) -> int | None:
+    return query.min_games_with if query.min_games_with is not None else query.min_games
 
 
-def _parse_optional_float(raw_value: str | None, default: float) -> float:
-    if raw_value is None:
-        return default
-    return float(raw_value)
+def _metric_secondary_sample_size(query: MetricQuery) -> int | None:
+    return query.min_games_without
 
 
 def _serialize_metric_player_season_row(row: PlayerSeasonMetricRow) -> dict[str, Any]:

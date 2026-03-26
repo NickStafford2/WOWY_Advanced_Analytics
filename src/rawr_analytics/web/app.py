@@ -1,67 +1,27 @@
 from __future__ import annotations
 
 import json
-from dataclasses import dataclass
 from pathlib import Path
-from typing import Any, TypedDict
+from typing import Any
 
 from rawr_analytics.data.player_metrics_db.constants import DEFAULT_PLAYER_METRICS_DB_PATH
-from rawr_analytics.metrics.rawr import (
-    default_filters as rawr_default_filters,
-)
-from rawr_analytics.metrics.rawr import validate_filters as validate_rawr_filters
-from rawr_analytics.metrics.wowy import (
-    default_filters as wowy_default_filters,
-)
-from rawr_analytics.metrics.wowy import validate_filters as validate_wowy_filters
-from rawr_analytics.nba.season_types import canonicalize_season_type
-from rawr_analytics.nba.seasons import canonicalize_season_string
-from rawr_analytics.web.metric_queries import (
-    build_cached_metric_export_table_rows,
-    build_cached_metric_leaderboard_payload,
-    build_custom_metric_export_table_rows,
-    build_custom_metric_leaderboard_payload,
-    build_metric_filters_payload,
+from rawr_analytics.metrics.frontend import (
+    MetricQuery,
+    build_metric_export_table,
     build_metric_options_payload,
-    build_metric_player_seasons_payload,
-    build_metric_span_chart_payload,
+    build_metric_query,
+    build_metric_view_payload,
 )
-from rawr_analytics.web.metric_store import (
-    RAWR_METRIC,
-    WOWY_METRIC,
-    WOWY_SHRUNK_METRIC,
-    build_scope_key,
-)
+from rawr_analytics.metrics.rawr import RAWR_METRIC
+from rawr_analytics.metrics.wowy import WOWY_METRIC, WOWY_SHRUNK_METRIC
 
 
-class ParsedRequestFilters(TypedDict):
-    min_sample_size: int
-    min_secondary_sample_size: int | None
-    ridge_alpha: float | None
-    min_average_minutes: float
-    min_total_minutes: float
-    top_n: int
+def _parse_optional_int(raw_value: str | None) -> int | None:
+    return None if raw_value is None else int(raw_value)
 
 
-@dataclass(frozen=True)
-class _ParsedMetricRequest:
-    season_type: str
-    team_ids: list[int] | None
-    seasons: list[str] | None
-    scope_key: str
-    filters: ParsedRequestFilters
-
-
-def _parse_optional_int(raw_value: str | None, default: int) -> int:
-    if raw_value is None:
-        return default
-    return int(raw_value)
-
-
-def _parse_optional_float(raw_value: str | None, default: float) -> float:
-    if raw_value is None:
-        return default
-    return float(raw_value)
+def _parse_optional_float(raw_value: str | None) -> float | None:
+    return None if raw_value is None else float(raw_value)
 
 
 def _parse_positive_int_list(raw_values: list[str]) -> list[int] | None:
@@ -84,105 +44,88 @@ def create_app(
 
     app = Flask(__name__)
 
-    @app.get("/api/metrics/<metric>/options")
-    def get_metric_options(metric: str):
+    def parse_metric_query(metric: str) -> MetricQuery:
+        return build_metric_query(
+            metric,
+            season_type=request.args.get("season_type", "Regular Season"),
+            team_ids=_parse_positive_int_list(request.args.getlist("team_id")),
+            seasons=request.args.getlist("season") or None,
+            top_n=_parse_optional_int(request.args.get("top_n")),
+            min_average_minutes=_parse_optional_float(request.args.get("min_average_minutes")),
+            min_total_minutes=_parse_optional_float(request.args.get("min_total_minutes")),
+            min_games=_parse_optional_int(request.args.get("min_games")),
+            ridge_alpha=_parse_optional_float(request.args.get("ridge_alpha")),
+            min_games_with=_parse_optional_int(request.args.get("min_games_with")),
+            min_games_without=_parse_optional_int(request.args.get("min_games_without")),
+        )
+
+    def json_metric_response(metric: str, view: str):
+        query = parse_metric_query(metric)
+        payload = build_metric_view_payload(
+            metric,
+            view=view,
+            query=query,
+            db_path=player_metrics_db_path,
+        )
+        return jsonify(payload)
+
+    def csv_metric_response(metric: str, view: str):
+        query = parse_metric_query(metric)
+        metric_label, table_rows = build_metric_export_table(
+            metric,
+            view=view,
+            query=query,
+            db_path=player_metrics_db_path,
+        )
+        filename = f"{metric}-all-players.csv"
+        return Response(
+            _render_leaderboard_csv(metric_label=metric_label, table_rows=table_rows),
+            mimetype="text/csv",
+            headers={"Content-Disposition": f'attachment; filename="{filename}"'},
+        )
+
+    def run_json(handler):
         try:
-            payload = build_metric_options_payload(
-                metric,
-                db_path=player_metrics_db_path,
-                team_ids=_parse_positive_int_list(request.args.getlist("team_id")),
-                season_type=request.args.get("season_type", "Regular Season"),
-            )
+            return handler()
         except ValueError as exc:
             return jsonify({"error": str(exc)}), 400
 
-        return jsonify(payload)
+    @app.get("/api/metrics/<metric>/options")
+    def get_metric_options(metric: str):
+        return run_json(
+            lambda: jsonify(
+                build_metric_options_payload(
+                    metric,
+                    db_path=player_metrics_db_path,
+                    team_ids=_parse_positive_int_list(request.args.getlist("team_id")),
+                    season_type=request.args.get("season_type", "Regular Season"),
+                )
+            )
+        )
 
     @app.get("/api/metrics/<metric>/player-seasons")
     def get_metric_player_seasons(metric: str):
-        try:
-            payload = _build_metric_player_seasons_payload(
-                request,
-                metric=metric,
-                player_metrics_db_path=player_metrics_db_path,
-            )
-        except ValueError as exc:
-            return jsonify({"error": str(exc)}), 400
-
-        return jsonify(payload)
+        return run_json(lambda: json_metric_response(metric, "player-seasons"))
 
     @app.get("/api/metrics/<metric>/span-chart")
     def get_metric_span_chart(metric: str):
-        try:
-            payload = _build_metric_span_chart_payload(
-                request,
-                metric=metric,
-                player_metrics_db_path=player_metrics_db_path,
-            )
-        except ValueError as exc:
-            return jsonify({"error": str(exc)}), 400
-
-        return jsonify(payload)
+        return run_json(lambda: json_metric_response(metric, "span-chart"))
 
     @app.get("/api/metrics/<metric>/cached-leaderboard")
     def get_metric_cached_leaderboard(metric: str):
-        try:
-            payload = _build_cached_metric_leaderboard_payload(
-                request,
-                metric=metric,
-                player_metrics_db_path=player_metrics_db_path,
-            )
-        except ValueError as exc:
-            return jsonify({"error": str(exc)}), 400
-
-        return jsonify(payload)
+        return run_json(lambda: json_metric_response(metric, "cached-leaderboard"))
 
     @app.get("/api/metrics/<metric>/cached-leaderboard.csv")
     def export_metric_cached_leaderboard(metric: str):
-        try:
-            csv_content, filename = _build_cached_metric_leaderboard_csv(
-                request,
-                metric=metric,
-                player_metrics_db_path=player_metrics_db_path,
-            )
-        except ValueError as exc:
-            return jsonify({"error": str(exc)}), 400
-
-        return Response(
-            csv_content,
-            mimetype="text/csv",
-            headers={"Content-Disposition": f'attachment; filename="{filename}"'},
-        )
+        return run_json(lambda: csv_metric_response(metric, "cached-leaderboard"))
 
     @app.get("/api/metrics/<metric>/custom-query")
     def get_metric_custom_query(metric: str):
-        try:
-            payload = _build_metric_custom_query_payload(
-                request,
-                metric=metric,
-                player_metrics_db_path=player_metrics_db_path,
-            )
-        except ValueError as exc:
-            return jsonify({"error": str(exc)}), 400
-
-        return jsonify(payload)
+        return run_json(lambda: json_metric_response(metric, "custom-query"))
 
     @app.get("/api/metrics/<metric>/custom-query.csv")
     def export_metric_custom_query(metric: str):
-        try:
-            csv_content, filename = _build_metric_custom_query_csv(
-                request,
-                metric=metric,
-                player_metrics_db_path=player_metrics_db_path,
-            )
-        except ValueError as exc:
-            return jsonify({"error": str(exc)}), 400
-
-        return Response(
-            csv_content,
-            mimetype="text/csv",
-            headers={"Content-Disposition": f'attachment; filename="{filename}"'},
-        )
+        return run_json(lambda: csv_metric_response(metric, "custom-query"))
 
     @app.get("/api/wowy/player-seasons")
     def get_wowy_player_seasons():
@@ -213,327 +156,6 @@ def create_app(
         return get_metric_custom_query(RAWR_METRIC)
 
     return app
-
-
-def _build_metric_player_seasons_payload(
-    request,
-    *,
-    metric: str,
-    player_metrics_db_path: Path,
-) -> dict[str, Any]:
-    parsed_request = _parse_metric_request(
-        request,
-        metric=metric,
-        include_top_n=False,
-    )
-    payload = build_metric_player_seasons_payload(
-        metric,
-        db_path=player_metrics_db_path,
-        scope_key=parsed_request.scope_key,
-        seasons=parsed_request.seasons,
-        min_average_minutes=parsed_request.filters["min_average_minutes"],
-        min_total_minutes=parsed_request.filters["min_total_minutes"],
-        min_sample_size=parsed_request.filters["min_sample_size"],
-        min_secondary_sample_size=parsed_request.filters["min_secondary_sample_size"],
-    )
-    return _attach_request_filters(payload, request=request, metric=metric, parsed=parsed_request)
-
-
-def _build_metric_span_chart_payload(
-    request,
-    *,
-    metric: str,
-    player_metrics_db_path: Path,
-) -> dict[str, Any]:
-    parsed_request = _parse_metric_request(
-        request,
-        metric=metric,
-        include_top_n=True,
-    )
-    payload = build_metric_span_chart_payload(
-        metric,
-        db_path=player_metrics_db_path,
-        scope_key=parsed_request.scope_key,
-        top_n=parsed_request.filters["top_n"],
-    )
-    return _attach_request_filters(payload, request=request, metric=metric, parsed=parsed_request)
-
-
-def _build_cached_metric_leaderboard_payload(
-    request,
-    *,
-    metric: str,
-    player_metrics_db_path: Path,
-) -> dict[str, Any]:
-    parsed_request = _parse_metric_request(
-        request,
-        metric=metric,
-        include_top_n=True,
-    )
-    payload = build_cached_metric_leaderboard_payload(
-        metric,
-        db_path=player_metrics_db_path,
-        scope_key=parsed_request.scope_key,
-        top_n=parsed_request.filters["top_n"],
-        **_build_metric_row_query_kwargs(parsed_request),
-    )
-    return _attach_request_filters(payload, request=request, metric=metric, parsed=parsed_request)
-
-
-def _build_metric_custom_query_payload(
-    request,
-    *,
-    metric: str,
-    player_metrics_db_path: Path,
-) -> dict[str, Any]:
-    parsed_request = _parse_metric_request(
-        request,
-        metric=metric,
-        include_top_n=True,
-    )
-    payload = build_custom_metric_leaderboard_payload(
-        metric,
-        teams=None,
-        team_ids=parsed_request.team_ids,
-        top_n=parsed_request.filters["top_n"],
-        player_metrics_db_path=player_metrics_db_path,
-        **_build_metric_query_kwargs(metric=metric, parsed=parsed_request),
-    )
-    return _attach_request_filters(payload, request=request, metric=metric, parsed=parsed_request)
-
-
-def _build_cached_metric_leaderboard_csv(
-    request,
-    *,
-    metric: str,
-    player_metrics_db_path: Path,
-) -> tuple[str, str]:
-    parsed_request = _parse_metric_request(
-        request,
-        metric=metric,
-        include_top_n=True,
-    )
-    metric_label, table_rows = build_cached_metric_export_table_rows(
-        metric,
-        db_path=player_metrics_db_path,
-        scope_key=parsed_request.scope_key,
-        **_build_metric_row_query_kwargs(parsed_request),
-    )
-    return _build_leaderboard_csv_response(
-        metric=metric,
-        metric_label=metric_label,
-        table_rows=table_rows,
-    )
-
-
-def _build_metric_custom_query_csv(
-    request,
-    *,
-    metric: str,
-    player_metrics_db_path: Path,
-) -> tuple[str, str]:
-    parsed_request = _parse_metric_request(
-        request,
-        metric=metric,
-        include_top_n=True,
-    )
-    metric_label, table_rows = build_custom_metric_export_table_rows(
-        metric,
-        teams=None,
-        team_ids=parsed_request.team_ids,
-        player_metrics_db_path=player_metrics_db_path,
-        **_build_metric_query_kwargs(metric=metric, parsed=parsed_request),
-    )
-    return _build_leaderboard_csv_response(
-        metric=metric,
-        metric_label=metric_label,
-        table_rows=table_rows,
-    )
-
-
-def _parse_metric_request(
-    request,
-    *,
-    metric: str,
-    include_top_n: bool,
-) -> _ParsedMetricRequest:
-    season_type = canonicalize_season_type(request.args.get("season_type", "Regular Season"))
-    team_ids = _parse_positive_int_list(request.args.getlist("team_id"))
-    scope_key, _ = build_scope_key(team_ids=team_ids, season_type=season_type)
-    return _ParsedMetricRequest(
-        season_type=season_type,
-        team_ids=team_ids,
-        seasons=_parse_request_seasons(request),
-        scope_key=scope_key,
-        filters=_parse_request_filters(
-            request,
-            metric=metric,
-            include_top_n=include_top_n,
-        ),
-    )
-
-
-def _attach_request_filters(
-    payload: dict[str, Any],
-    *,
-    request,
-    metric: str,
-    parsed: _ParsedMetricRequest,
-) -> dict[str, Any]:
-    payload["filters"] = build_metric_filters_payload(
-        metric=metric,
-        teams=None,
-        team_ids=parsed.team_ids,
-        seasons=parsed.seasons,
-        season_type=parsed.season_type,
-        min_sample_size=request.args.get("min_games_with")
-        if metric in {WOWY_METRIC, WOWY_SHRUNK_METRIC}
-        else request.args.get("min_games"),
-        min_secondary_sample_size=request.args.get("min_games_without"),
-        ridge_alpha=request.args.get("ridge_alpha"),
-        min_average_minutes=request.args.get("min_average_minutes"),
-        min_total_minutes=request.args.get("min_total_minutes"),
-        top_n=request.args.get("top_n"),
-    )
-    return payload
-
-
-def _build_metric_row_query_kwargs(parsed: _ParsedMetricRequest) -> dict[str, Any]:
-    return {
-        "seasons": parsed.seasons,
-        "min_average_minutes": parsed.filters["min_average_minutes"],
-        "min_total_minutes": parsed.filters["min_total_minutes"],
-        "min_sample_size": parsed.filters["min_sample_size"],
-        "min_secondary_sample_size": parsed.filters["min_secondary_sample_size"],
-    }
-
-
-def _build_metric_query_kwargs(
-    *,
-    metric: str,
-    parsed: _ParsedMetricRequest,
-) -> dict[str, Any]:
-    kwargs = {
-        "seasons": parsed.seasons,
-        "season_type": parsed.season_type,
-        "min_average_minutes": parsed.filters["min_average_minutes"],
-        "min_total_minutes": parsed.filters["min_total_minutes"],
-    }
-    if metric in {WOWY_METRIC, WOWY_SHRUNK_METRIC}:
-        kwargs["min_games_with"] = int(parsed.filters["min_sample_size"])
-        kwargs["min_games_without"] = parsed.filters["min_secondary_sample_size"]
-        return kwargs
-    if metric == RAWR_METRIC:
-        kwargs["min_games"] = int(parsed.filters["min_sample_size"])
-        kwargs["ridge_alpha"] = parsed.filters["ridge_alpha"]
-        return kwargs
-    raise ValueError(f"Unknown metric: {metric}")
-
-
-def _build_leaderboard_csv_response(
-    *,
-    metric: str,
-    metric_label: str,
-    table_rows: list[dict[str, Any]],
-) -> tuple[str, str]:
-    return _render_leaderboard_csv(metric_label=metric_label, table_rows=table_rows), (
-        f"{metric}-all-players.csv"
-    )
-
-
-def _parse_request_filters(
-    request,
-    *,
-    metric: str,
-    include_top_n: bool,
-) -> ParsedRequestFilters:
-    defaults = (
-        wowy_default_filters()
-        if metric in {WOWY_METRIC, WOWY_SHRUNK_METRIC}
-        else rawr_default_filters()
-        if metric == RAWR_METRIC
-        else None
-    )
-    if defaults is None:
-        raise ValueError(f"Unknown metric: {metric}")
-
-    ridge_alpha: float | None = None
-    if metric in {WOWY_METRIC, WOWY_SHRUNK_METRIC}:
-        min_sample_size = _parse_optional_int(
-            request.args.get("min_games_with"),
-            default=int(defaults["min_games_with"]),
-        )
-        min_secondary_sample_size = _parse_optional_int(
-            request.args.get("min_games_without"),
-            default=int(defaults["min_games_without"]),
-        )
-        validate_wowy_filters(
-            min_sample_size,
-            min_secondary_sample_size,
-            top_n=_parse_optional_int(request.args.get("top_n"), default=int(defaults["top_n"]))
-            if include_top_n
-            else None,
-            min_average_minutes=_parse_optional_float(
-                request.args.get("min_average_minutes"),
-                default=float(defaults["min_average_minutes"]),
-            ),
-            min_total_minutes=_parse_optional_float(
-                request.args.get("min_total_minutes"),
-                default=float(defaults["min_total_minutes"]),
-            ),
-        )
-    elif metric == RAWR_METRIC:
-        min_sample_size = _parse_optional_int(
-            request.args.get("min_games"),
-            default=int(defaults["min_games"]),
-        )
-        min_secondary_sample_size = None
-        ridge_alpha = _parse_optional_float(
-            request.args.get("ridge_alpha"),
-            default=float(defaults["ridge_alpha"]),
-        )
-        validate_rawr_filters(
-            min_sample_size,
-            ridge_alpha=ridge_alpha,
-            top_n=_parse_optional_int(request.args.get("top_n"), default=int(defaults["top_n"]))
-            if include_top_n
-            else None,
-            min_average_minutes=_parse_optional_float(
-                request.args.get("min_average_minutes"),
-                default=float(defaults["min_average_minutes"]),
-            ),
-            min_total_minutes=_parse_optional_float(
-                request.args.get("min_total_minutes"),
-                default=float(defaults["min_total_minutes"]),
-            ),
-        )
-    else:
-        raise ValueError(f"Unknown metric: {metric}")
-
-    min_average_minutes = _parse_optional_float(
-        request.args.get("min_average_minutes"),
-        default=float(defaults["min_average_minutes"]),
-    )
-    min_total_minutes = _parse_optional_float(
-        request.args.get("min_total_minutes"),
-        default=float(defaults["min_total_minutes"]),
-    )
-    top_n = _parse_optional_int(request.args.get("top_n"), default=int(defaults["top_n"]))
-    return {
-        "min_sample_size": min_sample_size,
-        "min_secondary_sample_size": min_secondary_sample_size,
-        "ridge_alpha": ridge_alpha if metric == RAWR_METRIC else None,
-        "min_average_minutes": min_average_minutes,
-        "min_total_minutes": min_total_minutes,
-        "top_n": top_n,
-    }
-
-
-def _parse_request_seasons(request) -> list[str] | None:
-    raw_seasons = request.args.getlist("season")
-    if not raw_seasons:
-        return None
-    return [canonicalize_season_string(season) for season in raw_seasons]
 
 
 def _render_leaderboard_csv(

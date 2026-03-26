@@ -26,6 +26,7 @@ from rawr_analytics.data.player_metrics_db.store import (
 from rawr_analytics.metrics.rawr import build_cached_rows as build_rawr_cached_rows
 from rawr_analytics.metrics.rawr import describe_metric as describe_rawr_metric
 from rawr_analytics.metrics.rawr.data import list_incomplete_rawr_seasons
+from rawr_analytics.metrics.scope import build_scope_key
 from rawr_analytics.metrics.wowy import build_cached_rows as build_wowy_cached_rows
 from rawr_analytics.metrics.wowy import describe_metric as describe_wowy_metric
 from rawr_analytics.nba.season_types import canonicalize_season_type
@@ -115,22 +116,6 @@ METRIC_DEFINITIONS = {
         build_rows=build_rawr_cached_rows,
     ),
 }
-
-
-def build_scope_key(
-    *,
-    team_ids: list[int] | None,
-    season_type: str,
-) -> tuple[str, str]:
-    season_type = canonicalize_season_type(season_type)
-    normalized_team_ids = sorted({team_id for team_id in team_ids or [] if team_id > 0})
-    team_filter = ",".join(str(team_id) for team_id in normalized_team_ids)
-    team_key = team_filter or "all-teams"
-    return (
-        f"team_ids={team_key}|season_type={season_type}",
-        team_filter,
-    )
-
 
 def refresh_metric_store(
     metric: str,
