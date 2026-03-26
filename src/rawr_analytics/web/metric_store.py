@@ -117,6 +117,7 @@ METRIC_DEFINITIONS = {
     ),
 }
 
+
 def refresh_metric_store(
     metric: str,
     *,
@@ -520,7 +521,4 @@ def _build_metric_scope_store_rows(
 
 
 def _get_metric_definition(metric: str) -> _MetricDefinition:
-    try:
-        return METRIC_DEFINITIONS[metric]
-    except KeyError as exc:
-        raise ValueError(f"Unknown metric: {metric}") from exc
+    return METRIC_DEFINITIONS[metric]
