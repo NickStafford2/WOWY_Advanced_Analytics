@@ -8,9 +8,9 @@ from rawr_analytics.data.player_metrics_db.builders import build_rawr_player_sea
 from rawr_analytics.data.player_metrics_db.models import (
     PlayerSeasonMetricRow,
 )
+from rawr_analytics.data.scope_resolver import resolve_team_seasons
 from rawr_analytics.metrics.rawr._observations import count_player_games
 from rawr_analytics.nba.team_identity import list_expected_team_abbreviations_for_season
-from rawr_analytics.nba.team_seasons import resolve_team_seasons
 
 RAWR_METRIC = "rawr"
 DEFAULT_RAWR_SHRINKAGE_MODE = "uniform"

@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from rawr_analytics.data.player_metrics_db.constants import DEFAULT_PLAYER_METRICS_DB_PATH
+from rawr_analytics.data.scope_resolver import load_normalized_scope_records
 from rawr_analytics.metrics.rawr._observations import build_rawr_player_season_minute_stats
 from rawr_analytics.metrics.rawr.analysis import ProgressFn, fit_player_rawr, tune_ridge_alpha
 from rawr_analytics.metrics.rawr.data import count_player_games, select_complete_rawr_scope_seasons
@@ -12,7 +13,6 @@ from rawr_analytics.metrics.rawr.inputs import (
     filter_rawr_scope,
 )
 from rawr_analytics.nba.models import NormalizedGamePlayerRecord, NormalizedGameRecord
-from rawr_analytics.nba.prepare import load_normalized_scope_records
 from rawr_analytics.progress import TerminalProgressBar, print_status_box
 from rawr_analytics.shared.filters import validate_top_n_and_minutes
 from rawr_analytics.shared.scope import format_scope

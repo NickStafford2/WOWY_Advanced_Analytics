@@ -7,6 +7,7 @@ from pathlib import Path
 
 from rawr_analytics.data.game_cache.rows import NormalizedCacheLoadRow
 from rawr_analytics.data.game_cache.schema import _connect, initialize_game_cache_db
+from rawr_analytics.data.scopes import TeamSeasonScope
 from rawr_analytics.nba.models import NormalizedGamePlayerRecord, NormalizedGameRecord
 from rawr_analytics.nba.normalize.validation import validate_normalized_cache_batch
 from rawr_analytics.nba.season_types import canonicalize_season_type
@@ -16,7 +17,6 @@ from rawr_analytics.nba.team_identity import (
     resolve_team_id,
     resolve_team_identity_from_id_and_season,
 )
-from rawr_analytics.nba.team_seasons import TeamSeasonScope
 
 _GAME_CACHE_BUILD_VERSION = "normalized-cache-v2"
 

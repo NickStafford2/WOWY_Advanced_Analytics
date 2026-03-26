@@ -14,6 +14,8 @@ from rawr_analytics.data.game_cache.repository import (
     replace_team_season_normalized_rows,
 )
 from rawr_analytics.data.game_cache.schema import initialize_game_cache_db
+from rawr_analytics.data.scope_resolver import resolve_team_seasons
+from rawr_analytics.data.scopes import TeamSeasonScope
 from rawr_analytics.nba.errors import BoxScoreFetchError, LeagueGamesFetchError
 from rawr_analytics.nba.models import NormalizedGamePlayerRecord, NormalizedGameRecord
 from rawr_analytics.nba.season_types import canonicalize_season_type
@@ -27,7 +29,6 @@ from rawr_analytics.nba.source.cache import (
     write_cached_payload,
 )
 from rawr_analytics.nba.team_identity import resolve_team_id
-from rawr_analytics.nba.team_seasons import TeamSeasonScope, resolve_team_seasons
 from tests.support import game as normalized_game
 from tests.support import player as normalized_player
 from tests.support import seed_db_from_team_seasons
