@@ -19,8 +19,19 @@ __all__ = [
     "RAWR_METRIC",
     "build_cached_rows",
     "build_custom_query_rows",
+    "default_filters",
     "validate_filters",
 ]
+
+
+def default_filters() -> dict[str, int | float]:
+    return {
+        "min_average_minutes": 30.0,
+        "min_total_minutes": 600.0,
+        "top_n": 30,
+        "min_games": 35,
+        "ridge_alpha": 10.0,
+    }
 
 
 def build_cached_rows(

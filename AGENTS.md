@@ -1,4 +1,5 @@
 # AGENTS.md
+For every change, know that I want stronger package boundries with simpler data contracts. Separation of concerns and simple programs. 
 
 ## Security and scope
 - Only operate inside this repository.

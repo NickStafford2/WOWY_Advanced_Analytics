@@ -18,8 +18,14 @@ from rawr_analytics.data.player_metrics_db.queries import (
     load_metric_scope_catalog_row,
     load_metric_store_metadata,
 )
-from rawr_analytics.metrics.rawr import build_custom_query_rows as build_rawr_custom_query_rows
-from rawr_analytics.metrics.wowy import build_custom_query_rows as build_wowy_custom_query_rows
+from rawr_analytics.metrics.rawr import (
+    build_custom_query_rows as build_rawr_custom_query_rows,
+)
+from rawr_analytics.metrics.rawr import default_filters as rawr_default_filters
+from rawr_analytics.metrics.wowy import (
+    build_custom_query_rows as build_wowy_custom_query_rows,
+)
+from rawr_analytics.metrics.wowy import default_filters as wowy_default_filters
 from rawr_analytics.nba.season_types import canonicalize_season_type
 from rawr_analytics.nba.team_history import official_continuity_label_for_team_id
 from rawr_analytics.web.metric_store import (
@@ -428,23 +434,13 @@ def build_metric_default_filters_payload(
     season_type: str,
 ) -> dict[str, Any]:
     season_type = canonicalize_season_type(season_type)
-    payload = {
+    payload: dict[str, Any] = {
         "team": teams,
         "team_id": team_ids,
         "season_type": season_type,
-        "min_average_minutes": 30.0,
-        "min_total_minutes": 600.0,
-        "top_n": 30,
     }
-    if metric in {WOWY_METRIC, WOWY_SHRUNK_METRIC}:
-        payload["min_games_with"] = 15
-        payload["min_games_without"] = 2
-        return payload
-    if metric == RAWR_METRIC:
-        payload["min_games"] = 35
-        payload["ridge_alpha"] = DEFAULT_RAWR_RIDGE_ALPHA
-        return payload
-    raise ValueError(f"Unknown metric: {metric}")
+    payload.update(_metric_default_filters(metric))
+    return payload
 
 
 def build_metric_filters_payload(
@@ -474,13 +470,13 @@ def build_metric_filters_payload(
         "season_type": canonicalize_season_type(season_type),
         "min_average_minutes": _parse_optional_float(
             min_average_minutes,
-            default=30.0,
+            default=float(defaults["min_average_minutes"]),
         ),
         "min_total_minutes": _parse_optional_float(
             min_total_minutes,
-            default=600.0,
+            default=float(defaults["min_total_minutes"]),
         ),
-        "top_n": _parse_optional_int(top_n, default=30),
+        "top_n": _parse_optional_int(top_n, default=int(defaults["top_n"])),
     }
     if metric in {WOWY_METRIC, WOWY_SHRUNK_METRIC}:
         payload["min_games_with"] = _parse_optional_int(
@@ -502,6 +498,14 @@ def build_metric_filters_payload(
             default=float(defaults["ridge_alpha"]),
         )
         return payload
+    raise ValueError(f"Unknown metric: {metric}")
+
+
+def _metric_default_filters(metric: str) -> dict[str, int | float]:
+    if metric in {WOWY_METRIC, WOWY_SHRUNK_METRIC}:
+        return wowy_default_filters()
+    if metric == RAWR_METRIC:
+        return rawr_default_filters()
     raise ValueError(f"Unknown metric: {metric}")
 
 

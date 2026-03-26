@@ -6,8 +6,14 @@ from pathlib import Path
 from typing import Any, TypedDict
 
 from rawr_analytics.data.player_metrics_db.constants import DEFAULT_PLAYER_METRICS_DB_PATH
-from rawr_analytics.metrics.rawr.service import validate_filters as validate_rawr_filters
-from rawr_analytics.metrics.wowy.service import validate_filters as validate_wowy_filters
+from rawr_analytics.metrics.rawr import (
+    default_filters as rawr_default_filters,
+)
+from rawr_analytics.metrics.rawr import validate_filters as validate_rawr_filters
+from rawr_analytics.metrics.wowy import (
+    default_filters as wowy_default_filters,
+)
+from rawr_analytics.metrics.wowy import validate_filters as validate_wowy_filters
 from rawr_analytics.nba.season_types import canonicalize_season_type
 from rawr_analytics.nba.seasons import canonicalize_season_string
 from rawr_analytics.web.metric_queries import (
@@ -21,7 +27,6 @@ from rawr_analytics.web.metric_queries import (
     build_metric_span_chart_payload,
 )
 from rawr_analytics.web.metric_store import (
-    DEFAULT_RAWR_RIDGE_ALPHA,
     RAWR_METRIC,
     WOWY_METRIC,
     WOWY_SHRUNK_METRIC,
@@ -442,54 +447,64 @@ def _parse_request_filters(
     metric: str,
     include_top_n: bool,
 ) -> ParsedRequestFilters:
+    defaults = (
+        wowy_default_filters()
+        if metric in {WOWY_METRIC, WOWY_SHRUNK_METRIC}
+        else rawr_default_filters()
+        if metric == RAWR_METRIC
+        else None
+    )
+    if defaults is None:
+        raise ValueError(f"Unknown metric: {metric}")
+
     ridge_alpha: float | None = None
     if metric in {WOWY_METRIC, WOWY_SHRUNK_METRIC}:
         min_sample_size = _parse_optional_int(
             request.args.get("min_games_with"),
-            default=15,
+            default=int(defaults["min_games_with"]),
         )
         min_secondary_sample_size = _parse_optional_int(
             request.args.get("min_games_without"),
-            default=2,
+            default=int(defaults["min_games_without"]),
         )
         validate_wowy_filters(
             min_sample_size,
             min_secondary_sample_size,
-            top_n=_parse_optional_int(request.args.get("top_n"), default=30)
+            top_n=_parse_optional_int(request.args.get("top_n"), default=int(defaults["top_n"]))
             if include_top_n
             else None,
             min_average_minutes=_parse_optional_float(
                 request.args.get("min_average_minutes"),
-                default=30.0,
+                default=float(defaults["min_average_minutes"]),
             ),
             min_total_minutes=_parse_optional_float(
                 request.args.get("min_total_minutes"),
-                default=600.0,
+                default=float(defaults["min_total_minutes"]),
             ),
         )
     elif metric == RAWR_METRIC:
         min_sample_size = _parse_optional_int(
             request.args.get("min_games"),
-            default=35,
+            default=int(defaults["min_games"]),
         )
         min_secondary_sample_size = None
         ridge_alpha = _parse_optional_float(
             request.args.get("ridge_alpha"),
-            default=DEFAULT_RAWR_RIDGE_ALPHA,
+            default=float(defaults["ridge_alpha"]),
         )
         validate_rawr_filters(
             min_sample_size,
             ridge_alpha=ridge_alpha,
-            top_n=_parse_optional_int(request.args.get("top_n"), default=30)
+            top_n=_parse_optional_int(request.args.get("top_n"), default=int(defaults["top_n"]))
             if include_top_n
             else None,
             min_average_minutes=_parse_optional_float(
                 request.args.get("min_average_minutes"),
-                default=30.0,
+                default=float(defaults["min_average_minutes"]),
             ),
             min_total_minutes=_parse_optional_float(
                 request.args.get("min_total_minutes"),
-                default=600.0,
+                default=float(defaults["min_total_minutes"]),
             ),
         )
     else:
@@ -497,13 +512,13 @@ def _parse_request_filters(
 
     min_average_minutes = _parse_optional_float(
         request.args.get("min_average_minutes"),
-        default=30.0,
+        default=float(defaults["min_average_minutes"]),
     )
     min_total_minutes = _parse_optional_float(
         request.args.get("min_total_minutes"),
-        default=600.0,
+        default=float(defaults["min_total_minutes"]),
     )
-    top_n = _parse_optional_int(request.args.get("top_n"), default=30)
+    top_n = _parse_optional_int(request.args.get("top_n"), default=int(defaults["top_n"]))
     return {
         "min_sample_size": min_sample_size,
         "min_secondary_sample_size": min_secondary_sample_size,
