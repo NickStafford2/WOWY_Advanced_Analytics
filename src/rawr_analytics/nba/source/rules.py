@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import json
 import math
+import re
 from dataclasses import dataclass
 
 from rawr_analytics.nba.source.models import SourceBoxScorePlayer, SourceBoxScoreTeam
@@ -45,6 +46,11 @@ CANONICAL_SCHEDULE_SOURCE_ROW = SourceScheduleRowClassification(
     kind="canonical_schedule_source_row",
     should_skip=False,
 )
+_NUMERIC_TEXT_RE = re.compile(r"^[+-]?(?:\d+(?:\.\d*)?|\.\d+)$")
+_MINUTES_CLOCK_RE = re.compile(r"^(?P<minutes>\d+):(?P<seconds>\d+(?:\.\d+)?)$")
+_ISO_DURATION_MINUTES_RE = re.compile(
+    r"^PT(?:(?P<minutes>\d+(?:\.\d+)?)M)?(?:(?P<seconds>\d+(?:\.\d+)?)S)?$"
+)
 
 
 def parse_box_score_numeric_value(value: object) -> float | None:
@@ -57,18 +63,15 @@ def parse_box_score_numeric_value(value: object) -> float | None:
         return numeric_value
 
     text = str(value).strip()
-    if not text:
+    if not text or not _NUMERIC_TEXT_RE.fullmatch(text):
         return None
-    try:
-        numeric_value = float(text)
-    except ValueError:
-        return None
+    numeric_value = float(text)
     if not math.isfinite(numeric_value):
         return None
     return numeric_value
 
 
-def parse_minutes_to_float(minutes: int | str | None) -> float | None:
+def parse_minutes_to_float(minutes: object) -> float | None:
     if minutes is None or isinstance(minutes, bool):
         return None
     if isinstance(minutes, int | float):
@@ -85,19 +88,19 @@ def parse_minutes_to_float(minutes: int | str | None) -> float | None:
     if minute_text in {"0", "0:00", "0.0"}:
         return 0.0
     if ":" not in minute_text:
-        try:
-            numeric_minutes = float(minute_text)
-        except ValueError:
+        if not _NUMERIC_TEXT_RE.fullmatch(minute_text):
             return None
+        numeric_minutes = float(minute_text)
         if not math.isfinite(numeric_minutes):
             return None
         return numeric_minutes
 
-    whole_minutes, seconds = minute_text.split(":", maxsplit=1)
-    try:
-        parsed_minutes = float(whole_minutes) + (float(seconds) / 60.0)
-    except ValueError:
+    match = _MINUTES_CLOCK_RE.fullmatch(minute_text)
+    if match is None:
         return None
+    whole_minutes = float(match.group("minutes"))
+    seconds = float(match.group("seconds"))
+    parsed_minutes = whole_minutes + (seconds / 60.0)
     if not math.isfinite(parsed_minutes):
         return None
     return parsed_minutes
@@ -120,12 +123,12 @@ def classify_source_schedule_row(
 def classify_source_player_row(
     row: SourceBoxScorePlayer,
 ) -> SourcePlayerRowClassification:
-    if _is_inactive_player_status_row(row):
-        return INACTIVE_PLAYER_STATUS_ROW
     if _is_skip_player_row(row):
         return PLAYER_DID_NOT_PLAY_PLACEHOLDER
     if _is_player_did_not_play_placeholder(row):
         return PLAYER_DID_NOT_PLAY_PLACEHOLDER
+    if not source_player_played_in_game(row):
+        return INACTIVE_PLAYER_STATUS_ROW
     return CANONICAL_PLAYER_SOURCE_ROW
 
 
@@ -138,31 +141,38 @@ def format_source_rows(rows: list[dict[str, object]]) -> str:
 
 
 def _parse_iso_duration_minutes(minute_text: str) -> float | None:
-    body = minute_text.removeprefix("PT")
-    if not body:
+    match = _ISO_DURATION_MINUTES_RE.fullmatch(minute_text)
+    if match is None:
         return None
 
-    minutes_value = 0.0
-    seconds_value = 0.0
-    if "M" in body:
-        minute_part, body = body.split("M", maxsplit=1)
-        if minute_part:
-            try:
-                minutes_value = float(minute_part)
-            except ValueError:
-                return None
-    if body.endswith("S"):
-        second_part = body[:-1]
-        if second_part:
-            try:
-                seconds_value = float(second_part)
-            except ValueError:
-                return None
-
+    minute_part = match.group("minutes")
+    second_part = match.group("seconds")
+    if minute_part is None and second_part is None:
+        return None
+    minutes_value = float(minute_part) if minute_part is not None else 0.0
+    seconds_value = float(second_part) if second_part is not None else 0.0
     parsed_minutes = minutes_value + (seconds_value / 60.0)
     if not math.isfinite(parsed_minutes):
         return None
     return parsed_minutes
+
+
+def played_in_game(minutes: object) -> bool:
+    parsed_minutes = parse_minutes_to_float(minutes)
+    if parsed_minutes is None:
+        return False
+    return parsed_minutes > 0.0
+
+
+def source_player_played_in_game(row: SourceBoxScorePlayer) -> bool:
+    has_stats = _row_has_any_box_score_stats(row.raw_row)
+    has_minutes = played_in_game(row.minutes_raw)
+    if has_stats:
+        assert has_minutes, (
+            "Box score player row has counting stats without playable minutes; "
+            f"nba_api_box_score_player_row={format_source_row(row.raw_row)}"
+        )
+    return has_minutes or has_stats
 
 
 def _is_skip_player_row(row: SourceBoxScorePlayer) -> bool:
@@ -183,37 +193,7 @@ def _is_player_did_not_play_placeholder(row: SourceBoxScorePlayer) -> bool:
         return False
     if row.player_name.strip() != "":
         return False
-    if row.minutes_raw is not None:
-        return False
-    # You can Definitely reach here. I don't know why pyright thinks otherwise
-    # print("pyright thinks you can't reach here.")
-    if _row_has_any_box_score_stats(row.raw_row):
-        return False
-    comment = str(row.raw_row.get("COMMENT", "")).strip().upper()
-    if comment not in {"", "DNP - COACH'S DECISION"}:
-        return False
-    return True
-
-
-def _is_inactive_player_status_row(row: SourceBoxScorePlayer) -> bool:
-    if _row_has_any_box_score_stats(row.raw_row):
-        return False
-
-    minute_text = str(row.minutes_raw).strip() if row.minutes_raw is not None else ""
-    comment = str(row.raw_row.get("COMMENT", "")).strip()
-    if minute_text and _is_known_inactive_status(minute_text):
-        return True
-    if comment and _is_known_inactive_status(comment):
-        return True
-    if row.player_id is None or row.player_id <= 0 or row.player_name.strip() == "":
-        return False
-    if minute_text and _is_known_inactive_status(minute_text):
-        return True
-    if minute_text == "" and comment == "":
-        return True
-    if not comment:
-        return False
-    return _is_known_inactive_status(comment)
+    return not source_player_played_in_game(row)
 
 
 def _row_has_any_box_score_stats(raw_row: dict[str, object]) -> bool:
@@ -256,33 +236,6 @@ def _row_has_any_box_score_stats(raw_row: dict[str, object]) -> bool:
     return False
 
 
-def _is_known_inactive_status(minute_text: str) -> bool:
-    normalized = minute_text.strip().upper()
-    inactive_prefixes = (
-        "DNP",
-        "DNA",
-        "DND",
-        "DWT",
-        "PLANTAR FASCIATIS",
-        "DNT",
-        "DN MAKE TRIP",
-        "MWT",
-        "NWT",
-        "NTW",
-        "NOT DRESS",
-        "HAMSTRING",
-        "DID NOT",
-        "WILL NOT PLAY",
-        "OUT",
-        "INJ",
-        "NBA SUSPENSION",
-        "NOT WITH TEAM",
-        "SUSPENDED",
-        "INACTIVE",
-    )
-    return normalized.startswith(inactive_prefixes)
-
-
 __all__ = [
     "CANONICAL_PLAYER_SOURCE_ROW",
     "CANONICAL_SCHEDULE_SOURCE_ROW",
@@ -299,4 +252,6 @@ __all__ = [
     "format_source_rows",
     "parse_box_score_numeric_value",
     "parse_minutes_to_float",
+    "played_in_game",
+    "source_player_played_in_game",
 ]

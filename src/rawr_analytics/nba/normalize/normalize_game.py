@@ -15,6 +15,7 @@ from rawr_analytics.nba.source.rules import (
     format_source_rows,
     parse_box_score_numeric_value,
     parse_minutes_to_float,
+    source_player_played_in_game,
 )
 from rawr_analytics.nba.team_identity import (
     TeamIdentity,
@@ -120,13 +121,6 @@ def extract_is_home(matchup: str, team_abbreviation: str) -> bool:
     raise ValueError(f"Failed to parse home/away from matchup {matchup!r}")
 
 
-def _played_in_game(minutes: str | int | None) -> bool:
-    parsed_minutes = parse_minutes_to_float(minutes)
-    if parsed_minutes is None:
-        return False
-    return parsed_minutes > 0.0
-
-
 def _normalize_players(
     *,
     game_id: str,
@@ -157,13 +151,14 @@ def _normalize_players(
                 f"nba_api_box_score_player_row={format_source_row(row.raw_row)}"
             )
         player_name = row.player_name.strip()
+        assert source_player_played_in_game(row)
         players.append(
             NormalizedGamePlayerRecord(
                 game_id=game_id,
                 team=team_identity.abbreviation,
                 player_id=player_id,
                 player_name=player_name,
-                appeared=_played_in_game(row.minutes_raw),
+                appeared=True,
                 minutes=minutes,
                 team_id=team_identity.team_id,
             )

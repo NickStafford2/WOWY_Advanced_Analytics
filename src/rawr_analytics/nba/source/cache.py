@@ -12,7 +12,6 @@ from nba_api.stats.endpoints import (
     boxscoretraditionalv3,
     leaguegamefinder,
 )
-from requests import RequestException
 
 from rawr_analytics.nba.errors import BoxScoreFetchError, LeagueGamesFetchError
 from rawr_analytics.nba.season_types import canonicalize_season_type
@@ -55,53 +54,38 @@ def load_or_fetch_league_games_with_source(
     if cached_payload is not None:
         return cached_payload, "cached"
 
-    last_error: Exception | None = None
-
     for attempt in range(1, _LEAGUE_GAMES_REQUEST_RETRIES + 1):
-        try:
-            time.sleep(_LEAGUE_GAMES_REQUEST_DELAY_SECONDS)
-            if log is not None:
-                log(
-                    f"api league_games {team_abbreviation} {season} {season_type} attempt={attempt}"
-                )
-            finder = leaguegamefinder.LeagueGameFinder(
-                team_id_nullable=str(team_id),
-                season_nullable=season,
-                season_type_nullable=season_type,
-                timeout=LEAGUE_GAMES_REQUEST_TIMEOUT_SECONDS,
-            )
-            payload = finder.get_dict()
-            if not league_games_payload_is_valid(payload):
-                raise ValueError(
-                    f"League games endpoint returned empty data for "
-                    f"{team_abbreviation} {season} {season_type}"
-                )
+        time.sleep(_LEAGUE_GAMES_REQUEST_DELAY_SECONDS)
+        if log is not None:
+            log(f"api league_games {team_abbreviation} {season} {season_type} attempt={attempt}")
+        finder = leaguegamefinder.LeagueGameFinder(
+            team_id_nullable=str(team_id),
+            season_nullable=season,
+            season_type_nullable=season_type,
+            timeout=LEAGUE_GAMES_REQUEST_TIMEOUT_SECONDS,
+        )
+        payload = finder.get_dict()
+        if league_games_payload_is_valid(payload):
             write_cached_payload(cache_path, payload)
             return payload, "fetched"
-        except (json.JSONDecodeError, RequestException, ValueError) as exc:
-            last_error = exc
-            if attempt == _LEAGUE_GAMES_REQUEST_RETRIES:
-                break
+        if attempt < _LEAGUE_GAMES_REQUEST_RETRIES:
             time.sleep(_LEAGUE_GAMES_RETRY_BACKOFF_SECONDS * attempt)
 
-    if last_error is not None:
-        raise LeagueGamesFetchError(
-            message=(
-                f"Failed to fetch league games for {team_abbreviation} {season} "
-                f"{season_type} after {_LEAGUE_GAMES_REQUEST_RETRIES} attempts: "
-                f"{type(last_error).__name__}: {last_error}"
-            ),
-            resource="league_games",
-            identifier=f"{team_abbreviation}:{season}:{season_type}",
-            attempts=_LEAGUE_GAMES_REQUEST_RETRIES,
-            last_error_type=type(last_error).__name__,
-            last_error_message=str(last_error),
-            team=team_abbreviation,
-            season=season,
-            season_type=season_type,
-        ) from last_error
-
-    raise RuntimeError(f"Failed to fetch league games for {team_abbreviation!r} in {season!r}")
+    raise LeagueGamesFetchError(
+        message=(
+            f"Failed to fetch league games for {team_abbreviation} {season} "
+            f"{season_type} after {_LEAGUE_GAMES_REQUEST_RETRIES} attempts: "
+            "ValueError: endpoint returned empty data"
+        ),
+        resource="league_games",
+        identifier=f"{team_abbreviation}:{season}:{season_type}",
+        attempts=_LEAGUE_GAMES_REQUEST_RETRIES,
+        last_error_type="ValueError",
+        last_error_message="endpoint returned empty data",
+        team=team_abbreviation,
+        season=season,
+        season_type=season_type,
+    )
 
 
 def load_or_fetch_box_score_with_source(
@@ -119,71 +103,61 @@ def load_or_fetch_box_score_with_source(
             continue
         return cached_payload, "cached"
 
-    last_error: Exception | None = None
-
     for attempt in range(1, _BOX_SCORE_REQUEST_RETRIES + 1):
-        try:
-            time.sleep(_BOX_SCORE_REQUEST_DELAY_SECONDS)
-            if log is not None:
-                log(f"api box_score {game_id} attempt={attempt}")
-            box_score = boxscoretraditionalv2.BoxScoreTraditionalV2(
-                game_id=game_id,
-                timeout=BOX_SCORE_REQUEST_TIMEOUT_SECONDS,
+        time.sleep(_BOX_SCORE_REQUEST_DELAY_SECONDS)
+        if log is not None:
+            log(f"api box_score {game_id} attempt={attempt}")
+        box_score = boxscoretraditionalv2.BoxScoreTraditionalV2(
+            game_id=game_id,
+            timeout=BOX_SCORE_REQUEST_TIMEOUT_SECONDS,
+        )
+        payload = box_score.get_dict()
+        if not box_score_payload_is_empty(payload):
+            write_cached_payload(
+                box_score_cache_path(game_id, source_data_dir=source_data_dir),
+                payload,
             )
-            payload = box_score.get_dict()
-            if not box_score_payload_is_empty(payload):
-                write_cached_payload(
-                    box_score_cache_path(game_id, source_data_dir=source_data_dir),
-                    payload,
-                )
-                return payload, "fetched"
-            if log is not None:
-                log(f"api box_score {game_id} attempt={attempt} empty-v2 fallback=v3")
-            v3_payload = boxscoretraditionalv3.BoxScoreTraditionalV3(
-                game_id=game_id,
-                timeout=BOX_SCORE_REQUEST_TIMEOUT_SECONDS,
-            ).get_dict()
-            if box_score_payload_is_empty(v3_payload):
-                if log is not None:
-                    log(f"api box_score {game_id} attempt={attempt} empty-v3 fallback=live")
-                live_payload = live_boxscore.BoxScore(
-                    game_id=game_id,
-                    timeout=BOX_SCORE_REQUEST_TIMEOUT_SECONDS,
-                ).get_dict()
-                if box_score_payload_is_empty(live_payload):
-                    raise ValueError(f"Box score endpoint returned empty data for game {game_id!r}")
-                write_cached_payload(
-                    box_score_live_cache_path(game_id, source_data_dir=source_data_dir),
-                    live_payload,
-                )
-                return live_payload, "fetched"
+            return payload, "fetched"
+        if log is not None:
+            log(f"api box_score {game_id} attempt={attempt} empty-v2 fallback=v3")
+        v3_payload = boxscoretraditionalv3.BoxScoreTraditionalV3(
+            game_id=game_id,
+            timeout=BOX_SCORE_REQUEST_TIMEOUT_SECONDS,
+        ).get_dict()
+        if not box_score_payload_is_empty(v3_payload):
             write_cached_payload(
                 box_score_v3_cache_path(game_id, source_data_dir=source_data_dir),
                 v3_payload,
             )
             return v3_payload, "fetched"
-        except (json.JSONDecodeError, RequestException, ValueError) as exc:
-            last_error = exc
-            if attempt == _BOX_SCORE_REQUEST_RETRIES:
-                break
+        if log is not None:
+            log(f"api box_score {game_id} attempt={attempt} empty-v3 fallback=live")
+        live_payload = live_boxscore.BoxScore(
+            game_id=game_id,
+            timeout=BOX_SCORE_REQUEST_TIMEOUT_SECONDS,
+        ).get_dict()
+        if not box_score_payload_is_empty(live_payload):
+            write_cached_payload(
+                box_score_live_cache_path(game_id, source_data_dir=source_data_dir),
+                live_payload,
+            )
+            return live_payload, "fetched"
+        if attempt < _BOX_SCORE_REQUEST_RETRIES:
             time.sleep(_BOX_SCORE_RETRY_BACKOFF_SECONDS * attempt)
 
-    if last_error is not None:
-        raise BoxScoreFetchError(
-            message=(
-                f"Failed to fetch box score for game {game_id} after "
-                f"{_BOX_SCORE_REQUEST_RETRIES} attempts: "
-                f"{type(last_error).__name__}: {last_error}"
-            ),
-            resource="box_score",
-            identifier=game_id,
-            attempts=_BOX_SCORE_REQUEST_RETRIES,
-            last_error_type=type(last_error).__name__,
-            last_error_message=str(last_error),
-            game_id=game_id,
-        ) from last_error
-
-    raise RuntimeError(f"Failed to fetch box score for game {game_id!r}")
+    raise BoxScoreFetchError(
+        message=(
+            f"Failed to fetch box score for game {game_id} after "
+            f"{_BOX_SCORE_REQUEST_RETRIES} attempts: "
+            "ValueError: endpoint returned empty data"
+        ),
+        resource="box_score",
+        identifier=game_id,
+        attempts=_BOX_SCORE_REQUEST_RETRIES,
+        last_error_type="ValueError",
+        last_error_message="endpoint returned empty data",
+        game_id=game_id,
+    )
 
 
 def league_games_cache_path(
@@ -244,18 +218,9 @@ def _load_cached_payload(
 ) -> dict | None:
     if not cache_path.exists():
         return None
-    try:
-        payload = json.loads(cache_path.read_text(encoding="utf-8"))
-    except (OSError, json.JSONDecodeError) as exc:
-        _discard_cache_file(
-            cache_path,
-            reason=f"corrupt_json={type(exc).__name__}",
-            log=log,
-        )
-        return None
+    payload = json.loads(cache_path.read_text(encoding="utf-8"))
     if not isinstance(payload, dict):
-        _discard_cache_file(cache_path, reason="non_object_json", log=log)
-        return None
+        raise AssertionError(f"Cached payload must be a JSON object: {cache_path}")
     if validator is not None and not validator(payload):
         _discard_cache_file(cache_path, reason="invalid_or_empty_payload", log=log)
         return None
@@ -268,12 +233,7 @@ def _discard_cache_file(
     reason: str,
     log: LogFn | None = print,
 ) -> None:
-    try:
-        cache_path.unlink(missing_ok=True)
-    except OSError:
-        if log is not None:
-            log(f"cache discard failed {cache_path} reason={reason}")
-        return
+    cache_path.unlink(missing_ok=True)
     if log is not None:
         log(f"cache discard {cache_path} reason={reason}")
 
