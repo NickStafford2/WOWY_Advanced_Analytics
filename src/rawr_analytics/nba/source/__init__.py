@@ -5,6 +5,7 @@ from rawr_analytics.nba.source.cache import (
     load_or_fetch_box_score_with_source,
     load_or_fetch_league_games_with_source,
 )
+from rawr_analytics.nba.source.dedupe import dedupe_schedule_games
 from rawr_analytics.nba.source.load import (
     load_player_names_from_cache,
 )
@@ -16,7 +17,6 @@ from rawr_analytics.nba.source.models import (
     SourceLeagueSchedule,
 )
 from rawr_analytics.nba.source.parsers import (
-    dedupe_schedule_games,
     parse_box_score_payload,
     parse_league_schedule_payload,
 )

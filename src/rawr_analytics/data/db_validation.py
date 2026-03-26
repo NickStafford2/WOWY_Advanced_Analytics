@@ -8,22 +8,14 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Callable
 
+from rawr_analytics.data.game_cache.audit import (
+    audit_normalized_cache_loads_table,
+    audit_normalized_cache_relations,
+    audit_normalized_game_players_table,
+    audit_normalized_games_table,
+    audit_team_history_table,
+)
 from rawr_analytics.data.game_cache.schema import initialize_game_cache_db
-from rawr_analytics.data.game_cache.validation import (
-    _validate_normalized_cache_loads_table as _validate_normalized_cache_loads_table_impl,
-)
-from rawr_analytics.data.game_cache.validation import (
-    _validate_normalized_cache_relations as _validate_normalized_cache_relations_impl,
-)
-from rawr_analytics.data.game_cache.validation import (
-    _validate_normalized_game_players_table as _validate_normalized_game_players_table_impl,
-)
-from rawr_analytics.data.game_cache.validation import (
-    _validate_normalized_games_table as _validate_normalized_games_table_impl,
-)
-from rawr_analytics.data.game_cache.validation import (
-    _validate_team_history_table as _validate_team_history_table_impl,
-)
 from rawr_analytics.data.player_metrics_db.audit import (
     MetricStoreAuditMetadata,
     audit_metric_store_tables,
@@ -128,19 +120,19 @@ def audit_player_metrics_db(
         connection.row_factory = sqlite3.Row
         current_step = 1
         report_progress("Validating team history")
-        _validate_team_history_table(connection, issues)
+        audit_team_history_table(connection, issues, issue_factory=ValidationIssue)
         current_step = 2
         report_progress("Validating normalized games")
-        _validate_normalized_games_table(connection, issues)
+        audit_normalized_games_table(connection, issues, issue_factory=ValidationIssue)
         current_step = 3
         report_progress("Validating normalized game players")
-        _validate_normalized_game_players_table(connection, issues)
+        audit_normalized_game_players_table(connection, issues, issue_factory=ValidationIssue)
         current_step = 4
         report_progress("Validating normalized cache loads")
-        _validate_normalized_cache_loads_table(connection, issues)
+        audit_normalized_cache_loads_table(connection, issues, issue_factory=ValidationIssue)
         current_step = 5
         report_progress("Validating normalized cache relations")
-        _validate_normalized_cache_relations(connection, issues)
+        audit_normalized_cache_relations(connection, issues, issue_factory=ValidationIssue)
         current_step = 6
         report_progress("Validating metric player season values")
         metric_audit_state = audit_metric_store_tables(
@@ -251,60 +243,6 @@ def normalize_issue_message(message: str) -> str:
     normalized = _NUMBER_PATTERN.sub("<num>", normalized)
     return " ".join(normalized.split())
 
-
-def _validate_normalized_games_table(
-    connection: sqlite3.Connection,
-    issues: list[ValidationIssue],
-) -> None:
-    _validate_normalized_games_table_impl(
-        connection,
-        issues,
-        issue_factory=ValidationIssue,
-    )
-
-
-def _validate_normalized_game_players_table(
-    connection: sqlite3.Connection,
-    issues: list[ValidationIssue],
-) -> None:
-    _validate_normalized_game_players_table_impl(
-        connection,
-        issues,
-        issue_factory=ValidationIssue,
-    )
-
-
-def _validate_normalized_cache_loads_table(
-    connection: sqlite3.Connection,
-    issues: list[ValidationIssue],
-) -> None:
-    _validate_normalized_cache_loads_table_impl(
-        connection,
-        issues,
-        issue_factory=ValidationIssue,
-    )
-
-
-def _validate_normalized_cache_relations(
-    connection: sqlite3.Connection,
-    issues: list[ValidationIssue],
-) -> None:
-    _validate_normalized_cache_relations_impl(
-        connection,
-        issues,
-        issue_factory=ValidationIssue,
-    )
-
-
-def _validate_team_history_table(
-    connection: sqlite3.Connection,
-    issues: list[ValidationIssue],
-) -> None:
-    _validate_team_history_table_impl(
-        connection,
-        issues,
-        issue_factory=ValidationIssue,
-    )
 
 
 def _validate_metric_store_relations(
