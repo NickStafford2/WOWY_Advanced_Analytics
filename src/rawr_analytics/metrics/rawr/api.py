@@ -18,8 +18,10 @@ from rawr_analytics.metrics.rawr.service import validate_filters
 __all__ = [
     "RAWR_METRIC",
     "build_cached_rows",
+    "build_custom_query",
     "build_custom_query_rows",
     "default_filters",
+    "describe_metric",
     "validate_filters",
 ]
 
@@ -31,6 +33,16 @@ def default_filters() -> dict[str, int | float]:
         "top_n": 30,
         "min_games": 35,
         "ridge_alpha": 10.0,
+    }
+
+
+def describe_metric(metric: str) -> dict[str, str]:
+    if metric != RAWR_METRIC:
+        raise ValueError(f"Unknown RAWR metric: {metric}")
+    return {
+        "metric": RAWR_METRIC,
+        "label": "RAWR",
+        "build_version": "rawr-player-season-v3",
     }
 
 
@@ -53,6 +65,35 @@ def build_cached_rows(
         team_ids=team_ids,
         rawr_ridge_alpha=rawr_ridge_alpha,
     )
+
+
+def build_custom_query(
+    *,
+    teams: list[str] | None,
+    team_ids: list[int] | None,
+    seasons: list[str] | None,
+    season_type: str,
+    player_metrics_db_path: Path = DEFAULT_PLAYER_METRICS_DB_PATH,
+    min_games: int,
+    ridge_alpha: float,
+    min_average_minutes: float | None,
+    min_total_minutes: float | None,
+) -> dict[str, Any]:
+    return {
+        "metric": RAWR_METRIC,
+        "metric_label": describe_metric(RAWR_METRIC)["label"],
+        "rows": build_custom_query_rows(
+            teams=teams,
+            team_ids=team_ids,
+            seasons=seasons,
+            season_type=season_type,
+            player_metrics_db_path=player_metrics_db_path,
+            min_games=min_games,
+            ridge_alpha=ridge_alpha,
+            min_average_minutes=min_average_minutes,
+            min_total_minutes=min_total_minutes,
+        ),
+    }
 
 
 def build_custom_query_rows(

@@ -22,8 +22,10 @@ __all__ = [
     "WOWY_METRIC",
     "WOWY_SHRUNK_METRIC",
     "build_cached_rows",
+    "build_custom_query",
     "build_custom_query_rows",
     "default_filters",
+    "describe_metric",
     "validate_filters",
 ]
 
@@ -36,6 +38,22 @@ def default_filters() -> dict[str, int | float]:
         "min_games_with": 15,
         "min_games_without": 2,
     }
+
+
+def describe_metric(metric: str) -> dict[str, str]:
+    if metric == WOWY_METRIC:
+        return {
+            "metric": WOWY_METRIC,
+            "label": "WOWY",
+            "build_version": "wowy-player-season-v3",
+        }
+    if metric == WOWY_SHRUNK_METRIC:
+        return {
+            "metric": WOWY_SHRUNK_METRIC,
+            "label": "WOWY Shrunk",
+            "build_version": "wowy-shrunk-player-season-v1",
+        }
+    raise ValueError(f"Unknown WOWY metric: {metric}")
 
 
 def build_cached_rows(
@@ -70,6 +88,37 @@ def build_cached_rows(
             rawr_ridge_alpha=rawr_ridge_alpha,
         )
     raise ValueError(f"Unknown WOWY metric: {metric}")
+
+
+def build_custom_query(
+    metric: str,
+    *,
+    teams: list[str] | None,
+    team_ids: list[int] | None,
+    seasons: list[str] | None,
+    season_type: str,
+    player_metrics_db_path: Path = DEFAULT_PLAYER_METRICS_DB_PATH,
+    min_games_with: int,
+    min_games_without: int,
+    min_average_minutes: float | None,
+    min_total_minutes: float | None,
+) -> dict[str, Any]:
+    return {
+        "metric": metric,
+        "metric_label": describe_metric(metric)["label"],
+        "rows": build_custom_query_rows(
+            metric,
+            teams=teams,
+            team_ids=team_ids,
+            seasons=seasons,
+            season_type=season_type,
+            player_metrics_db_path=player_metrics_db_path,
+            min_games_with=min_games_with,
+            min_games_without=min_games_without,
+            min_average_minutes=min_average_minutes,
+            min_total_minutes=min_total_minutes,
+        ),
+    }
 
 
 def build_custom_query_rows(

@@ -19,13 +19,15 @@ from rawr_analytics.data.player_metrics_db.queries import (
     load_metric_store_metadata,
 )
 from rawr_analytics.metrics.rawr import (
-    build_custom_query_rows as build_rawr_custom_query_rows,
+    build_custom_query as build_rawr_custom_query,
 )
 from rawr_analytics.metrics.rawr import default_filters as rawr_default_filters
+from rawr_analytics.metrics.rawr import describe_metric as describe_rawr_metric
 from rawr_analytics.metrics.wowy import (
-    build_custom_query_rows as build_wowy_custom_query_rows,
+    build_custom_query as build_wowy_custom_query,
 )
 from rawr_analytics.metrics.wowy import default_filters as wowy_default_filters
+from rawr_analytics.metrics.wowy import describe_metric as describe_wowy_metric
 from rawr_analytics.nba.season_types import canonicalize_season_type
 from rawr_analytics.nba.team_history import official_continuity_label_for_team_id
 from rawr_analytics.web.metric_store import (
@@ -144,114 +146,6 @@ def build_cached_metric_export_table_rows(
     return catalog_row.metric_label, table_rows
 
 
-def build_custom_wowy_leaderboard_payload(
-    *,
-    teams: list[str] | None,
-    team_ids: list[int] | None,
-    seasons: list[str] | None,
-    season_type: str,
-    top_n: int,
-    player_metrics_db_path: Path = DEFAULT_PLAYER_METRICS_DB_PATH,
-    min_games_with: int,
-    min_games_without: int,
-    min_average_minutes: float | None,
-    min_total_minutes: float | None,
-) -> dict[str, Any]:
-    rows = build_wowy_custom_query_rows(
-        WOWY_METRIC,
-        teams=teams,
-        team_ids=team_ids,
-        seasons=seasons,
-        season_type=season_type,
-        player_metrics_db_path=player_metrics_db_path,
-        min_games_with=min_games_with,
-        min_games_without=min_games_without,
-        min_average_minutes=min_average_minutes,
-        min_total_minutes=min_total_minutes,
-    )
-    seasons_in_scope = sorted({row["season"] for row in rows})
-    return _build_leaderboard_payload_from_custom_rows(
-        metric=WOWY_METRIC,
-        metric_label="WOWY",
-        rows=rows,
-        seasons=seasons_in_scope,
-        top_n=top_n,
-        mode="custom",
-    )
-
-
-def build_custom_wowy_shrunk_leaderboard_payload(
-    *,
-    teams: list[str] | None,
-    team_ids: list[int] | None,
-    seasons: list[str] | None,
-    season_type: str,
-    top_n: int,
-    player_metrics_db_path: Path = DEFAULT_PLAYER_METRICS_DB_PATH,
-    min_games_with: int,
-    min_games_without: int,
-    min_average_minutes: float | None,
-    min_total_minutes: float | None,
-) -> dict[str, Any]:
-    rows = build_wowy_custom_query_rows(
-        WOWY_SHRUNK_METRIC,
-        teams=teams,
-        team_ids=team_ids,
-        seasons=seasons,
-        season_type=season_type,
-        player_metrics_db_path=player_metrics_db_path,
-        min_games_with=min_games_with,
-        min_games_without=min_games_without,
-        min_average_minutes=min_average_minutes,
-        min_total_minutes=min_total_minutes,
-    )
-    seasons_in_scope = sorted({row["season"] for row in rows})
-    table_rows = _build_ranked_table_rows(rows, seasons=seasons_in_scope, top_n=top_n)
-    return {
-        "mode": "custom",
-        "metric": WOWY_SHRUNK_METRIC,
-        "metric_label": "WOWY Shrunk",
-        "span": _build_span_payload(seasons_in_scope, top_n=top_n),
-        "table_rows": table_rows,
-        "series": _build_series_from_table_rows(table_rows, seasons=seasons_in_scope),
-    }
-
-
-def build_custom_rawr_leaderboard_payload(
-    *,
-    teams: list[str] | None,
-    team_ids: list[int] | None,
-    seasons: list[str] | None,
-    season_type: str,
-    top_n: int,
-    player_metrics_db_path: Path = DEFAULT_PLAYER_METRICS_DB_PATH,
-    min_games: int,
-    ridge_alpha: float,
-    min_average_minutes: float | None,
-    min_total_minutes: float | None,
-) -> dict[str, Any]:
-    rows = build_rawr_custom_query_rows(
-        teams=teams,
-        team_ids=team_ids,
-        seasons=seasons,
-        season_type=season_type,
-        player_metrics_db_path=player_metrics_db_path,
-        min_games=min_games,
-        ridge_alpha=ridge_alpha,
-        min_average_minutes=min_average_minutes,
-        min_total_minutes=min_total_minutes,
-    )
-    seasons_in_scope = sorted({row["season"] for row in rows})
-    return _build_leaderboard_payload_from_custom_rows(
-        metric=RAWR_METRIC,
-        metric_label="RAWR",
-        rows=rows,
-        seasons=seasons_in_scope,
-        top_n=top_n,
-        mode="custom",
-    )
-
-
 def build_custom_metric_leaderboard_payload(
     metric: str,
     *,
@@ -268,55 +162,30 @@ def build_custom_metric_leaderboard_payload(
     min_average_minutes: float | None = None,
     min_total_minutes: float | None = None,
 ) -> dict[str, Any]:
-    if metric == WOWY_METRIC:
-        if min_games_without is None:
-            raise ValueError("WOWY custom query requires min_games_without")
-        return build_custom_wowy_leaderboard_payload(
-            teams=teams,
-            team_ids=team_ids,
-            seasons=seasons,
-            season_type=season_type,
-            top_n=top_n,
-            player_metrics_db_path=player_metrics_db_path,
-            min_games_with=int(min_games_with or 0),
-            min_games_without=min_games_without,
-            min_average_minutes=min_average_minutes,
-            min_total_minutes=min_total_minutes,
-        )
-
-    if metric == WOWY_SHRUNK_METRIC:
-        if min_games_without is None:
-            raise ValueError("WOWY shrunk custom query requires min_games_without")
-        return build_custom_wowy_shrunk_leaderboard_payload(
-            teams=teams,
-            team_ids=team_ids,
-            seasons=seasons,
-            season_type=season_type,
-            top_n=top_n,
-            player_metrics_db_path=player_metrics_db_path,
-            min_games_with=int(min_games_with or 0),
-            min_games_without=min_games_without,
-            min_average_minutes=min_average_minutes,
-            min_total_minutes=min_total_minutes,
-        )
-
-    if metric == RAWR_METRIC:
-        if ridge_alpha is None:
-            raise ValueError("RAWR custom query requires ridge_alpha")
-        return build_custom_rawr_leaderboard_payload(
-            teams=teams,
-            team_ids=team_ids,
-            seasons=seasons,
-            season_type=season_type,
-            top_n=top_n,
-            player_metrics_db_path=player_metrics_db_path,
-            min_games=int(min_games or 0),
-            ridge_alpha=ridge_alpha,
-            min_average_minutes=min_average_minutes,
-            min_total_minutes=min_total_minutes,
-        )
-
-    raise ValueError(f"Unknown metric: {metric}")
+    custom_query = _build_custom_metric_query(
+        metric,
+        teams=teams,
+        team_ids=team_ids,
+        seasons=seasons,
+        season_type=season_type,
+        player_metrics_db_path=player_metrics_db_path,
+        min_games_with=min_games_with,
+        min_games_without=min_games_without,
+        min_games=min_games,
+        ridge_alpha=ridge_alpha,
+        min_average_minutes=min_average_minutes,
+        min_total_minutes=min_total_minutes,
+    )
+    rows = custom_query["rows"]
+    seasons_in_scope = sorted({row["season"] for row in rows})
+    return _build_leaderboard_payload_from_custom_rows(
+        metric=custom_query["metric"],
+        metric_label=custom_query["metric_label"],
+        rows=rows,
+        seasons=seasons_in_scope,
+        top_n=top_n,
+        mode="custom",
+    )
 
 
 def build_custom_metric_export_table_rows(
@@ -334,57 +203,27 @@ def build_custom_metric_export_table_rows(
     min_average_minutes: float | None = None,
     min_total_minutes: float | None = None,
 ) -> tuple[str, list[dict[str, Any]]]:
-    if metric == WOWY_METRIC:
-        rows = build_wowy_custom_query_rows(
-            WOWY_METRIC,
-            teams=teams,
-            team_ids=team_ids,
-            seasons=seasons,
-            season_type=season_type,
-            player_metrics_db_path=player_metrics_db_path,
-            min_games_with=int(min_games_with or 0),
-            min_games_without=int(min_games_without or 0),
-            min_average_minutes=min_average_minutes,
-            min_total_minutes=min_total_minutes,
-        )
-        seasons_in_scope = sorted({row["season"] for row in rows})
-        return "WOWY", _build_ranked_table_rows(rows, seasons=seasons_in_scope, top_n=None)
-
-    if metric == WOWY_SHRUNK_METRIC:
-        rows = build_wowy_custom_query_rows(
-            WOWY_SHRUNK_METRIC,
-            teams=teams,
-            team_ids=team_ids,
-            seasons=seasons,
-            season_type=season_type,
-            player_metrics_db_path=player_metrics_db_path,
-            min_games_with=int(min_games_with or 0),
-            min_games_without=int(min_games_without or 0),
-            min_average_minutes=min_average_minutes,
-            min_total_minutes=min_total_minutes,
-        )
-        seasons_in_scope = sorted({row["season"] for row in rows})
-        return (
-            "WOWY Shrunk",
-            _build_ranked_table_rows(rows, seasons=seasons_in_scope, top_n=None),
-        )
-
-    if metric == RAWR_METRIC:
-        rows = build_rawr_custom_query_rows(
-            teams=teams,
-            team_ids=team_ids,
-            seasons=seasons,
-            season_type=season_type,
-            player_metrics_db_path=player_metrics_db_path,
-            min_games=int(min_games or 0),
-            ridge_alpha=float(ridge_alpha or DEFAULT_RAWR_RIDGE_ALPHA),
-            min_average_minutes=min_average_minutes,
-            min_total_minutes=min_total_minutes,
-        )
-        seasons_in_scope = sorted({row["season"] for row in rows})
-        return "RAWR", _build_ranked_table_rows(rows, seasons=seasons_in_scope, top_n=None)
-
-    raise ValueError(f"Unknown metric: {metric}")
+    custom_query = _build_custom_metric_query(
+        metric,
+        teams=teams,
+        team_ids=team_ids,
+        seasons=seasons,
+        season_type=season_type,
+        player_metrics_db_path=player_metrics_db_path,
+        min_games_with=min_games_with,
+        min_games_without=min_games_without,
+        min_games=min_games,
+        ridge_alpha=ridge_alpha,
+        min_average_minutes=min_average_minutes,
+        min_total_minutes=min_total_minutes,
+        require_explicit_filters=False,
+    )
+    rows = custom_query["rows"]
+    seasons_in_scope = sorted({row["season"] for row in rows})
+    return (
+        custom_query["metric_label"],
+        _build_ranked_table_rows(rows, seasons=seasons_in_scope, top_n=None),
+    )
 
 
 def build_metric_options_payload(
@@ -506,6 +345,63 @@ def _metric_default_filters(metric: str) -> dict[str, int | float]:
         return wowy_default_filters()
     if metric == RAWR_METRIC:
         return rawr_default_filters()
+    raise ValueError(f"Unknown metric: {metric}")
+
+
+def _metric_label(metric: str) -> str:
+    if metric in {WOWY_METRIC, WOWY_SHRUNK_METRIC}:
+        return describe_wowy_metric(metric)["label"]
+    if metric == RAWR_METRIC:
+        return describe_rawr_metric(metric)["label"]
+    raise ValueError(f"Unknown metric: {metric}")
+
+
+def _build_custom_metric_query(
+    metric: str,
+    *,
+    teams: list[str] | None,
+    team_ids: list[int] | None,
+    seasons: list[str] | None,
+    season_type: str,
+    player_metrics_db_path: Path,
+    min_games_with: int | None,
+    min_games_without: int | None,
+    min_games: int | None,
+    ridge_alpha: float | None,
+    min_average_minutes: float | None,
+    min_total_minutes: float | None,
+    require_explicit_filters: bool = True,
+) -> dict[str, Any]:
+    if metric in {WOWY_METRIC, WOWY_SHRUNK_METRIC}:
+        if require_explicit_filters and min_games_without is None:
+            metric_name = "WOWY shrunk" if metric == WOWY_SHRUNK_METRIC else "WOWY"
+            raise ValueError(f"{metric_name} custom query requires min_games_without")
+        return build_wowy_custom_query(
+            metric,
+            teams=teams,
+            team_ids=team_ids,
+            seasons=seasons,
+            season_type=season_type,
+            player_metrics_db_path=player_metrics_db_path,
+            min_games_with=int(min_games_with or 0),
+            min_games_without=int(min_games_without or 0),
+            min_average_minutes=min_average_minutes,
+            min_total_minutes=min_total_minutes,
+        )
+    if metric == RAWR_METRIC:
+        if require_explicit_filters and ridge_alpha is None:
+            raise ValueError("RAWR custom query requires ridge_alpha")
+        return build_rawr_custom_query(
+            teams=teams,
+            team_ids=team_ids,
+            seasons=seasons,
+            season_type=season_type,
+            player_metrics_db_path=player_metrics_db_path,
+            min_games=int(min_games or 0),
+            ridge_alpha=float(ridge_alpha or DEFAULT_RAWR_RIDGE_ALPHA),
+            min_average_minutes=min_average_minutes,
+            min_total_minutes=min_total_minutes,
+        )
     raise ValueError(f"Unknown metric: {metric}")
 
 

@@ -24,8 +24,10 @@ from rawr_analytics.data.player_metrics_db.store import (
     replace_metric_scope_store,
 )
 from rawr_analytics.metrics.rawr import build_cached_rows as build_rawr_cached_rows
+from rawr_analytics.metrics.rawr import describe_metric as describe_rawr_metric
 from rawr_analytics.metrics.rawr.data import list_incomplete_rawr_seasons
 from rawr_analytics.metrics.wowy import build_cached_rows as build_wowy_cached_rows
+from rawr_analytics.metrics.wowy import describe_metric as describe_wowy_metric
 from rawr_analytics.nba.season_types import canonicalize_season_type
 from rawr_analytics.nba.team_history import official_continuity_label_for_team_id
 
@@ -96,20 +98,20 @@ DEFAULT_RAWR_RIDGE_ALPHA = 10.0
 METRIC_DEFINITIONS = {
     WOWY_METRIC: _MetricDefinition(
         metric=WOWY_METRIC,
-        label="WOWY",
-        build_version="wowy-player-season-v3",
+        label=describe_wowy_metric(WOWY_METRIC)["label"],
+        build_version=describe_wowy_metric(WOWY_METRIC)["build_version"],
         build_rows=lambda **kwargs: build_wowy_cached_rows(WOWY_METRIC, **kwargs),
     ),
     WOWY_SHRUNK_METRIC: _MetricDefinition(
         metric=WOWY_SHRUNK_METRIC,
-        label="WOWY Shrunk",
-        build_version="wowy-shrunk-player-season-v1",
+        label=describe_wowy_metric(WOWY_SHRUNK_METRIC)["label"],
+        build_version=describe_wowy_metric(WOWY_SHRUNK_METRIC)["build_version"],
         build_rows=lambda **kwargs: build_wowy_cached_rows(WOWY_SHRUNK_METRIC, **kwargs),
     ),
     RAWR_METRIC: _MetricDefinition(
         metric=RAWR_METRIC,
-        label="RAWR",
-        build_version="rawr-player-season-v3",
+        label=describe_rawr_metric(RAWR_METRIC)["label"],
+        build_version=describe_rawr_metric(RAWR_METRIC)["build_version"],
         build_rows=build_rawr_cached_rows,
     ),
 }

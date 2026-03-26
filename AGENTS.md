@@ -22,6 +22,10 @@ For every change, know that I want stronger package boundries with simpler data 
 - Prefer small pure functions.
 - Prefer private functions and files in submodules.
 - Follow Python 3.12 best practices.
+- Use the absolute minimal amount of try catch blocks or inheritance
+- Keep It Simple Stupid. 
+- Do not add unneeded layers of abstraction or complexity.
+- Avoid function anonymous functions. Prefer decision trees and if statements. 
 
 ## Test boundaries
 - Prefer tests that exercise the package public API rather than internal helper functions or deep module paths.
