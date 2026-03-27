@@ -30,39 +30,18 @@ def normalize_source_league_game(
         schedule_game=source_league_game,
         box_score=box_score,
     )
-    team_identity = resolve_source_team_identity(
-        team_id=team_stat.team_id,
-        team_abbreviation=team_stat.team_abbreviation,
-        fallback_team_id=source_league_game.team_id,
-        fallback_abbreviation=source_league_game.team_abbreviation,
-        season=season,
-        game_date=source_league_game.game_date,
-    )
-    opponent_identity = resolve_source_team_identity(
-        team_id=opponent_stat.team_id,
-        team_abbreviation=opponent_stat.team_abbreviation,
-        season=season,
-        game_date=source_league_game.game_date,
-    )
-
     player_rows = [
-        player
-        for player in box_score.players
-        if _validate_row_matches_team(
-            row_team_id=player.team_id,
-            row_team_abbreviation=player.team_abbreviation,
-            expected_team_id=team_identity.team_id,
-            expected_team_abbreviation=team_identity.abbreviation,
-        )
+        player for player in box_score.players if player.team.team_id == team_stat.team.team_id
     ]
+
     players = _normalize_players(
         game_id=source_league_game.game_id,
-        team_identity=team_identity,
+        team=team_stat.team,
         player_rows=player_rows,
     )
     if not any(player.appeared for player in players):
         raise ValueError(
-            f"No active players found for team {team_identity.abbreviation!r} in game "
+            f"No active players found for team {team_stat.team.abbreviation()!r} in game "
             f"{source_league_game.game_id!r}; "
             "nba_api_box_score_player_rows="
             f"{format_source_rows([row.raw_row for row in player_rows])}"
@@ -77,21 +56,22 @@ def normalize_source_league_game(
         game_id=source_league_game.game_id,
         season=season,
         game_date=source_league_game.game_date,
-        is_home=extract_is_home(source_league_game.matchup, team_identity.abbreviation),
+        is_home=extract_is_home(
+            source_league_game.matchup, team_stat.team.abbreviation(season=season)
+        ),
         margin=margin,
-        season_type=season_type,
         source=source,
-        team_id=team_identity.team_id,
-        opponent_team_id=opponent_identity.team_id,
+        team=team_stat.team,
+        opponent_team=opponent_stat.team,
     )
     return game, players
 
 
 def extract_opponent(matchup: str, team_abbreviation: str) -> str:
     left, right, _ = _split_matchup(matchup)
-    if _matchup_side_matches_requested_team(left, team_abbreviation):
+    if _validate_matchup(left, team_abbreviation):
         return right
-    if _matchup_side_matches_requested_team(right, team_abbreviation):
+    if _validate_matchup(right, team_abbreviation):
         return left
     raise ValueError(f"Failed to parse opponent from matchup {matchup!r}")
 
@@ -99,14 +79,14 @@ def extract_opponent(matchup: str, team_abbreviation: str) -> str:
 def extract_is_home(matchup: str, team_abbreviation: str) -> bool:
     left, right, separator = _split_matchup(matchup)
     if separator == "vs.":
-        if _matchup_side_matches_requested_team(left, team_abbreviation):
+        if _validate_matchup(left, team_abbreviation):
             return True
-        if _matchup_side_matches_requested_team(right, team_abbreviation):
+        if _validate_matchup(right, team_abbreviation):
             return False
     else:
-        if _matchup_side_matches_requested_team(left, team_abbreviation):
+        if _validate_matchup(left, team_abbreviation):
             return False
-        if _matchup_side_matches_requested_team(right, team_abbreviation):
+        if _validate_matchup(right, team_abbreviation):
             return True
     raise ValueError(f"Failed to parse home/away from matchup {matchup!r}")
 
@@ -114,7 +94,7 @@ def extract_is_home(matchup: str, team_abbreviation: str) -> bool:
 def _normalize_players(
     *,
     game_id: str,
-    team_identity: TeamIdentity,
+    team: Team,
     player_rows: list[SourceBoxScorePlayer],
 ) -> list[NormalizedGamePlayerRecord]:
     players: list[NormalizedGamePlayerRecord] = []
@@ -149,7 +129,7 @@ def _normalize_players(
                 player_name=player_name,
                 appeared=True,
                 minutes=minutes,
-                team_id=team_identity.team_id,
+                team=team,
             )
         )
     return players
@@ -223,10 +203,8 @@ def _split_matchup(matchup: str) -> tuple[str, str, str]:
     raise ValueError(f"Unrecognized matchup string {matchup!r}")
 
 
-def _matchup_side_matches_requested_team(side: str, team_abbreviation: str) -> bool:
-    return canonical_team_lookup_abbreviation(side) == canonical_team_lookup_abbreviation(
-        team_abbreviation
-    )
+def _validate_matchup(side: str, team_abbreviation: str) -> bool:
+    return side == team_abbreviation
 
 
 __all__ = [

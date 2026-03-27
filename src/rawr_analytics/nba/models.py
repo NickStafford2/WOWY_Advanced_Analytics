@@ -26,7 +26,6 @@ class NormalizedGamePlayerRecord:
     appeared: bool
     minutes: float | None
     team: Team
-    season: Season
 
 
 @dataclass(frozen=True)

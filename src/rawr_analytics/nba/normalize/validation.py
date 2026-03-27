@@ -22,28 +22,20 @@ def validate_normalized_team_season_batch(batch: NormalizedTeamSeasonBatch) -> N
     players_by_game_key: dict[tuple[str, int], list[NormalizedGamePlayerRecord]] = defaultdict(list)
 
     for game in batch.games:
-        _validate_canonical_game(
-            game,
-            expected_team_id=batch.team.team_id,
-            expected_season=batch.season,
-            expected_season_type=batch.season_type,
-        )
-        game_key = (game.game_id, game.team_id)
+        _validate_canonical_game(game, batch.team, batch.season)
+        game_key = (game.game_id, game.team.team_id)
         if game_key in game_keys:
             raise ValueError(f"Duplicate canonical game row for {game_key!r}")
         game_keys.add(game_key)
 
     player_keys: set[tuple[str, int, int]] = set()
     for player in batch.game_players:
-        _validate_canonical_game_player(
-            player,
-            expected_team_id=batch.team.team_id,
-        )
-        player_key = (player.game_id, player.team_id, player.player_id)
+        _validate_canonical_game_player(player, expected_team=batch.team)
+        player_key = (player.game_id, player.team.team_id, player.player_id)
         if player_key in player_keys:
             raise ValueError(f"Duplicate canonical player row for {player_key!r}")
         player_keys.add(player_key)
-        players_by_game_key[(player.game_id, player.team_id)].append(player)
+        players_by_game_key[(player.game_id, player.team.team_id)].append(player)
 
     if set(players_by_game_key) != game_keys:
         missing_players = sorted(game_keys - set(players_by_game_key))
@@ -89,26 +81,18 @@ def validate_normalized_cache_batch(
 
 def _validate_canonical_game(
     game: NormalizedGameRecord,
-    *,
     expected_team: Team,
     expected_season: Season,
 ) -> None:
     if not game.game_id.strip():
         raise ValueError("Canonical game_id must not be empty")
-    if canonicalize_season_year_string(game.season) != expected_season:
+    if not Season.are_same(game.season, expected_season):
         raise ValueError(
-            f"Canonical game {game.game_id!r} has season {game.season!r}; "
-            f"expected {expected_season!r}"
+            f"Canonical game {game.game_id!r} season {game.season!r}; expected {expected_season!r}"
         )
-    if canonicalize_season_type(game.season_type) != expected_season.season_type:
+    if not Team.are_same(game.team, expected_team):
         raise ValueError(
-            f"Canonical game {game.game_id!r} has season type {game.season_type!r}; "
-            f"expected {expected_season.season_type!r}"
-        )
-    if game.team.team_id != expected_team.team_id:
-        raise ValueError(
-            f"Canonical game {game.game_id!r} has team_id {game.team.team_id!r}; "
-            f"expected {expected_team.team_id!r}"
+            f"Canonical game {game.game_id!r} is not the same as {game.team!r}; expected {expected_team!r}"
         )
     if game.opponent_team.team_id is None or game.opponent_team.team_id <= 0:
         raise ValueError(f"Canonical game {game.game_id!r} must have a positive opponent_team_id")
@@ -116,6 +100,8 @@ def _validate_canonical_game(
         raise ValueError(
             f"Canonical game {game.game_id!r} must not use the same team_id and opponent_team_id"
         )
+    game.team.validate()
+    game.opponent_team.validate()
     if not _GAME_DATE_PATTERN.fullmatch(game.game_date):
         raise ValueError(f"Canonical game {game.game_id!r} has invalid date {game.game_date!r}")
     parsed_date = date.fromisoformat(game.game_date)
@@ -132,7 +118,6 @@ def _validate_canonical_game(
 
 def _validate_canonical_game_player(
     player: NormalizedGamePlayerRecord,
-    *,
     expected_team: Team,
 ) -> None:
     player_ref = (
@@ -140,9 +125,9 @@ def _validate_canonical_game_player(
     )
     if not player.game_id.strip():
         raise ValueError("Canonical player game_id must not be empty")
-    if player.team_id != expected_team.team_id:
+    if player.team.team_id != expected_team.team_id:
         raise ValueError(
-            f"Canonical player row for game {player.game_id!r} has team_id {player.team_id!r}; "
+            f"Canonical player row for game {player.game_id!r} has team_id {player.team.team_id!r}; "
             f"expected {expected_team.team_id!r}"
         )
     if player.player_id <= 0:

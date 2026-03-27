@@ -18,13 +18,13 @@ def render_progress_line(
     current = payload["current"]
     total = payload["total"]
     status = payload["status"]
-    team = payload["team"]
+    team_id = payload["team"].team_id
     season = payload["season"]
     game_id = payload.get("game_id", "")
     filled = 20 if total == 0 else int((current / total) * 20)
     bar = "#" * filled + "-" * (20 - filled)
     line = (
-        f"  [{team_index:>2}/{team_total}] {team} {season} "
+        f"  [{team_index:>2}/{team_total}] {team_id} {season} "
         f"{current}/{total} [{bar}] {status:<7} {game_id}"
     )
     _write_status_line(line)

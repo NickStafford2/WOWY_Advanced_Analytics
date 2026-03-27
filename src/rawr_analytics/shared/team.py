@@ -109,14 +109,12 @@ class Team:
     def are_same(
         left: Team,
         right: Team,
-        error_context: str | None = None,
-    ) -> None:
-        if left.team_id == right.team_id and left.abbreviation() == right.abbreviation():
-            return
-        message = f"Conflicting team identities: {_team_label(left)} != {_team_label(right)}"
-        if error_context is not None:
-            raise ValueError(f"{message}; {error_context}")
-        raise ValueError(message)
+    ) -> bool:
+        return left.team_id == right.team_id and left.abbreviation() == right.abbreviation()
+
+    def validate(self):
+        if self.team_id is None or self.team_id <= 0:
+            raise ValueError(f"team {self} must have a positive team_id: {self.team_id}")
 
 
 @dataclass(frozen=True)

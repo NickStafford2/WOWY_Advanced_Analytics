@@ -91,8 +91,6 @@ def replace_team_season_normalized_rows(
             [
                 (
                     player.game_id,
-                    player.season.id,
-                    _season_type_value(player.season),
                     player.team.team_id,
                     player.player_id,
                     player.player_name,
@@ -196,7 +194,7 @@ def load_normalized_games_from_db(
         for row in rows
     ]
     if teams and seasons:
-        allowed = _team_season_keys((team, season) for team in teams for season in seasons)
+        allowed = {(team.team_id, season.id) for team in teams for season in seasons}
         games = [game for game in games if (game.team.team_id, game.season.id) in allowed]
     return games
 
@@ -243,14 +241,20 @@ def load_normalized_game_players_from_db(
             appeared=bool(row["appeared"]),
             minutes=row["minutes"],
             team=Team.from_id(row["team_id"]),
-            season=Season(row["season"], row["season_type"]),
         )
         for row in rows
     ]
     if teams and seasons:
-        allowed = _team_season_keys((team, season) for team in teams for season in seasons)
+        allowed_team_seasons = {(team.team_id, season.id) for team in teams for season in seasons}
+        allowed_game_keys = {
+            (row["game_id"], row["team_id"])
+            for row in rows
+            if (row["team_id"], row["season"]) in allowed_team_seasons
+        }
         players = [
-            player for player in players if (player.team.team_id, player.season.id) in allowed
+            player
+            for player in players
+            if (player.game_id, player.team.team_id) in allowed_game_keys
         ]
     return players
 

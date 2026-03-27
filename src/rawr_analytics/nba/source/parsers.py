@@ -413,10 +413,10 @@ def _parse_result_set_player_row(
     *,
     game_id: str,
 ) -> SourceBoxScorePlayer:
+    team_id = _required_int(row, "TEAM_ID", row_label=_PLAYER_ROW_LABEL)
     parsed_row = SourceBoxScorePlayer(
+        team=Team.from_id(team_id),
         game_id=_optional_text(row, "GAME_ID") or game_id,
-        team_id=_optional_int(row, "TEAM_ID", row_label=_PLAYER_ROW_LABEL),
-        team_abbreviation=_optional_text(row, "TEAM_ABBREVIATION"),
         player_id=_optional_int(row, "PLAYER_ID", row_label=_PLAYER_ROW_LABEL),
         player_name=_player_name_from_row(row),
         minutes_raw=_optional_minutes(row, "MIN", row_label=_PLAYER_ROW_LABEL),
@@ -427,9 +427,9 @@ def _parse_result_set_player_row(
 
 
 def _parse_result_set_team_row(row: dict[str, object]) -> SourceBoxScoreTeam:
+    team_id = _required_int(row, "TEAM_ID", row_label=_PLAYER_ROW_LABEL)
     parsed_row = SourceBoxScoreTeam(
-        team_id=_optional_int(row, "TEAM_ID", row_label=_TEAM_ROW_LABEL),
-        team_abbreviation=_optional_text(row, "TEAM_ABBREVIATION"),
+        team=Team.from_id(team_id),
         plus_minus_raw=_optional_plus_minus(row, "PLUS_MINUS", row_label=_TEAM_ROW_LABEL),
         points_raw=_row_value(row, "PTS"),
         raw_row=row,
@@ -444,11 +444,6 @@ def _validate_source_player_row(player: SourceBoxScorePlayer) -> None:
         return
 
     row_context = _row_context(_PLAYER_ROW_LABEL, player.raw_row)
-    resolve_source_team_identity(
-        team_id=player.team_id,
-        team_abbreviation=player.team_abbreviation,
-        error_context=row_context,
-    )
 
     if player.game_id.strip() == "":
         raise ValueError(f"Missing GAME_ID; {row_context}")
@@ -459,23 +454,18 @@ def _validate_source_player_row(player: SourceBoxScorePlayer) -> None:
     assert source_player_played_in_game(player), row_context
 
 
-def _validate_source_team_row(row: SourceBoxScoreTeam) -> None:
-    classification = classify_source_team_row(row)
+def _validate_source_team_row(box_score_team: SourceBoxScoreTeam) -> None:
+    classification = classify_source_team_row(box_score_team)
     if classification.should_skip:
         return
 
-    row_context = _row_context(_TEAM_ROW_LABEL, row.raw_row)
-    resolve_source_team_identity(
-        team_id=row.team_id,
-        team_abbreviation=row.team_abbreviation,
-        error_context=row_context,
-    )
+    row_context = _row_context(_TEAM_ROW_LABEL, box_score_team.raw_row)
 
-    if row.team_id is None or row.team_id <= 0:
+    if box_score_team.team.team_id is None or box_score_team.team.team_id <= 0:
         raise ValueError(f"Missing TEAM_ID; {row_context}")
-    if row.team_abbreviation.strip() == "":
+    if box_score_team.team.abbreviation().strip() == "":
         raise ValueError(f"Missing TEAM_ABBREVIATION; {row_context}")
-    if parse_box_score_numeric_value(row.points_raw) is None:
+    if parse_box_score_numeric_value(box_score_team.points_raw) is None:
         raise ValueError(f"Unparseable PTS value; {row_context}")
 
 
