@@ -8,13 +8,11 @@ class RawrObservation:
     game_id: str
     season: str
     game_date: str
-    home_team: str
-    away_team: str
     margin: float
+    home_team_id: int
+    away_team_id: int
     player_weights: dict[int, float]
     player_minutes: dict[int, float] | None = None
-    home_team_id: int | None = None
-    away_team_id: int | None = None
 
 
 @dataclass(frozen=True)

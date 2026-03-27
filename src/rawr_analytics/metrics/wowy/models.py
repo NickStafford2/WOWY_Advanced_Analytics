@@ -7,14 +7,9 @@ from dataclasses import dataclass
 class WowyGameRecord:
     game_id: str
     season: str
-    team: str
     margin: float
     players: set[int]
-    team_id: int | None = None
-
-    @property
-    def identity_team(self) -> int | str:
-        return self.team_id if self.team_id is not None else self.team
+    team_id: int
 
 
 @dataclass(frozen=True)

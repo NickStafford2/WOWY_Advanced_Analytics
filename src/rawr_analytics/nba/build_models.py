@@ -3,6 +3,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 
 from rawr_analytics.nba.models import NormalizedGamePlayerRecord, NormalizedGameRecord
+from rawr_analytics.shared.season import Season
 
 
 @dataclass(frozen=True)
@@ -13,9 +14,8 @@ class TeamSeasonArtifacts:
 
 @dataclass(frozen=True)
 class TeamSeasonRunSummary:
-    team: str
-    season: str
-    season_type: str
+    team_id: int
+    season: Season
     league_games_source: str
     total_games: int
     processed_games: int

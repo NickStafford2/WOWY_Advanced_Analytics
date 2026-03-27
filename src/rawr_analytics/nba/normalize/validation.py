@@ -11,32 +11,22 @@ from rawr_analytics.nba.normalize.models import (
     NormalizedTeamSeasonBatch,
 )
 from rawr_analytics.nba.season_types import canonicalize_season_type
-from rawr_analytics.nba.seasons import canonicalize_season_string
-from rawr_analytics.nba.team_identity import (
-    resolve_team_identity_from_id_and_date,
-    resolve_team_identity_from_id_and_season,
-)
+from rawr_analytics.nba.seasons import canonicalize_season_year_string
+from rawr_analytics.shared.season import Season
+from rawr_analytics.shared.team import Team
 
 _TEAM_ABBREVIATION_PATTERN = re.compile(r"^[A-Z0-9]{2,4}$")
 _GAME_DATE_PATTERN = re.compile(r"^\d{4}-\d{2}-\d{2}$")
 
 
 def validate_normalized_team_season_batch(batch: NormalizedTeamSeasonBatch) -> None:
-    expected_batch_identity = resolve_team_identity_from_id_and_season(batch.team_id, batch.season)
-    if batch.team != expected_batch_identity.abbreviation:
-        raise ValueError(
-            f"Canonical batch team {batch.team!r} does not match team_id {batch.team_id!r} "
-            f"for season {batch.season!r}; expected {expected_batch_identity.abbreviation!r}"
-        )
-
     game_keys: set[tuple[str, int]] = set()
     players_by_game_key: dict[tuple[str, int], list[NormalizedGamePlayerRecord]] = defaultdict(list)
 
     for game in batch.games:
         _validate_canonical_game(
             game,
-            expected_team=batch.team,
-            expected_team_id=batch.team_id,
+            expected_team_id=batch.team.team_id,
             expected_season=batch.season,
             expected_season_type=batch.season_type,
         )
@@ -49,7 +39,6 @@ def validate_normalized_team_season_batch(batch: NormalizedTeamSeasonBatch) -> N
     for player in batch.game_players:
         _validate_canonical_game_player(
             player,
-            expected_team=batch.team,
             expected_team_id=batch.team_id,
         )
         player_key = (player.game_id, player.team_id, player.player_id)
@@ -86,18 +75,14 @@ def validate_normalized_team_season_batch(batch: NormalizedTeamSeasonBatch) -> N
 
 def validate_normalized_cache_batch(
     *,
-    team: str,
-    team_id: int,
-    season: str,
-    season_type: str,
+    team: Team,
+    season: Season,
     games: list[NormalizedGameRecord],
     game_players: list[NormalizedGamePlayerRecord],
 ) -> None:
     batch = NormalizedTeamSeasonBatch(
-        team=_canonical_team_abbreviation(team),
-        team_id=team_id,
-        season=canonicalize_season_string(season),
-        season_type=canonicalize_season_type(season_type),
+        team=team,
+        season=season,
         games=games,
         game_players=game_players,
     )
@@ -107,64 +92,36 @@ def validate_normalized_cache_batch(
 def _validate_canonical_game(
     game: NormalizedGameRecord,
     *,
-    expected_team: str,
-    expected_team_id: int,
-    expected_season: str,
-    expected_season_type: str,
+    expected_team: Team,
+    expected_season: Season,
 ) -> None:
     if not game.game_id.strip():
         raise ValueError("Canonical game_id must not be empty")
-    if canonicalize_season_string(game.season) != expected_season:
+    if canonicalize_season_year_string(game.season) != expected_season:
         raise ValueError(
             f"Canonical game {game.game_id!r} has season {game.season!r}; "
             f"expected {expected_season!r}"
         )
-    if canonicalize_season_type(game.season_type) != expected_season_type:
+    if canonicalize_season_type(game.season_type) != expected_season.season_type:
         raise ValueError(
             f"Canonical game {game.game_id!r} has season type {game.season_type!r}; "
-            f"expected {expected_season_type!r}"
+            f"expected {expected_season.season_type!r}"
         )
-    if _canonical_team_abbreviation(game.team) != _canonical_team_abbreviation(expected_team):
+    if game.team.team_id != expected_team.team_id:
         raise ValueError(
-            f"Canonical game {game.game_id!r} has team {game.team!r}; expected {expected_team!r}"
+            f"Canonical game {game.game_id!r} has team_id {game.team.team_id!r}; "
+            f"expected {expected_team.team_id!r}"
         )
-    if game.team_id != expected_team_id:
-        raise ValueError(
-            f"Canonical game {game.game_id!r} has team_id {game.team_id!r}; "
-            f"expected {expected_team_id!r}"
-        )
-    if game.opponent_team_id is None or game.opponent_team_id <= 0:
+    if game.opponent_team.team_id is None or game.opponent_team.team_id <= 0:
         raise ValueError(f"Canonical game {game.game_id!r} must have a positive opponent_team_id")
-    if game.opponent_team_id == expected_team_id:
+    if game.opponent_team.team_id == expected_team.team_id:
         raise ValueError(
             f"Canonical game {game.game_id!r} must not use the same team_id and opponent_team_id"
-        )
-    if _canonical_team_abbreviation(game.opponent) == _canonical_team_abbreviation(expected_team):
-        raise ValueError(f"Canonical game {game.game_id!r} must not use the same team and opponent")
-    expected_team_identity = resolve_team_identity_from_id_and_date(
-        expected_team_id,
-        game.game_date,
-    )
-    if game.team != expected_team_identity.abbreviation:
-        raise ValueError(
-            f"Canonical game {game.game_id!r} has team {game.team!r}; "
-            f"expected historical abbreviation {expected_team_identity.abbreviation!r}"
-        )
-    expected_opponent_identity = resolve_team_identity_from_id_and_date(
-        game.opponent_team_id,
-        game.game_date,
-    )
-    if game.opponent != expected_opponent_identity.abbreviation:
-        raise ValueError(
-            f"Canonical game {game.game_id!r} opponent {game.opponent!r} "
-            f"does not match opponent_team_id {game.opponent_team_id!r} "
-            f"for {game.game_date!r}"
         )
     if not _GAME_DATE_PATTERN.fullmatch(game.game_date):
         raise ValueError(f"Canonical game {game.game_id!r} has invalid date {game.game_date!r}")
     parsed_date = date.fromisoformat(game.game_date)
-    start_year = int(expected_season[:4])
-    if parsed_date.year not in {start_year, start_year + 1}:
+    if parsed_date.year not in {expected_season.start_year, expected_season.start_year + 1}:
         raise ValueError(
             f"Canonical game {game.game_id!r} date {game.game_date!r} "
             f"falls outside season {expected_season!r}"
@@ -178,7 +135,6 @@ def _validate_canonical_game(
 def _validate_canonical_game_player(
     player: NormalizedGamePlayerRecord,
     *,
-    expected_team: str,
     expected_team_id: int,
 ) -> None:
     player_ref = (
@@ -186,11 +142,6 @@ def _validate_canonical_game_player(
     )
     if not player.game_id.strip():
         raise ValueError("Canonical player game_id must not be empty")
-    if _canonical_team_abbreviation(player.team) != _canonical_team_abbreviation(expected_team):
-        raise ValueError(
-            f"Canonical player row for game {player.game_id!r} has team {player.team!r}; "
-            f"expected {expected_team!r}"
-        )
     if player.team_id != expected_team_id:
         raise ValueError(
             f"Canonical player row for game {player.game_id!r} has team_id {player.team_id!r}; "
@@ -235,4 +186,5 @@ def _canonical_team_abbreviation(value: str) -> str:
 __all__ = [
     "validate_normalized_cache_batch",
     "validate_normalized_team_season_batch",
+    "_canonical_team_abbreviation",
 ]

@@ -110,14 +110,14 @@ def fit_regression_model(
     team_seasons = sorted(
         {
             team_season_key(
-                observation.home_team_id or observation.home_team,
+                observation.home_team_id,
                 observation.season,
             )
             for observation in observations
         }
         | {
             team_season_key(
-                observation.away_team_id or observation.away_team,
+                observation.away_team_id,
                 observation.season,
             )
             for observation in observations
@@ -152,11 +152,11 @@ def fit_regression_model(
 
     for observation in observations:
         home_team_season = team_season_key(
-            observation.home_team_id or observation.home_team,
+            observation.home_team_id,
             observation.season,
         )
         away_team_season = team_season_key(
-            observation.away_team_id or observation.away_team,
+            observation.away_team_id,
             observation.season,
         )
         accumulate_row(
@@ -244,11 +244,11 @@ def predict_margin(
         player_weights=observation.player_weights,
         home_court_sign=1.0,
         team_effect_key=team_season_key(
-            observation.home_team_id or observation.home_team,
+            observation.home_team_id,
             observation.season,
         ),
         opponent_effect_key=team_season_key(
-            observation.away_team_id or observation.away_team,
+            observation.away_team_id,
             observation.season,
         ),
     )
@@ -379,7 +379,8 @@ def build_player_penalties(
     for player_key in player_keys:
         if player_key not in minutes_by_player_season:
             raise ValueError(
-                "Minute-aware shrinkage requires player minute totals for every included player-season"
+                "Minute-aware shrinkage requires player minute totals for every included "
+                "player-season"
             )
         scaled_minutes = minutes_by_player_season[player_key] / shrinkage_minute_scale
         penalties[player_key] = ridge_alpha / (scaled_minutes**shrinkage_strength)
@@ -418,7 +419,8 @@ def solve_linear_system(
         solution = np.linalg.solve(matrix, vector)
     except np.linalg.LinAlgError as exc:
         raise ValueError(
-            "RAWR system is singular; the current game-level rawr design matrix is not identifiable for this input."
+            "RAWR system is singular; the current game-level rawr design "
+            "matrix is not identifiable for this input."
         ) from exc
 
     return solution.tolist()

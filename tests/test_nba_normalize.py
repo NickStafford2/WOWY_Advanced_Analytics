@@ -5,7 +5,7 @@ import pytest
 from rawr_analytics.nba.normalize.normalize_game import (
     extract_is_home,
     extract_opponent,
-    normalize_source_game,
+    normalize_source_league_game,
 )
 from rawr_analytics.nba.source.models import (
     SourceBoxScore,
@@ -22,8 +22,8 @@ def test_extract_matchup_helpers_support_historical_aliases() -> None:
 
 
 def test_normalize_source_game_uses_point_diff_when_plus_minus_missing() -> None:
-    game, players = normalize_source_game(
-        schedule_game=_schedule_game(),
+    game, players = normalize_source_league_game(
+        source_league_game=_schedule_game(),
         box_score=_box_score(team_plus_minus=None, opponent_plus_minus=None),
         season="2002-03",
         season_type="Regular Season",
@@ -37,8 +37,8 @@ def test_normalize_source_game_uses_point_diff_when_plus_minus_missing() -> None
 
 def test_normalize_source_game_raises_when_schedule_team_missing_from_box_score() -> None:
     with pytest.raises(ValueError, match="not found in box score"):
-        normalize_source_game(
-            schedule_game=_schedule_game(),
+        normalize_source_league_game(
+            source_league_game=_schedule_game(),
             box_score=SourceBoxScore(
                 game_id="0001",
                 players=[],
@@ -59,8 +59,8 @@ def test_normalize_source_game_raises_when_schedule_team_missing_from_box_score(
 
 def test_normalize_source_game_raises_when_no_active_players_remain() -> None:
     with pytest.raises(ValueError, match="No active players found"):
-        normalize_source_game(
-            schedule_game=_schedule_game(),
+        normalize_source_league_game(
+            source_league_game=_schedule_game(),
             box_score=SourceBoxScore(
                 game_id="0001",
                 teams=_box_score().teams,

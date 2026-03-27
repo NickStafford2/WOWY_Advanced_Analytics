@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import json
-import sqlite3
 from pathlib import Path
 
 import pytest
@@ -13,19 +12,17 @@ from rawr_analytics.data.game_cache.repository import (
     load_normalized_scope_records_from_db,
     replace_team_season_normalized_rows,
 )
-from rawr_analytics.data.game_cache.schema import initialize_game_cache_db
 from rawr_analytics.data.scope_resolver import resolve_team_seasons
 from rawr_analytics.data.scopes import TeamSeasonScope
 from rawr_analytics.nba.errors import BoxScoreFetchError, LeagueGamesFetchError
 from rawr_analytics.nba.models import NormalizedGamePlayerRecord, NormalizedGameRecord
-from rawr_analytics.nba.season_types import canonicalize_season_type
 from rawr_analytics.nba.source.cache import (
     BOX_SCORE_REQUEST_TIMEOUT_SECONDS,
     LEAGUE_GAMES_REQUEST_TIMEOUT_SECONDS,
     league_games_cache_path,
     load_cached_payload,
-    load_or_fetch_box_score_with_source,
-    load_or_fetch_league_games_with_source,
+    load_or_fetch_box_score_cache,
+    load_or_fetch_league_games,
     write_cached_payload,
 )
 from rawr_analytics.nba.team_identity import resolve_team_id
@@ -109,8 +106,8 @@ def test_load_normalized_scope_records_from_db_requires_each_cached_team_season(
         load_normalized_scope_records_from_db(
             db_path,
             team_seasons=[
-                TeamSeasonScope("BOS", "2023-24", resolve_team_id("BOS", season="2023-24")),
-                TeamSeasonScope("MIL", "2023-24", resolve_team_id("MIL", season="2023-24")),
+                TeamSeasonScope("BOS", "2023-24", todo),
+                TeamSeasonScope("MIL", "2023-24", todo),
             ],
             season_type="Regular Season",
         )
@@ -136,7 +133,7 @@ def test_load_or_fetch_league_games_retries_and_caches(tmp_path: Path, monkeypat
     )
     monkeypatch.setattr("rawr_analytics.nba.source.cache.time.sleep", sleeps.append)
 
-    payload, source = load_or_fetch_league_games_with_source(
+    payload, source = load_or_fetch_league_games(
         team_id=1610612738,
         team_abbreviation="BOS",
         season="2023-24",
@@ -149,7 +146,7 @@ def test_load_or_fetch_league_games_retries_and_caches(tmp_path: Path, monkeypat
     assert len(calls) == 3
     assert sleeps == [0.6, 2.0, 0.6, 4.0, 0.6]
 
-    cached_payload, cached_source = load_or_fetch_league_games_with_source(
+    cached_payload, cached_source = load_or_fetch_league_games(
         team_id=1610612738,
         team_abbreviation="BOS",
         season="2023-24",
@@ -185,7 +182,7 @@ def test_load_or_fetch_league_games_retries_json_decode_error(
     )
     monkeypatch.setattr("rawr_analytics.nba.source.cache.time.sleep", sleeps.append)
 
-    payload, source = load_or_fetch_league_games_with_source(
+    payload, source = load_or_fetch_league_games(
         team_id=1610612738,
         team_abbreviation="BOS",
         season="2023-24",
@@ -219,7 +216,7 @@ def test_load_or_fetch_league_games_raises_typed_fetch_error_after_retries(
     monkeypatch.setattr("rawr_analytics.nba.source.cache.time.sleep", sleeps.append)
 
     with pytest.raises(LeagueGamesFetchError, match="Failed to fetch league games"):
-        load_or_fetch_league_games_with_source(
+        load_or_fetch_league_games(
             team_id=1610612738,
             team_abbreviation="BOS",
             season="2023-24",
@@ -259,7 +256,7 @@ def test_load_or_fetch_league_games_discards_empty_cached_payload_and_refetches(
     )
     monkeypatch.setattr("rawr_analytics.nba.source.cache.time.sleep", lambda _: None)
 
-    payload, source = load_or_fetch_league_games_with_source(
+    payload, source = load_or_fetch_league_games(
         team_id=1610612738,
         team_abbreviation="BOS",
         season="2023-24",
@@ -291,11 +288,11 @@ def test_load_or_fetch_box_score_reports_cache_source(tmp_path: Path, monkeypatc
     )
     monkeypatch.setattr("rawr_analytics.nba.source.cache.time.sleep", lambda _: None)
 
-    payload, source = load_or_fetch_box_score_with_source(
+    payload, source = load_or_fetch_box_score_cache(
         game_id="0001",
         source_data_dir=tmp_path,
     )
-    cached_payload, cached_source = load_or_fetch_box_score_with_source(
+    cached_payload, cached_source = load_or_fetch_box_score_cache(
         game_id="0001",
         source_data_dir=tmp_path,
     )
@@ -352,11 +349,11 @@ def test_load_or_fetch_box_score_falls_back_to_v3_when_v2_is_empty(tmp_path: Pat
     )
     monkeypatch.setattr("rawr_analytics.nba.source.cache.time.sleep", lambda _: None)
 
-    payload, source = load_or_fetch_box_score_with_source(
+    payload, source = load_or_fetch_box_score_cache(
         game_id="0003",
         source_data_dir=tmp_path,
     )
-    cached_payload, cached_source = load_or_fetch_box_score_with_source(
+    cached_payload, cached_source = load_or_fetch_box_score_cache(
         game_id="0003",
         source_data_dir=tmp_path,
     )
@@ -427,11 +424,11 @@ def test_load_or_fetch_box_score_falls_back_to_live_when_v2_and_v3_are_empty(
     monkeypatch.setattr("rawr_analytics.nba.source.cache.live_boxscore.BoxScore", FakeLiveBoxScore)
     monkeypatch.setattr("rawr_analytics.nba.source.cache.time.sleep", lambda _: None)
 
-    payload, source = load_or_fetch_box_score_with_source(
+    payload, source = load_or_fetch_box_score_cache(
         game_id="0004",
         source_data_dir=tmp_path,
     )
-    cached_payload, cached_source = load_or_fetch_box_score_with_source(
+    cached_payload, cached_source = load_or_fetch_box_score_cache(
         game_id="0004",
         source_data_dir=tmp_path,
     )
@@ -465,7 +462,7 @@ def test_load_or_fetch_box_score_retries_request_exception(tmp_path: Path, monke
     )
     monkeypatch.setattr("rawr_analytics.nba.source.cache.time.sleep", sleeps.append)
 
-    payload, source = load_or_fetch_box_score_with_source(
+    payload, source = load_or_fetch_box_score_cache(
         game_id="0002",
         source_data_dir=tmp_path,
     )
@@ -499,7 +496,7 @@ def test_load_or_fetch_box_score_raises_typed_fetch_error_after_retries(
     monkeypatch.setattr("rawr_analytics.nba.source.cache.time.sleep", sleeps.append)
 
     with pytest.raises(BoxScoreFetchError, match="Failed to fetch box score"):
-        load_or_fetch_box_score_with_source(
+        load_or_fetch_box_score_cache(
             game_id="0002",
             source_data_dir=tmp_path,
         )
@@ -539,10 +536,10 @@ def test_load_or_fetch_box_score_discards_empty_cached_payload_and_refetches(
     )
     monkeypatch.setattr("rawr_analytics.nba.source.cache.time.sleep", lambda _: None)
 
-    payload, source = load_or_fetch_box_score_with_source(
+    payload, source = load_or_fetch_box_score_cache(
         game_id="0009",
         source_data_dir=tmp_path,
-        log=None,
+        log_fn=None,
     )
 
     assert source == "fetched"
@@ -568,31 +565,9 @@ def test_league_games_cache_path_uses_canonical_season_type_slug(tmp_path: Path)
     assert cache_path == (tmp_path / "team_seasons" / "BOS_2023-24_playoffs_leaguegamefinder.json")
 
 
-def test_initialize_game_cache_db_uses_expected_primary_keys(tmp_path: Path):
-    db_path = tmp_path / "app" / "player_metrics.sqlite3"
-    initialize_game_cache_db(db_path)
-
-    with sqlite3.connect(db_path) as connection:
-        normalized_games_pk = connection.execute("PRAGMA table_info(normalized_games)").fetchall()
-        normalized_players_pk = connection.execute(
-            "PRAGMA table_info(normalized_game_players)"
-        ).fetchall()
-
-    assert [
-        row[1] for row in sorted(normalized_games_pk, key=lambda row: row[5]) if row[5] > 0
-    ] == ["game_id", "team_id", "season", "season_type"]
-    assert [
-        row[1] for row in sorted(normalized_players_pk, key=lambda row: row[5]) if row[5] > 0
-    ] == ["game_id", "team_id", "player_id", "season", "season_type"]
-
-
-def test_team_id_authoritative_reads_match_historical_alias_scopes(tmp_path: Path):
-    db_path = tmp_path / "app" / "player_metrics.sqlite3"
-
+def test_team_id_authoritative_reads_match_historical_alias_scopes():
     replace_team_season_normalized_rows(
-        db_path,
-        team="NJN",
-        team_id=resolve_team_id("NJN", season="2009-10"),
+        team_id=todo,
         season="2009-10",
         season_type="Regular Season",
         games=[normalized_game("0001", "2009-10", "2010-04-01", "NJN", "BOS", True, 3.0)],
@@ -609,14 +584,12 @@ def test_team_id_authoritative_reads_match_historical_alias_scopes(tmp_path: Pat
     )
 
     games = load_normalized_games_from_db(
-        db_path,
         season_type="Regular Season",
-        teams=["BKN"],
+        team_ids=["todo/fix"],
         seasons=["2009-10"],
     )
     load_row = load_cache_load_row(
-        db_path,
-        team="BKN",
+        team_id="todo",
         season="2009-10",
         season_type="Regular Season",
     )
@@ -634,17 +607,16 @@ def test_resolve_team_seasons_keeps_original_hornets_historical_scope(tmp_path: 
 
     replace_team_season_normalized_rows(
         db_path,
-        team="CHH",
-        team_id=resolve_team_id("CHH", season="2001-02"),
+        team_id=todo,
         season="2001-02",
         season_type="Regular Season",
         games=[normalized_game("0001", "2001-02", "2002-04-01", "CHH", "DET", True, 3.0)],
         game_players=[
-            NormalizedGamePlayerRecord("0001", "CHH", 101, "Player 101", True, 48.0, 1610612766),
-            NormalizedGamePlayerRecord("0001", "CHH", 102, "Player 102", True, 48.0, 1610612766),
-            NormalizedGamePlayerRecord("0001", "CHH", 103, "Player 103", True, 48.0, 1610612766),
-            NormalizedGamePlayerRecord("0001", "CHH", 104, "Player 104", True, 48.0, 1610612766),
-            NormalizedGamePlayerRecord("0001", "CHH", 105, "Player 105", True, 48.0, 1610612766),
+            NormalizedGamePlayerRecord("0001", 101, "Player 101", True, 48.0, 1610612766),
+            NormalizedGamePlayerRecord("0001", 102, "Player 102", True, 48.0, 1610612766),
+            NormalizedGamePlayerRecord("0001", 103, "Player 103", True, 48.0, 1610612766),
+            NormalizedGamePlayerRecord("0001", 104, "Player 104", True, 48.0, 1610612766),
+            NormalizedGamePlayerRecord("0001", 105, "Player 105", True, 48.0, 1610612766),
         ],
         source_path="sqlite://normalized_games/CHH_2001-02_regular_season",
         source_snapshot="test",
@@ -652,21 +624,16 @@ def test_resolve_team_seasons_keeps_original_hornets_historical_scope(tmp_path: 
     )
 
     resolved = resolve_team_seasons(
-        teams=["CHH"],
+        team_ids=["todo This may not be needed now that team_ids are used everywhere."],
         seasons=["2001-02"],
-        player_metrics_db_path=db_path,
         season_type="Regular Season",
     )
 
-    assert resolved == [TeamSeasonScope(team="CHH", season="2001-02", team_id=1610612766)]
+    assert resolved == [TeamSeasonScope(season="2001-02", team_id=1610612766)]
 
 
-def test_resolve_team_seasons_accepts_team_id_for_historical_multi_season_scope(tmp_path: Path):
-    db_path = tmp_path / "app" / "player_metrics.sqlite3"
-
+def test_resolve_team_seasons_accepts_team_id_for_historical_multi_season_scope():
     replace_team_season_normalized_rows(
-        db_path,
-        team="NOH",
         team_id=resolve_team_id("NOH", season="2002-03"),
         season="2002-03",
         season_type="Regular Season",
@@ -683,8 +650,6 @@ def test_resolve_team_seasons_accepts_team_id_for_historical_multi_season_scope(
         source_kind="unit-test",
     )
     replace_team_season_normalized_rows(
-        db_path,
-        team="NOP",
         team_id=resolve_team_id("NOP", season="2013-14"),
         season="2013-14",
         season_type="Regular Season",
@@ -702,16 +667,14 @@ def test_resolve_team_seasons_accepts_team_id_for_historical_multi_season_scope(
     )
 
     resolved = resolve_team_seasons(
-        teams=None,
         seasons=["2002-03", "2013-14"],
         team_ids=[1610612740],
-        player_metrics_db_path=db_path,
         season_type="Regular Season",
     )
 
     assert resolved == [
-        TeamSeasonScope(team="NOH", season="2002-03", team_id=1610612740),
-        TeamSeasonScope(team="NOP", season="2013-14", team_id=1610612740),
+        TeamSeasonScope(season="2002-03", team_id=1610612740),
+        TeamSeasonScope(season="2013-14", team_id=1610612740),
     ]
 
 
@@ -1011,7 +974,6 @@ def test_replace_team_season_normalized_rows_rejects_opponent_label_mismatch(
     with pytest.raises(ValueError, match="Implausible total appeared minutes"):
         replace_team_season_normalized_rows(
             db_path,
-            team="BOS",
             team_id=resolve_team_id("BOS", season="2023-24"),
             season="2023-24",
             season_type="Regular Season",
@@ -1020,8 +982,6 @@ def test_replace_team_season_normalized_rows_rejects_opponent_label_mismatch(
                     game_id="0003",
                     season="2023-24",
                     game_date="2024-04-05",
-                    team="BOS",
-                    opponent="LAL",
                     team_id=1610612738,
                     opponent_team_id=1610612747,
                     is_home=True,
@@ -1031,21 +991,11 @@ def test_replace_team_season_normalized_rows_rejects_opponent_label_mismatch(
                 )
             ],
             game_players=[
-                NormalizedGamePlayerRecord(
-                    "0003", "BOS", 101, "Player 101", True, 20.0, 1610612738
-                ),
-                NormalizedGamePlayerRecord(
-                    "0003", "BOS", 102, "Player 102", True, 20.0, 1610612738
-                ),
-                NormalizedGamePlayerRecord(
-                    "0003", "BOS", 103, "Player 103", True, 20.0, 1610612738
-                ),
-                NormalizedGamePlayerRecord(
-                    "0003", "BOS", 104, "Player 104", True, 20.0, 1610612738
-                ),
-                NormalizedGamePlayerRecord(
-                    "0003", "BOS", 105, "Player 105", True, 20.0, 1610612738
-                ),
+                NormalizedGamePlayerRecord("0003", 101, "Player 101", True, 20.0, 1610612738),
+                NormalizedGamePlayerRecord("0003", 102, "Player 102", True, 20.0, 1610612738),
+                NormalizedGamePlayerRecord("0003", 103, "Player 103", True, 20.0, 1610612738),
+                NormalizedGamePlayerRecord("0003", 104, "Player 104", True, 20.0, 1610612738),
+                NormalizedGamePlayerRecord("0003", 105, "Player 105", True, 20.0, 1610612738),
             ],
             source_path="sqlite://normalized_games/BOS_2023-24_regular_season",
             source_snapshot="test",

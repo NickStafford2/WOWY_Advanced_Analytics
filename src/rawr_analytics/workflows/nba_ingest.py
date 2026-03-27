@@ -1,378 +1,280 @@
 from __future__ import annotations
 
-import re
-from pathlib import Path
-from typing import Callable
+from dataclasses import dataclass
 
 from rawr_analytics.data.game_cache.repository import replace_team_season_normalized_rows
-from rawr_analytics.nba.build_models import (
-    TeamSeasonArtifacts,
-    TeamSeasonBuildResult,
-    TeamSeasonRunSummary,
-)
-from rawr_analytics.nba.errors import (
-    GameNormalizationFailure,
-    PartialTeamSeasonError,
-)
+from rawr_analytics.nba.errors import GameNormalizationFailure, PartialTeamSeasonError
 from rawr_analytics.nba.models import (
     NormalizedGamePlayerRecord,
     NormalizedGameRecord,
     NormalizedTeamSeasonBatch,
 )
-from rawr_analytics.nba.normalize.normalize_game import normalize_source_game
+from rawr_analytics.nba.normalize.normalize_game import normalize_source_league_game
 from rawr_analytics.nba.normalize.validation import validate_normalized_team_season_batch
-from rawr_analytics.nba.season_types import canonicalize_season_type
-from rawr_analytics.nba.seasons import canonicalize_season_string
+from rawr_analytics.nba.source.api import load_or_fetch_box_score
 from rawr_analytics.nba.source.cache import (
-    DEFAULT_SOURCE_DATA_DIR,
-    box_score_cache_paths,
-    box_score_payload_is_empty,
-    league_games_cache_path,
-    league_games_payload_is_valid,
-    load_cached_payload,
-    load_or_fetch_box_score_with_source,
-    load_or_fetch_league_games_with_source,
+    load_or_fetch_league_games,
 )
 from rawr_analytics.nba.source.dedupe import dedupe_schedule_games
-from rawr_analytics.nba.source.load import (
-    load_player_names_from_cache as load_cached_player_names,
-)
-from rawr_analytics.nba.source.parsers import (
-    parse_box_score_payload,
-    parse_league_schedule_payload,
-)
-from rawr_analytics.nba.team_identity import resolve_team_id
-
-ProgressFn = Callable[[dict], None]
+from rawr_analytics.nba.source.models import SourceLeagueGame
+from rawr_analytics.nba.source.parsers import parse_league_schedule_payload
+from rawr_analytics.shared.common import LogFn, ProgressFn
+from rawr_analytics.shared.season import Season
+from rawr_analytics.shared.team import Team
 
 
-def season_type_slug(season_type: str) -> str:
-    return canonicalize_season_type(season_type).lower().replace(" ", "_")
+@dataclass(frozen=True)
+class IngestRequest:
+    team: Team
+    season: Season
+
+    @property
+    def label(self) -> str:
+        return f"{self.team.abbreviation()} {self.season}"
 
 
-def load_normalized_team_season_records(
-    team_abbreviation: str,
-    season: str,
-    season_type: str = "Regular Season",
-    source_data_dir: Path = DEFAULT_SOURCE_DATA_DIR,
-    log: Callable[[str], None] | None = print,
-    progress: ProgressFn | None = None,
-    cached_only: bool = False,
-) -> tuple[list[NormalizedGameRecord], list[NormalizedGamePlayerRecord]]:
-    result = ingest_team_season(
-        team_abbreviation=team_abbreviation,
-        season=season,
-        season_type=season_type,
-        source_data_dir=source_data_dir,
-        log=log,
-        progress=progress,
-        cached_only=cached_only,
-    )
-    return result.artifacts.normalized_games, result.artifacts.normalized_game_players
+@dataclass(frozen=True)
+class IngestSummary:
+    total_games: int
+    processed_games: int
+    fetched_box_scores: int
+    cached_box_scores: int
+    league_games_source: str
 
 
-def ingest_team_season(
-    team_abbreviation: str,
-    season: str,
-    season_type: str = "Regular Season",
-    source_data_dir: Path = DEFAULT_SOURCE_DATA_DIR,
-    log: Callable[[str], None] | None = print,
-    progress: ProgressFn | None = None,
-    cached_only: bool = False,
-) -> TeamSeasonBuildResult:
-    season = canonicalize_season_string(season)
-    season_type = canonicalize_season_type(season_type)
-    requested_team = team_abbreviation.strip().upper()
-    requested_team_id = resolve_team_id(requested_team, season=season)
+@dataclass(frozen=True)
+class IngestResult:
+    request: IngestRequest
+    games: list[NormalizedGameRecord]
+    game_players: list[NormalizedGamePlayerRecord]
+    summary: IngestSummary
 
-    league_games_payload, league_games_source = _load_team_season_payload(
-        team_abbreviation=requested_team,
-        team_id=requested_team_id,
-        season=season,
-        season_type=season_type,
-        source_data_dir=source_data_dir,
-        log=log,
-        cached_only=cached_only,
-    )
-    schedule = parse_league_schedule_payload(
-        league_games_payload,
-        requested_team=requested_team,
-        season=season,
-        season_type=season_type,
-    )
-    schedule_games = dedupe_schedule_games(schedule.games)
-    if not schedule_games:
-        return TeamSeasonBuildResult(
-            artifacts=TeamSeasonArtifacts([], []),
-            summary=TeamSeasonRunSummary(
-                team=requested_team,
-                season=season,
-                season_type=season_type,
-                league_games_source=league_games_source,
-                total_games=0,
-                processed_games=0,
-                skipped_games=0,
-                fetched_box_scores=0,
-                cached_box_scores=0,
-            ),
+    def to_batch(self) -> NormalizedTeamSeasonBatch:
+        return NormalizedTeamSeasonBatch(
+            team=self.request.team,
+            season=self.request.season,
+            games=self.games,
+            game_players=self.game_players,
         )
 
-    normalized_games: list[NormalizedGameRecord] = []
-    normalized_game_players: list[NormalizedGamePlayerRecord] = []
-    failed_game_ids: list[str] = []
-    failed_game_details: list[GameNormalizationFailure] = []
+
+def build_ingest_request(
+    *,
+    team_abbreviation: str,
+    season: str,
+    season_type: str = "Regular Season",
+) -> IngestRequest:
+    parsed_season = Season(season, season_type)
+    team = Team.from_abbreviation(team_abbreviation, season=parsed_season)
+    return IngestRequest(
+        team=team,
+        season=parsed_season,
+    )
+
+
+def _get_schedule(
+    request: IngestRequest,
+    log_fn: LogFn | None = print,
+) -> tuple[list[SourceLeagueGame], str]:
+    schedule_payload, league_games_source = load_or_fetch_league_games(
+        team=request.team,
+        season=request.season,
+        log_fn=log_fn,
+    )
+    schedule = parse_league_schedule_payload(
+        schedule_payload,
+        team=request.team,
+        season=request.season,
+    )
+    games = dedupe_schedule_games(schedule.games)
+    return games, league_games_source
+
+
+def ingest(
+    request: IngestRequest,
+    *,
+    log_fn: LogFn | None = print,
+    progress_fn: ProgressFn | None = None,
+) -> IngestResult:
+    schedule_games, league_games_source = _get_schedule(request, log_fn)
+    total_games = len(schedule_games)
+
+    games: list[NormalizedGameRecord] = []
+    game_players: list[NormalizedGamePlayerRecord] = []
+    failures: list[GameNormalizationFailure] = []
     failure_reason_counts: dict[str, int] = {}
     failure_reason_examples: dict[str, list[str]] = {}
     fetched_box_scores = 0
     cached_box_scores = 0
 
-    total_games = len(schedule_games)
-    for game_index, schedule_game in enumerate(schedule_games, start=1):
+    _emit_progress(
+        progress_fn,
+        request=request,
+        current=0,
+        total=total_games,
+        status="schedule-loaded",
+    )
+
+    for index, schedule_game in enumerate(schedule_games, start=1):
         try:
-            box_score_payload, box_score_source = _load_box_score_payload(
-                game_id=schedule_game.game_id,
-                source_data_dir=source_data_dir,
-                log=log,
-                cached_only=cached_only,
+            box_score, box_score_source = load_or_fetch_box_score(
+                game_id=schedule_game.game_id, log_fn=log_fn
             )
-            parsed_box_score = parse_box_score_payload(
-                box_score_payload,
-                game_id=schedule_game.game_id,
-            )
-            normalized_game, game_players = normalize_source_game(
-                schedule_game=schedule_game,
-                box_score=parsed_box_score,
-                season=season,
-                season_type=season_type,
+            game, players = normalize_source_league_game(
+                source_league_game=schedule_game,
+                box_score=box_score,
+                season=request.season,
             )
         except ValueError as exc:
-            _record_game_failure(
-                game_id=schedule_game.game_id,
-                exc=exc,
-                failed_game_ids=failed_game_ids,
-                failed_game_details=failed_game_details,
+            _record_failure(
+                failures=failures,
                 failure_reason_counts=failure_reason_counts,
                 failure_reason_examples=failure_reason_examples,
+                game_id=schedule_game.game_id,
+                exc=exc,
             )
-            if log is not None:
-                log(f"failed game {schedule_game.game_id} {requested_team} {season} reason={exc}")
-            if progress is not None:
-                progress(
-                    {
-                        "team": requested_team,
-                        "season": season,
-                        "game_id": schedule_game.game_id,
-                        "current": game_index,
-                        "total": total_games,
-                        "status": "failed",
-                    }
-                )
+            if log_fn is not None:
+                log_fn(f"failed {request.label} game={schedule_game.game_id} reason={exc}")
+            _emit_progress(
+                progress_fn,
+                request=request,
+                current=index,
+                total=total_games,
+                status="failed",
+                game_id=schedule_game.game_id,
+            )
             continue
 
         if box_score_source == "fetched":
             fetched_box_scores += 1
         else:
             cached_box_scores += 1
-        normalized_games.append(normalized_game)
-        normalized_game_players.extend(game_players)
-        if progress is not None:
-            progress(
-                {
-                    "team": requested_team,
-                    "season": season,
-                    "game_id": schedule_game.game_id,
-                    "current": game_index,
-                    "total": total_games,
-                    "status": "ok",
-                }
-            )
+        games.append(game)
+        game_players.extend(players)
+        _emit_progress(
+            progress_fn,
+            request=request,
+            current=index,
+            total=total_games,
+            status="ok",
+            game_id=schedule_game.game_id,
+        )
 
-    if failed_game_ids:
+    if failures:
         raise PartialTeamSeasonError(
             message=(
-                f"Incomplete team-season ingest for {requested_team} {season} {season_type}: "
-                f"{len(failed_game_ids)}/{total_games} games failed normalization"
+                f"Incomplete team-season ingest for {request.label}: "
+                f"{len(failures)}/{total_games} games failed normalization"
             ),
-            team=requested_team,
-            season=season,
-            season_type=season_type,
-            failed_game_ids=failed_game_ids,
+            team=request.team,
+            season=request.season,
+            failed_game_ids=[failure.game_id for failure in failures],
             total_games=total_games,
-            failed_games=len(failed_game_ids),
-            failed_game_details=failed_game_details,
+            failed_games=len(failures),
+            failed_game_details=failures,
             failure_reason_counts=dict(sorted(failure_reason_counts.items())),
             failure_reason_examples={
                 reason: examples[:] for reason, examples in sorted(failure_reason_examples.items())
             },
         )
 
-    batch = NormalizedTeamSeasonBatch(
-        team=requested_team,
-        team_id=requested_team_id,
-        season=season,
-        season_type=season_type,
-        games=normalized_games,
-        game_players=normalized_game_players,
-    )
-    validate_normalized_team_season_batch(batch)
-    return TeamSeasonBuildResult(
-        artifacts=TeamSeasonArtifacts(
-            normalized_games=normalized_games,
-            normalized_game_players=normalized_game_players,
-        ),
-        summary=TeamSeasonRunSummary(
-            team=requested_team,
-            season=season,
-            season_type=season_type,
-            league_games_source=league_games_source,
+    result = IngestResult(
+        request=request,
+        games=games,
+        game_players=game_players,
+        summary=IngestSummary(
             total_games=total_games,
-            processed_games=len(normalized_games),
-            skipped_games=0,
+            processed_games=len(games),
             fetched_box_scores=fetched_box_scores,
             cached_box_scores=cached_box_scores,
+            league_games_source=league_games_source,
         ),
     )
+    validate_normalized_team_season_batch(result.to_batch())
+    return result
 
 
-def refresh_normalized_team_season_cache(
-    team_abbreviation: str,
-    season: str,
-    season_type: str = "Regular Season",
-    source_data_dir: Path = DEFAULT_SOURCE_DATA_DIR,
-    log: Callable[[str], None] | None = print,
-    progress: ProgressFn | None = None,
-    cached_only: bool = False,
-) -> TeamSeasonRunSummary:
-    season = canonicalize_season_string(season)
-    season_type = canonicalize_season_type(season_type)
-    result = ingest_team_season(
-        team_abbreviation=team_abbreviation,
-        season=season,
-        season_type=season_type,
-        source_data_dir=source_data_dir,
-        log=log,
-        progress=progress,
-        cached_only=cached_only,
-    )
-    team = team_abbreviation.upper()
-    team_id = resolve_team_id(team, season=season)
+def store(result: IngestResult) -> None:
     replace_team_season_normalized_rows(
-        team=team,
-        team_id=team_id,
-        season=season,
-        season_type=season_type,
-        games=result.artifacts.normalized_games,
-        game_players=result.artifacts.normalized_game_players,
-        source_path=f"sqlite://normalized_games/{team}_{season}_{season_type_slug(season_type)}",
-        source_snapshot="ingest-build",
+        team=result.request.team,
+        season=result.request.season,
+        games=result.games,
+        game_players=result.game_players,
+        source_path=(
+            "sqlite://normalized_games/"
+            f"{result.request.team.abbreviation()}_{result.request.season.id}_{result.request.season.season_type.to_slug()}"
+        ),
+        source_snapshot="ingest-build-v2",
         source_kind="nba-api",
         expected_games_row_count=result.summary.total_games,
-        skipped_games_row_count=result.summary.skipped_games,
+        skipped_games_row_count=0,
     )
-    return result.summary
 
 
-def load_player_names_from_cache(
-    source_data_dir: Path = DEFAULT_SOURCE_DATA_DIR,
-) -> dict[int, str]:
-    return load_cached_player_names(source_data_dir)
-
-
-def _load_team_season_payload(
+def refresh(
+    request: IngestRequest,
     *,
-    team_abbreviation: str,
-    team_id: int,
-    season: str,
-    season_type: str,
-    source_data_dir: Path,
-    log: Callable[[str], None] | None,
-    cached_only: bool,
-) -> tuple[dict, str]:
-    if not cached_only:
-        return load_or_fetch_league_games_with_source(
-            team_id=team_id,
-            team_abbreviation=team_abbreviation,
-            season=season,
-            season_type=season_type,
-            source_data_dir=source_data_dir,
-            log=log,
-        )
-
-    cache_path = league_games_cache_path(
-        team_abbreviation=team_abbreviation,
-        season=season,
-        season_type=season_type,
-        source_data_dir=source_data_dir,
+    log: LogFn | None = print,
+    progress: ProgressFn | None = None,
+) -> IngestResult:
+    result = ingest(
+        request,
+        log_fn=log,
+        progress_fn=progress,
     )
-    cached_payload = load_cached_payload(
-        cache_path,
-        validator=league_games_payload_is_valid,
-        log=log,
-    )
-    if cached_payload is None:
-        raise ValueError(f"Missing valid cached league games payload: {cache_path}")
-    return cached_payload, "cached"
+    store(result)
+    return result
 
 
-def _load_box_score_payload(
+def _record_failure(
     *,
-    game_id: str,
-    source_data_dir: Path,
-    log: Callable[[str], None] | None,
-    cached_only: bool,
-) -> tuple[dict, str]:
-    if not cached_only:
-        return load_or_fetch_box_score_with_source(
-            game_id=game_id,
-            source_data_dir=source_data_dir,
-            log=log,
-        )
-
-    for cache_path in box_score_cache_paths(game_id, source_data_dir=source_data_dir):
-        cached_payload = load_cached_payload(
-            cache_path,
-            validator=lambda payload: not box_score_payload_is_empty(payload),
-            log=log,
-        )
-        if cached_payload is not None:
-            return cached_payload, "cached"
-    raise ValueError(f"Missing valid cached box score payload for game {game_id!r}")
-
-
-def _record_game_failure(
-    *,
-    game_id: str,
-    exc: Exception,
-    failed_game_ids: list[str],
-    failed_game_details: list[GameNormalizationFailure],
+    failures: list[GameNormalizationFailure],
     failure_reason_counts: dict[str, int],
     failure_reason_examples: dict[str, list[str]],
+    game_id: str,
+    exc: Exception,
 ) -> None:
-    failed_game_ids.append(game_id)
     failure = GameNormalizationFailure(
         game_id=game_id,
         error_type=type(exc).__name__,
         message=str(exc),
     )
-    failed_game_details.append(failure)
-    reason_key = _summarize_game_failure_reason(failure)
-    failure_reason_counts[reason_key] = failure_reason_counts.get(reason_key, 0) + 1
-    failure_reason_examples.setdefault(reason_key, [])
-    if len(failure_reason_examples[reason_key]) < 5:
-        failure_reason_examples[reason_key].append(game_id)
+    failures.append(failure)
+    failure_reason_counts[failure.message] = failure_reason_counts.get(failure.message, 0) + 1
+    failure_reason_examples.setdefault(failure.message, [])
+    if len(failure_reason_examples[failure.message]) < 3:
+        failure_reason_examples[failure.message].append(game_id)
 
 
-def _summarize_game_failure_reason(failure: GameNormalizationFailure) -> str:
-    message = failure.message.split("; nba_api_", maxsplit=1)[0]
-    message = re.sub(r"game ['\"][^'\"]+['\"]", "game <game_id>", message)
-    return f"{failure.error_type}: {message}"
+def _emit_progress(
+    progress: ProgressFn | None,
+    *,
+    request: IngestRequest,
+    current: int,
+    total: int,
+    status: str,
+    game_id: str | None = None,
+) -> None:
+    if progress is None:
+        return
+    payload = {
+        "team": request.team,
+        "season": request.season.id,
+        "current": current,
+        "total": total,
+        "status": status,
+    }
+    if game_id is not None:
+        payload["game_id"] = game_id
+    progress(payload)
 
 
 __all__ = [
-    "ProgressFn",
-    "refresh_normalized_team_season_cache",
-    "load_normalized_team_season_records",
-    "ingest_team_season",
-    "load_player_names_from_cache",
-    "season_type_slug",
+    "IngestRequest",
+    "IngestResult",
+    "IngestSummary",
+    "build_ingest_request",
+    "ingest",
+    "refresh",
+    "store",
 ]

@@ -18,11 +18,10 @@ from rawr_analytics.nba.normalize.validation import (
     validate_normalized_cache_batch,
 )
 from rawr_analytics.nba.season_types import canonicalize_season_type
-from rawr_analytics.nba.seasons import canonicalize_season_string
+from rawr_analytics.nba.seasons import canonicalize_season_year_string
 from rawr_analytics.nba.team_identity import (
     canonical_team_lookup_abbreviation,
     resolve_team_history_entry,
-    resolve_team_id,
 )
 
 IssueT = TypeVar("IssueT")
@@ -77,8 +76,6 @@ def _validate_normalized_games_table(
             game_id=row["game_id"],
             season=row["season"],
             game_date=row["game_date"],
-            team=row["team"],
-            opponent=row["opponent"],
             is_home=bool(row["is_home"]),
             margin=row["margin"],
             season_type=row["season_type"],
@@ -89,7 +86,6 @@ def _validate_normalized_games_table(
         try:
             _validate_canonical_game(
                 game,
-                expected_team=game.team,
                 expected_team_id=game.team_id,
                 expected_season=game.season,
                 expected_season_type=game.season_type,
@@ -134,7 +130,7 @@ def _validate_normalized_game_players_table(
             f"season={row['season']!r},season_type={row['season_type']!r}"
         )
         try:
-            if canonicalize_season_string(row["season"]) != row["season"]:
+            if canonicalize_season_year_string(row["season"]) != row["season"]:
                 raise ValueError("season must use canonical season format")
             if canonicalize_season_type(row["season_type"]) != row["season_type"]:
                 raise ValueError("season_type must use canonical season type")
@@ -152,7 +148,6 @@ def _validate_normalized_game_players_table(
             continue
         player = NormalizedGamePlayerRecord(
             game_id=row["game_id"],
-            team=row["team"],
             player_id=row["player_id"],
             player_name=row["player_name"],
             appeared=bool(row["appeared"]),
@@ -162,7 +157,6 @@ def _validate_normalized_game_players_table(
         try:
             _validate_canonical_game_player(
                 player,
-                expected_team=row["team"],
                 expected_team_id=row["team_id"],
             )
         except ValueError as exc:
@@ -201,7 +195,6 @@ def _validate_normalized_cache_loads_table(
     for row in rows:
         key = f"team={row['team']!r},season={row['season']!r},season_type={row['season_type']!r}"
         load_row = NormalizedCacheLoadRow(
-            team=row["team"],
             team_id=row["team_id"],
             season=row["season"],
             season_type=row["season_type"],
@@ -214,17 +207,13 @@ def _validate_normalized_cache_loads_table(
             game_players_row_count=row["game_players_row_count"],
         )
         try:
-            if canonicalize_season_string(load_row.season) != load_row.season:
+            if canonicalize_season_year_string(load_row.season) != load_row.season:
                 raise ValueError("season must use canonical season format")
             if canonicalize_season_type(load_row.season_type) != load_row.season_type:
                 raise ValueError("season_type must use canonical season type")
-            _validate_required_text(load_row.team, "team")
-            _canonical_team_abbreviation(load_row.team)
             _validate_optional_non_negative_int(load_row.team_id, "team_id")
             if load_row.team_id is None or load_row.team_id <= 0:
                 raise ValueError("team_id must be a positive integer")
-            if resolve_team_id(load_row.team, season=load_row.season) != load_row.team_id:
-                raise ValueError("team_id does not match team abbreviation identity")
             _validate_required_text(load_row.source_path, "source_path")
             _validate_required_text(load_row.source_snapshot, "source_snapshot")
             _validate_required_text(load_row.source_kind, "source_kind")
@@ -325,9 +314,7 @@ def _validate_normalized_cache_relations(
             game_id=row["game_id"],
             season=row["season"],
             game_date=row["game_date"],
-            team=row["team"],
             team_id=row["team_id"],
-            opponent=row["opponent"],
             opponent_team_id=row["opponent_team_id"],
             is_home=bool(row["is_home"]),
             margin=row["margin"],
@@ -341,7 +328,6 @@ def _validate_normalized_cache_relations(
     for row in player_rows:
         player = NormalizedGamePlayerRecord(
             game_id=row["game_id"],
-            team=row["team"],
             team_id=row["team_id"],
             player_id=row["player_id"],
             player_name=row["player_name"],
@@ -356,7 +342,7 @@ def _validate_normalized_cache_relations(
                 issue_factory(
                     "normalized_game_players",
                     (
-                        f"game_id={player.game_id!r},team={player.team!r},"
+                        f"game_id={player.game_id!r},team_id={player.team_id!r},"
                         f"player_id={player.player_id!r}"
                     ),
                     "player row has no matching normalized_games row",
@@ -367,7 +353,7 @@ def _validate_normalized_cache_relations(
                 issue_factory(
                     "normalized_game_players",
                     (
-                        f"game_id={player.game_id!r},team={player.team!r},"
+                        f"game_id={player.game_id!r},team_id={player.team_id!r},"
                         f"player_id={player.player_id!r}"
                     ),
                     "player row season or season_type does not match normalized_games row",
@@ -384,10 +370,8 @@ def _validate_normalized_cache_relations(
         team_id, season, season_type = scope
         games_for_scope = games_by_scope.get(scope, [])
         players_for_scope = players_by_scope.get(scope, [])
-        team = games_for_scope[0].team if games_for_scope else players_for_scope[0].team
         try:
             validate_normalized_cache_batch(
-                team=team,
                 team_id=team_id,
                 season=season,
                 season_type=season_type,
@@ -398,7 +382,7 @@ def _validate_normalized_cache_relations(
             issues.append(
                 issue_factory(
                     "normalized_cache_relations",
-                    f"team={team!r},season={season!r},season_type={season_type!r}",
+                    f"team={team_id!r},season={season!r},season_type={season_type!r}",
                     str(exc),
                 )
             )
@@ -455,9 +439,7 @@ def _validate_reciprocal_game_margins(
                 game_id=row["game_id"],
                 season=row["season"],
                 game_date=row["game_date"],
-                team=row["team"],
                 team_id=row["team_id"],
-                opponent=row["opponent"],
                 opponent_team_id=row["opponent_team_id"],
                 is_home=bool(row["is_home"]),
                 margin=row["margin"],
@@ -517,8 +499,8 @@ def _validate_reciprocal_game_margins(
                     ),
                     (
                         "paired game rows must have opposite margins: "
-                        f"{first_game.team}={first_game.margin} "
-                        f"{second_game.team}={second_game.margin}"
+                        f"{first_game.team_id}={first_game.margin} "
+                        f"{second_game.team_id}={second_game.margin}"
                     ),
                 )
             )
@@ -540,7 +522,7 @@ def _validate_team_history_table(
     for row in rows:
         key = f"team_id={row['team_id']!r},season={row['season']!r}"
         try:
-            if canonicalize_season_string(row["season"]) != row["season"]:
+            if canonicalize_season_year_string(row["season"]) != row["season"]:
                 raise ValueError("season must use canonical season format")
             _validate_optional_non_negative_int(row["team_id"], "team_id")
             if row["team_id"] is None or row["team_id"] <= 0:

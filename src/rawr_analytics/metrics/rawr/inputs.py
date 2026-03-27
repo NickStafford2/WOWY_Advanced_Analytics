@@ -35,7 +35,7 @@ def build_rawr_observations(
         if minutes is None or minutes <= 0.0:
             raise ValueError(
                 f"Missing positive minutes for appeared player {player.player_id!r} "
-                f"in game {player.game_id!r} and team {player.team!r}"
+                f"in game {player.game_id!r} and team {player.team_id!r}"
             )
         player_minutes_by_game_team[(player.game_id, player.identity_team)][player.player_id] = (
             minutes
@@ -67,11 +67,11 @@ def build_rawr_observations(
         )
         if not home_player_minutes:
             raise ValueError(
-                f"No appeared players found for game {game_id!r} and team {home_game.team!r}"
+                f"No appeared players found for game {game_id!r} and team {home_game.team_id!r}"
             )
         if not away_player_minutes:
             raise ValueError(
-                f"No appeared players found for game {game_id!r} and team {away_game.team!r}"
+                f"No appeared players found for game {game_id!r} and team {away_game.team_id!r}"
             )
 
         player_weights: dict[int, float] = {}
@@ -85,8 +85,6 @@ def build_rawr_observations(
                 game_id=game_id,
                 season=home_game.season,
                 game_date=home_game.game_date,
-                home_team=home_game.team,
-                away_team=away_game.team,
                 margin=home_game.margin,
                 player_weights=player_weights,
                 player_minutes=home_player_minutes | away_player_minutes,

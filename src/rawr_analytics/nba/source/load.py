@@ -1,22 +1,24 @@
 from __future__ import annotations
 
-from pathlib import Path
 from typing import Callable
 
-from rawr_analytics.nba.source.cache import box_score_payload_is_empty, load_cached_payload
+from rawr_analytics.nba.source.cache import (
+    DEFAULT_SOURCE_DATA_DIR,
+    box_score_payload_is_empty,
+    load_cached_payload,
+)
 from rawr_analytics.nba.source.parsers import parse_box_score_payload
 
 
 def load_player_names_from_cache(
-    source_data_dir: Path,
     log: Callable[[str], None] | None = None,
 ) -> dict[int, str]:
     player_names: dict[int, str] = {}
-    for cache_path in sorted((source_data_dir / "boxscores").glob("*.json")):
+    for cache_path in sorted((DEFAULT_SOURCE_DATA_DIR / "boxscores").glob("*.json")):
         payload = load_cached_payload(
             cache_path,
             validator=lambda cached_payload: not box_score_payload_is_empty(cached_payload),
-            log=log,
+            log_fn=log,
         )
         if payload is None:
             continue

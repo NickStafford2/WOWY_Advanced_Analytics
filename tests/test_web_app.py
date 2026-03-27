@@ -424,7 +424,6 @@ def test_refresh_cli_fails_for_empty_all_teams_rawr_store(
         metric: str,
         *,
         season_type: str,
-        db_path: Path,
         rawr_ridge_alpha: float,
         include_team_scopes: bool,
         progress,
@@ -482,12 +481,9 @@ def test_wowy_shrunk_options_endpoint_returns_wowy_style_filters(
     refresh_metric_store(
         WOWY_SHRUNK_METRIC,
         season_type="Regular Season",
-        db_path=player_metrics_db_path,
     )
 
-    app = create_app(
-        player_metrics_db_path=player_metrics_db_path,
-    )
+    app = create_app()
     client = app.test_client()
 
     response = client.get(
@@ -499,7 +495,7 @@ def test_wowy_shrunk_options_endpoint_returns_wowy_style_filters(
     assert response.get_json() == {
         "metric": "wowy_shrunk",
         "metric_label": "WOWY Shrunk",
-        "available_teams": ["BOS", "NYK"],
+        "available_team_ids": ["BOS", "NYK"],
         "team_options": [
             {"team_id": 1610612738, "label": "BOS", "available_seasons": ["2022-23", "2023-24"]},
             {"team_id": 1610612752, "label": "NYK", "available_seasons": ["2023-24"]},

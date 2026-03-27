@@ -44,7 +44,7 @@ from rawr_analytics.metrics.wowy import (
     validate_filters as validate_wowy_filters,
 )
 from rawr_analytics.nba.season_types import canonicalize_season_type
-from rawr_analytics.nba.seasons import canonicalize_season_string
+from rawr_analytics.nba.seasons import canonicalize_season_year_string
 from rawr_analytics.nba.team_history import official_continuity_label_for_team_id
 
 MetricView = str
@@ -81,7 +81,7 @@ def build_metric_query(
     defaults = _metric_default_filters(metric)
     normalized_team_ids = sorted({team_id for team_id in team_ids or [] if team_id > 0}) or None
     normalized_seasons = (
-        [canonicalize_season_string(season) for season in seasons] if seasons else None
+        [canonicalize_season_year_string(season) for season in seasons] if seasons else None
     )
     season_type = canonicalize_season_type(season_type)
     top_n = int(top_n if top_n is not None else defaults["top_n"])
@@ -662,7 +662,7 @@ def _build_team_options(
     available_season_set = set(available_seasons)
     seasons_by_team_id: dict[int, set[str]] = {}
     for team_season in list_cached_team_seasons(season_type=season_type):
-        if team_season.team not in available_team_set:
+        if team_season.team_id not in available_team_set:
             continue
         if team_season.season not in available_season_set:
             continue
@@ -691,9 +691,9 @@ def _build_available_teams_by_season(
     for team_season in list_cached_team_seasons(season_type=season_type):
         if team_season.season not in available_season_set:
             continue
-        if team_season.team not in available_team_set:
+        if team_season.team_id not in available_team_set:
             continue
-        teams_by_season.setdefault(team_season.season, set()).add(team_season.team)
+        teams_by_season.setdefault(team_season.season, set()).add(team_season.team_id)
     return {
         season: [team for team in available_teams if team in teams_by_season.get(season, set())]
         for season in available_seasons

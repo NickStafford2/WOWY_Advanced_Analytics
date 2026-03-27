@@ -5,7 +5,6 @@ from dataclasses import dataclass
 
 @dataclass(frozen=True)
 class NormalizedCacheLoadRow:
-    team: str
     team_id: int
     season: str
     season_type: str

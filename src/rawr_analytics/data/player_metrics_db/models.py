@@ -41,7 +41,7 @@ class MetricScopeCatalogRow:
     team_filter: str
     season_type: str
     available_seasons: list[str]
-    available_teams: list[str]
+    available_team_ids: list[int]
     full_span_start_season: str | None
     full_span_end_season: str | None
     updated_at: str

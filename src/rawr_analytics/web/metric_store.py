@@ -79,7 +79,7 @@ class _RefreshScopeContext:
 class _RefreshStoreInputs:
     source_fingerprint: str
     cached_team_seasons: list[Any]
-    available_teams: list[str]
+    available_team_ids: list[int]
     team_scopes: list[list[int] | None]
 
 
@@ -161,7 +161,7 @@ def refresh_metric_store(
             scope=scope,
             season_type=season_type,
             rawr_ridge_alpha=rawr_ridge_alpha,
-            available_teams=store_inputs.available_teams,
+            available_team_ids=store_inputs.available_teams_ids,
             source_fingerprint=store_inputs.source_fingerprint,
             build_version=build_version,
         )
@@ -220,7 +220,7 @@ def _build_refresh_store_inputs(
             season_type=season_type,
         ),
         cached_team_seasons=cached_team_seasons,
-        available_teams=sorted({team_season.team for team_season in cached_team_seasons}),
+        available_team_ids=sorted({ts.team_id for ts in cached_team_seasons}),
         team_scopes=team_scopes,
     )
 
@@ -268,7 +268,7 @@ def _refresh_metric_store_scope(
     scope: _RefreshScopeContext,
     season_type: str,
     rawr_ridge_alpha: float,
-    available_teams: list[str],
+    available_team_ids: list[int],
     source_fingerprint: str,
     build_version: str,
 ) -> tuple[RefreshScopeResult, bool]:
@@ -313,7 +313,7 @@ def _refresh_metric_store_scope(
             team_filter=scope.team_filter,
             season_type=season_type,
             rows=rows,
-            available_teams=available_teams,
+            available_team_ids=available_team_ids,
             available_seasons=scope.available_seasons,
             build_version=build_version,
             source_fingerprint=source_fingerprint,
@@ -399,7 +399,7 @@ def _replace_metric_scope_rows(
     team_filter: str,
     season_type: str,
     rows: list[PlayerSeasonMetricRow],
-    available_teams: list[str],
+    available_team_ids: list[int],
     available_seasons: list[str],
     build_version: str,
     source_fingerprint: str,
@@ -423,7 +423,7 @@ def _replace_metric_scope_rows(
             team_filter=team_filter,
             season_type=season_type,
             available_seasons=available_seasons,
-            available_teams=available_teams,
+            available_team_ids=available_team_ids,
         ),
         series_rows=store_rows["series_rows"],
         point_rows=store_rows["point_rows"],
@@ -437,7 +437,7 @@ def _build_metric_scope_catalog_row(
     team_filter: str,
     season_type: str,
     available_seasons: list[str],
-    available_teams: list[str],
+    available_team_ids: list[int],
 ) -> MetricScopeCatalogRow:
     return MetricScopeCatalogRow(
         metric=definition.metric,
@@ -446,7 +446,7 @@ def _build_metric_scope_catalog_row(
         team_filter=team_filter,
         season_type=season_type,
         available_seasons=available_seasons,
-        available_teams=available_teams,
+        available_team_ids=available_team_ids,
         full_span_start_season=available_seasons[0] if available_seasons else None,
         full_span_end_season=available_seasons[-1] if available_seasons else None,
         updated_at=datetime.now(UTC).isoformat(),

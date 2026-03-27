@@ -1,9 +1,8 @@
 from __future__ import annotations
 
+from rawr_analytics.nba.source.api import load_or_fetch_box_score
 from rawr_analytics.nba.source.cache import (
-    DEFAULT_SOURCE_DATA_DIR,
-    load_or_fetch_box_score_with_source,
-    load_or_fetch_league_games_with_source,
+    load_or_fetch_league_games,
 )
 from rawr_analytics.nba.source.dedupe import dedupe_schedule_games
 from rawr_analytics.nba.source.load import (
@@ -22,15 +21,14 @@ from rawr_analytics.nba.source.parsers import (
 )
 
 __all__ = [
-    "DEFAULT_SOURCE_DATA_DIR",
     "SourceBoxScore",
     "SourceBoxScorePlayer",
     "SourceBoxScoreTeam",
     "SourceLeagueGame",
     "SourceLeagueSchedule",
     "dedupe_schedule_games",
-    "load_or_fetch_box_score_with_source",
-    "load_or_fetch_league_games_with_source",
+    "load_or_fetch_box_score",
+    "load_or_fetch_league_games",
     "load_player_names_from_cache",
     "parse_box_score_payload",
     "parse_league_schedule_payload",

@@ -12,7 +12,7 @@ from rawr_analytics.data.player_metrics_db.models import (
     PlayerSeasonMetricRow,
 )
 from rawr_analytics.nba.season_types import canonicalize_season_type
-from rawr_analytics.nba.seasons import canonicalize_season_string, season_sort_key
+from rawr_analytics.nba.seasons import canonicalize_season_year_string, season_sort_key
 
 _TEAM_ABBREVIATION_PATTERN = re.compile(r"^[A-Z]{3}$")
 _TEAM_ID_FILTER_PATTERN = re.compile(r"^[1-9]\d*$")
@@ -71,7 +71,7 @@ def _validate_metric_rows(
             team_filter=canonical_team_filter,
             season_type=canonical_season_type,
         )
-        canonical_season = canonicalize_season_string(row.season)
+        canonical_season = canonicalize_season_year_string(row.season)
         if canonical_season != row.season:
             raise ValueError(
                 f"Metric row for player {row.player_id!r} uses non-canonical season {row.season!r}"
@@ -143,7 +143,7 @@ def _validate_metric_scope_catalog_row(row: MetricScopeCatalogRow) -> None:
         season_type=canonical_season_type,
     )
 
-    seasons = [canonicalize_season_string(season) for season in row.available_seasons]
+    seasons = [canonicalize_season_year_string(season) for season in row.available_seasons]
     if seasons != row.available_seasons:
         raise ValueError("Catalog available_seasons must use canonical season strings")
     if seasons != sorted(set(seasons), key=season_sort_key):
@@ -158,8 +158,8 @@ def _validate_metric_scope_catalog_row(row: MetricScopeCatalogRow) -> None:
     if (row.full_span_start_season is None) != (row.full_span_end_season is None):
         raise ValueError("Catalog full-span seasons must both be set or both be null")
     if row.full_span_start_season is not None:
-        start = canonicalize_season_string(row.full_span_start_season)
-        end = canonicalize_season_string(row.full_span_end_season or "")
+        start = canonicalize_season_year_string(row.full_span_start_season)
+        end = canonicalize_season_year_string(row.full_span_end_season or "")
         if start not in seasons or end not in seasons:
             raise ValueError("Catalog full-span seasons must be present in available_seasons")
         if season_sort_key(start) > season_sort_key(end):
@@ -218,7 +218,7 @@ def _validate_metric_full_span_rows(
             raise ValueError("Full-span point rows must match the requested metric scope")
         if row.player_id not in expected_point_counts:
             raise ValueError(f"Full-span point row for unknown player {row.player_id!r}")
-        canonical_season = canonicalize_season_string(row.season)
+        canonical_season = canonicalize_season_year_string(row.season)
         if canonical_season != row.season:
             raise ValueError(
                 f"Full-span point row for player {row.player_id!r} uses non-canonical "

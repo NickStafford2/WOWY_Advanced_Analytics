@@ -5,7 +5,7 @@ import re
 from typing import NoReturn
 
 from rawr_analytics.nba.season_types import canonicalize_season_type
-from rawr_analytics.nba.seasons import canonicalize_season_string
+from rawr_analytics.nba.seasons import canonicalize_season_year_string
 from rawr_analytics.nba.source.models import (
     SourceBoxScore,
     SourceBoxScorePlayer,
@@ -22,6 +22,8 @@ from rawr_analytics.nba.source.rules import (
     source_player_played_in_game,
 )
 from rawr_analytics.nba.team_identity import resolve_source_team_identity
+from rawr_analytics.shared.season import Season
+from rawr_analytics.shared.team import Team
 
 _ROW_VALUE_ALIASES: dict[str, tuple[str, ...]] = {
     "GAME_ID": ("gameId",),
@@ -40,25 +42,16 @@ _SCHEDULE_ROW_LABEL = "nba_api_league_schedule_row"
 
 
 def parse_league_schedule_payload(
-    payload: dict,
-    *,
-    requested_team: str,
-    season: str,
-    season_type: str,
+    payload: dict, team: Team, season: Season
 ) -> SourceLeagueSchedule:
     rows = _result_set_rows(_first_result_set(payload, label="league schedule"))
     games: list[SourceLeagueGame] = []
     for row in rows:
-        game = _parse_schedule_row(row, season=season)
+        game = _parse_schedule_row(row)
         if classify_source_schedule_row(row).should_skip:
             continue
         games.append(game)
-    return SourceLeagueSchedule(
-        requested_team=requested_team.strip().upper(),
-        season=canonicalize_season_string(season),
-        season_type=canonicalize_season_type(season_type),
-        games=games,
-    )
+    return SourceLeagueSchedule(team=team, season=season, games=games)
 
 
 def parse_box_score_payload(payload: dict, *, game_id: str) -> SourceBoxScore:
@@ -209,23 +202,20 @@ def _parse_live_player_row(
     return parsed_row
 
 
-def _parse_schedule_row(row: dict[str, object], *, season: str) -> SourceLeagueGame:
-    game = SourceLeagueGame(
+def _parse_schedule_row(row: dict[str, object]) -> SourceLeagueGame:
+    team_id = _required_int(row, "TEAM_ID", row_label=_SCHEDULE_ROW_LABEL)
+    team_abbreviation = (_required_text(row, "TEAM_ABBREVIATION", row_label=_SCHEDULE_ROW_LABEL),)
+    team = Team.from_id(team_id)
+    assert team.team_id == team_id
+    assert team.abbreviation() == team_abbreviation
+
+    return SourceLeagueGame(
+        team=team,
         game_id=_required_text(row, "GAME_ID", row_label=_SCHEDULE_ROW_LABEL),
         game_date=_required_text(row, "GAME_DATE", row_label=_SCHEDULE_ROW_LABEL),
         matchup=_required_text(row, "MATCHUP", row_label=_SCHEDULE_ROW_LABEL),
-        team_id=_required_int(row, "TEAM_ID", row_label=_SCHEDULE_ROW_LABEL),
-        team_abbreviation=_required_text(row, "TEAM_ABBREVIATION", row_label=_SCHEDULE_ROW_LABEL),
         raw_row=row,
     )
-    resolve_source_team_identity(
-        team_id=game.team_id,
-        team_abbreviation=game.team_abbreviation,
-        season=season,
-        game_date=game.game_date,
-        error_context=_row_context(_SCHEDULE_ROW_LABEL, row),
-    )
-    return game
 
 
 def _first_result_set(payload: dict[str, object], *, label: str) -> dict[str, object]:

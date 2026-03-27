@@ -3,7 +3,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from datetime import date
 
-from rawr_analytics.nba.seasons import canonicalize_season_string
+from rawr_analytics.nba.seasons import canonicalize_season_year_string
 
 
 @dataclass(frozen=True)
@@ -138,7 +138,7 @@ def canonical_team_lookup_abbreviation(team_abbreviation: str) -> str:
 
 
 def season_start_year(season: str) -> int:
-    return int(canonicalize_season_string(season)[:4])
+    return int(canonicalize_season_year_string(season)[:4])
 
 
 def season_start_year_from_game_date(game_date: str) -> int:
@@ -178,7 +178,7 @@ def resolve_team_history_entry_for_season_start_year(
         if entry.includes_season(season_start):
             return entry
     raise ValueError(
-        f"Team {normalized!r} was not active in season {canonicalize_season_string(str(season_start))!r}"
+        f"Team {normalized!r} was not active in season {canonicalize_season_year_string(str(season_start))!r}"
     )
 
 
@@ -213,7 +213,7 @@ def resolve_team_history_entry_from_id_for_season_start_year(
         if entry.includes_season(season_start):
             return entry
     raise ValueError(
-        f"Team id {team_id!r} was not active in season {canonicalize_season_string(str(season_start))!r}"
+        f"Team id {team_id!r} was not active in season {canonicalize_season_year_string(str(season_start))!r}"
     )
 
 

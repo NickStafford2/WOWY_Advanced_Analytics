@@ -6,18 +6,18 @@ import pytest
 
 from rawr_analytics.data.game_cache import list_cached_team_seasons
 from rawr_analytics.data.scopes import TeamSeasonScope
-from rawr_analytics.nba.seasons import canonicalize_season_string
+from rawr_analytics.nba.seasons import canonicalize_season_year_string
 from tests.support import game, player, seed_db_from_team_seasons
 
 
 def test_canonicalize_season_string_accepts_single_year_input():
-    assert canonicalize_season_string("2014") == "2014-15"
-    assert canonicalize_season_string("2014-15") == "2014-15"
+    assert canonicalize_season_year_string("2014") == "2014-15"
+    assert canonicalize_season_year_string("2014-15") == "2014-15"
 
 
 def test_canonicalize_season_string_rejects_noncanonical_hyphenated_value():
     with pytest.raises(ValueError, match="Expected canonical season"):
-        canonicalize_season_string("2014-14")
+        canonicalize_season_year_string("2014-14")
 
 
 def test_list_cached_team_seasons_returns_db_rows(

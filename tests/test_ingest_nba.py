@@ -5,7 +5,7 @@ from pathlib import Path
 import pytest
 
 from rawr_analytics.nba.errors import PartialTeamSeasonError
-from rawr_analytics.nba.normalize.normalize_game import normalize_source_game
+from rawr_analytics.nba.normalize.normalize_game import normalize_source_league_game
 from rawr_analytics.nba.source.dedupe import dedupe_schedule_games
 from rawr_analytics.nba.source.models import (
     SourceBoxScorePlayer,
@@ -70,7 +70,7 @@ def test_ingest_team_season_from_cached_nba_source(team: str, season: str) -> No
     try:
         result = ingest_team_season(
             team_abbreviation=team,
-            season=season,
+            season_year=season,
             source_data_dir=SOURCE_DATA_DIR,
             log=None,
             cached_only=True,
@@ -102,7 +102,7 @@ def test_latest_cached_scope_is_explicitly_reported_if_partial() -> None:
     try:
         ingest_team_season(
             team_abbreviation=team,
-            season=season,
+            season_year=season,
             source_data_dir=SOURCE_DATA_DIR,
             log=None,
             cached_only=True,
@@ -148,7 +148,7 @@ def test_ingest_team_season_cached_only_rejects_empty_cached_box_score(
     with pytest.raises(PartialTeamSeasonError) as exc_info:
         ingest_team_season(
             team_abbreviation="BOS",
-            season="2023-24",
+            season_year="2023-24",
             source_data_dir=tmp_path,
             log=None,
             cached_only=True,
@@ -198,7 +198,7 @@ def test_ingest_team_season_groups_partial_failures_by_stable_reason(
     with pytest.raises(PartialTeamSeasonError) as exc_info:
         ingest_team_season(
             team_abbreviation="BOS",
-            season="2023-24",
+            season_year="2023-24",
             source_data_dir=tmp_path,
             log=None,
             cached_only=True,
@@ -239,7 +239,7 @@ def test_ingest_team_season_cached_only_rejects_empty_cached_league_games(
     with pytest.raises(ValueError, match="Missing valid cached league games payload"):
         ingest_team_season(
             team_abbreviation="BOS",
-            season="2023-24",
+            season_year="2023-24",
             source_data_dir=tmp_path,
             log=None,
             cached_only=True,
@@ -304,8 +304,8 @@ def test_normalize_source_game_skips_sentinel_player_id_zero_rows() -> None:
         game_id="0001",
     )
 
-    game, players = normalize_source_game(
-        schedule_game=schedule.games[0],
+    game, players = normalize_source_league_game(
+        source_league_game=schedule.games[0],
         box_score=box_score,
         season="2002-03",
         season_type="Regular Season",
@@ -580,8 +580,8 @@ def test_normalize_source_game_skips_player_did_not_play_placeholder_rows() -> N
         game_id="0001",
     )
 
-    game, players = normalize_source_game(
-        schedule_game=schedule.games[0],
+    game, players = normalize_source_league_game(
+        source_league_game=schedule.games[0],
         box_score=box_score,
         season="2002-03",
         season_type="Regular Season",
@@ -1099,8 +1099,8 @@ def test_normalize_source_game_skips_inactive_player_status_rows() -> None:
         game_id="0001",
     )
 
-    game, players = normalize_source_game(
-        schedule_game=schedule.games[0],
+    game, players = normalize_source_league_game(
+        source_league_game=schedule.games[0],
         box_score=box_score,
         season="2002-03",
         season_type="Regular Season",
@@ -1744,8 +1744,8 @@ def test_normalize_source_game_skips_inactive_status_rows_with_missing_name_and_
         game_id="0001",
     )
 
-    _, players = normalize_source_game(
-        schedule_game=schedule.games[0],
+    _, players = normalize_source_league_game(
+        source_league_game=schedule.games[0],
         box_score=box_score,
         season="2002-03",
         season_type="Regular Season",

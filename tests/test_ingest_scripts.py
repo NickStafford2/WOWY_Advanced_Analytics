@@ -51,7 +51,7 @@ def test_cache_season_data_continues_after_team_failure(monkeypatch, capsys):
         "append_ingest_failure_log",
         lambda **kwargs: logged_failures.append((kwargs["team"], kwargs["failure_kind"])),
     )
-    monkeypatch.setattr(cache_season_data, "resolve_teams", lambda teams, season: ["BOS", "LAL"])
+    monkeypatch.setattr(cache_season_data, "_resolve_teams", lambda teams, season: ["BOS", "LAL"])
     monkeypatch.setattr(cache_season_data, "team_is_active_for_season", lambda team, season: True)
 
     exit_code = cache_season_data.main(["2023-24"])
@@ -88,9 +88,9 @@ def test_cache_all_seasons_continues_after_season_failure(monkeypatch, capsys):
 
 
 def test_filtered_log_only_emits_actionable_cache_messages(capsys):
-    cache_season_data.filtered_log("api box_score 0001 attempt=1")
-    cache_season_data.filtered_log("cache discard path=foo reason=invalid_or_empty_payload")
-    cache_season_data.filtered_log("cache skip path=bar reason=unparseable_box_score_payload")
+    cache_season_data._filtered_log("api box_score 0001 attempt=1")
+    cache_season_data._filtered_log("cache discard path=foo reason=invalid_or_empty_payload")
+    cache_season_data._filtered_log("cache skip path=bar reason=unparseable_box_score_payload")
 
     captured = capsys.readouterr()
     assert "api box_score" not in captured.err
@@ -156,7 +156,7 @@ def test_render_partial_failure_details_includes_short_per_game_examples() -> No
         },
     )
 
-    rendered = cache_season_data.render_partial_failure_details(error)
+    rendered = cache_season_data._render_partial_failure_details(error)
 
     assert "Failure reasons:" in rendered
     assert "  - 2 games: ValueError: Unparseable MIN value" in rendered

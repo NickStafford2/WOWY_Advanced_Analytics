@@ -14,21 +14,19 @@ from rawr_analytics.nba.ingest_logging import (
     DEFAULT_INGEST_FAILURE_LOG_PATH,
     append_ingest_failure_log,
 )
-from rawr_analytics.nba.season_types import canonicalize_season_type
-from rawr_analytics.nba.seasons import canonicalize_season_string
-from rawr_analytics.nba.source.cache import DEFAULT_SOURCE_DATA_DIR
 from rawr_analytics.nba.team_identity import (
     list_expected_team_abbreviations_for_season,
     team_is_active_for_season,
 )
-from rawr_analytics.workflows.nba_ingest import refresh_normalized_team_season_cache
+from rawr_analytics.shared.season import Season, build_season_list
 
-_LAST_STATUS_LINE_LENGTH = 0
-DEFAULT_START_YEAR = 2000
-DEFAULT_FIRST_YEAR = 1946
+_DEFAULT_START_YEAR = 2000
+_DEFAULT_FIRST_YEAR = 1946
+_DEFAULT_YEAR = 2024
+_DEFAULT_SEASON_TYPE = "Regular Season"
 
 
-def build_parser() -> argparse.ArgumentParser:
+def _build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
         description="Fetch, normalize, and cache all NBA seasons by default, or one season."
     )
@@ -45,19 +43,19 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument(
         "--start-year",
         type=int,
-        default=DEFAULT_START_YEAR,
+        default=_DEFAULT_START_YEAR,
         help=(
             "First season start year to cache when using --all-seasons "
-            f"(default: {DEFAULT_START_YEAR})"
+            f"(default: {_DEFAULT_START_YEAR})"
         ),
     )
     parser.add_argument(
         "--first-year",
         type=int,
-        default=DEFAULT_FIRST_YEAR,
+        default=_DEFAULT_FIRST_YEAR,
         help=(
             "Earliest season start year to cache, inclusive, when using "
-            f"--all-seasons (default: {DEFAULT_FIRST_YEAR})"
+            f"--all-seasons (default: {_DEFAULT_FIRST_YEAR})"
         ),
     )
     parser.add_argument(
@@ -91,211 +89,41 @@ def build_parser() -> argparse.ArgumentParser:
     return parser
 
 
-def season_string(start_year: int) -> str:
-    end_year = (start_year + 1) % 100
-    return f"{start_year}-{end_year:02d}"
-
-
-def build_season_strings(start_year: int, first_year: int) -> list[str]:
-    if start_year < first_year:
-        raise ValueError("Start year must be greater than or equal to first year")
-    return [season_string(year) for year in range(start_year, first_year - 1, -1)]
-
-
-def resolve_teams(team_codes: list[str] | None, season: str) -> list[str]:
+def _resolve_teams(team_codes: list[str] | None, season: Season) -> list[str]:
     if team_codes:
         return [team_code.upper() for team_code in team_codes]
     return list_expected_team_abbreviations_for_season(season)
 
 
-def render_progress_line(
-    team_index: int,
-    team_total: int,
-    payload: dict,
-) -> None:
-    current = payload["current"]
-    total = payload["total"]
-    status = payload["status"]
-    team = payload["team"]
-    season = payload["season"]
-    game_id = payload["game_id"]
-    filled = 20 if total == 0 else int((current / total) * 20)
-    bar = "#" * filled + "-" * (20 - filled)
-    line = (
-        f"  [{team_index:>2}/{team_total}] {team} {season} "
-        f"{current}/{total} [{bar}] {status:<7} {game_id}"
-    )
-    write_status_line(line)
+def _get_season_list_from_args(args) -> list[Season]:
+    season_type_str = args.season_type or _DEFAULT_SEASON_TYPE
+    if args.start_year and args.first_year:
+        start_year = args.start_year or _DEFAULT_START_YEAR
+        first_year = args.first_year or _DEFAULT_FIRST_YEAR  # todo. rename to end year
+    elif args.season:
+        start_year = first_year = args.season
+    else:
+        start_year = first_year = _DEFAULT_YEAR
 
-
-def filtered_log(message: str) -> None:
-    if not _should_emit_log_message(message):
-        return
-    sys.stderr.write(f"{message}\n")
-    sys.stderr.flush()
-
-
-def _should_emit_log_message(message: str) -> bool:
-    return message.startswith("cache discard") or message.startswith("cache skip")
-
-
-def write_status_line(line: str) -> None:
-    global _LAST_STATUS_LINE_LENGTH
-    padding = max(0, _LAST_STATUS_LINE_LENGTH - len(line))
-    sys.stdout.write(f"\r{line}{' ' * padding}")
-    sys.stdout.flush()
-    _LAST_STATUS_LINE_LENGTH = len(line)
-
-
-def render_team_complete_line(
-    team_index: int,
-    team_total: int,
-    summary,
-) -> None:
-    line = (
-        f"  [{team_index:>2}/{team_total}] {summary.team} {summary.season} "
-        f"{summary.processed_games}/{summary.total_games} "
-        f"league={'cached' if summary.league_games_source == 'cached' else 'fetched'} "
-        f"boxscores={summary.fetched_box_scores} fetched, {summary.cached_box_scores} cached "
-        f"skipped={summary.skipped_games}"
-    )
-    write_status_line(line)
-
-
-def render_team_failed_line(
-    team_index: int,
-    team_total: int,
-    team: str,
-    season: str,
-    reason: str,
-) -> None:
-    line = f"  [{team_index:>2}/{team_total}] {team} {season} failed consistency={reason}"
-    write_status_line(line)
-
-
-def render_team_partial_failed_line(
-    team_index: int,
-    team_total: int,
-    team: str,
-    season: str,
-    failed_games: int,
-    total_games: int,
-) -> None:
-    line = (
-        f"  [{team_index:>2}/{team_total}] {team} {season} "
-        f"failed partial={failed_games}/{total_games}"
-    )
-    write_status_line(line)
-
-
-def render_partial_failure_details(error: PartialTeamSeasonError) -> str:
-    lines = ["Failure reasons:"]
-    details_by_game_id = {failure.game_id: failure for failure in error.failed_game_details}
-    ranked_reasons = sorted(
-        error.failure_reason_counts.items(),
-        key=lambda item: (-item[1], item[0]),
-    )
-    for reason, count in ranked_reasons:
-        example_game_ids = error.failure_reason_examples.get(reason, [])[:3]
-        lines.append(f"  - {count} games: {reason}")
-        for game_id in example_game_ids:
-            failure = details_by_game_id.get(game_id)
-            if failure is None:
-                lines.append(f"    {game_id}: details unavailable")
-                continue
-            detail = _summarize_game_failure_detail(failure)
-            lines.append(f"    {game_id}: {detail}")
-    return "\n".join(lines)
-
-
-def _summarize_game_failure_detail(failure: GameNormalizationFailure) -> str:
-    message = failure.message
-    if "; nba_api_" not in message:
-        return message
-
-    summary, raw_payload = message.split("; nba_api_", maxsplit=1)
-    raw_json = raw_payload.split("=", maxsplit=1)[-1].strip()
-    try:
-        payload = json.loads(raw_json)
-    except json.JSONDecodeError:
-        return summary
-
-    parts: list[str] = []
-    player_name = str(payload.get("PLAYER_NAME", "")).strip()
-    if player_name:
-        parts.append(f"player={player_name!r}")
-    min_value = payload.get("MIN")
-    if min_value is not None or "MIN" in payload:
-        parts.append(f"min={min_value!r}")
-    comment = str(payload.get("COMMENT", "")).strip()
-    if comment:
-        parts.append(f"comment={comment!r}")
-
-    for key in ("TEAM_ABBREVIATION", "TEAM_ID"):
-        value = payload.get(key)
-        if value is not None and value != "":
-            parts.append(f"{key.lower()}={value!r}")
-            break
-
-    if not parts:
-        return summary
-    return f"{summary} ({', '.join(parts)})"
-
-
-def render_team_validation_failed_line(
-    team_index: int,
-    team_total: int,
-    team: str,
-    season: str,
-    reason: str,
-) -> None:
-    line = f"  [{team_index:>2}/{team_total}] {team} {season} failed validation={reason}"
-    write_status_line(line)
-
-
-def render_team_fetch_failed_line(
-    team_index: int,
-    team_total: int,
-    team: str,
-    season: str,
-    error_type: str,
-) -> None:
-    line = f"  [{team_index:>2}/{team_total}] {team} {season} failed fetch={error_type}"
-    write_status_line(line)
-
-
-def render_team_skipped_line(
-    team_index: int,
-    team_total: int,
-    team: str,
-    season: str,
-    reason: str,
-) -> None:
-    line = f"  [{team_index:>2}/{team_total}] {team} {season} skipped {reason}"
-    write_status_line(line)
+    return build_season_list(start_year, first_year, season_type_str)
 
 
 def main(argv: list[str] | None = None) -> int:
-    parser = build_parser()
+    parser = _build_parser()
     args = parser.parse_args(argv)
-    season_type = canonicalize_season_type(args.season_type)
-    if args.all_seasons or not args.season:
-        seasons = build_season_strings(args.start_year, args.first_year)
-    else:
-        seasons = [canonicalize_season_string(args.season)]
-
-    season_count = len(seasons)
+    seasons_list = _get_season_list_from_args(args)
+    season_count = len(seasons_list)
     failure_counts: dict[str, int] = {}
     failed_scopes: list[str] = []
-    for season_index, season in enumerate(seasons, start=1):
+    for season_index, season in enumerate(seasons_list, start=1):
         if season_count > 1:
             print(f"[{season_index}/{season_count}] caching {season}")
-        team_codes = resolve_teams(args.teams, season)
+        team_codes: list[str] = _resolve_teams(args.teams, season)
         team_total = len(team_codes)
         for team_index, team_code in enumerate(team_codes, start=1):
             team_season_scope = f"{team_code} {season}"
             if not team_is_active_for_season(team_code, season):
-                render_team_skipped_line(
+                _render_team_skipped_line(
                     team_index=team_index,
                     team_total=team_total,
                     team=team_code,
@@ -307,11 +135,10 @@ def main(argv: list[str] | None = None) -> int:
             try:
                 summary = refresh_normalized_team_season_cache(
                     team_abbreviation=team_code,
-                    season=season,
+                    season_str=season,
                     season_type=season_type,
-                    source_data_dir=DEFAULT_SOURCE_DATA_DIR,
-                    log=filtered_log,
-                    progress=lambda payload, team_index=team_index: render_progress_line(
+                    log=_filtered_log,
+                    progress_fn=lambda payload, team_index=team_index: _render_progress_line(
                         team_index,
                         team_total,
                         payload,
@@ -332,7 +159,7 @@ def main(argv: list[str] | None = None) -> int:
                     error=exc,
                     log_path=args.failure_log_path,
                 )
-                render_team_fetch_failed_line(
+                _render_team_fetch_failed_line(
                     team_index=team_index,
                     team_total=team_total,
                     team=team_code,
@@ -358,7 +185,7 @@ def main(argv: list[str] | None = None) -> int:
                     error=exc,
                     log_path=args.failure_log_path,
                 )
-                render_team_partial_failed_line(
+                _render_team_partial_failed_line(
                     team_index=team_index,
                     team_total=team_total,
                     team=team_code,
@@ -371,7 +198,7 @@ def main(argv: list[str] | None = None) -> int:
                     f"Incomplete cache for {team_code} {season}: "
                     f"{exc.failed_games}/{exc.total_games} games failed normalization\n"
                 )
-                sys.stderr.write(f"{render_partial_failure_details(exc)}\n")
+                sys.stderr.write(f"{_render_partial_failure_details(exc)}\n")
                 sys.stderr.flush()
                 continue
             except ValueError as exc:
@@ -390,7 +217,7 @@ def main(argv: list[str] | None = None) -> int:
                     error=exc,
                     log_path=args.failure_log_path,
                 )
-                render_team_validation_failed_line(
+                _render_team_validation_failed_line(
                     team_index=team_index,
                     team_total=team_total,
                     team=team_code,
@@ -401,7 +228,7 @@ def main(argv: list[str] | None = None) -> int:
                 sys.stderr.write(f"Validation failed for {team_code} {season}: {reason}\n")
                 sys.stderr.flush()
                 continue
-            render_team_complete_line(team_index, team_total, summary)
+            _render_team_complete_line(team_index, team_total, summary)
             sys.stdout.write("\n")
     if failure_counts:
         _render_failure_summary(
@@ -410,35 +237,6 @@ def main(argv: list[str] | None = None) -> int:
         )
         return 1
     return 0
-
-
-def _record_failure(
-    failure_counts: dict[str, int],
-    failed_scopes: list[str],
-    *,
-    failure_kind: str,
-    scope: str,
-) -> None:
-    failure_counts[failure_kind] = failure_counts.get(failure_kind, 0) + 1
-    failed_scopes.append(scope)
-
-
-def _render_failure_summary(
-    *,
-    failure_counts: dict[str, int],
-    failed_scopes: list[str],
-) -> None:
-    total_failures = len(failed_scopes)
-    summary = ", ".join(f"{kind}={count}" for kind, count in sorted(failure_counts.items()))
-    scope_preview = ", ".join(failed_scopes[:10])
-    suffix = "" if len(failed_scopes) <= 10 else ", ..."
-    banner = "!" * 72
-    sys.stderr.write(f"{banner}\n")
-    sys.stderr.write(f"ERROR: season cache finished with {total_failures} failed team-seasons\n")
-    sys.stderr.write(f"{banner}\n")
-    sys.stderr.write(f"Completed with failures across {total_failures} team-seasons: {summary}\n")
-    sys.stderr.write(f"Failed scopes: {scope_preview}{suffix}\n")
-    sys.stderr.flush()
 
 
 def run(argv: list[str] | None = None) -> int:

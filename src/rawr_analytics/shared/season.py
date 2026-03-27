@@ -22,9 +22,26 @@ class SeasonType(Enum):
         if season_type in ["pre", "preseason", "pre season"]:
             return SeasonType.PRESEASON
         assert False, (
-            f"Invalid season type {value!r}. "
-            "Expected 'Regular Season', 'Playoffs', or 'Preseason'."
+            f"Invalid season type {value!r}. Expected 'Regular Season', 'Playoffs', or 'Preseason'."
         )
+
+    def to_nba_format(self) -> str:
+        if self == SeasonType.REGULAR:
+            return "Regular Season"
+        if self == SeasonType.PLAYOFFS:
+            return "Playoffs"
+        if self == SeasonType.PRESEASON:
+            return "Pre Season"
+        assert False, f"Unsupported season type: {self!r}"
+
+    def to_slug(self) -> str:
+        if self == SeasonType.REGULAR:
+            return "regular_season"
+        if self == SeasonType.PLAYOFFS:
+            return "playoffs"
+        if self == SeasonType.PRESEASON:
+            return "preseason"
+        assert False, f"Unsupported season type: {self!r}"
 
 
 @dataclass
@@ -42,6 +59,12 @@ class Season:
 
     def is_playoffs(self) -> bool:
         return self.season_type == SeasonType.PLAYOFFS
+
+    def __str__(self) -> str:
+        return self.id
+
+    def to_nba_api_format(self) -> str:
+        return self.id
 
     @staticmethod
     def _parse_start_year(year_string: str) -> int:
@@ -67,3 +90,8 @@ class Season:
         assert start_year >= 0, f"Invalid season start year: {start_year!r}"
         end_year = (start_year + 1) % 100
         return f"{start_year}-{end_year:02d}"
+
+
+def build_season_list(start_year: int, first_year: int, season_type_str: str) -> list[Season]:
+    assert start_year >= first_year, "Start year must be greater than or equal to first year"
+    return [Season(str(year), season_type_str) for year in range(start_year, first_year - 1, -1)]

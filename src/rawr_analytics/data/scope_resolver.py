@@ -1,7 +1,5 @@
 from __future__ import annotations
 
-from pathlib import Path
-
 from rawr_analytics.data.game_cache.repository import (
     list_cached_team_seasons,
     load_normalized_scope_records_from_db,
@@ -9,8 +7,7 @@ from rawr_analytics.data.game_cache.repository import (
 from rawr_analytics.data.scopes import TeamSeasonScope
 from rawr_analytics.nba.models import NormalizedGamePlayerRecord, NormalizedGameRecord
 from rawr_analytics.nba.season_types import canonicalize_season_type
-from rawr_analytics.nba.seasons import canonicalize_season_string
-from rawr_analytics.nba.team_history import resolve_team_history_entry_from_id
+from rawr_analytics.nba.seasons import canonicalize_season_year_string
 from rawr_analytics.nba.team_identity import (
     list_expected_team_abbreviations_for_season,
     resolve_team_id,
@@ -18,14 +15,13 @@ from rawr_analytics.nba.team_identity import (
 
 
 def resolve_team_seasons(
-    teams: list[str] | None,
     seasons: list[str] | None,
     *,
     team_ids: list[int] | None = None,
     season_type: str | None = None,
 ) -> list[TeamSeasonScope]:
     normalized_seasons = (
-        [canonicalize_season_string(season) for season in seasons] if seasons else None
+        [canonicalize_season_year_string(season) for season in seasons] if seasons else None
     )
     normalized_team_ids = (
         sorted({int(team_id) for team_id in team_ids if int(team_id) > 0}) if team_ids else None
@@ -45,12 +41,6 @@ def resolve_team_seasons(
                 seasons=normalized_seasons,
                 cached_team_seasons_by_key=cached_team_seasons_by_key,
             )
-        if teams:
-            return _resolve_team_lookup_scoped_seasons(
-                teams=teams,
-                seasons=normalized_seasons,
-                cached_team_seasons_by_key=cached_team_seasons_by_key,
-            )
         resolved: list[TeamSeasonScope] = []
         for season in normalized_seasons:
             season_rows = [
@@ -61,7 +51,6 @@ def resolve_team_seasons(
                 continue
             resolved.extend(
                 TeamSeasonScope(
-                    team=team,
                     team_id=resolve_team_id(team, season=season),
                     season=season,
                 )
@@ -76,14 +65,6 @@ def resolve_team_seasons(
             if team_season.team_id in normalized_team_ids
         ]
 
-    if teams:
-        normalized_lookup_team_ids = {resolve_team_id(team) for team in teams}
-        return [
-            team_season
-            for team_season in cached_team_seasons
-            if team_season.team_id in normalized_lookup_team_ids
-        ]
-
     return cached_team_seasons
 
 
@@ -96,7 +77,6 @@ def load_normalized_scope_records(
     include_opponents_for_team_scope: bool = True,
 ) -> tuple[list[NormalizedGameRecord], list[NormalizedGamePlayerRecord]]:
     team_seasons = resolve_team_seasons(
-        teams,
         seasons,
         team_ids=team_ids,
         season_type=season_type,
@@ -109,7 +89,6 @@ def load_normalized_scope_records(
     if (teams or team_ids) and include_opponents_for_team_scope:
         opponent_team_seasons = {
             TeamSeasonScope(
-                team=game.opponent,
                 team_id=game.opponent_team_id,
                 season=game.season,
             )
@@ -142,10 +121,8 @@ def _resolve_team_id_scoped_seasons(
             if cached_team_season is not None:
                 resolved.append(cached_team_season)
                 continue
-            entry = resolve_team_history_entry_from_id(team_id, season=season)
             resolved.append(
                 TeamSeasonScope(
-                    team=entry.abbreviation,
                     team_id=team_id,
                     season=season,
                 )
@@ -169,7 +146,6 @@ def _resolve_team_lookup_scoped_seasons(
                 continue
             resolved.append(
                 TeamSeasonScope(
-                    team=resolve_team_history_entry_from_id(team_id, season=season).abbreviation,
                     team_id=team_id,
                     season=season,
                 )

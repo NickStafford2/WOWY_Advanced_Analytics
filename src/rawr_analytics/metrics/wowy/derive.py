@@ -23,13 +23,12 @@ def derive_wowy_games(
         players = players_by_game_team.get((game.game_id, game.identity_team), set())
         if not players:
             raise ValueError(
-                f"No appeared players found for game {game.game_id!r} and team {game.team!r}"
+                f"No appeared players found for game {game.game_id!r} and team {game.team_id!r}"
             )
         derived_games.append(
             WowyGameRecord(
                 game_id=game.game_id,
                 season=game.season,
-                team=game.team,
                 margin=game.margin,
                 players=players,
                 team_id=game.team_id,

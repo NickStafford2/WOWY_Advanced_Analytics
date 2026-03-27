@@ -13,8 +13,8 @@ def dedupe_schedule_games(games: list[SourceLeagueGame]) -> list[SourceLeagueGam
             if (
                 existing_game.game_date != game.game_date
                 or existing_game.matchup != game.matchup
-                or existing_game.team_id != game.team_id
-                or existing_game.team_abbreviation != game.team_abbreviation
+                or existing_game.team.team_id != game.team.team_id
+                or existing_game.team.abbreviation() != game.team.abbreviation()
             ):
                 raise ValueError(
                     f"Conflicting duplicate schedule rows for game {game.game_id!r}; "

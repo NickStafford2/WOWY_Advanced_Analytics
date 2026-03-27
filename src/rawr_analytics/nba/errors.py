@@ -2,6 +2,9 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 
+from rawr_analytics.shared.season import Season
+from rawr_analytics.shared.team import Team
+
 
 @dataclass
 class NbaIngestError(Exception):
@@ -22,9 +25,8 @@ class FetchError(NbaIngestError):
 
 @dataclass
 class LeagueGamesFetchError(FetchError):
-    team: str
-    season: str
-    season_type: str
+    team: Team
+    season: Season
 
 
 @dataclass
@@ -41,9 +43,8 @@ class GameNormalizationFailure:
 
 @dataclass
 class PartialTeamSeasonError(NbaIngestError):
-    team: str
-    season: str
-    season_type: str
+    team: Team
+    season: Season
     failed_game_ids: list[str]
     total_games: int
     failed_games: int
