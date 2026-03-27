@@ -7,7 +7,6 @@ from datetime import UTC, datetime
 from rawr_analytics.data.constants import DB_PATH
 from rawr_analytics.data.game_cache.rows import NormalizedCacheLoadRow
 from rawr_analytics.data.game_cache.schema import _connect, initialize_game_cache_db
-from rawr_analytics.data.scopes import TeamSeasonScope
 from rawr_analytics.nba.models import NormalizedGamePlayerRecord, NormalizedGameRecord
 from rawr_analytics.nba.normalize.validation import validate_normalized_cache_batch
 from rawr_analytics.nba.team_identity import (
@@ -562,6 +561,7 @@ def _upsert_team_history_for_scope(
     )
 
 
+# what does this do?
 def _upsert_team_history_for_games(
     connection: sqlite3.Connection,
     games: list[NormalizedGameRecord],

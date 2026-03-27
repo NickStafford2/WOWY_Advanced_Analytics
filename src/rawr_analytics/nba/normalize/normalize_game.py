@@ -1,8 +1,6 @@
 from __future__ import annotations
 
 from rawr_analytics.nba.normalize.models import NormalizedGamePlayerRecord, NormalizedGameRecord
-from rawr_analytics.nba.season_types import canonicalize_season_type
-from rawr_analytics.nba.seasons import canonicalize_season_year_string
 from rawr_analytics.nba.source.models import (
     SourceBoxScore,
     SourceBoxScorePlayer,
