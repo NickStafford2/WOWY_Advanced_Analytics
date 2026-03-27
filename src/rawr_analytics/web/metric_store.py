@@ -23,7 +23,7 @@ from rawr_analytics.data.player_metrics_db.store import (
 )
 from rawr_analytics.metrics.rawr import build_cached_rows as build_rawr_cached_rows
 from rawr_analytics.metrics.rawr import describe_metric as describe_rawr_metric
-from rawr_analytics.metrics.rawr.data import list_expected_rawr_teams_for_season
+from rawr_analytics.metrics.rawr.data import list_incomplete_rawr_season_warnings
 from rawr_analytics.metrics.scope import build_scope_key
 from rawr_analytics.metrics.wowy import build_cached_rows as build_wowy_cached_rows
 from rawr_analytics.metrics.wowy import describe_metric as describe_wowy_metric
@@ -230,7 +230,7 @@ def _build_refresh_warnings(
 ) -> list[str]:
     if metric != RAWR_METRIC:
         return []
-    return _build_rawr_incomplete_season_warnings(season_type=season_type)
+    return list_incomplete_rawr_season_warnings(season_type=season_type)
 
 
 def _build_refresh_scope_context(
@@ -369,41 +369,6 @@ def _build_metric_series(
         }
         for player_id in ranked_player_ids
     ]
-
-
-def _build_rawr_incomplete_season_warnings(*, season_type: str) -> list[str]:
-    cache_load_rows = _list_cache_load_rows_for_season_type(season_type)
-    rows_by_season: dict[str, list[NormalizedCacheLoadRow]] = {}
-    for row in cache_load_rows:
-        rows_by_season.setdefault(row.season.id, []).append(row)
-
-    warnings: list[str] = []
-    for season in sorted(rows_by_season):
-        season_rows = rows_by_season[season]
-        expected_teams = set(list_expected_rawr_teams_for_season(season))
-        actual_teams = {
-            row.team.abbreviation(season=row.season)
-            for row in season_rows
-        }
-        missing_teams = sorted(expected_teams - actual_teams)
-        if missing_teams:
-            warnings.append(f"{season}: missing team-seasons: {', '.join(missing_teams)}")
-        for row in season_rows:
-            team_label = row.team.abbreviation(season=row.season)
-            if row.expected_games_row_count is None or row.skipped_games_row_count is None:
-                warnings.append(f"{season}: incomplete cache metadata for {team_label}")
-                continue
-            if row.games_row_count != row.expected_games_row_count:
-                warnings.append(
-                    f"{season}: partial team-season cache for "
-                    f"{team_label} ({row.games_row_count}/{row.expected_games_row_count} games)"
-                )
-            if row.skipped_games_row_count != 0:
-                warnings.append(
-                    f"{season}: skipped games present for "
-                    f"{team_label} ({row.skipped_games_row_count} skipped)"
-                )
-    return warnings
 
 
 def _replace_metric_scope_rows(
