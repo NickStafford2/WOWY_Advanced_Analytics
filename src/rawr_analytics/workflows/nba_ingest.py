@@ -28,7 +28,7 @@ class IngestRequest:
 
     @property
     def label(self) -> str:
-        return f"{self.team.abbreviation()} {self.season}"
+        return f"{self.team.abbreviation(season=self.season)} {self.season}"
 
 
 @dataclass(frozen=True)
@@ -186,7 +186,8 @@ def store(result: IngestResult) -> None:
         game_players=result.game_players,
         source_path=(
             "sqlite://normalized_games/"
-            f"{result.request.team.abbreviation()}_{result.request.season.id}_{result.request.season.season_type.to_slug()}"
+            f"{result.request.team.abbreviation(season=result.request.season)}_"
+            f"{result.request.season.id}_{result.request.season.season_type.to_slug()}"
         ),
         source_snapshot="ingest-build-v2",
         source_kind="nba-api",
@@ -257,7 +258,6 @@ __all__ = [
     "IngestRequest",
     "IngestResult",
     "IngestSummary",
-    "build_ingest_request",
     "ingest",
     "refresh",
     "store",

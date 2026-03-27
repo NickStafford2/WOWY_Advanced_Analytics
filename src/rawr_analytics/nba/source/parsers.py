@@ -45,7 +45,7 @@ def parse_league_schedule_payload(
     rows = _result_set_rows(res)
     games: list[SourceLeagueGame] = []
     for row in rows:
-        game = _parse_schedule_row(row)
+        game = _parse_schedule_row(row, season=season)
         if classify_source_schedule_row(row).should_skip:
             continue
         games.append(game)
@@ -157,9 +157,12 @@ def _live_player_payloads(team_payload: dict[str, object]) -> list[dict[str, obj
 
 def _parse_live_team_row(team_payload: dict[str, object]) -> SourceBoxScoreTeam:
     statistics = _optional_mapping(team_payload.get("statistics"))
+    team_id = _optional_int(team_payload, "teamId", row_label=_TEAM_ROW_LABEL)
+    assert team_id is not None, (
+        f"Missing teamId; {_row_context(_TEAM_ROW_LABEL, dict(team_payload))}"
+    )
     parsed_row = SourceBoxScoreTeam(
-        team_id=_optional_int(team_payload, "teamId", row_label=_TEAM_ROW_LABEL),
-        team_abbreviation=_optional_text(team_payload, "teamTricode"),
+        team=Team.from_id(team_id),
         plus_minus_raw=_optional_plus_minus(
             statistics,
             "plusMinusPoints",
@@ -182,10 +185,11 @@ def _parse_live_player_row(
     minutes_raw = statistics.get("minutesCalculated")
     if minutes_raw in {None, ""}:
         minutes_raw = statistics.get("minutes")
+    team_id = _optional_int(team_payload, "teamId", row_label=_PLAYER_ROW_LABEL)
+    assert team_id is not None, f"Missing teamId; {_row_context(_PLAYER_ROW_LABEL, team_payload)}"
     parsed_row = SourceBoxScorePlayer(
         game_id=game_id,
-        team_id=_optional_int(team_payload, "teamId", row_label=_PLAYER_ROW_LABEL),
-        team_abbreviation=_optional_text(team_payload, "teamTricode"),
+        team=Team.from_id(team_id),
         player_id=_optional_int(player_payload, "personId", row_label=_PLAYER_ROW_LABEL),
         player_name=_build_live_player_name(player_payload),
         minutes_raw=_optional_minutes_value(
@@ -232,12 +236,12 @@ LeagueGameFinderResults = [
 ]
 
 
-def _parse_schedule_row(row: dict[str, object]) -> SourceLeagueGame:
+def _parse_schedule_row(row: dict[str, object], *, season: Season) -> SourceLeagueGame:
     team_id = _required_int(row, "TEAM_ID", row_label=_SCHEDULE_ROW_LABEL)
     team_abbreviation = _required_text(row, "TEAM_ABBREVIATION", row_label=_SCHEDULE_ROW_LABEL)
     team = Team.from_id(team_id)
     assert team.team_id == team_id
-    assert team.abbreviation() == team_abbreviation
+    assert team.abbreviation(season=season) == team_abbreviation
 
     return SourceLeagueGame(
         team=team,

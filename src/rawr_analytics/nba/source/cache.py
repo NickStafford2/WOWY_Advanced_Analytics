@@ -38,7 +38,7 @@ def _fetch(
 ) -> dict:
     time.sleep(_LEAGUE_GAMES_REQUEST_DELAY_SECONDS)
     if log_fn is not None:
-        log_fn(f"api league_games {team.abbreviation()} {season} attempt={attempt}")
+        log_fn(f"api league_games {team.abbreviation(season=season)} {season} attempt={attempt}")
     finder = leaguegamefinder.LeagueGameFinder(
         team_id_nullable=str(team.team_id),
         season_nullable=season.to_nba_api_format(),
@@ -75,12 +75,12 @@ def load_or_fetch_league_games(
 
     raise LeagueGamesFetchError(
         message=(
-            f"Failed to fetch league games for {team.abbreviation()} {season} "
+            f"Failed to fetch league games for {team.abbreviation(season=season)} {season} "
             f"{season.season_type} after {_LEAGUE_GAMES_REQUEST_RETRIES} attempts: "
             "ValueError: endpoint returned empty data"
         ),
         resource="league_games",
-        identifier=f"{team.abbreviation()}:{season}",
+        identifier=f"{team.abbreviation(season=season)}:{season}",
         attempts=_LEAGUE_GAMES_REQUEST_RETRIES,
         last_error_type="ValueError",
         last_error_message="endpoint returned empty data",
@@ -165,7 +165,7 @@ def league_games_cache_path(
     season: Season,
 ) -> Path:
     filename = (
-        f"{team.abbreviation()}_{season}_"
+        f"{team.abbreviation(season=season)}_{season}_"
         f"{season.season_type.to_nba_format().lower().replace(' ', '_')}_leaguegamefinder.json"
     )
     return DEFAULT_SOURCE_DATA_DIR / "team_seasons" / filename

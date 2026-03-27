@@ -40,8 +40,9 @@ def normalize_source_league_game(
         player_rows=player_rows,
     )
     if not any(player.appeared for player in players):
+        team_abbreviation = team_stat.team.abbreviation(season=season)
         raise ValueError(
-            f"No active players found for team {team_stat.team.abbreviation()!r} in game "
+            f"No active players found for team {team_abbreviation!r} in game "
             f"{source_league_game.game_id!r}; "
             "nba_api_box_score_player_rows="
             f"{format_source_rows([row.raw_row for row in player_rows])}"
@@ -146,14 +147,16 @@ def _resolve_game_teams(
 
     if not matched_teams:
         raise ValueError(
-            f"Team {schedule_game.team.abbreviation()!r} not found in box score for game "
+            f"Team {schedule_game.team.abbreviation(game_date=schedule_game.game_date)!r} "
+            f"not found in box score for game "
             f"{schedule_game.game_id!r}; "
             "nba_api_box_score_team_rows="
             f"{format_source_rows([team.raw_row for team in box_score.teams])}"
         )
     if len(matched_teams) > 1:
         raise ValueError(
-            f"Multiple team rows matched {schedule_game.team.abbreviation()!r} for game "
+            f"Multiple team rows matched "
+            f"{schedule_game.team.abbreviation(game_date=schedule_game.game_date)!r} for game "
             f"{schedule_game.game_id!r}; "
             "nba_api_box_score_team_rows="
             f"{format_source_rows([team.raw_row for team in matched_teams])}"
