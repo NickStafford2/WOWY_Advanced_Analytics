@@ -2,14 +2,14 @@ from __future__ import annotations
 
 import argparse
 
-from rawr_analytics.progress import TerminalProgressBar, print_status_box
-from rawr_analytics.web.metric_store import (
+from rawr_analytics.metrics.store import (
     DEFAULT_RAWR_RIDGE_ALPHA,
     RAWR_METRIC,
     WOWY_METRIC,
     WOWY_SHRUNK_METRIC,
     refresh_metric_store,
 )
+from rawr_analytics.progress import TerminalProgressBar, print_status_box
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -68,12 +68,10 @@ def main(argv: list[str] | None = None) -> int:
         )
         progress_bar.finish(detail="done")
         if not result.ok:
-            print(f"failed to refresh {metric} store at {args.player_metrics_db_path}")
+            print(f"failed to refresh {metric} store")
             print(result.failure_message)
             return 1
-        print(
-            f"refreshed {metric} store at {args.player_metrics_db_path} ({result.total_rows} rows)"
-        )
+        print(f"refreshed {metric} store ({result.total_rows} rows)")
     return 0
 
 
