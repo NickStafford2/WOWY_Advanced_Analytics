@@ -165,7 +165,8 @@ def league_games_cache_path(
     season: Season,
 ) -> Path:
     filename = (
-        f"{team.abbreviation()}_{season}_{season.season_type.to_nba_format()}_leaguegamefinder.json"
+        f"{team.abbreviation()}_{season}_"
+        f"{season.season_type.to_nba_format().lower().replace(' ', '_')}_leaguegamefinder.json"
     )
     return DEFAULT_SOURCE_DATA_DIR / "team_seasons" / filename
 
