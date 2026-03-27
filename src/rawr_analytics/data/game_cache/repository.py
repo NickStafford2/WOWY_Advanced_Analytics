@@ -9,10 +9,6 @@ from rawr_analytics.data.game_cache.rows import NormalizedCacheLoadRow
 from rawr_analytics.data.game_cache.schema import _connect, initialize_game_cache_db
 from rawr_analytics.nba.models import NormalizedGamePlayerRecord, NormalizedGameRecord
 from rawr_analytics.nba.normalize.validation import validate_normalized_cache_batch
-from rawr_analytics.nba.team_identity import (
-    canonical_team_lookup_abbreviation,
-    resolve_team_identity_from_id_and_season,
-)
 from rawr_analytics.shared.season import Season
 from rawr_analytics.shared.team import Team
 
@@ -480,13 +476,13 @@ def list_cached_team_seasons(season_type: str | None = None) -> list[TeamSeasonS
     query += " ORDER BY load.season, load.team_id"
     with _connect(DB_PATH) as connection:
         rows = connection.execute(query, params).fetchall()
-    return [TeamSeasonScope(team_id=row["team_id"], season=row["season"]) for row in rows]
+    return [tuple(Team.from_id(row["team_id"]), Season(season=row["season"], season_type=row["season_type"]) for row in rows]
 
 
 def _filter_records_to_team_seasons(
     games: list[NormalizedGameRecord],
     game_players: list[NormalizedGamePlayerRecord],
-    team_seasons: list[TeamSeasonScope],
+    team_seasons: list[tuple[Team, Season]],
 ) -> tuple[list[NormalizedGameRecord], list[NormalizedGamePlayerRecord]]:
     allowed_team_seasons = {
         (team_season.team_id, team_season.season) for team_season in team_seasons
@@ -499,19 +495,11 @@ def _filter_records_to_team_seasons(
     return filtered_games, filtered_game_players
 
 
-def _require_cached_team_season_scope(
-    team_season: tuple[Team, Season],
-) -> None:
-    if has_cached_team_season_scope(
-        team_id=team_season.team_id,
-        season=team_season.season,
-        season_type=season_type,
-    ):
+def _require_cached_team_season_scope(team=Team, season=Season) -> None:
+    if has_cached_team_season_scope(team=team, season=season):
         return
-    raise ValueError(
-        f"Missing cached team-season scope for {team_season.team_id} "
-        f"{team_season.season} {season_type}"
-    )
+
+    raise ValueError(f"Missing cached team-season scope for {team} {season}")
 
 
 def _append_in_filter(
@@ -528,37 +516,35 @@ def _append_in_filter(
     return query, params
 
 
-def _upsert_team_history_for_scope(
-    connection: sqlite3.Connection,
-    *,
-    team: Team,
-    season: Season,
-) -> None:
-    identity = resolve_team_identity_from_id_and_season(
-        team.team_id, season.season_type.to_nba_format()
-    )
-    connection.execute(
-        """
-        INSERT INTO team_history (
-            team_id,
-            season,
-            abbreviation,
-            franchise_id,
-            lookup_abbreviation
-        ) VALUES (?, ?, ?, ?, ?)
-        ON CONFLICT(team_id, season) DO UPDATE SET
-            abbreviation = excluded.abbreviation,
-            franchise_id = excluded.franchise_id,
-            lookup_abbreviation = excluded.lookup_abbreviation
-        """,
-        (
-            identity.team_id,
-            season,
-            identity.abbreviation,
-            identity.franchise_id or identity.abbreviation.lower(),
-            canonical_team_lookup_abbreviation(identity.abbreviation),
-        ),
-    )
+# I don't think I need this with the new Teams
+# def _upsert_team_history_for_scope(
+#     connection: sqlite3.Connection,
+#     *,
+#     team: Team,
+#     season: Season,
+# ) -> None:
+#     connection.execute(
+#         """
+#         INSERT INTO team_history (
+#             team_id,
+#             season,
+#             abbreviation,
+#             franchise_id,
+#             lookup_abbreviation
+#         ) VALUES (?, ?, ?, ?, ?)
+#         ON CONFLICT(team_id, season) DO UPDATE SET
+#             abbreviation = excluded.abbreviation,
+#             franchise_id = excluded.franchise_id,
+#             lookup_abbreviation = excluded.lookup_abbreviation
+#         """,
+#         (
+#             team.team_id,
+#             season,
+#             identity.abbreviation,
+#             identity.franchise_id or identity.abbreviation.lower(),
+#             canonical_team_lookup_abbreviation(identity.abbreviation),
+#         ),
+#     )
 
 
 # what does this do?
