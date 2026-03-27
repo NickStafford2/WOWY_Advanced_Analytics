@@ -15,7 +15,6 @@ class NormalizedGameRecord:
     opponent_team: Team
     is_home: bool
     margin: float
-    season_type: str
     source: str
 
 
@@ -27,6 +26,7 @@ class NormalizedGamePlayerRecord:
     appeared: bool
     minutes: float | None
     team: Team
+    season: Season
 
 
 @dataclass(frozen=True)

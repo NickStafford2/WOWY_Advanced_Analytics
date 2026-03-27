@@ -10,11 +10,8 @@ from rawr_analytics.data.game_cache.schema import _connect, initialize_game_cach
 from rawr_analytics.data.scopes import TeamSeasonScope
 from rawr_analytics.nba.models import NormalizedGamePlayerRecord, NormalizedGameRecord
 from rawr_analytics.nba.normalize.validation import validate_normalized_cache_batch
-from rawr_analytics.nba.season_types import canonicalize_season_type
-from rawr_analytics.nba.seasons import canonicalize_season_year_string
 from rawr_analytics.nba.team_identity import (
     canonical_team_lookup_abbreviation,
-    resolve_team_id,
     resolve_team_identity_from_id_and_season,
 )
 from rawr_analytics.shared.season import Season
@@ -36,14 +33,11 @@ def replace_team_season_normalized_rows(
     skipped_games_row_count: int | None = None,
 ) -> None:
     initialize_game_cache_db()
-    season = canonicalize_season_year_string(season)
     if team.team_id <= 0:
         raise ValueError(f"team_id must be positive for normalized cache writes: {team.team_id!r}")
-    season_type = canonicalize_season_type(season.season_type)
     validate_normalized_cache_batch(
-        team_id=team_id,
+        team=team,
         season=season,
-        season_type=season_type,
         games=games,
         game_players=game_players,
     )
@@ -53,7 +47,7 @@ def replace_team_season_normalized_rows(
         connection.execute("BEGIN")
         _upsert_team_history_for_scope(
             connection,
-            team_id=team_id,
+            team=team,
             season=season,
         )
         _upsert_team_history_for_games(connection, games)
@@ -62,14 +56,14 @@ def replace_team_season_normalized_rows(
             DELETE FROM normalized_game_players
             WHERE team_id = ? AND season = ? AND season_type = ?
             """,
-            (team_id, season, season_type),
+            (team.team_id, season.id, season.season_type.value),
         )
         connection.execute(
             """
             DELETE FROM normalized_games
             WHERE team_id = ? AND season = ? AND season_type = ?
             """,
-            (team_id, season, season_type),
+            (team.team_id, season.id, season.season_type.value),
         )
         connection.executemany(
             """
@@ -90,11 +84,11 @@ def replace_team_season_normalized_rows(
                     game.game_id,
                     game.season,
                     game.game_date,
-                    game.team_id,
-                    game.opponent_team_id,
+                    game.team.team_id,
+                    game.opponent_team.team_id,
                     int(game.is_home),
                     game.margin,
-                    game.season_type,
+                    game.season.season_type,
                     game.source,
                 )
                 for game in games
@@ -117,8 +111,8 @@ def replace_team_season_normalized_rows(
                 (
                     player.game_id,
                     season,
-                    season_type,
-                    player.team_id,
+                    season.season_type.value,
+                    player.team.team_id,
                     player.player_id,
                     player.player_name,
                     int(player.appeared),
@@ -156,9 +150,9 @@ def replace_team_season_normalized_rows(
                 skipped_games_row_count = excluded.skipped_games_row_count
             """,
             (
-                team_id,
-                season,
-                season_type,
+                team.team_id,
+                season.id,
+                season.season_type.value,
                 source_path,
                 source_snapshot,
                 source_kind,
@@ -175,14 +169,13 @@ def replace_team_season_normalized_rows(
 
 def load_normalized_games_from_db(
     *,
-    season_type: str,
-    team_ids: list[int] = [],
-    seasons: list[str] = [],
+    teams: list[Team] = [],
+    seasons: list[Season] = [],
     game_ids: list[str] = [],
 ) -> list[NormalizedGameRecord]:
+    season_ids = [season.id for season in seasons or []]
+    team_ids = [team.team_id for team in teams or []]
     initialize_game_cache_db()
-    season_type = canonicalize_season_type(season_type)
-    normalized_seasons = [canonicalize_season_year_string(season) for season in seasons or []]
     query = """
         SELECT
             game.game_id,
@@ -205,7 +198,9 @@ def load_normalized_games_from_db(
          AND opponent_history.season = game.season
         WHERE game.season_type = ?
     """
-    params: list[object] = [season_type]
+    params: list[object] = [
+        seasons[0].season_type.value
+    ]  # todo: fix to get all season types in conjunction with seasons and teams.
     query, params = _append_in_filter(
         query,
         params,
@@ -216,7 +211,7 @@ def load_normalized_games_from_db(
         query,
         params,
         column="game.season",
-        values=normalized_seasons,
+        values=season_ids,
     )
     query, params = _append_in_filter(
         query,
@@ -231,13 +226,12 @@ def load_normalized_games_from_db(
     return [
         NormalizedGameRecord(
             game_id=row["game_id"],
-            season=row["season"],
+            season=Season(row["season"], row["season_type"]),
             game_date=row["game_date"],
-            team_id=row["team_id"],
-            opponent_team_id=row["opponent_team_id"],
+            team=Team.from_id(row["team_id"]),
+            opponent_team=Team.from_id(row["opponent_team_id"]),
             is_home=bool(row["is_home"]),
             margin=row["margin"],
-            season_type=row["season_type"],
             source=row["source"],
         )
         for row in rows
@@ -247,13 +241,13 @@ def load_normalized_games_from_db(
 def load_normalized_game_players_from_db(
     *,
     season_type: str,
-    team_ids: list[int] = [],
-    seasons: list[str] = [],
+    teams: list[Team] = [],
+    seasons: list[Season] = [],
     game_ids: list[str] = [],
 ) -> list[NormalizedGamePlayerRecord]:
+    season_ids = [season.id for season in seasons or []]
+    team_ids = [team.team_id for team in teams or []]
     initialize_game_cache_db()
-    season_type = canonicalize_season_type(season_type)
-    normalized_seasons = [canonicalize_season_year_string(season) for season in seasons or []]
     query = """
         SELECT
             player.game_id,
@@ -280,7 +274,7 @@ def load_normalized_game_players_from_db(
         query,
         params,
         column="player.season",
-        values=normalized_seasons,
+        values=season_ids,
     )
     query, params = _append_in_filter(
         query,
@@ -295,7 +289,8 @@ def load_normalized_game_players_from_db(
     return [
         NormalizedGamePlayerRecord(
             game_id=row["game_id"],
-            team_id=row["team_id"],
+            team=Team.from_id(row["team_id"]),
+            season=Season(row["season"], row["season_type"]),
             player_id=row["player_id"],
             player_name=row["player_name"],
             appeared=bool(row["appeared"]),
@@ -306,13 +301,10 @@ def load_normalized_game_players_from_db(
 
 
 def load_cache_load_row(
-    team_id: int,
-    season: str,
-    season_type: str,
+    team: Team,
+    season: Season,
 ) -> NormalizedCacheLoadRow | None:
     initialize_game_cache_db()
-    season = canonicalize_season_year_string(season)
-    season_type = canonicalize_season_type(season_type)
     with _connect(DB_PATH) as connection:
         row = connection.execute(
             """
@@ -335,14 +327,13 @@ def load_cache_load_row(
              AND team_history.season = load.season
             WHERE load.team_id = ? AND load.season = ? AND load.season_type = ?
             """,
-            (team_id, season, season_type),
+            (team.team_id, season.id, season.season_type.value),
         ).fetchone()
     if row is None:
         return None
     return NormalizedCacheLoadRow(
-        team_id=row["team_id"],
-        season=row["season"],
-        season_type=row["season_type"],
+        team=Team.from_id(row["team_id"]),
+        season=Season(row["season"], row["season_type"]),
         source_path=row["source_path"],
         source_snapshot=row["source_snapshot"],
         source_kind=row["source_kind"],
@@ -356,8 +347,7 @@ def load_cache_load_row(
 
 
 def load_normalized_scope_records_from_db(
-    team_seasons: list[TeamSeasonScope],
-    season_type: str,
+    team_seasons: list[tuple[Team, Season]],
 ) -> tuple[list[NormalizedGameRecord], list[NormalizedGamePlayerRecord]]:
     for team_season in team_seasons:
         _require_cached_team_season_scope(
@@ -366,8 +356,7 @@ def load_normalized_scope_records_from_db(
         )
 
     games = load_normalized_games_from_db(
-        season_type=season_type,
-        team_ids=[ts.team_id for ts in team_seasons],
+        team_ids=[ts.team.team_id for ts in team_seasons],
         seasons=sorted({team_season.season for team_season in team_seasons}),
     )
     game_players = load_normalized_game_players_from_db(
@@ -386,15 +375,10 @@ def load_normalized_scope_records_from_db(
 
 
 def has_cached_team_season_scope(
-    team_id: int,
-    season: str,
-    season_type: str,
+    team: Team,
+    season: Season,
 ) -> bool:
-    cache_load_row = load_cache_load_row(
-        team_id=team_id,
-        season=season,
-        season_type=season_type,
-    )
+    cache_load_row = load_cache_load_row(team, season)
     return (
         cache_load_row is not None
         and cache_load_row.games_row_count > 0
@@ -403,15 +387,15 @@ def has_cached_team_season_scope(
 
 
 def list_cache_load_rows(
-    *,
-    season_type: str | None = None,
-    seasons: list[str] | None = None,
-    teams: list[str] | None = None,
+    seasons: list[Season],
+    teams: list[Team],
 ) -> list[NormalizedCacheLoadRow]:
     if not DB_PATH.exists():
         return []
+    team_ids = [team.team_id for team in teams or []]
+    season_ids = [season.id for season in seasons or []]
+    season_types = [season.season_type.value for season in seasons or []]
     initialize_game_cache_db()
-    normalized_seasons = [canonicalize_season_year_string(season) for season in seasons or []]
     query = """
         SELECT
             team_history.abbreviation AS team,
@@ -434,20 +418,26 @@ def list_cache_load_rows(
         WHERE 1 = 1
     """
     params: list[object] = []
-    if season_type is not None:
-        query += " AND load.season_type = ?"
-        params.append(canonicalize_season_type(season_type))
+    # if season_type is not None:
+    #     query += " AND load.season_type = ?"
+    #     params.append())
+    query, params = _append_in_filter(
+        query,
+        params,
+        column="load.season_type",
+        values=season_types,
+    )
     query, params = _append_in_filter(
         query,
         params,
         column="load.season",
-        values=normalized_seasons,
+        values=season_ids,
     )
     query, params = _append_in_filter(
         query,
         params,
         column="load.team_id",
-        values=_resolve_team_ids(teams, seasons=normalized_seasons),
+        values=team_ids,
     )
     query += " ORDER BY load.season, load.team_id"
     with _connect(DB_PATH) as connection:
@@ -511,8 +501,7 @@ def _filter_records_to_team_seasons(
 
 
 def _require_cached_team_season_scope(
-    team_season: TeamSeasonScope,
-    season_type: str,
+    team_season: tuple[Team, Season],
 ) -> None:
     if has_cached_team_season_scope(
         team_id=team_season.team_id,
@@ -540,41 +529,15 @@ def _append_in_filter(
     return query, params
 
 
-def _resolve_team_ids(
-    teams: list[str] | None,
-    *,
-    seasons: list[str] | None = None,
-) -> list[int]:
-    if not teams:
-        return []
-    if not seasons:
-        return [resolve_team_id(team) for team in teams]
-    resolved_team_ids: set[int] = set()
-    unresolved_teams: list[str] = []
-
-    for team in teams:
-        resolved_for_team = False
-        for season in seasons:
-            try:
-                resolved_team_ids.add(resolve_team_id(team, season=season))
-            except ValueError:
-                continue
-            resolved_for_team = True
-        if not resolved_for_team:
-            unresolved_teams.append(team)
-
-    if unresolved_teams:
-        resolve_team_id(unresolved_teams[0], season=seasons[0])
-    return sorted(resolved_team_ids)
-
-
 def _upsert_team_history_for_scope(
     connection: sqlite3.Connection,
     *,
-    team_id: int,
-    season: str,
+    team: Team,
+    season: Season,
 ) -> None:
-    identity = resolve_team_identity_from_id_and_season(team_id, season)
+    identity = resolve_team_identity_from_id_and_season(
+        team.team_id, season.season_type.to_nba_format()
+    )
     connection.execute(
         """
         INSERT INTO team_history (
@@ -606,16 +569,16 @@ def _upsert_team_history_for_games(
     seen: set[tuple[int, str]] = set()
     for game in games:
         for team_id, _ in (
-            (game.team_id, game.team_id),
-            (game.opponent_team_id, game.opponent_team_id),
+            (game.team.team_id, game.team.team_id),
+            (game.opponent_team.team_id, game.opponent_team.team_id),
         ):
             key = (team_id, game.season)
             if key in seen:
                 continue
             _upsert_team_history_for_scope(
                 connection,
-                team_id=team_id,
-                season=game.season,
+                team=team,
+                season=season,
             )
             seen.add(key)
 
