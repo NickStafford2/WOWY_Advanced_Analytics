@@ -17,9 +17,7 @@ from rawr_analytics.data.player_metrics_db.queries import (
     load_metric_scope_catalog_row,
     load_metric_store_metadata,
 )
-from rawr_analytics.metrics.rawr import (
-    RAWR_METRIC,
-)
+from rawr_analytics.metrics.constants import Metric
 from rawr_analytics.metrics.rawr import (
     build_custom_query as build_rawr_custom_query,
 )
@@ -31,10 +29,6 @@ from rawr_analytics.metrics.rawr import (
 )
 from rawr_analytics.metrics.scope import build_scope_key
 from rawr_analytics.metrics.wowy import (
-    WOWY_METRIC,
-    WOWY_SHRUNK_METRIC,
-)
-from rawr_analytics.metrics.wowy import (
     build_custom_query as build_wowy_custom_query,
 )
 from rawr_analytics.metrics.wowy import (
@@ -43,9 +37,8 @@ from rawr_analytics.metrics.wowy import (
 from rawr_analytics.metrics.wowy import (
     validate_filters as validate_wowy_filters,
 )
-from rawr_analytics.nba.season_types import canonicalize_season_type
-from rawr_analytics.nba.seasons import canonicalize_season_year_string
-from rawr_analytics.nba.team_history import official_continuity_label_for_team_id
+from rawr_analytics.shared.season import Season
+from rawr_analytics.shared.team import Team
 
 MetricView = str
 
@@ -65,11 +58,10 @@ class MetricQuery:
 
 
 def build_metric_query(
-    metric: str,
+    metric: Metric,
     *,
-    season_type: str = "Regular Season",
-    team_ids: list[int] | None = None,
-    seasons: list[str] | None = None,
+    teams: list[Team] | None = None,
+    seasons: list[Season] | None = None,
     top_n: int | None = None,
     min_average_minutes: float | None = None,
     min_total_minutes: float | None = None,

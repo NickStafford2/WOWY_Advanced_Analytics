@@ -3,6 +3,7 @@ from __future__ import annotations
 import json
 from typing import Any
 
+from rawr_analytics.metrics.constants import Metric
 from rawr_analytics.metrics.frontend import (
     MetricQuery,
     build_metric_export_table,
@@ -10,8 +11,6 @@ from rawr_analytics.metrics.frontend import (
     build_metric_query,
     build_metric_view_payload,
 )
-from rawr_analytics.metrics.rawr import RAWR_METRIC
-from rawr_analytics.metrics.wowy import WOWY_METRIC, WOWY_SHRUNK_METRIC
 
 
 def _parse_optional_int(raw_value: str | None) -> int | None:
@@ -121,31 +120,31 @@ def create_app():
 
     @app.get("/api/wowy/player-seasons")
     def get_wowy_player_seasons():
-        return get_metric_player_seasons(WOWY_METRIC)
+        return get_metric_player_seasons(Metric.WOWY.value)
 
     @app.get("/api/wowy/options")
     def get_wowy_options():
-        return get_metric_options(WOWY_METRIC)
+        return get_metric_options(Metric.WOWY.value)
 
     @app.get("/api/wowy/span-chart")
     def get_wowy_span_chart():
-        return get_metric_span_chart(WOWY_METRIC)
+        return get_metric_span_chart(Metric.WOWY.value)
 
     @app.get("/api/wowy/cached-leaderboard")
     def get_wowy_cached_leaderboard():
-        return get_metric_cached_leaderboard(WOWY_METRIC)
+        return get_metric_cached_leaderboard(Metric.WOWY.value)
 
     @app.get("/api/wowy/custom-query")
     def get_wowy_custom_query():
-        return get_metric_custom_query(WOWY_METRIC)
+        return get_metric_custom_query(Metric.WOWY.value)
 
     @app.get("/api/wowy-shrunk/custom-query")
     def get_wowy_shrunk_custom_query():
-        return get_metric_custom_query(WOWY_SHRUNK_METRIC)
+        return get_metric_custom_query(Metric.WOWY_SHRUNK.value)
 
     @app.get("/api/rawr/custom-query")
     def get_rawr_custom_query():
-        return get_metric_custom_query(RAWR_METRIC)
+        return get_metric_custom_query(Metric.RAWR.value)
 
     return app
 

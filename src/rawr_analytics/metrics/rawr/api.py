@@ -3,18 +3,17 @@ from __future__ import annotations
 from typing import Any
 
 from rawr_analytics.data.player_metrics_db.models import PlayerSeasonMetricRow
+from rawr_analytics.metrics.constants import Metric, MetricSummary
 from rawr_analytics.metrics.rawr.data import (
     DEFAULT_RAWR_SHRINKAGE_MINUTE_SCALE,
     DEFAULT_RAWR_SHRINKAGE_MODE,
     DEFAULT_RAWR_SHRINKAGE_STRENGTH,
-    RAWR_METRIC,
     build_rawr_metric_rows,
 )
 from rawr_analytics.metrics.rawr.records import prepare_rawr_player_season_records
 from rawr_analytics.metrics.rawr.service import validate_filters
 
 __all__ = [
-    "RAWR_METRIC",
     "build_cached_rows",
     "build_custom_query",
     "build_custom_query_rows",
@@ -34,18 +33,11 @@ def default_filters() -> dict[str, int | float]:
     }
 
 
-def describe_metric(metric: str) -> dict[str, str]:
-    if metric != RAWR_METRIC:
-        raise ValueError(f"Unknown RAWR metric: {metric}")
-    return {
-        "metric": RAWR_METRIC,
-        "label": "RAWR",
-        "build_version": "rawr-player-season-v3",
-    }
+def describe_metric() -> MetricSummary:
+    return MetricSummary(Metric.RAWR, "RAWR", "rawr-player-season-v3")
 
 
 def build_cached_rows(
-    *,
     scope_key: str,
     team_filter: str,
     season_type: str,
@@ -75,8 +67,8 @@ def build_custom_query(
     min_total_minutes: float | None,
 ) -> dict[str, Any]:
     return {
-        "metric": RAWR_METRIC,
-        "metric_label": describe_metric(RAWR_METRIC)["label"],
+        "metric": Metric.RAWR,
+        "metric_label": describe_metric().label,
         "rows": build_custom_query_rows(
             teams=teams,
             team_ids=team_ids,

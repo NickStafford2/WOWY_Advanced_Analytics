@@ -23,12 +23,7 @@ from rawr_analytics.metrics.wowy.models import (
 
 type WowyPlayerSeasonRow = dict[str, str | int | float | None]
 
-WOWY_METRIC = "wowy"
-WOWY_SHRUNK_METRIC = "wowy_shrunk"
-
 __all__ = [
-    "WOWY_METRIC",
-    "WOWY_SHRUNK_METRIC",
     "WowyPlayerSeasonRow",
     "available_wowy_seasons",
     "build_wowy_metric_rows",

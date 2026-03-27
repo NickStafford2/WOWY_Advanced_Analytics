@@ -1,8 +1,6 @@
 """WOWY metric package."""
 
 from rawr_analytics.metrics.wowy.api import (
-    WOWY_METRIC,
-    WOWY_SHRUNK_METRIC,
     build_cached_rows,
     build_custom_query,
     build_custom_query_rows,
@@ -12,8 +10,6 @@ from rawr_analytics.metrics.wowy.api import (
 )
 
 __all__ = [
-    "WOWY_METRIC",
-    "WOWY_SHRUNK_METRIC",
     "build_cached_rows",
     "build_custom_query",
     "build_custom_query_rows",

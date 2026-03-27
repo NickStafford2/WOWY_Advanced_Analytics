@@ -3,13 +3,12 @@ from __future__ import annotations
 from typing import Any
 
 from rawr_analytics.data.player_metrics_db.models import PlayerSeasonMetricRow
+from rawr_analytics.metrics.constants import Metric, MetricSummary
 from rawr_analytics.metrics.wowy.analysis import (
     DEFAULT_WOWY_SHRINKAGE_PRIOR_GAMES,
     compute_wowy_shrinkage_score,
 )
 from rawr_analytics.metrics.wowy.records import (
-    WOWY_METRIC,
-    WOWY_SHRUNK_METRIC,
     build_wowy_metric_rows,
     build_wowy_shrunk_metric_rows,
     prepare_wowy_player_season_records,
@@ -17,13 +16,9 @@ from rawr_analytics.metrics.wowy.records import (
 from rawr_analytics.metrics.wowy.service import validate_filters
 
 __all__ = [
-    "WOWY_METRIC",
-    "WOWY_SHRUNK_METRIC",
-    "build_cached_rows",
-    "build_custom_query",
-    "build_custom_query_rows",
     "default_filters",
-    "describe_metric",
+    "describe_wowy_shrunk_metric",
+    "describe_wowy_metric",
     "validate_filters",
 ]
 
@@ -38,24 +33,24 @@ def default_filters() -> dict[str, int | float]:
     }
 
 
-def describe_metric(metric: str) -> dict[str, str]:
-    if metric == WOWY_METRIC:
-        return {
-            "metric": WOWY_METRIC,
-            "label": "WOWY",
-            "build_version": "wowy-player-season-v3",
-        }
-    if metric == WOWY_SHRUNK_METRIC:
-        return {
-            "metric": WOWY_SHRUNK_METRIC,
-            "label": "WOWY Shrunk",
-            "build_version": "wowy-shrunk-player-season-v1",
-        }
-    raise ValueError(f"Unknown WOWY metric: {metric}")
+def describe_wowy_metric() -> MetricSummary:
+    return MetricSummary(
+        metric=Metric.WOWY,
+        label="WOWY",
+        build_version="wowy-player-season-v3",
+    )
+
+
+def describe_wowy_shrunk_metric() -> MetricSummary:
+    return MetricSummary(
+        metric=Metric.WOWY_SHRUNK,
+        label="WOWY Shrunk",
+        build_version="wowy-shrunk-player-season-v1",
+    )
 
 
 def build_cached_rows(
-    metric: str,
+    metric: Metric,
     *,
     scope_key: str,
     team_filter: str,
@@ -64,7 +59,7 @@ def build_cached_rows(
     team_ids: list[int] | None,
     rawr_ridge_alpha: float,
 ) -> list[PlayerSeasonMetricRow]:
-    if metric == WOWY_METRIC:
+    if metric == Metric.WOWY:
         return build_wowy_metric_rows(
             scope_key=scope_key,
             team_filter=team_filter,
@@ -73,7 +68,7 @@ def build_cached_rows(
             team_ids=team_ids,
             rawr_ridge_alpha=rawr_ridge_alpha,
         )
-    if metric == WOWY_SHRUNK_METRIC:
+    if metric == Metric.WOWY_SHRUNK:
         return build_wowy_shrunk_metric_rows(
             scope_key=scope_key,
             team_filter=team_filter,
@@ -86,7 +81,7 @@ def build_cached_rows(
 
 
 def build_custom_query(
-    metric: str,
+    metric: Metric,
     *,
     teams: list[str] | None,
     team_ids: list[int] | None,
@@ -98,8 +93,8 @@ def build_custom_query(
     min_total_minutes: float | None,
 ) -> dict[str, Any]:
     return {
-        "metric": metric,
-        "metric_label": describe_metric(metric)["label"],
+        "metric": Metric.value,
+        "metric_label": describe_metric()["label"],
         "rows": build_custom_query_rows(
             metric,
             teams=teams,
@@ -115,7 +110,7 @@ def build_custom_query(
 
 
 def build_custom_query_rows(
-    metric: str,
+    metric: Metric,
     *,
     teams: list[str] | None,
     team_ids: list[int] | None,

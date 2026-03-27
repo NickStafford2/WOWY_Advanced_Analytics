@@ -2,14 +2,14 @@ from __future__ import annotations
 
 import argparse
 
+from rawr_analytics.metrics.constants import Metric
 from rawr_analytics.metrics.store import (
     DEFAULT_RAWR_RIDGE_ALPHA,
-    RAWR_METRIC,
-    WOWY_METRIC,
-    WOWY_SHRUNK_METRIC,
     refresh_metric_store,
 )
 from rawr_analytics.progress import TerminalProgressBar, print_status_box
+
+_choices = [Metric.WOWY, Metric.WOWY_SHRUNK, Metric.RAWR]
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -19,7 +19,7 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument(
         "--metric",
         action="append",
-        choices=[WOWY_METRIC, WOWY_SHRUNK_METRIC, RAWR_METRIC],
+        choices=_choices,
         help=(
             "Metric to refresh into the SQLite store. "
             "Repeat to refresh multiple metrics. Defaults to all metrics."
@@ -42,7 +42,10 @@ def build_parser() -> argparse.ArgumentParser:
 def main(argv: list[str] | None = None) -> int:
     parser = build_parser()
     args = parser.parse_args(argv)
-    metrics = args.metric or [WOWY_METRIC, WOWY_SHRUNK_METRIC, RAWR_METRIC]
+    if args.metric:
+        metrics: list[Metric] = [Metric.parse(args.metric)]
+    else:
+        metrics: list[Metric] = _choices
     print_status_box(
         "Web Store Refresh",
         [
@@ -54,6 +57,8 @@ def main(argv: list[str] | None = None) -> int:
     )
     for metric in metrics:
         progress_bar = TerminalProgressBar(f"Refresh {metric}", total=1)
+        if isinstance(metric, str):
+            metric = Metric.parse(metric)
         result = refresh_metric_store(
             metric,
             season_type=args.season_type,

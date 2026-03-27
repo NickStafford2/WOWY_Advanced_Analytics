@@ -21,6 +21,7 @@ from rawr_analytics.data.player_metrics_db.store import (
     clear_metric_scope_store,
     replace_metric_scope_store,
 )
+from rawr_analytics.metrics.constants import Metric, MetricSummary
 from rawr_analytics.metrics.rawr import (
     RAWR_METRIC,
 )
@@ -60,7 +61,7 @@ class RefreshScopeResult:
 
 @dataclass(frozen=True)
 class RefreshMetricStoreResult:
-    metric: str
+    metric: Metric
     scope_results: list[RefreshScopeResult]
     warnings: list[str]
     failure_message: str | None = None
@@ -84,7 +85,7 @@ class _RefreshScope:
 
 
 def refresh_metric_store(
-    metric: str,
+    metric: Metric,
     *,
     season_type: str,
     rawr_ridge_alpha: float = DEFAULT_RAWR_RIDGE_ALPHA,
@@ -367,10 +368,10 @@ def _build_metric_full_span_rows(
     return series_rows, point_rows
 
 
-def _describe_metric(metric: str) -> dict[str, str]:
+def _describe_metric(metric: Metric) -> MetricSummary:
     if metric == RAWR_METRIC:
-        return describe_rawr_metric(metric)
-    return describe_wowy_metric(metric)
+        return describe_rawr_metric()
+    return describe_wowy_metric()
 
 
 def _list_cache_load_rows_for_season_type(season_type: str) -> list[NormalizedCacheLoadRow]:
