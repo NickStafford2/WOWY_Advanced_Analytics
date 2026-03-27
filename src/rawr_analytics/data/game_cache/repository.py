@@ -91,6 +91,8 @@ def replace_team_season_normalized_rows(
             [
                 (
                     player.game_id,
+                    season.id,
+                    season_type,
                     player.team.team_id,
                     player.player_id,
                     player.player_name,

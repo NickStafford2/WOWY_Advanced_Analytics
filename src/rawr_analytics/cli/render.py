@@ -74,8 +74,9 @@ def render_team_partial_failed_line(
     failed_games: int,
     total_games: int,
 ) -> None:
+    team_label = team.abbreviation(season=season)
     line = (
-        f"  [{team_index:>2}/{team_total}] {team} {season} "
+        f"  [{team_index:>2}/{team_total}] {team_label} {season} "
         f"failed partial={failed_games}/{total_games}"
     )
     _write_status_line(line)
@@ -142,7 +143,8 @@ def render_team_validation_failed_line(
     season: Season,
     reason: str,
 ) -> None:
-    line = f"  [{team_index:>2}/{team_total}] {team} {season} failed validation={reason}"
+    team_label = team.abbreviation(season=season)
+    line = f"  [{team_index:>2}/{team_total}] {team_label} {season} failed validation={reason}"
     _write_status_line(line)
 
 
@@ -153,7 +155,8 @@ def render_team_fetch_failed_line(
     season: Season,
     error_type: str,
 ) -> None:
-    line = f"  [{team_index:>2}/{team_total}] {team} {season} failed fetch={error_type}"
+    team_label = team.abbreviation(season=season)
+    line = f"  [{team_index:>2}/{team_total}] {team_label} {season} failed fetch={error_type}"
     _write_status_line(line)
 
 
@@ -164,7 +167,8 @@ def render_team_skipped_line(
     season: Season,
     reason: str,
 ) -> None:
-    line = f"  [{team_index:>2}/{team_total}] {team} {season} skipped {reason}"
+    team_label = team.abbreviation(season=season)
+    line = f"  [{team_index:>2}/{team_total}] {team_label} {season} skipped {reason}"
     _write_status_line(line)
 
 

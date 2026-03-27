@@ -160,7 +160,9 @@ def main(argv: list[str] | None = None) -> int:
                     error_type=exc.last_error_type,
                 )
                 sys.stdout.write("\n")
-                sys.stderr.write(f"Fetch failed for {team} {season}: {exc}\n")
+                sys.stderr.write(
+                    f"Fetch failed for {team.abbreviation(season=season)} {season}: {exc}\n"
+                )
                 sys.stderr.flush()
                 continue
             except PartialTeamSeasonError as exc:
@@ -187,7 +189,7 @@ def main(argv: list[str] | None = None) -> int:
                 )
                 sys.stdout.write("\n")
                 sys.stderr.write(
-                    f"Incomplete cache for {team} {season}: "
+                    f"Incomplete cache for {team.abbreviation(season=season)} {season}: "
                     f"{exc.failed_games}/{exc.total_games} games failed normalization\n"
                 )
                 sys.stderr.write(f"{render_partial_failure_details(exc)}\n")
@@ -216,7 +218,9 @@ def main(argv: list[str] | None = None) -> int:
                     reason=reason,
                 )
                 sys.stdout.write("\n")
-                sys.stderr.write(f"Validation failed for {team} {season}: {reason}\n")
+                sys.stderr.write(
+                    f"Validation failed for {team.abbreviation(season=season)} {season}: {reason}\n"
+                )
                 sys.stderr.flush()
                 continue
             render_team_complete_line(team_index, team_total, result)
