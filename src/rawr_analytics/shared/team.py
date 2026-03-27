@@ -90,6 +90,9 @@ class Team:
             return self.for_season(season).abbreviation
         return self.current.abbreviation
 
+    def is_active_during(self, season: Season | int) -> bool:
+        return (season if isinstance(season, int) else season.start_year) in self.seasons
+
     @property
     def current(self) -> TeamSeason:
         return self.seasons[max(self.seasons)]
@@ -106,24 +109,6 @@ class Team:
         if error_context is not None:
             raise ValueError(f"{message}; {error_context}")
         raise ValueError(message)
-
-
-def resolve_team_abbreviations(
-    team_codes: list[str] | None,
-    season: Season | int,
-) -> list[str]:
-    if team_codes:
-        return [
-            Team.from_abbreviation(team_code, season=season).abbreviation(season=season)
-            for team_code in team_codes
-        ]
-
-    start_year = season if isinstance(season, int) else season.start_year
-    return sorted(
-        team.for_season(start_year).abbreviation
-        for team in _TEAMS_BY_ID.values()
-        if start_year in team.seasons
-    )
 
 
 @dataclass(frozen=True)

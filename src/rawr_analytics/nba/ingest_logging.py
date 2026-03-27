@@ -10,15 +10,16 @@ from rawr_analytics.nba.errors import (
     FetchError,
     PartialTeamSeasonError,
 )
+from rawr_analytics.shared.season import Season
+from rawr_analytics.shared.team import Team
 
 DEFAULT_INGEST_FAILURE_LOG_PATH = Path("data/logs/ingest_failures.jsonl")
 
 
 def append_ingest_failure_log(
     *,
-    team: str,
-    season: str,
-    season_type: str,
+    team: Team,
+    season: Season,
     failure_kind: str,
     error: Exception,
     log_path: Path = DEFAULT_INGEST_FAILURE_LOG_PATH,
@@ -27,7 +28,6 @@ def append_ingest_failure_log(
         "timestamp_utc": datetime.now(UTC).isoformat(),
         "team": team,
         "season": season,
-        "season_type": season_type,
         "failure_kind": failure_kind,
         "error_type": type(error).__name__,
         "message": str(error),
@@ -55,7 +55,7 @@ def _build_error_details(error: Exception) -> dict[str, object]:
         return {
             "team_scope": error.team,
             "season_scope": error.season,
-            "season_type_scope": error.season_type,
+            "season_type_scope": error.season.season_type,
             "failed_game_ids": error.failed_game_ids,
             "failed_game_details": [
                 {

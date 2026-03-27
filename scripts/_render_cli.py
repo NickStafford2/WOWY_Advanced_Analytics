@@ -30,7 +30,7 @@ def render_progress_line(
     _write_status_line(line)
 
 
-def _filtered_log(message: str) -> None:
+def filtered_log(message: str) -> None:
     if not _should_emit_log_message(message):
         return
     sys.stderr.write(f"{message}\n")
@@ -49,7 +49,7 @@ def _write_status_line(line: str) -> None:
     _LAST_STATUS_LINE_LENGTH = len(line)
 
 
-def _render_team_complete_line(
+def render_team_complete_line(
     team_index: int,
     team_total: int,
     summary,
@@ -64,7 +64,7 @@ def _render_team_complete_line(
     _write_status_line(line)
 
 
-def _render_team_partial_failed_line(
+def render_team_partial_failed_line(
     team_index: int,
     team_total: int,
     team: Team,
@@ -113,7 +113,7 @@ def _summarize_game_failure_detail(failure: GameNormalizationFailure) -> str:
     return f"{summary} ({', '.join(parts)})"
 
 
-def _render_partial_failure_details(error: PartialTeamSeasonError) -> str:
+def render_partial_failure_details(error: PartialTeamSeasonError) -> str:
     lines = ["Failure reasons:"]
     details_by_game_id = {failure.game_id: failure for failure in error.failed_game_details}
     ranked_reasons = sorted(
@@ -136,8 +136,8 @@ def _render_partial_failure_details(error: PartialTeamSeasonError) -> str:
 def render_team_validation_failed_line(
     team_index: int,
     team_total: int,
-    team: str,
-    season: str,
+    team: Team,
+    season: Season,
     reason: str,
 ) -> None:
     line = f"  [{team_index:>2}/{team_total}] {team} {season} failed validation={reason}"
@@ -147,8 +147,8 @@ def render_team_validation_failed_line(
 def render_team_fetch_failed_line(
     team_index: int,
     team_total: int,
-    team: str,
-    season: str,
+    team: Team,
+    season: Season,
     error_type: str,
 ) -> None:
     line = f"  [{team_index:>2}/{team_total}] {team} {season} failed fetch={error_type}"
@@ -158,15 +158,15 @@ def render_team_fetch_failed_line(
 def render_team_skipped_line(
     team_index: int,
     team_total: int,
-    team: str,
-    season: str,
+    team: Team,
+    season: Season,
     reason: str,
 ) -> None:
     line = f"  [{team_index:>2}/{team_total}] {team} {season} skipped {reason}"
     _write_status_line(line)
 
 
-def _record_failure(
+def record_failure(
     failure_counts: dict[str, int],
     failed_scopes: list[str],
     *,
@@ -177,7 +177,7 @@ def _record_failure(
     failed_scopes.append(scope)
 
 
-def _render_failure_summary(
+def render_failure_summary(
     *,
     failure_counts: dict[str, int],
     failed_scopes: list[str],
