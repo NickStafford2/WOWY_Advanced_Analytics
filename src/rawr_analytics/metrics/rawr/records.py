@@ -1,9 +1,7 @@
 from __future__ import annotations
 
-from rawr_analytics.data.scope_resolver import (
-    load_normalized_scope_records,
-    resolve_team_seasons,
-)
+from rawr_analytics.data.game_cache.repository import load_normalized_scope_records_from_db
+from rawr_analytics.data.scope_resolver import resolve_team_seasons
 from rawr_analytics.metrics.rawr._observations import build_rawr_player_season_minute_stats
 from rawr_analytics.metrics.rawr.analysis import fit_player_rawr
 from rawr_analytics.metrics.rawr.inputs import (
@@ -13,6 +11,7 @@ from rawr_analytics.metrics.rawr.inputs import (
     filter_rawr_scope,
 )
 from rawr_analytics.metrics.rawr.models import RawrPlayerSeasonRecord
+from rawr_analytics.shared.scope import TeamSeasonScope
 
 __all__ = [
     "prepare_rawr_player_season_records",
@@ -40,8 +39,10 @@ def prepare_rawr_player_season_records(
         season_type=season_type,
     )
     teams_by_season: dict[str, list[str]] = {}
-    for team_season in team_seasons:
-        teams_by_season.setdefault(team_season.season, []).append(team_season.team)
+    for scope in team_seasons:
+        teams_by_season.setdefault(scope.season.id, []).append(
+            scope.team.abbreviation(season=scope.season)
+        )
     from rawr_analytics.metrics.rawr.data import select_complete_rawr_scope_seasons
 
     complete_seasons = set(
@@ -57,12 +58,21 @@ def prepare_rawr_player_season_records(
     for season in sorted(teams_by_season):
         if season not in complete_seasons:
             continue
-        games, game_players = load_normalized_scope_records(
-            teams=sorted(set(teams_by_season[season])),
-            seasons=[season],
+        requested_team_seasons = resolve_team_seasons(
+            sorted(set(teams_by_season[season])),
+            [season],
             season_type=season_type,
-            include_opponents_for_team_scope=True,
         )
+        if not requested_team_seasons:
+            continue
+        games, _ = load_normalized_scope_records_from_db(requested_team_seasons)
+        team_seasons = list(requested_team_seasons)
+        for scope in {
+            TeamSeasonScope(team=game.opponent_team, season=game.season) for game in games
+        }:
+            if scope not in team_seasons:
+                team_seasons.append(scope)
+        games, game_players = load_normalized_scope_records_from_db(team_seasons)
         try:
             games, game_players = filter_rawr_scope(
                 games,

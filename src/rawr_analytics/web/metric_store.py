@@ -1,12 +1,12 @@
 from __future__ import annotations
 
+import hashlib
 from dataclasses import dataclass
 from datetime import UTC, datetime
 from typing import Any, Callable, TypedDict
 
-from rawr_analytics.data.game_cache import list_cached_team_seasons
-from rawr_analytics.data.game_cache.fingerprints import build_normalized_cache_fingerprint
-from rawr_analytics.data.game_cache.repository import list_cache_load_rows
+from rawr_analytics.data.game_cache import list_cache_load_rows, list_cached_team_seasons
+from rawr_analytics.data.game_cache.rows import NormalizedCacheLoadRow
 from rawr_analytics.data.player_metrics_db.models import (
     MetricFullSpanPointRow,
     MetricFullSpanSeriesRow,
@@ -23,10 +23,12 @@ from rawr_analytics.data.player_metrics_db.store import (
 )
 from rawr_analytics.metrics.rawr import build_cached_rows as build_rawr_cached_rows
 from rawr_analytics.metrics.rawr import describe_metric as describe_rawr_metric
-from rawr_analytics.metrics.rawr.data import list_incomplete_rawr_seasons
+from rawr_analytics.metrics.rawr.data import list_expected_rawr_teams_for_season
 from rawr_analytics.metrics.scope import build_scope_key
 from rawr_analytics.metrics.wowy import build_cached_rows as build_wowy_cached_rows
 from rawr_analytics.metrics.wowy import describe_metric as describe_wowy_metric
+from rawr_analytics.nba.old_team_history import official_continuity_label_for_team_id
+from rawr_analytics.shared.scope import TeamSeasonScope
 from rawr_analytics.shared.season import SeasonType
 
 BuildRowsFn = Callable[..., list[PlayerSeasonMetricRow]]
@@ -77,7 +79,7 @@ class _RefreshScopeContext:
 @dataclass(frozen=True)
 class _RefreshStoreInputs:
     source_fingerprint: str
-    cached_team_seasons: list[Any]
+    cached_team_seasons: list[TeamSeasonScope]
     available_team_ids: list[int]
     team_scopes: list[list[int] | None]
 
@@ -118,22 +120,23 @@ METRIC_DEFINITIONS = {
 def refresh_metric_store(
     metric: str,
     *,
-    season_type: SeasonType,
+    season_type: str,
     rawr_ridge_alpha: float = DEFAULT_RAWR_RIDGE_ALPHA,
     include_team_scopes: bool = True,
     progress: RefreshProgressFn | None = None,
 ) -> RefreshMetricStoreResult:
+    normalized_season_type = _normalize_season_type(season_type)
     definition = _get_metric_definition(metric)
-    if not _has_refreshable_cache(season_type=season_type):
+    if not _has_refreshable_cache(season_type=normalized_season_type):
         return _build_empty_cache_refresh_result(metric)
 
     store_inputs = _build_refresh_store_inputs(
-        season_type=season_type,
+        season_type=normalized_season_type,
         include_team_scopes=include_team_scopes,
     )
     warnings = _build_refresh_warnings(
         metric=metric,
-        season_type=season_type,
+        season_type=normalized_season_type,
     )
     scope_results: list[RefreshScopeResult] = []
     failure_message: str | None = None
@@ -146,7 +149,7 @@ def refresh_metric_store(
     for index, team_ids in enumerate(store_inputs.team_scopes):
         scope = _build_refresh_scope_context(
             team_ids=team_ids,
-            season_type=season_type,
+            season_type=normalized_season_type,
             cached_team_seasons=store_inputs.cached_team_seasons,
         )
 
@@ -157,9 +160,9 @@ def refresh_metric_store(
             definition=definition,
             metric=metric,
             scope=scope,
-            season_type=season_type,
+            season_type=normalized_season_type,
             rawr_ridge_alpha=rawr_ridge_alpha,
-            available_team_ids=store_inputs.available_teams_ids,
+            available_team_ids=store_inputs.available_team_ids,
             source_fingerprint=store_inputs.source_fingerprint,
             build_version=build_version,
         )
@@ -185,8 +188,8 @@ def refresh_metric_store(
     )
 
 
-def _has_refreshable_cache(*, season_type: SeasonType) -> bool:
-    return bool(list_cache_load_rows(season_type=season_type))
+def _has_refreshable_cache(*, season_type: str) -> bool:
+    return bool(_list_cache_load_rows_for_season_type(season_type))
 
 
 def _build_empty_cache_refresh_result(metric: str) -> RefreshMetricStoreResult:
@@ -206,19 +209,16 @@ def _build_refresh_store_inputs(
     season_type: str,
     include_team_scopes: bool,
 ) -> _RefreshStoreInputs:
-    cached_team_seasons = list_cached_team_seasons(
-        season_type=season_type,
-    )
-    available_team_ids = sorted({team_season.team_id for team_season in cached_team_seasons})
+    cache_load_rows = _list_cache_load_rows_for_season_type(season_type)
+    cached_team_seasons = _list_cached_team_scopes_for_season_type(season_type)
+    available_team_ids = sorted({scope.team.team_id for scope in cached_team_seasons})
     team_scopes: list[list[int] | None] = [None]
     if include_team_scopes:
         team_scopes.extend([[team_id] for team_id in available_team_ids])
     return _RefreshStoreInputs(
-        source_fingerprint=build_normalized_cache_fingerprint(
-            season_type=season_type,
-        ),
+        source_fingerprint=_build_cache_load_fingerprint(cache_load_rows),
         cached_team_seasons=cached_team_seasons,
-        available_team_ids=sorted({ts.team_id for ts in cached_team_seasons}),
+        available_team_ids=available_team_ids,
         team_scopes=team_scopes,
     )
 
@@ -230,14 +230,14 @@ def _build_refresh_warnings(
 ) -> list[str]:
     if metric != RAWR_METRIC:
         return []
-    return _print_rawr_incomplete_season_warning(season_type=season_type)
+    return _build_rawr_incomplete_season_warnings(season_type=season_type)
 
 
 def _build_refresh_scope_context(
     *,
     team_ids: list[int] | None,
     season_type: str,
-    cached_team_seasons,
+    cached_team_seasons: list[TeamSeasonScope],
 ) -> _RefreshScopeContext:
     scope_key, team_filter = build_scope_key(team_ids=team_ids, season_type=season_type)
     return _RefreshScopeContext(
@@ -251,9 +251,9 @@ def _build_refresh_scope_context(
         ),
         available_seasons=sorted(
             {
-                team_season.season
-                for team_season in cached_team_seasons
-                if team_ids is None or team_season.team_id in team_ids
+                scope.season.id
+                for scope in cached_team_seasons
+                if team_ids is None or scope.team.team_id in team_ids
             }
         ),
     )
@@ -346,7 +346,7 @@ def _build_metric_series(
         names[row.player_id] = row.player_name
         season_values.setdefault(row.player_id, {})[row.season] = row.value
 
-    span_length = len(seasons)
+    span_length = len(seasons) or 1
     ranked_player_ids = sorted(
         totals,
         key=lambda player_id: (totals[player_id], names[player_id]),
@@ -371,23 +371,39 @@ def _build_metric_series(
     ]
 
 
-def _print_rawr_incomplete_season_warning(season_type: str) -> list[str]:
-    cached_team_seasons = list_cached_team_seasons(season_type=season_type)
-    candidate_seasons = sorted({team_season.season for team_season in cached_team_seasons})
-    if not candidate_seasons:
-        return []
+def _build_rawr_incomplete_season_warnings(*, season_type: str) -> list[str]:
+    cache_load_rows = _list_cache_load_rows_for_season_type(season_type)
+    rows_by_season: dict[str, list[NormalizedCacheLoadRow]] = {}
+    for row in cache_load_rows:
+        rows_by_season.setdefault(row.season.id, []).append(row)
 
-    issues = list_incomplete_rawr_seasons(
-        seasons=candidate_seasons,
-        season_type=season_type,
-    )
-    if not issues:
-        return []
-
-    print("RAWR warning: skipped incomplete seasons")
-    for issue in issues:
-        print(f"  - {issue.season}: {issue.reason}")
-    return [f"{issue.season}: {issue.reason}" for issue in issues]
+    warnings: list[str] = []
+    for season in sorted(rows_by_season):
+        season_rows = rows_by_season[season]
+        expected_teams = set(list_expected_rawr_teams_for_season(season))
+        actual_teams = {
+            row.team.abbreviation(season=row.season)
+            for row in season_rows
+        }
+        missing_teams = sorted(expected_teams - actual_teams)
+        if missing_teams:
+            warnings.append(f"{season}: missing team-seasons: {', '.join(missing_teams)}")
+        for row in season_rows:
+            team_label = row.team.abbreviation(season=row.season)
+            if row.expected_games_row_count is None or row.skipped_games_row_count is None:
+                warnings.append(f"{season}: incomplete cache metadata for {team_label}")
+                continue
+            if row.games_row_count != row.expected_games_row_count:
+                warnings.append(
+                    f"{season}: partial team-season cache for "
+                    f"{team_label} ({row.games_row_count}/{row.expected_games_row_count} games)"
+                )
+            if row.skipped_games_row_count != 0:
+                warnings.append(
+                    f"{season}: skipped games present for "
+                    f"{team_label} ({row.skipped_games_row_count} skipped)"
+                )
+    return warnings
 
 
 def _replace_metric_scope_rows(
@@ -491,5 +507,53 @@ def _build_metric_scope_store_rows(
     }
 
 
+def _list_cache_load_rows_for_season_type(season_type: str) -> list[NormalizedCacheLoadRow]:
+    return [
+        row
+        for row in list_cache_load_rows()
+        if row.season.season_type.to_nba_format() == season_type
+    ]
+
+
+def _list_cached_team_scopes_for_season_type(season_type: str) -> list[TeamSeasonScope]:
+    return [
+        scope
+        for scope in list_cached_team_seasons()
+        if scope.season.season_type.to_nba_format() == season_type
+    ]
+
+
+def _build_cache_load_fingerprint(rows: list[NormalizedCacheLoadRow]) -> str:
+    digest = hashlib.sha256()
+    for row in sorted(rows, key=lambda item: (item.season.id, item.team.team_id)):
+        digest.update(str(row.team.team_id).encode("utf-8"))
+        digest.update(row.season.id.encode("utf-8"))
+        digest.update(row.season.season_type.to_nba_format().encode("utf-8"))
+        digest.update(row.source_path.encode("utf-8"))
+        digest.update(row.source_snapshot.encode("utf-8"))
+        digest.update(row.source_kind.encode("utf-8"))
+        digest.update(row.build_version.encode("utf-8"))
+        digest.update(str(row.games_row_count).encode("utf-8"))
+        digest.update(str(row.game_players_row_count).encode("utf-8"))
+        digest.update(str(row.expected_games_row_count).encode("utf-8"))
+        digest.update(str(row.skipped_games_row_count).encode("utf-8"))
+    return digest.hexdigest()
+
+
+def _normalize_season_type(season_type: str) -> str:
+    return SeasonType.parse(season_type).to_nba_format()
+
+
 def _get_metric_definition(metric: str) -> _MetricDefinition:
     return METRIC_DEFINITIONS[metric]
+
+
+__all__ = [
+    "DEFAULT_RAWR_RIDGE_ALPHA",
+    "RAWR_METRIC",
+    "RefreshMetricStoreResult",
+    "RefreshScopeResult",
+    "WOWY_METRIC",
+    "WOWY_SHRUNK_METRIC",
+    "refresh_metric_store",
+]

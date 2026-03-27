@@ -1,8 +1,7 @@
 from __future__ import annotations
 
-from pathlib import Path
-
-from rawr_analytics.data.scope_resolver import load_normalized_scope_records
+from rawr_analytics.data.game_cache.repository import load_normalized_scope_records_from_db
+from rawr_analytics.data.scope_resolver import resolve_team_seasons
 from rawr_analytics.metrics.wowy.models import WowyPlayerStats
 from rawr_analytics.shared.minutes import build_player_minute_stats, passes_minute_filters
 
@@ -20,13 +19,15 @@ def load_player_minute_stats(
     season_type: str = "Regular Season",
     team_ids: list[int] | None = None,
 ) -> dict[int, tuple[float, float]]:
-    _, game_players = load_normalized_scope_records(
-        teams=teams,
-        seasons=seasons,
+    team_seasons = resolve_team_seasons(
+        teams,
+        seasons,
         team_ids=team_ids,
         season_type=season_type,
-        include_opponents_for_team_scope=False,
     )
+    if not team_seasons:
+        raise ValueError("No cached data matched the requested scope")
+    _, game_players = load_normalized_scope_records_from_db(team_seasons)
     return build_player_minute_stats(game_players)
 
 
@@ -39,19 +40,21 @@ def load_player_season_minute_stats(
     totals: dict[tuple[str, int], float] = {}
     counts: dict[tuple[str, int], int] = {}
 
-    games, game_players = load_normalized_scope_records(
-        teams=teams,
-        seasons=seasons,
+    team_seasons = resolve_team_seasons(
+        teams,
+        seasons,
         team_ids=team_ids,
         season_type=season_type,
-        include_opponents_for_team_scope=False,
     )
+    if not team_seasons:
+        raise ValueError("No cached data matched the requested scope")
+    games, game_players = load_normalized_scope_records_from_db(team_seasons)
     seasons_by_game_id = {game.game_id: game.season for game in games}
     for player in game_players:
         season = seasons_by_game_id.get(player.game_id)
         if season is None or not player.appeared or player.minutes is None or player.minutes <= 0.0:
             continue
-        key = (season, player.player_id)
+        key = (season.id, player.player_id)
         totals[key] = totals.get(key, 0.0) + player.minutes
         counts[key] = counts.get(key, 0) + 1
 

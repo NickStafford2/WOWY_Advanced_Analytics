@@ -9,7 +9,7 @@ from rawr_analytics.data.player_metrics_db.models import (
 )
 from rawr_analytics.data.scope_resolver import resolve_team_seasons
 from rawr_analytics.metrics.rawr._observations import count_player_games
-from rawr_analytics.nba.team_identity import list_expected_team_abbreviations_for_season
+from rawr_analytics.shared.season import SeasonType
 
 RAWR_METRIC = "rawr"
 DEFAULT_RAWR_SHRINKAGE_MODE = "uniform"
@@ -24,7 +24,6 @@ __all__ = [
     "RawrSeasonCompletenessIssue",
     "build_rawr_metric_rows",
     "count_player_games",
-    "list_expected_rawr_teams_for_season",
     "list_incomplete_rawr_seasons",
     "select_complete_rawr_scope_seasons",
 ]
@@ -48,27 +47,30 @@ class RawrSeasonCompletenessIssue:
     reason: str
 
 
-def list_expected_rawr_teams_for_season(season: str) -> list[str]:
-    return list_expected_team_abbreviations_for_season(season)
-
-
 def list_incomplete_rawr_seasons(
     *,
     seasons: list[str],
     season_type: str,
 ) -> list[RawrSeasonCompletenessIssue]:
-    cache_load_rows = list_cache_load_rows(season_type=season_type, seasons=seasons)
+    normalized_season_type = SeasonType.parse(season_type)
+    season_filter = set(seasons)
+    cache_load_rows = [
+        row
+        for row in list_cache_load_rows()
+        if row.season.id in season_filter and row.season.season_type == normalized_season_type
+    ]
     rows_by_season: dict[str, _SeasonIssueState] = {}
     for row in cache_load_rows:
         season_rows = rows_by_season.setdefault(
-            row.season,
+            row.season.id,
             _SeasonIssueState(teams={}, issues=set()),
         )
-        season_rows.teams[row.team] = row
+        team_label = row.team.abbreviation(season=row.season)
+        season_rows.teams[team_label] = row
         if row.expected_games_row_count is None or row.skipped_games_row_count is None:
             season_rows.issues.add(
                 "ERROR: MetaData incomplete/out of date. "
-                f"Run `poetry run python scripts/cache_season_data.py {row.season}` "
+                f"Run `poetry run python scripts/cache_season_data.py {row.season.id}` "
                 "or repopulate DB."
             )
         if (
@@ -76,12 +78,12 @@ def list_incomplete_rawr_seasons(
             and row.games_row_count != row.expected_games_row_count
         ):
             season_rows.issues.add(
-                f"partial team-season cache for {row.team} "
+                f"partial team-season cache for {team_label} "
                 f"({row.games_row_count}/{row.expected_games_row_count} games)"
             )
         if row.skipped_games_row_count:
             season_rows.issues.add(
-                f"skipped games present for {row.team} ({row.skipped_games_row_count} skipped)"
+                f"skipped games present for {team_label} ({row.skipped_games_row_count} skipped)"
             )
 
     issues: list[RawrSeasonCompletenessIssue] = []
@@ -109,17 +111,20 @@ def list_complete_rawr_seasons(
     seasons: list[str],
     season_type: str,
 ) -> set[str]:
-    cache_load_rows = list_cache_load_rows(
-        season_type=season_type,
-        seasons=seasons,
-    )
+    normalized_season_type = SeasonType.parse(season_type)
+    season_filter = set(seasons)
+    cache_load_rows = [
+        row
+        for row in list_cache_load_rows()
+        if row.season.id in season_filter and row.season.season_type == normalized_season_type
+    ]
     rows_by_season: dict[str, _SeasonCompletionState] = {}
     for row in cache_load_rows:
         season_rows = rows_by_season.setdefault(
-            row.season,
+            row.season.id,
             _SeasonCompletionState(teams={}),
         )
-        season_rows.teams[row.team] = row
+        season_rows.teams[row.team.abbreviation(season=row.season)] = row
         if (
             row.expected_games_row_count is None
             or row.skipped_games_row_count is None
@@ -153,7 +158,7 @@ def select_complete_rawr_scope_seasons(
         team_ids=team_ids,
         season_type=season_type,
     )
-    candidate_seasons = sorted({team_season.season for team_season in team_seasons})
+    candidate_seasons = sorted({team_season.season.id for team_season in team_seasons})
     if not candidate_seasons:
         return []
     complete_seasons = list_complete_rawr_seasons(

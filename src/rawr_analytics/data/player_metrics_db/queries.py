@@ -81,7 +81,7 @@ def load_metric_scope_catalog_row(
         team_filter=row["team_filter"],
         season_type=row["season_type"],
         available_seasons=json.loads(row["available_seasons_json"]),
-        available_teams=json.loads(row["available_teams_json"]),
+        available_team_ids=json.loads(row["available_teams_json"]),
         full_span_start_season=row["full_span_start_season"],
         full_span_end_season=row["full_span_end_season"],
         updated_at=row["updated_at"],

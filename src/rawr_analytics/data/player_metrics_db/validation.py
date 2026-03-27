@@ -11,11 +11,10 @@ from rawr_analytics.data.player_metrics_db.models import (
     MetricScopeCatalogRow,
     PlayerSeasonMetricRow,
 )
-from rawr_analytics.nba.season_types import canonicalize_season_type
-from rawr_analytics.nba.seasons import canonicalize_season_year_string, season_sort_key
+from rawr_analytics.shared.season import SeasonType
 
-_TEAM_ABBREVIATION_PATTERN = re.compile(r"^[A-Z]{3}$")
 _TEAM_ID_FILTER_PATTERN = re.compile(r"^[1-9]\d*$")
+_SEASON_YEAR_PATTERN = re.compile(r"^\d{4}-\d{2}$")
 
 
 def _validate_metric_rows(
@@ -149,11 +148,11 @@ def _validate_metric_scope_catalog_row(row: MetricScopeCatalogRow) -> None:
     if seasons != sorted(set(seasons), key=season_sort_key):
         raise ValueError("Catalog available_seasons must be unique and sorted")
 
-    teams = [_canonical_team(team) for team in row.available_teams]
-    if teams != row.available_teams:
-        raise ValueError("Catalog available_teams must use canonical uppercase abbreviations")
-    if teams != sorted(set(teams)):
-        raise ValueError("Catalog available_teams must be unique and sorted")
+    team_ids = [_canonical_team_id(team_id) for team_id in row.available_team_ids]
+    if team_ids != row.available_team_ids:
+        raise ValueError("Catalog available_team_ids must use canonical positive team ids")
+    if team_ids != sorted(set(team_ids)):
+        raise ValueError("Catalog available_team_ids must be unique and sorted")
 
     if (row.full_span_start_season is None) != (row.full_span_end_season is None):
         raise ValueError("Catalog full-span seasons must both be set or both be null")
@@ -269,11 +268,10 @@ def _canonical_team_filter(value: str) -> str:
     return ",".join(canonical_team_ids)
 
 
-def _canonical_team(value: str) -> str:
-    team = value.strip().upper()
-    if not _TEAM_ABBREVIATION_PATTERN.fullmatch(team):
-        raise ValueError(f"Invalid team abbreviation {value!r}")
-    return team
+def _canonical_team_id(value: int) -> int:
+    if value <= 0:
+        raise ValueError(f"Invalid team id {value!r}")
+    return value
 
 
 def _canonical_team_id_filter_value(value: str) -> str:
@@ -308,3 +306,19 @@ def _validate_iso_datetime(value: str, label: str) -> None:
         datetime.fromisoformat(value)
     except ValueError as exc:
         raise ValueError(f"{label} must be an ISO datetime") from exc
+
+
+def canonicalize_season_type(value: str) -> str:
+    return SeasonType.parse(value).to_nba_format()
+
+
+def canonicalize_season_year_string(value: str) -> str:
+    season = value.strip()
+    if not _SEASON_YEAR_PATTERN.fullmatch(season):
+        raise ValueError(f"Invalid season string {value!r}")
+    return season
+
+
+def season_sort_key(value: str) -> tuple[int, str]:
+    season = canonicalize_season_year_string(value)
+    return (int(season[:4]), season)

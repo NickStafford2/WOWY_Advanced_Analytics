@@ -1,6 +1,7 @@
 from __future__ import annotations
 
-from rawr_analytics.data.scope_resolver import load_normalized_scope_records
+from rawr_analytics.data.game_cache.repository import load_normalized_scope_records_from_db
+from rawr_analytics.data.scope_resolver import resolve_team_seasons
 from rawr_analytics.metrics.rawr._observations import build_rawr_player_season_minute_stats
 from rawr_analytics.metrics.rawr.analysis import ProgressFn, fit_player_rawr, tune_ridge_alpha
 from rawr_analytics.metrics.rawr.data import count_player_games, select_complete_rawr_scope_seasons
@@ -14,7 +15,7 @@ from rawr_analytics.metrics.rawr.inputs import (
 from rawr_analytics.nba.models import NormalizedGamePlayerRecord, NormalizedGameRecord
 from rawr_analytics.progress import TerminalProgressBar, print_status_box
 from rawr_analytics.shared.filters import validate_top_n_and_minutes
-from rawr_analytics.shared.scope import format_scope
+from rawr_analytics.shared.scope import TeamSeasonScope, format_scope
 
 __all__ = [
     "build_tuning_report",
@@ -97,10 +98,10 @@ def run_rawr_records(
             if games_played >= min_games
         )
         team_seasons = {
-            f"{_require_team_id(game.team_id, game.game_id, 'team_id')}:{game.season}"
+            f"{_require_team_id(game.team.team_id, game.game_id, 'team_id')}:{game.season}"
             for game in games
         } | {
-            f"{_require_team_id(game.opponent_team_id, game.game_id, 'opponent_team_id')}"
+            f"{_require_team_id(game.opponent_team.team_id, game.game_id, 'opponent_team_id')}"
             f":{game.season}"
             for game in games
         }
@@ -197,12 +198,19 @@ def prepare_and_run_rawr(args) -> str:
     if not complete_seasons:
         raise ValueError("No complete cached seasons matched the requested RAWR scope")
     print(f"[1/3] preparing RAWR inputs for {format_scope(args.team, args.season)}")
-    games, game_players = load_normalized_scope_records(
-        teams=args.team,
-        seasons=complete_seasons,
+    requested_team_seasons = resolve_team_seasons(
+        args.team,
+        complete_seasons,
         season_type=args.season_type,
-        include_opponents_for_team_scope=True,
     )
+    if not requested_team_seasons:
+        raise ValueError("No cached data matched the requested scope")
+    games, _ = load_normalized_scope_records_from_db(requested_team_seasons)
+    team_seasons = list(requested_team_seasons)
+    for scope in {TeamSeasonScope(team=game.opponent_team, season=game.season) for game in games}:
+        if scope not in team_seasons:
+            team_seasons.append(scope)
+    games, game_players = load_normalized_scope_records_from_db(team_seasons)
     print(
         "[2/3] loaded "
         f"{len(games)} normalized game rows and {len(game_players)} player rows from cache"
