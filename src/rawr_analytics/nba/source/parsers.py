@@ -41,7 +41,8 @@ _SCHEDULE_ROW_LABEL = "nba_api_league_schedule_row"
 def parse_league_schedule_payload(
     payload: dict, team: Team, season: Season
 ) -> SourceLeagueSchedule:
-    rows = _result_set_rows(_first_result_set(payload, label="league schedule"))
+    res = _first_result_set(payload, label="league schedule")
+    rows = _result_set_rows(res)
     games: list[SourceLeagueGame] = []
     for row in rows:
         game = _parse_schedule_row(row)
@@ -199,9 +200,41 @@ def _parse_live_player_row(
     return parsed_row
 
 
+LeagueGameFinderResults = [
+    "SEASON_ID",
+    "TEAM_ID",
+    "TEAM_ABBREVIATION",
+    "TEAM_NAME",
+    "GAME_ID",
+    "GAME_DATE",
+    "MATCHUP",
+    "WL",
+    "MIN",
+    "PTS",
+    "FGM",
+    "FGA",
+    "FG_PCT",
+    "FG3M",
+    "FG3A",
+    "FG3_PCT",
+    "FTM",
+    "FTA",
+    "FT_PCT",
+    "OREB",
+    "DREB",
+    "REB",
+    "AST",
+    "STL",
+    "BLK",
+    "TOV",
+    "PF",
+    "PLUS_MINUS",
+]
+
+
 def _parse_schedule_row(row: dict[str, object]) -> SourceLeagueGame:
     team_id = _required_int(row, "TEAM_ID", row_label=_SCHEDULE_ROW_LABEL)
-    team_abbreviation = (_required_text(row, "TEAM_ABBREVIATION", row_label=_SCHEDULE_ROW_LABEL),)
+    team_abbreviation = _required_text(row, "TEAM_ABBREVIATION", row_label=_SCHEDULE_ROW_LABEL)
     team = Team.from_id(team_id)
     assert team.team_id == team_id
     assert team.abbreviation() == team_abbreviation
