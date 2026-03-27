@@ -14,11 +14,16 @@ from rawr_analytics.nba.ingest_logging import (
 )
 from rawr_analytics.shared.season import Season, build_season_list
 from rawr_analytics.shared.team import Team
+from rawr_analytics.workflows.nba_ingest import IngestRequest, refresh
 from scripts._render_cli import (
+    filtered_log,
     record_failure,
     render_failure_summary,
     render_partial_failure_details,
-    render_team_skipped_line,
+    render_progress_line,
+    render_team_complete_line,
+    render_team_fetch_failed_line,
+    render_team_partial_failed_line,
     render_team_validation_failed_line,
 )
 
@@ -114,36 +119,27 @@ def main(argv: list[str] | None = None) -> int:
     for season_index, season in enumerate(seasons_list, start=1):
         if season_count > 1:
             print(f"[{season_index}/{season_count}] caching {season}")
-        teams: list[Team] = [
-            Team.from_abbreviation(team_code, season=season) for team_code in args.teams
-        ]
+        teams: list[Team]
+        if args.teams:
+            teams = [Team.from_abbreviation(team_code, season=season) for team_code in args.teams]
+        else:
+            teams = Team.all_active_in_season(season)
         team_total = len(teams)
         for team_index, team in enumerate(teams, start=1):
-            team_season_scope = f"{team} {season}"
-            if not team.is_active_during(season):
-                render_team_skipped_line(
-                    team_index=team_index,
-                    team_total=team_total,
-                    team=team,
-                    season=season,
-                    reason="not-active-in-season",
-                )
-                sys.stdout.write("\n")
-                continue
+            team_season_scope = f"{team.abbreviation(season=season)} {season}"
             try:
-                summary = refresh_normalized_team_season_cache(
-                    team_abbreviation=team,
-                    season_str=season,
-                    season_type=season_type,
-                    log=_filtered_log,
-                    progress_fn=lambda payload, team_index=team_index: _render_progress_line(
+                request = IngestRequest(team, season)
+                result = refresh(
+                    request,
+                    log=filtered_log,
+                    progress=lambda payload, team_index=team_index: render_progress_line(
                         team_index,
                         team_total,
                         payload,
                     ),
                 )
             except FetchError as exc:
-                _record_failure(
+                record_failure(
                     failure_counts,
                     failed_scopes,
                     failure_kind="fetch_error",
@@ -152,12 +148,11 @@ def main(argv: list[str] | None = None) -> int:
                 append_ingest_failure_log(
                     team=team,
                     season=season,
-                    season_type=season_type,
                     failure_kind="fetch_error",
                     error=exc,
                     log_path=args.failure_log_path,
                 )
-                _render_team_fetch_failed_line(
+                render_team_fetch_failed_line(
                     team_index=team_index,
                     team_total=team_total,
                     team=team,
@@ -169,7 +164,7 @@ def main(argv: list[str] | None = None) -> int:
                 sys.stderr.flush()
                 continue
             except PartialTeamSeasonError as exc:
-                _record_failure(
+                record_failure(
                     failure_counts,
                     failed_scopes,
                     failure_kind="partial_scope_error",
@@ -178,12 +173,11 @@ def main(argv: list[str] | None = None) -> int:
                 append_ingest_failure_log(
                     team=team,
                     season=season,
-                    season_type=season_type,
                     failure_kind="partial_scope_error",
                     error=exc,
                     log_path=args.failure_log_path,
                 )
-                _render_team_partial_failed_line(
+                render_team_partial_failed_line(
                     team_index=team_index,
                     team_total=team_total,
                     team=team,
@@ -225,7 +219,7 @@ def main(argv: list[str] | None = None) -> int:
                 sys.stderr.write(f"Validation failed for {team} {season}: {reason}\n")
                 sys.stderr.flush()
                 continue
-            render_team_complete_line(team_index, team_total, summary)
+            render_team_complete_line(team_index, team_total, result)
             sys.stdout.write("\n")
     if failure_counts:
         render_failure_summary(

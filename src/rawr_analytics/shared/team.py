@@ -64,6 +64,14 @@ class Team:
         assert team_id is not None, f"Unknown NBA team abbreviation: {abbreviation!r}"
         return Team.from_id(team_id)
 
+    @staticmethod
+    def all_active_in_season(season: Season | int) -> list[Team]:
+        start_year = season if isinstance(season, int) else season.start_year
+        return sorted(
+            [team for team in _TEAMS_BY_ID.values() if start_year in team.seasons],
+            key=lambda team: team.abbreviation(season=start_year),
+        )
+
     def for_season(self, season: Season | int) -> TeamSeason:
         start_year = season if isinstance(season, int) else season.start_year
         team_season = self.seasons.get(start_year)

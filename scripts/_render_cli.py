@@ -20,7 +20,7 @@ def render_progress_line(
     status = payload["status"]
     team = payload["team"]
     season = payload["season"]
-    game_id = payload["game_id"]
+    game_id = payload.get("game_id", "")
     filled = 20 if total == 0 else int((current / total) * 20)
     bar = "#" * filled + "-" * (20 - filled)
     line = (
@@ -52,14 +52,16 @@ def _write_status_line(line: str) -> None:
 def render_team_complete_line(
     team_index: int,
     team_total: int,
-    summary,
+    result,
 ) -> None:
+    request = result.request
+    summary = result.summary
     line = (
-        f"  [{team_index:>2}/{team_total}] {summary.team} {summary.season} "
+        f"  [{team_index:>2}/{team_total}] "
+        f"{request.team.abbreviation(season=request.season)} {request.season} "
         f"{summary.processed_games}/{summary.total_games} "
         f"league={'cached' if summary.league_games_source == 'cached' else 'fetched'} "
         f"boxscores={summary.fetched_box_scores} fetched, {summary.cached_box_scores} cached "
-        f"skipped={summary.skipped_games}"
     )
     _write_status_line(line)
 

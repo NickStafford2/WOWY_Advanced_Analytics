@@ -12,9 +12,7 @@ from rawr_analytics.nba.models import (
 from rawr_analytics.nba.normalize.normalize_game import normalize_source_league_game
 from rawr_analytics.nba.normalize.validation import validate_normalized_team_season_batch
 from rawr_analytics.nba.source.api import load_or_fetch_box_score
-from rawr_analytics.nba.source.cache import (
-    load_or_fetch_league_games,
-)
+from rawr_analytics.nba.source.cache import load_or_fetch_league_games
 from rawr_analytics.nba.source.dedupe import dedupe_schedule_games
 from rawr_analytics.nba.source.models import SourceLeagueGame
 from rawr_analytics.nba.source.parsers import parse_league_schedule_payload
@@ -56,20 +54,6 @@ class IngestResult:
             games=self.games,
             game_players=self.game_players,
         )
-
-
-def build_ingest_request(
-    *,
-    team_abbreviation: str,
-    season: str,
-    season_type: str = "Regular Season",
-) -> IngestRequest:
-    parsed_season = Season(season, season_type)
-    team = Team.from_abbreviation(team_abbreviation, season=parsed_season)
-    return IngestRequest(
-        team=team,
-        season=parsed_season,
-    )
 
 
 def _get_schedule(

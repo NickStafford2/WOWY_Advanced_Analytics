@@ -10,8 +10,6 @@ from rawr_analytics.nba.normalize.models import (
     NormalizedGameRecord,
     NormalizedTeamSeasonBatch,
 )
-from rawr_analytics.nba.season_types import canonicalize_season_type
-from rawr_analytics.nba.seasons import canonicalize_season_year_string
 from rawr_analytics.shared.season import Season
 from rawr_analytics.shared.team import Team
 
@@ -39,7 +37,7 @@ def validate_normalized_team_season_batch(batch: NormalizedTeamSeasonBatch) -> N
     for player in batch.game_players:
         _validate_canonical_game_player(
             player,
-            expected_team_id=batch.team_id,
+            expected_team_id=batch.team.team_id,
         )
         player_key = (player.game_id, player.team_id, player.player_id)
         if player_key in player_keys:
@@ -135,17 +133,17 @@ def _validate_canonical_game(
 def _validate_canonical_game_player(
     player: NormalizedGamePlayerRecord,
     *,
-    expected_team_id: int,
+    expected_team: Team,
 ) -> None:
     player_ref = (
         f"game {player.game_id!r} player_id={player.player_id!r} player_name={player.player_name!r}"
     )
     if not player.game_id.strip():
         raise ValueError("Canonical player game_id must not be empty")
-    if player.team_id != expected_team_id:
+    if player.team_id != expected_team.team_id:
         raise ValueError(
             f"Canonical player row for game {player.game_id!r} has team_id {player.team_id!r}; "
-            f"expected {expected_team_id!r}"
+            f"expected {expected_team.team_id!r}"
         )
     if player.player_id <= 0:
         raise ValueError(f"Canonical player row for {player_ref} has invalid player_id")
