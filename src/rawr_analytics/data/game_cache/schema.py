@@ -11,19 +11,6 @@ def initialize_game_cache_db() -> None:
         _migrate_cache_schema_if_needed(connection)
         connection.executescript(
             """
-            CREATE TABLE IF NOT EXISTS team_history (
-                team_id INTEGER NOT NULL,
-                season TEXT NOT NULL,
-                abbreviation TEXT NOT NULL,
-                franchise_id TEXT NOT NULL,
-                lookup_abbreviation TEXT NOT NULL,
-                PRIMARY KEY (team_id, season),
-                UNIQUE (season, abbreviation)
-            );
-
-            CREATE INDEX IF NOT EXISTS idx_team_history_season_lookup
-            ON team_history (season, lookup_abbreviation);
-
             CREATE TABLE IF NOT EXISTS normalized_games (
                 game_id TEXT NOT NULL,
                 season TEXT NOT NULL,
@@ -96,7 +83,6 @@ def _migrate_cache_schema_if_needed(connection: sqlite3.Connection) -> None:
     normalized_games_pk = _primary_key_columns(connection, "normalized_games")
     normalized_players_pk = _primary_key_columns(connection, "normalized_game_players")
     normalized_cache_loads_pk = _primary_key_columns(connection, "normalized_cache_loads")
-    team_history_pk = _primary_key_columns(connection, "team_history")
     expected_pks = (
         (
             normalized_games_pk,
@@ -110,21 +96,12 @@ def _migrate_cache_schema_if_needed(connection: sqlite3.Connection) -> None:
             normalized_cache_loads_pk,
             ["team_id", "season", "season_type"],
         ),
-        (
-            team_history_pk,
-            ["team_id", "season"],
-        ),
     )
     if any(actual and actual != expected for actual, expected in expected_pks):
         _drop_cache_tables(connection)
         return
 
     required_columns = (
-        ("team_history", "team_id"),
-        ("team_history", "season"),
-        ("team_history", "abbreviation"),
-        ("team_history", "franchise_id"),
-        ("team_history", "lookup_abbreviation"),
         ("normalized_games", "team_id"),
         ("normalized_games", "opponent_team_id"),
         ("normalized_game_players", "team_id"),
@@ -149,6 +126,10 @@ def _migrate_cache_schema_if_needed(connection: sqlite3.Connection) -> None:
         and _table_has_column(connection, table_name, column_name)
         for table_name, column_name in deprecated_columns
     ):
+        _drop_cache_tables(connection)
+        return
+
+    if _table_exists(connection, "team_history"):
         _drop_cache_tables(connection)
         return
 
@@ -182,7 +163,6 @@ def _drop_cache_tables(connection: sqlite3.Connection) -> None:
         DROP TABLE IF EXISTS normalized_cache_loads;
         DROP TABLE IF EXISTS normalized_game_players;
         DROP TABLE IF EXISTS normalized_games;
-        DROP TABLE IF EXISTS team_history;
         """
     )
 

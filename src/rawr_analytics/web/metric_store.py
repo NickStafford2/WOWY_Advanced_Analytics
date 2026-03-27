@@ -27,8 +27,6 @@ from rawr_analytics.metrics.rawr.data import list_incomplete_rawr_seasons
 from rawr_analytics.metrics.scope import build_scope_key
 from rawr_analytics.metrics.wowy import build_cached_rows as build_wowy_cached_rows
 from rawr_analytics.metrics.wowy import describe_metric as describe_wowy_metric
-from rawr_analytics.nba.season_types import canonicalize_season_type
-from rawr_analytics.nba.team_history import official_continuity_label_for_team_id
 
 BuildRowsFn = Callable[..., list[PlayerSeasonMetricRow]]
 RefreshProgressFn = Callable[[int, int, str], None]

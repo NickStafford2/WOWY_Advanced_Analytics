@@ -4,8 +4,6 @@ import math
 import re
 from typing import NoReturn
 
-from rawr_analytics.nba.season_types import canonicalize_season_type
-from rawr_analytics.nba.seasons import canonicalize_season_year_string
 from rawr_analytics.nba.source.models import (
     SourceBoxScore,
     SourceBoxScorePlayer,
@@ -21,7 +19,6 @@ from rawr_analytics.nba.source.rules import (
     parse_box_score_numeric_value,
     source_player_played_in_game,
 )
-from rawr_analytics.nba.team_identity import resolve_source_team_identity
 from rawr_analytics.shared.season import Season
 from rawr_analytics.shared.team import Team
 

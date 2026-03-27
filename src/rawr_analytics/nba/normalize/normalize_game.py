@@ -15,11 +15,6 @@ from rawr_analytics.nba.source.rules import (
     parse_minutes_to_float,
     source_player_played_in_game,
 )
-from rawr_analytics.nba.team_identity import (
-    TeamIdentity,
-    canonical_team_lookup_abbreviation,
-    resolve_source_team_identity,
-)
 from rawr_analytics.shared.season import Season
 from rawr_analytics.shared.team import Team
 

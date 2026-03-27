@@ -4,6 +4,17 @@ import argparse
 import sys
 from pathlib import Path
 
+from rawr_analytics.cli.render import (
+    filtered_log,
+    record_failure,
+    render_failure_summary,
+    render_partial_failure_details,
+    render_progress_line,
+    render_team_complete_line,
+    render_team_fetch_failed_line,
+    render_team_partial_failed_line,
+    render_team_validation_failed_line,
+)
 from rawr_analytics.nba.errors import (
     FetchError,
     PartialTeamSeasonError,
@@ -15,17 +26,6 @@ from rawr_analytics.nba.ingest_logging import (
 from rawr_analytics.shared.season import Season, build_season_list
 from rawr_analytics.shared.team import Team
 from rawr_analytics.workflows.nba_ingest import IngestRequest, refresh
-from scripts._render_cli import (
-    filtered_log,
-    record_failure,
-    render_failure_summary,
-    render_partial_failure_details,
-    render_progress_line,
-    render_team_complete_line,
-    render_team_fetch_failed_line,
-    render_team_partial_failed_line,
-    render_team_validation_failed_line,
-)
 
 _DEFAULT_START_YEAR = 2000
 _DEFAULT_FIRST_YEAR = 1946

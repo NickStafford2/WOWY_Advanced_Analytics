@@ -3,6 +3,7 @@ from __future__ import annotations
 import json
 from dataclasses import asdict, is_dataclass
 from datetime import UTC, datetime
+from enum import Enum
 from pathlib import Path
 from typing import Any
 
@@ -36,7 +37,7 @@ def append_ingest_failure_log(
 
     log_path.parent.mkdir(parents=True, exist_ok=True)
     with open(log_path, "a", encoding="utf-8") as log_file:
-        log_file.write(json.dumps(record, sort_keys=True))
+        log_file.write(json.dumps(_to_json_value(record), sort_keys=True))
         log_file.write("\n")
 
 
@@ -77,3 +78,28 @@ def _dataclass_fields(error: Exception, *, exclude: set[str]) -> dict[str, objec
     if not is_dataclass(error):
         return {}
     return {key: value for key, value in asdict(error).items() if key not in exclude}
+
+
+def _to_json_value(value: Any) -> Any:
+    if isinstance(value, Season):
+        return {
+            "id": value.id,
+            "start_year": value.start_year,
+            "season_type": value.season_type.value,
+        }
+    if isinstance(value, Team):
+        return {
+            "team_id": value.team_id,
+            "abbreviation": value.current.abbreviation,
+        }
+    if isinstance(value, Enum):
+        return value.value
+    if is_dataclass(value):
+        return _to_json_value(asdict(value))
+    if isinstance(value, dict):
+        return {str(key): _to_json_value(item) for key, item in value.items()}
+    if isinstance(value, list):
+        return [_to_json_value(item) for item in value]
+    if isinstance(value, tuple):
+        return [_to_json_value(item) for item in value]
+    return value
