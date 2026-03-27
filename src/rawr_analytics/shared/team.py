@@ -96,7 +96,7 @@ class Team:
             return self.for_date(game_date).abbreviation
         if season is not None:
             return self.for_season(season).abbreviation
-        return self.current.abbreviation
+        raise AssertionError("Team.abbreviation requires season or game_date")
 
     def is_active_during(self, season: Season | int) -> bool:
         return (season if isinstance(season, int) else season.start_year) in self.seasons
@@ -110,7 +110,7 @@ class Team:
         left: Team,
         right: Team,
     ) -> bool:
-        return left.team_id == right.team_id and left.abbreviation() == right.abbreviation()
+        return left.team_id == right.team_id
 
     def validate(self):
         if self.team_id is None or self.team_id <= 0:

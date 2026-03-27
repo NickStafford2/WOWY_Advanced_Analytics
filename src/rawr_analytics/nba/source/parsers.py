@@ -467,8 +467,6 @@ def _validate_source_team_row(box_score_team: SourceBoxScoreTeam) -> None:
 
     if box_score_team.team.team_id is None or box_score_team.team.team_id <= 0:
         raise ValueError(f"Missing TEAM_ID; {row_context}")
-    if box_score_team.team.abbreviation().strip() == "":
-        raise ValueError(f"Missing TEAM_ABBREVIATION; {row_context}")
     if parse_box_score_numeric_value(box_score_team.points_raw) is None:
         raise ValueError(f"Unparseable PTS value; {row_context}")
 
