@@ -27,6 +27,7 @@ from rawr_analytics.metrics.rawr.data import list_incomplete_rawr_seasons
 from rawr_analytics.metrics.scope import build_scope_key
 from rawr_analytics.metrics.wowy import build_cached_rows as build_wowy_cached_rows
 from rawr_analytics.metrics.wowy import describe_metric as describe_wowy_metric
+from rawr_analytics.shared.season import SeasonType
 
 BuildRowsFn = Callable[..., list[PlayerSeasonMetricRow]]
 RefreshProgressFn = Callable[[int, int, str], None]
@@ -117,12 +118,11 @@ METRIC_DEFINITIONS = {
 def refresh_metric_store(
     metric: str,
     *,
-    season_type: str,
+    season_type: SeasonType,
     rawr_ridge_alpha: float = DEFAULT_RAWR_RIDGE_ALPHA,
     include_team_scopes: bool = True,
     progress: RefreshProgressFn | None = None,
 ) -> RefreshMetricStoreResult:
-    season_type = canonicalize_season_type(season_type)
     definition = _get_metric_definition(metric)
     if not _has_refreshable_cache(season_type=season_type):
         return _build_empty_cache_refresh_result(metric)
@@ -185,7 +185,7 @@ def refresh_metric_store(
     )
 
 
-def _has_refreshable_cache(*, season_type: str) -> bool:
+def _has_refreshable_cache(*, season_type: SeasonType) -> bool:
     return bool(list_cache_load_rows(season_type=season_type))
 
 

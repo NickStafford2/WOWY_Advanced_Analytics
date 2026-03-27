@@ -1,9 +1,7 @@
 from __future__ import annotations
 
 import argparse
-from pathlib import Path
 
-from rawr_analytics.nba.season_types import canonicalize_season_type
 from rawr_analytics.web.app import create_app
 from rawr_analytics.web.metric_store import (
     DEFAULT_RAWR_RIDGE_ALPHA,
