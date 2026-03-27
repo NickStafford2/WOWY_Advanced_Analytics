@@ -209,7 +209,7 @@ def discard_invalid_cached_payload(
     reason: str,
     log: LogFn | None = print,
 ) -> None:
-    _discard_cache_file(cache_path, reason=reason, log=log)
+    _discard_cache_file(cache_path, reason=reason, log_fn=log)
 
 
 def _load_cached_payload(
@@ -224,7 +224,7 @@ def _load_cached_payload(
     if not isinstance(payload, dict):
         raise AssertionError(f"Cached payload must be a JSON object: {cache_path}")
     if validator is not None and not validator(payload):
-        _discard_cache_file(cache_path, reason="invalid_or_empty_payload", log=log_fn)
+        _discard_cache_file(cache_path, reason="invalid_or_empty_payload", log_fn=log_fn)
         return None
     return payload
 
@@ -233,11 +233,11 @@ def _discard_cache_file(
     cache_path: Path,
     *,
     reason: str,
-    log: LogFn | None = print,
+    log_fn: LogFn | None = print,
 ) -> None:
     cache_path.unlink(missing_ok=True)
-    if log is not None:
-        log(f"cache discard {cache_path} reason={reason}")
+    if log_fn is not None:
+        log_fn(f"cache discard {cache_path} reason={reason}")
 
 
 def write_cached_payload(cache_path: Path, payload: dict) -> None:
