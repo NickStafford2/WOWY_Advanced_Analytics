@@ -4,7 +4,7 @@ import json
 from typing import Any
 
 from rawr_analytics.metrics.constants import Metric
-from rawr_analytics.metrics.frontend import (
+from rawr_analytics.metrics.metric_query import (
     MetricQuery,
     build_metric_export_table,
     build_metric_options_payload,
