@@ -6,30 +6,11 @@ from typing import Any
 from rawr_analytics.metrics.constants import Metric
 from rawr_analytics.metrics.frontend import (
     MetricQuery,
+    build_metric_export_table,
     build_metric_options_payload,
     build_metric_query,
     build_metric_view_payload,
 )
-
-
-def _parse_optional_int(raw_value: str | None) -> int | None:
-    return None if raw_value is None else int(raw_value)
-
-
-def _parse_optional_float(raw_value: str | None) -> float | None:
-    return None if raw_value is None else float(raw_value)
-
-
-def _parse_positive_int_list(raw_values: list[str]) -> list[int] | None:
-    if not raw_values:
-        return None
-    parsed_values: list[int] = []
-    for raw_value in raw_values:
-        value = int(raw_value)
-        if value <= 0:
-            raise ValueError("team_id values must be positive integers")
-        parsed_values.append(value)
-    return parsed_values
 
 
 def create_app():
@@ -68,6 +49,21 @@ def create_app():
             return handler()
         except ValueError as exc:
             return jsonify({"error": str(exc)}), 400
+
+    def csv_metric_response(metric: str, view: str):
+        metric_type = Metric.parse(metric)
+        query = parse_metric_query(metric)
+        metric_label, table_rows = build_metric_export_table(
+            metric_type,
+            view=view,
+            query=query,
+        )
+        filename = f"{metric}-all-players.csv"
+        return Response(
+            _render_leaderboard_csv(metric_label=metric_label, table_rows=table_rows),
+            mimetype="text/csv",
+            headers={"Content-Disposition": f'attachment; filename="{filename}"'},
+        )
 
     @app.get("/api/metrics/<metric>/options")
     def get_metric_options(metric: str):
@@ -201,3 +197,23 @@ def _format_csv_value(value: Any) -> str:
     if value is None:
         return "—"
     return str(value)
+
+
+def _parse_optional_int(raw_value: str | None) -> int | None:
+    return None if raw_value is None else int(raw_value)
+
+
+def _parse_optional_float(raw_value: str | None) -> float | None:
+    return None if raw_value is None else float(raw_value)
+
+
+def _parse_positive_int_list(raw_values: list[str]) -> list[int] | None:
+    if not raw_values:
+        return None
+    parsed_values: list[int] = []
+    for raw_value in raw_values:
+        value = int(raw_value)
+        if value <= 0:
+            raise ValueError("team_id values must be positive integers")
+        parsed_values.append(value)
+    return parsed_values

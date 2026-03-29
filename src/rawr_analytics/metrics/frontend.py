@@ -201,22 +201,6 @@ def build_metric_export_table(
     raise ValueError(f"Metric view {view!r} does not support CSV export")
 
 
-def csv_metric_response(metric: str, view: str):
-    metric_type = Metric.parse(metric)
-    query = parse_metric_query(metric)
-    metric_label, table_rows = build_metric_export_table(
-        metric_type,
-        view=view,
-        query=query,
-    )
-    filename = f"{metric}-all-players.csv"
-    return Response(
-        _render_leaderboard_csv(metric_label=metric_label, table_rows=table_rows),
-        mimetype="text/csv",
-        headers={"Content-Disposition": f'attachment; filename="{filename}"'},
-    )
-
-
 def _build_filters_payload(query: MetricQuery) -> dict[str, Any]:
     payload: dict[str, Any] = {
         "team": None,
