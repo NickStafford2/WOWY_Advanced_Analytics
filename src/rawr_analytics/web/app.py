@@ -6,7 +6,6 @@ from typing import Any
 from rawr_analytics.metrics.constants import Metric
 from rawr_analytics.metrics.frontend import (
     MetricQuery,
-    build_metric_export_table,
     build_metric_options_payload,
     build_metric_query,
     build_metric_view_payload,
@@ -63,21 +62,6 @@ def create_app():
             query=query,
         )
         return jsonify(payload)
-
-    def csv_metric_response(metric: str, view: str):
-        metric_type = Metric.parse(metric)
-        query = parse_metric_query(metric)
-        metric_label, table_rows = build_metric_export_table(
-            metric_type,
-            view=view,
-            query=query,
-        )
-        filename = f"{metric}-all-players.csv"
-        return Response(
-            _render_leaderboard_csv(metric_label=metric_label, table_rows=table_rows),
-            mimetype="text/csv",
-            headers={"Content-Disposition": f'attachment; filename="{filename}"'},
-        )
 
     def run_json(handler):
         try:

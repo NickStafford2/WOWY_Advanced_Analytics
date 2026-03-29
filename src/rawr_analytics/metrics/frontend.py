@@ -75,9 +75,7 @@ def build_metric_query(
 ) -> MetricQuery:
     defaults = _metric_default_filters(metric)
     normalized_team_ids = sorted({team_id for team_id in team_ids or [] if team_id > 0}) or None
-    normalized_seasons = (
-        [Season(season, season_type).id for season in seasons] if seasons else None
-    )
+    normalized_seasons = [Season(season, season_type).id for season in seasons] if seasons else None
     normalized_season_type = SeasonType.parse(season_type).to_nba_format()
     normalized_top_n = int(top_n if top_n is not None else defaults["top_n"])
     normalized_min_average_minutes = float(
@@ -201,6 +199,22 @@ def build_metric_export_table(
     if view == "custom-query":
         return _build_custom_metric_export_table_rows(metric, query=query)
     raise ValueError(f"Metric view {view!r} does not support CSV export")
+
+
+def csv_metric_response(metric: str, view: str):
+    metric_type = Metric.parse(metric)
+    query = parse_metric_query(metric)
+    metric_label, table_rows = build_metric_export_table(
+        metric_type,
+        view=view,
+        query=query,
+    )
+    filename = f"{metric}-all-players.csv"
+    return Response(
+        _render_leaderboard_csv(metric_label=metric_label, table_rows=table_rows),
+        mimetype="text/csv",
+        headers={"Content-Disposition": f'attachment; filename="{filename}"'},
+    )
 
 
 def _build_filters_payload(query: MetricQuery) -> dict[str, Any]:
