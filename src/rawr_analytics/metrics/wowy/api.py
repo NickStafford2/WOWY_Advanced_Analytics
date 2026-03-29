@@ -17,6 +17,7 @@ from rawr_analytics.metrics.wowy.service import validate_filters
 
 __all__ = [
     "default_filters",
+    "describe_metric",
     "describe_wowy_shrunk_metric",
     "describe_wowy_metric",
     "validate_filters",
@@ -47,6 +48,14 @@ def describe_wowy_shrunk_metric() -> MetricSummary:
         label="WOWY Shrunk",
         build_version="wowy-shrunk-player-season-v1",
     )
+
+
+def describe_metric(metric: Metric) -> MetricSummary:
+    if metric == Metric.WOWY:
+        return describe_wowy_metric()
+    if metric == Metric.WOWY_SHRUNK:
+        return describe_wowy_shrunk_metric()
+    raise ValueError(f"Unknown WOWY metric: {metric}")
 
 
 def build_cached_rows(
@@ -93,8 +102,8 @@ def build_custom_query(
     min_total_minutes: float | None,
 ) -> dict[str, Any]:
     return {
-        "metric": Metric.value,
-        "metric_label": describe_metric()["label"],
+        "metric": metric.value,
+        "metric_label": describe_metric(metric).label,
         "rows": build_custom_query_rows(
             metric,
             teams=teams,
@@ -147,9 +156,9 @@ def build_custom_query_rows(
             "average_minutes": record.average_minutes,
             "total_minutes": record.total_minutes,
         }
-        if metric == WOWY_METRIC:
+        if metric == Metric.WOWY:
             row["value"] = record.wowy_score
-        elif metric == WOWY_SHRUNK_METRIC:
+        elif metric == Metric.WOWY_SHRUNK:
             row["value"] = compute_wowy_shrinkage_score(
                 games_with=record.games_with,
                 games_without=record.games_without,

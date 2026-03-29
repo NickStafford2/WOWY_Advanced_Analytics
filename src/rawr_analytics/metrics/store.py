@@ -23,9 +23,6 @@ from rawr_analytics.data.player_metrics_db.store import (
 )
 from rawr_analytics.metrics.constants import Metric, MetricSummary
 from rawr_analytics.metrics.rawr import (
-    RAWR_METRIC,
-)
-from rawr_analytics.metrics.rawr import (
     build_cached_rows as build_rawr_cached_rows,
 )
 from rawr_analytics.metrics.rawr import (
@@ -34,18 +31,14 @@ from rawr_analytics.metrics.rawr import (
 from rawr_analytics.metrics.rawr.data import list_incomplete_rawr_season_warnings
 from rawr_analytics.metrics.scope import build_scope_key
 from rawr_analytics.metrics.wowy import (
-    WOWY_METRIC,
-    WOWY_SHRUNK_METRIC,
-)
-from rawr_analytics.metrics.wowy import (
     build_cached_rows as build_wowy_cached_rows,
 )
 from rawr_analytics.metrics.wowy import (
     describe_metric as describe_wowy_metric,
 )
-from rawr_analytics.nba.old_team_history import official_continuity_label_for_team_id
 from rawr_analytics.shared.scope import TeamSeasonScope
 from rawr_analytics.shared.season import SeasonType
+from rawr_analytics.shared.team import Team
 
 RefreshProgressFn = Callable[[int, int, str], None]
 DEFAULT_RAWR_RIDGE_ALPHA = 10.0
@@ -114,13 +107,13 @@ def refresh_metric_store(
     metric_info = _describe_metric(metric)
     source_fingerprint = _build_cache_load_fingerprint(cache_load_rows)
     build_version = (
-        f"{metric_info['build_version']}-alpha-{rawr_ridge_alpha:.4f}"
-        if metric == RAWR_METRIC
-        else metric_info["build_version"]
+        f"{metric_info.build_version}-alpha-{rawr_ridge_alpha:.4f}"
+        if metric == Metric.RAWR
+        else metric_info.build_version
     )
     warnings = (
         list_incomplete_rawr_season_warnings(season_type=season_type)
-        if metric == RAWR_METRIC
+        if metric == Metric.RAWR
         else []
     )
 
@@ -137,7 +130,7 @@ def refresh_metric_store(
 
         scope_result, should_fail_empty_rawr_scope = _refresh_metric_store_scope(
             metric=metric,
-            metric_label=metric_info["label"],
+            metric_label=metric_info.label,
             scope=scope,
             season_type=season_type,
             rawr_ridge_alpha=rawr_ridge_alpha,
@@ -167,7 +160,7 @@ def refresh_metric_store(
 
 def _refresh_metric_store_scope(
     *,
-    metric: str,
+    metric: Metric,
     metric_label: str,
     scope: _RefreshScope,
     season_type: str,
@@ -176,8 +169,8 @@ def _refresh_metric_store_scope(
     source_fingerprint: str,
     build_version: str,
 ) -> tuple[RefreshScopeResult, bool]:
-    metadata = load_metric_store_metadata(metric, scope.scope_key)
-    catalog_row = load_metric_scope_catalog_row(metric, scope.scope_key)
+    metadata = load_metric_store_metadata(metric.value, scope.scope_key)
+    catalog_row = load_metric_scope_catalog_row(metric.value, scope.scope_key)
     if (
         metadata is not None
         and catalog_row is not None
@@ -203,10 +196,10 @@ def _refresh_metric_store_scope(
         team_ids=scope.team_ids,
         rawr_ridge_alpha=rawr_ridge_alpha,
     )
-    should_fail_empty_rawr_scope = metric == RAWR_METRIC and scope.team_ids is None and not rows
+    should_fail_empty_rawr_scope = metric == Metric.RAWR and scope.team_ids is None and not rows
     if should_fail_empty_rawr_scope:
         clear_metric_scope_store(
-            metric=metric,
+            metric=metric.value,
             scope_key=scope.scope_key,
         )
         return (
@@ -226,14 +219,14 @@ def _refresh_metric_store_scope(
         seasons=scope.available_seasons,
     )
     replace_metric_scope_store(
-        metric=metric,
+        metric=metric.value,
         scope_key=scope.scope_key,
         metric_label=metric_label,
         build_version=build_version,
         source_fingerprint=source_fingerprint,
         rows=rows,
         catalog_row=MetricScopeCatalogRow(
-            metric=metric,
+            metric=metric.value,
             scope_key=scope.scope_key,
             metric_label=metric_label,
             team_filter=scope.team_filter,
@@ -270,7 +263,7 @@ def _build_refresh_scope(
         scope_key=scope_key,
         team_filter=team_filter,
         scope_label=(
-            official_continuity_label_for_team_id(team_ids[0])
+            Team.from_id(team_ids[0]).current.abbreviation
             if team_ids and len(team_ids) == 1
             else team_filter or "all-teams"
         ),
@@ -286,14 +279,14 @@ def _build_refresh_scope(
 
 def _build_cached_rows(
     *,
-    metric: str,
+    metric: Metric,
     scope_key: str,
     team_filter: str,
     season_type: str,
     team_ids: list[int] | None,
     rawr_ridge_alpha: float,
 ) -> list[PlayerSeasonMetricRow]:
-    if metric == RAWR_METRIC:
+    if metric == Metric.RAWR:
         return build_rawr_cached_rows(
             scope_key=scope_key,
             team_filter=team_filter,
@@ -316,7 +309,7 @@ def _build_cached_rows(
 def _build_metric_full_span_rows(
     rows: list[PlayerSeasonMetricRow],
     *,
-    metric: str,
+    metric: Metric,
     scope_key: str,
     seasons: list[str],
 ) -> tuple[list[MetricFullSpanSeriesRow], list[MetricFullSpanPointRow]]:
@@ -343,7 +336,7 @@ def _build_metric_full_span_rows(
     for rank_order, player_id in enumerate(ranked_player_ids, start=1):
         series_rows.append(
             MetricFullSpanSeriesRow(
-                metric=metric,
+                metric=metric.value,
                 scope_key=scope_key,
                 player_id=player_id,
                 player_name=names[player_id],
@@ -358,7 +351,7 @@ def _build_metric_full_span_rows(
                 continue
             point_rows.append(
                 MetricFullSpanPointRow(
-                    metric=metric,
+                    metric=metric.value,
                     scope_key=scope_key,
                     player_id=player_id,
                     season=season,
@@ -369,9 +362,9 @@ def _build_metric_full_span_rows(
 
 
 def _describe_metric(metric: Metric) -> MetricSummary:
-    if metric == RAWR_METRIC:
+    if metric == Metric.RAWR:
         return describe_rawr_metric()
-    return describe_wowy_metric()
+    return describe_wowy_metric(metric)
 
 
 def _list_cache_load_rows_for_season_type(season_type: str) -> list[NormalizedCacheLoadRow]:
@@ -409,10 +402,7 @@ def _build_cache_load_fingerprint(rows: list[NormalizedCacheLoadRow]) -> str:
 
 __all__ = [
     "DEFAULT_RAWR_RIDGE_ALPHA",
-    "RAWR_METRIC",
     "RefreshMetricStoreResult",
     "RefreshScopeResult",
-    "WOWY_METRIC",
-    "WOWY_SHRUNK_METRIC",
     "refresh_metric_store",
 ]

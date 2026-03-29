@@ -9,8 +9,8 @@ from rawr_analytics.metrics.rawr.models import (
     RawrResult,
 )
 from rawr_analytics.nba.models import NormalizedGamePlayerRecord, NormalizedGameRecord
-from rawr_analytics.nba.team_identity import resolve_team_id
 from rawr_analytics.shared.minutes import passes_minute_filters
+from rawr_analytics.shared.team import Team
 
 __all__ = [
     "attach_minute_stats_to_result",
@@ -196,4 +196,4 @@ def _normalize_scope_team_ids(
     normalized_team_ids = {int(team_id) for team_id in team_ids or [] if int(team_id) > 0}
     if normalized_team_ids:
         return normalized_team_ids
-    return {resolve_team_id(team) for team in teams or []}
+    return {Team.from_abbreviation(team).team_id for team in teams or []}

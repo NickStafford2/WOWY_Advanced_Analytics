@@ -19,7 +19,7 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument(
         "--metric",
         action="append",
-        choices=_choices,
+        choices=[metric.value for metric in _choices],
         help=(
             "Metric to refresh into the SQLite store. "
             "Repeat to refresh multiple metrics. Defaults to all metrics."
@@ -43,22 +43,20 @@ def main(argv: list[str] | None = None) -> int:
     parser = build_parser()
     args = parser.parse_args(argv)
     if args.metric:
-        metrics: list[Metric] = [Metric.parse(args.metric)]
+        metrics = [Metric.parse(metric) for metric in args.metric]
     else:
-        metrics: list[Metric] = _choices
+        metrics = _choices
     print_status_box(
         "Web Store Refresh",
         [
-            f"Metrics: {', '.join(metrics)}",
+            f"Metrics: {', '.join(metric.value for metric in metrics)}",
             "Refreshing cached player-season rows and full-span leaderboard"
             " slices used by the Flask and React web app.",
             "The progress bar below tracks each built team scope in the SQLite metric store.",
         ],
     )
     for metric in metrics:
-        progress_bar = TerminalProgressBar(f"Refresh {metric}", total=1)
-        if isinstance(metric, str):
-            metric = Metric.parse(metric)
+        progress_bar = TerminalProgressBar(f"Refresh {metric.value}", total=1)
         result = refresh_metric_store(
             metric,
             season_type=args.season_type,
@@ -73,10 +71,10 @@ def main(argv: list[str] | None = None) -> int:
         )
         progress_bar.finish(detail="done")
         if not result.ok:
-            print(f"failed to refresh {metric} store")
+            print(f"failed to refresh {metric.value} store")
             print(result.failure_message)
             return 1
-        print(f"refreshed {metric} store ({result.total_rows} rows)")
+        print(f"refreshed {metric.value} store ({result.total_rows} rows)")
     return 0
 
 

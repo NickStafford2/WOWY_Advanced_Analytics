@@ -39,8 +39,9 @@ def create_app():
     app = Flask(__name__)
 
     def parse_metric_query(metric: str) -> MetricQuery:
+        metric_type = Metric.parse(metric)
         return build_metric_query(
-            metric,
+            metric_type,
             season_type=request.args.get("season_type", "Regular Season"),
             team_ids=_parse_positive_int_list(request.args.getlist("team_id")),
             seasons=request.args.getlist("season") or None,
@@ -54,18 +55,20 @@ def create_app():
         )
 
     def json_metric_response(metric: str, view: str):
+        metric_type = Metric.parse(metric)
         query = parse_metric_query(metric)
         payload = build_metric_view_payload(
-            metric,
+            metric_type,
             view=view,
             query=query,
         )
         return jsonify(payload)
 
     def csv_metric_response(metric: str, view: str):
+        metric_type = Metric.parse(metric)
         query = parse_metric_query(metric)
         metric_label, table_rows = build_metric_export_table(
-            metric,
+            metric_type,
             view=view,
             query=query,
         )
@@ -87,7 +90,7 @@ def create_app():
         return run_json(
             lambda: jsonify(
                 build_metric_options_payload(
-                    metric,
+                    Metric.parse(metric),
                     team_ids=_parse_positive_int_list(request.args.getlist("team_id")),
                     season_type=request.args.get("season_type", "Regular Season"),
                 )

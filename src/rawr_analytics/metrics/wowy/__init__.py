@@ -6,6 +6,8 @@ from rawr_analytics.metrics.wowy.api import (
     build_custom_query_rows,
     default_filters,
     describe_metric,
+    describe_wowy_metric,
+    describe_wowy_shrunk_metric,
     validate_filters,
 )
 
@@ -15,5 +17,7 @@ __all__ = [
     "build_custom_query_rows",
     "default_filters",
     "describe_metric",
+    "describe_wowy_metric",
+    "describe_wowy_shrunk_metric",
     "validate_filters",
 ]

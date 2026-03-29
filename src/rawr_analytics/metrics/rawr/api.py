@@ -67,7 +67,7 @@ def build_custom_query(
     min_total_minutes: float | None,
 ) -> dict[str, Any]:
     return {
-        "metric": Metric.RAWR,
+        "metric": Metric.RAWR.value,
         "metric_label": describe_metric().label,
         "rows": build_custom_query_rows(
             teams=teams,

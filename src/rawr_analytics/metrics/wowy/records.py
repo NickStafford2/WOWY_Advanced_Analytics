@@ -4,6 +4,7 @@ from rawr_analytics.data.player_metrics_db.builders import build_wowy_player_sea
 from rawr_analytics.data.player_metrics_db.models import (
     PlayerSeasonMetricRow,
 )
+from rawr_analytics.metrics.constants import Metric
 from rawr_analytics.metrics.wowy.analysis import (
     DEFAULT_WOWY_SHRINKAGE_PRIOR_GAMES,
     compute_wowy,
@@ -245,7 +246,7 @@ def build_wowy_metric_rows(
         scope_key=scope_key,
         team_filter=team_filter,
         season_type=season_type,
-        metric=WOWY_METRIC,
+        metric=Metric.WOWY,
         metric_label="WOWY",
         records=records,
     )
@@ -284,7 +285,7 @@ def build_wowy_shrunk_metric_rows(
         scope_key=scope_key,
         team_filter=team_filter,
         season_type=season_type,
-        metric=WOWY_SHRUNK_METRIC,
+        metric=Metric.WOWY_SHRUNK,
         metric_label="WOWY Shrunk",
         records=records,
         values_by_player_season=values_by_player_season,

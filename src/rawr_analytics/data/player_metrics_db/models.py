@@ -6,8 +6,7 @@ from typing import Any
 
 @dataclass(frozen=True)
 class PlayerSeasonMetricRow:
-    metric: str
-    metric_label: str
+    metric_id: str
     scope_key: str
     team_filter: str
     season_type: str

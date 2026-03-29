@@ -3,22 +3,24 @@ from __future__ import annotations
 from typing import Any, Iterable
 
 from rawr_analytics.data.player_metrics_db.models import PlayerSeasonMetricRow
+from rawr_analytics.metrics.constants import Metric
+from rawr_analytics.shared.season import SeasonType
 
 
 def build_rawr_player_season_metric_rows(
     *,
     scope_key: str,
     team_filter: str,
-    season_type: str,
+    season_type: SeasonType,
     records: Iterable[Any],
 ) -> list[PlayerSeasonMetricRow]:
     return [
         PlayerSeasonMetricRow(
-            metric="rawr",
+            metric=Metric.RAWR.value,
             metric_label="RAWR",
             scope_key=scope_key,
             team_filter=team_filter,
-            season_type=season_type,
+            season_type=season_type.value,
             season=record.season,
             player_id=record.player_id,
             player_name=record.player_name,
@@ -37,7 +39,7 @@ def build_wowy_player_season_metric_rows(
     scope_key: str,
     team_filter: str,
     season_type: str,
-    metric: str,
+    metric: Metric,
     metric_label: str,
     records: Iterable[Any],
     values_by_player_season: dict[tuple[str, int], float] | None = None,
@@ -60,7 +62,7 @@ def build_wowy_player_season_metric_rows(
             details["raw_wowy_score"] = record.wowy_score
         rows.append(
             PlayerSeasonMetricRow(
-                metric=metric,
+                metric=metric.value,
                 metric_label=metric_label,
                 scope_key=scope_key,
                 team_filter=team_filter,

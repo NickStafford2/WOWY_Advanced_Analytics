@@ -12,7 +12,6 @@ from rawr_analytics.metrics.rawr._observations import count_player_games
 from rawr_analytics.shared.season import Season, SeasonType
 from rawr_analytics.shared.team import Team
 
-RAWR_METRIC = "rawr"
 DEFAULT_RAWR_SHRINKAGE_MODE = "uniform"
 DEFAULT_RAWR_SHRINKAGE_STRENGTH = 1.0
 DEFAULT_RAWR_SHRINKAGE_MINUTE_SCALE = 48.0
@@ -21,7 +20,6 @@ __all__ = [
     "DEFAULT_RAWR_SHRINKAGE_MINUTE_SCALE",
     "DEFAULT_RAWR_SHRINKAGE_MODE",
     "DEFAULT_RAWR_SHRINKAGE_STRENGTH",
-    "RAWR_METRIC",
     "RawrSeasonCompletenessIssue",
     "build_rawr_metric_rows",
     "count_player_games",
