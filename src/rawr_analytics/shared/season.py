@@ -108,13 +108,3 @@ class Season:
 def build_season_list(start_year: int, first_year: int, season_type_str: str) -> list[Season]:
     assert start_year >= first_year, "Start year must be greater than or equal to first year"
     return [Season(str(year), season_type_str) for year in range(start_year, first_year - 1, -1)]
-
-
-def normalize_seasons(seasons: list[Season] | None) -> list[Season] | None:
-    if not seasons:
-        return None
-    unique_seasons = {(season.start_year, season.season_type): season for season in seasons}
-    return sorted(
-        unique_seasons.values(),
-        key=lambda season: (season.id, season.season_type.value),
-    )
