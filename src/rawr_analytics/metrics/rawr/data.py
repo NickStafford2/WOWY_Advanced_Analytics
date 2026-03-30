@@ -8,6 +8,7 @@ from rawr_analytics.data.player_metrics_db.models import (
     PlayerSeasonMetricRow,
 )
 from rawr_analytics.data.scope_resolver import resolve_team_seasons
+from rawr_analytics.metrics._scope_values import season_ids, team_ids
 from rawr_analytics.metrics.rawr._observations import count_player_games
 from rawr_analytics.shared.season import Season, SeasonType
 from rawr_analytics.shared.team import Team
@@ -114,15 +115,14 @@ def list_incomplete_rawr_season_warnings(
 
 def select_complete_rawr_scope_seasons(
     *,
-    teams: list[str] | None,
-    seasons: list[str] | None,
-    team_ids: list[int] | None,
+    teams: list[Team] | None,
+    seasons: list[Season] | None,
     season_type: SeasonType,
 ) -> list[str]:
     team_seasons = resolve_team_seasons(
-        teams,
-        seasons,
-        team_ids=team_ids,
+        None,
+        season_ids(seasons),
+        team_ids=team_ids(teams),
         season_type=season_type,
     )
     candidate_seasons = sorted({team_season.season.id for team_season in team_seasons})
@@ -140,15 +140,13 @@ def build_rawr_metric_rows(
     scope_key: str,
     team_filter: str,
     season_type: SeasonType,
-    teams: list[str] | None,
-    team_ids: list[int] | None,
+    teams: list[Team] | None,
     rawr_ridge_alpha: float,
 ) -> list[PlayerSeasonMetricRow]:
     from rawr_analytics.metrics.rawr.records import prepare_rawr_player_season_records
 
     records = prepare_rawr_player_season_records(
         teams=teams,
-        team_ids=team_ids,
         seasons=None,
         season_type=season_type,
         min_games=1,

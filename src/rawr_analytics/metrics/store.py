@@ -38,7 +38,7 @@ from rawr_analytics.metrics.wowy import (
 )
 from rawr_analytics.shared.scope import TeamSeasonScope
 from rawr_analytics.shared.season import SeasonType
-from rawr_analytics.shared.team import Team
+from rawr_analytics.shared.team import Team, normalize_teams, to_team_ids
 
 RefreshProgressFn = Callable[[int, int, str], None]
 DEFAULT_RAWR_RIDGE_ALPHA = 10.0
@@ -70,7 +70,7 @@ class RefreshMetricStoreResult:
 
 @dataclass(frozen=True)
 class _RefreshScope:
-    team_ids: list[int] | None
+    teams: list[Team] | None
     scope_key: str
     team_filter: str
     scope_label: str
@@ -98,10 +98,11 @@ def refresh_metric_store(
         )
 
     cached_team_seasons = _list_cached_team_scopes_for_season_type(season_type)
-    available_team_ids = sorted({scope.team.team_id for scope in cached_team_seasons})
-    team_scopes: list[list[int] | None] = [None]
+    available_teams = [Team.from_id(scope.team.team_id) for scope in cached_team_seasons]
+    unique_available_teams = normalize_teams(available_teams) or []
+    team_scopes: list[list[Team] | None] = [None]
     if include_team_scopes:
-        team_scopes.extend([[team_id] for team_id in available_team_ids])
+        team_scopes.extend([[team] for team in unique_available_teams])
 
     metric_info = _describe_metric(metric)
     source_fingerprint = _build_cache_load_fingerprint(cache_load_rows)
@@ -118,9 +119,9 @@ def refresh_metric_store(
 
     scope_results: list[RefreshScopeResult] = []
     failure_message: str | None = None
-    for index, team_ids in enumerate(team_scopes):
+    for index, teams in enumerate(team_scopes):
         scope = _build_refresh_scope(
-            team_ids=team_ids,
+            teams=teams,
             season_type=season_type,
             cached_team_seasons=cached_team_seasons,
         )
@@ -133,7 +134,7 @@ def refresh_metric_store(
             scope=scope,
             season_type=season_type,
             rawr_ridge_alpha=rawr_ridge_alpha,
-            available_team_ids=available_team_ids,
+            available_teams=unique_available_teams,
             source_fingerprint=source_fingerprint,
             build_version=build_version,
         )
@@ -164,7 +165,7 @@ def _refresh_metric_store_scope(
     scope: _RefreshScope,
     season_type: SeasonType,
     rawr_ridge_alpha: float,
-    available_team_ids: list[int],
+    available_teams: list[Team],
     source_fingerprint: str,
     build_version: str,
 ) -> tuple[RefreshScopeResult, bool]:
@@ -192,10 +193,10 @@ def _refresh_metric_store_scope(
         scope_key=scope.scope_key,
         team_filter=scope.team_filter,
         season_type=season_type,
-        team_ids=scope.team_ids,
+        teams=scope.teams,
         rawr_ridge_alpha=rawr_ridge_alpha,
     )
-    should_fail_empty_rawr_scope = metric == Metric.RAWR and scope.team_ids is None and not rows
+    should_fail_empty_rawr_scope = metric == Metric.RAWR and scope.teams is None and not rows
     if should_fail_empty_rawr_scope:
         clear_metric_scope_store(
             metric=metric.value,
@@ -231,7 +232,7 @@ def _refresh_metric_store_scope(
             team_filter=scope.team_filter,
             season_type=season_type.to_nba_format(),
             available_seasons=scope.available_seasons,
-            available_team_ids=available_team_ids,
+            available_team_ids=[team.team_id for team in available_teams],
             full_span_start_season=scope.available_seasons[0] if scope.available_seasons else None,
             full_span_end_season=scope.available_seasons[-1] if scope.available_seasons else None,
             updated_at=datetime.now(UTC).isoformat(),
@@ -252,26 +253,28 @@ def _refresh_metric_store_scope(
 
 def _build_refresh_scope(
     *,
-    team_ids: list[int] | None,
+    teams: list[Team] | None,
     season_type: SeasonType,
     cached_team_seasons: list[TeamSeasonScope],
 ) -> _RefreshScope:
-    team_filter = build_team_filter(team_ids)
+    normalized_teams = normalize_teams(teams)
+    normalized_team_ids = to_team_ids(normalized_teams)
+    team_filter = build_team_filter(normalized_teams)
     scope_key = build_scope_key(team_filter=team_filter, season_type=season_type)
     return _RefreshScope(
-        team_ids=team_ids,
+        teams=normalized_teams,
         scope_key=scope_key,
         team_filter=team_filter,
         scope_label=(
-            Team.from_id(team_ids[0]).current.abbreviation
-            if team_ids and len(team_ids) == 1
+            normalized_teams[0].current.abbreviation
+            if normalized_teams and len(normalized_teams) == 1
             else team_filter or "all-teams"
         ),
         available_seasons=sorted(
             {
                 scope.season.id
                 for scope in cached_team_seasons
-                if team_ids is None or scope.team.team_id in team_ids
+                if normalized_team_ids is None or scope.team.team_id in normalized_team_ids
             }
         ),
     )
@@ -283,7 +286,7 @@ def _build_cached_rows(
     scope_key: str,
     team_filter: str,
     season_type: SeasonType,
-    team_ids: list[int] | None,
+    teams: list[Team] | None,
     rawr_ridge_alpha: float,
 ) -> list[PlayerSeasonMetricRow]:
     if metric == Metric.RAWR:
@@ -291,8 +294,7 @@ def _build_cached_rows(
             scope_key=scope_key,
             team_filter=team_filter,
             season_type=season_type,
-            teams=None,
-            team_ids=team_ids,
+            teams=teams,
             rawr_ridge_alpha=rawr_ridge_alpha,
         )
     return build_wowy_cached_rows(
@@ -300,8 +302,7 @@ def _build_cached_rows(
         scope_key=scope_key,
         team_filter=team_filter,
         season_type=season_type,
-        teams=None,
-        team_ids=team_ids,
+        teams=teams,
         rawr_ridge_alpha=rawr_ridge_alpha,
     )
 
@@ -368,18 +369,12 @@ def _describe_metric(metric: Metric) -> MetricSummary:
 
 
 def _list_cache_load_rows_for_season_type(season_type: SeasonType) -> list[NormalizedCacheLoadRow]:
-    return [
-        row
-        for row in list_cache_load_rows()
-        if row.season.season_type == season_type
-    ]
+    return [row for row in list_cache_load_rows() if row.season.season_type == season_type]
 
 
 def _list_cached_team_scopes_for_season_type(season_type: SeasonType) -> list[TeamSeasonScope]:
     return [
-        scope
-        for scope in list_cached_team_seasons()
-        if scope.season.season_type == season_type
+        scope for scope in list_cached_team_seasons() if scope.season.season_type == season_type
     ]
 
 

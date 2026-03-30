@@ -28,8 +28,8 @@ def count_player_games(observations: list[RawrObservation]) -> dict[int, int]:
 
 def count_player_season_games(
     observations: list[RawrObservation],
-) -> dict[tuple[str, int], int]:
-    games_by_player_season: dict[tuple[str, int], int] = defaultdict(int)
+) -> dict[tuple[object, int], int]:
+    games_by_player_season: dict[tuple[object, int], int] = defaultdict(int)
     for observation in observations:
         for player_id in observation.player_weights:
             games_by_player_season[(observation.season, player_id)] += 1
@@ -38,8 +38,8 @@ def count_player_season_games(
 
 def count_player_season_minutes(
     observations: list[RawrObservation],
-) -> dict[tuple[str, int], float]:
-    minutes_by_player_season: dict[tuple[str, int], float] = {}
+) -> dict[tuple[object, int], float]:
+    minutes_by_player_season: dict[tuple[object, int], float] = {}
     for observation in observations:
         if observation.player_minutes is None:
             continue
@@ -52,10 +52,10 @@ def count_player_season_minutes(
 def build_rawr_player_season_minute_stats(
     games,
     game_players,
-) -> dict[tuple[str, int], tuple[float, float]]:
+) -> dict[tuple[object, int], tuple[float, float]]:
     season_by_game_id = {game.game_id: game.season for game in games}
-    totals: dict[tuple[str, int], float] = {}
-    counts: dict[tuple[str, int], int] = {}
+    totals: dict[tuple[object, int], float] = {}
+    counts: dict[tuple[object, int], int] = {}
 
     for player in game_players:
         season = season_by_game_id.get(player.game_id)

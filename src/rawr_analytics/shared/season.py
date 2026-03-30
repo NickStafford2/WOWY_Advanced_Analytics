@@ -44,7 +44,7 @@ class SeasonType(Enum):
         assert False, f"Unsupported season type: {self!r}"
 
 
-@dataclass
+@dataclass(frozen=True)
 class Season:
     start_year: int
     id: str  # "2014-15"
@@ -53,9 +53,11 @@ class Season:
     def __init__(self, year_string: str, season_type_str: str):
         assert season_type_str is not None and season_type_str != "", "season_type is required"
         assert year_string is not None and year_string != "", "season is required"
-        self.start_year = Season._parse_start_year(year_string)
-        self.season_type = SeasonType.parse(season_type_str)
-        self.id = Season._to_nba_api_format(self.start_year)
+        start_year = Season._parse_start_year(year_string)
+        season_type = SeasonType.parse(season_type_str)
+        object.__setattr__(self, "start_year", start_year)
+        object.__setattr__(self, "season_type", season_type)
+        object.__setattr__(self, "id", Season._to_nba_api_format(start_year))
 
     def is_playoffs(self) -> bool:
         return self.season_type == SeasonType.PLAYOFFS
@@ -106,3 +108,20 @@ class Season:
 def build_season_list(start_year: int, first_year: int, season_type_str: str) -> list[Season]:
     assert start_year >= first_year, "Start year must be greater than or equal to first year"
     return [Season(str(year), season_type_str) for year in range(start_year, first_year - 1, -1)]
+
+
+def normalize_seasons(seasons: list[Season] | None) -> list[Season] | None:
+    if not seasons:
+        return None
+    unique_seasons = {(season.start_year, season.season_type): season for season in seasons}
+    return sorted(
+        unique_seasons.values(),
+        key=lambda season: (season.id, season.season_type.value),
+    )
+
+
+def to_season_ids(seasons: list[Season] | None) -> list[str] | None:
+    normalized_seasons = normalize_seasons(seasons)
+    if normalized_seasons is None:
+        return None
+    return [season.id for season in normalized_seasons]

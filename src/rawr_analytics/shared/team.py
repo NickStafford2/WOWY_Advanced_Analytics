@@ -254,3 +254,17 @@ def _team_label(team: Team | TeamSeason) -> str:
     if isinstance(team, TeamSeason):
         return f"{team.abbreviation} ({team.team_id})"
     return f"{team.current.abbreviation} ({team.team_id})"
+
+
+def normalize_teams(teams: list[Team] | None) -> list[Team] | None:
+    if not teams:
+        return None
+    unique_teams = {team.team_id: team for team in teams}
+    return [unique_teams[team_id] for team_id in sorted(unique_teams)]
+
+
+def to_team_ids(teams: list[Team] | None) -> list[int] | None:
+    normalized_teams = normalize_teams(teams)
+    if normalized_teams is None:
+        return None
+    return [team.team_id for team in normalized_teams]

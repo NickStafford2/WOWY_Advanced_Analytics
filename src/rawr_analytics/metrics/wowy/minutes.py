@@ -2,9 +2,11 @@ from __future__ import annotations
 
 from rawr_analytics.data.game_cache.repository import load_normalized_scope_records_from_db
 from rawr_analytics.data.scope_resolver import resolve_team_seasons
+from rawr_analytics.metrics._scope_values import season_ids, team_ids
 from rawr_analytics.metrics.wowy.models import WowyPlayerStats
 from rawr_analytics.shared.minutes import build_player_minute_stats, passes_minute_filters
-from rawr_analytics.shared.season import SeasonType
+from rawr_analytics.shared.season import Season, SeasonType
+from rawr_analytics.shared.team import Team
 
 __all__ = [
     "attach_minute_stats",
@@ -15,15 +17,14 @@ __all__ = [
 
 
 def load_player_minute_stats(
-    teams: list[str] | None,
-    seasons: list[str] | None,
+    teams: list[Team] | None,
+    seasons: list[Season] | None,
     season_type: SeasonType = SeasonType.REGULAR,
-    team_ids: list[int] | None = None,
 ) -> dict[int, tuple[float, float]]:
     team_seasons = resolve_team_seasons(
-        teams,
-        seasons,
-        team_ids=team_ids,
+        None,
+        season_ids(seasons),
+        team_ids=team_ids(teams),
         season_type=season_type,
     )
     if not team_seasons:
@@ -33,18 +34,17 @@ def load_player_minute_stats(
 
 
 def load_player_season_minute_stats(
-    teams: list[str] | None,
-    seasons: list[str] | None,
+    teams: list[Team] | None,
+    seasons: list[Season] | None,
     season_type: SeasonType = SeasonType.REGULAR,
-    team_ids: list[int] | None = None,
-) -> dict[tuple[str, int], tuple[float, float]]:
-    totals: dict[tuple[str, int], float] = {}
-    counts: dict[tuple[str, int], int] = {}
+) -> dict[tuple[Season, int], tuple[float, float]]:
+    totals: dict[tuple[Season, int], float] = {}
+    counts: dict[tuple[Season, int], int] = {}
 
     team_seasons = resolve_team_seasons(
-        teams,
-        seasons,
-        team_ids=team_ids,
+        None,
+        season_ids(seasons),
+        team_ids=team_ids(teams),
         season_type=season_type,
     )
     if not team_seasons:
@@ -55,7 +55,7 @@ def load_player_season_minute_stats(
         season = seasons_by_game_id.get(player.game_id)
         if season is None or not player.appeared or player.minutes is None or player.minutes <= 0.0:
             continue
-        key = (season.id, player.player_id)
+        key = (season, player.player_id)
         totals[key] = totals.get(key, 0.0) + player.minutes
         counts[key] = counts.get(key, 0) + 1
 

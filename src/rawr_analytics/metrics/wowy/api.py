@@ -14,7 +14,8 @@ from rawr_analytics.metrics.wowy.records import (
     prepare_wowy_player_season_records,
 )
 from rawr_analytics.metrics.wowy.service import validate_filters
-from rawr_analytics.shared.season import SeasonType
+from rawr_analytics.shared.season import Season, SeasonType
+from rawr_analytics.shared.team import Team
 
 __all__ = [
     "default_filters",
@@ -65,8 +66,7 @@ def build_cached_rows(
     scope_key: str,
     team_filter: str,
     season_type: SeasonType,
-    teams: list[str] | None,
-    team_ids: list[int] | None,
+    teams: list[Team] | None,
     rawr_ridge_alpha: float,
 ) -> list[PlayerSeasonMetricRow]:
     if metric == Metric.WOWY:
@@ -75,7 +75,6 @@ def build_cached_rows(
             team_filter=team_filter,
             season_type=season_type,
             teams=teams,
-            team_ids=team_ids,
             rawr_ridge_alpha=rawr_ridge_alpha,
         )
     if metric == Metric.WOWY_SHRUNK:
@@ -84,7 +83,6 @@ def build_cached_rows(
             team_filter=team_filter,
             season_type=season_type,
             teams=teams,
-            team_ids=team_ids,
             rawr_ridge_alpha=rawr_ridge_alpha,
         )
     raise ValueError(f"Unknown WOWY metric: {metric}")
@@ -93,9 +91,8 @@ def build_cached_rows(
 def build_custom_query(
     metric: Metric,
     *,
-    teams: list[str] | None,
-    team_ids: list[int] | None,
-    seasons: list[str] | None,
+    teams: list[Team] | None,
+    seasons: list[Season] | None,
     season_type: SeasonType,
     min_games_with: int,
     min_games_without: int,
@@ -108,7 +105,6 @@ def build_custom_query(
         "rows": build_custom_query_rows(
             metric,
             teams=teams,
-            team_ids=team_ids,
             seasons=seasons,
             season_type=season_type,
             min_games_with=min_games_with,
@@ -122,9 +118,8 @@ def build_custom_query(
 def build_custom_query_rows(
     metric: Metric,
     *,
-    teams: list[str] | None,
-    team_ids: list[int] | None,
-    seasons: list[str] | None,
+    teams: list[Team] | None,
+    seasons: list[Season] | None,
     season_type: SeasonType,
     min_games_with: int,
     min_games_without: int,
@@ -133,7 +128,6 @@ def build_custom_query_rows(
 ) -> list[dict[str, Any]]:
     records = prepare_wowy_player_season_records(
         teams=teams,
-        team_ids=team_ids,
         seasons=seasons,
         season_type=season_type,
         min_games_with=min_games_with,

@@ -10,6 +10,7 @@ from rawr_analytics.metrics.rawr.models import (
 )
 from rawr_analytics.nba.models import NormalizedGamePlayerRecord, NormalizedGameRecord
 from rawr_analytics.shared.minutes import passes_minute_filters
+from rawr_analytics.shared.season import Season
 from rawr_analytics.shared.team import Team
 
 __all__ = [
@@ -24,7 +25,7 @@ def build_rawr_observations(
     games: list[NormalizedGameRecord],
     game_players: list[NormalizedGamePlayerRecord],
 ) -> tuple[list[RawrObservation], dict[int, str]]:
-    player_minutes_by_game_team: dict[tuple[str, int], dict[int, float]] = defaultdict(dict)
+    player_minutes_by_game_team: dict[tuple[str, Team], dict[int, float]] = defaultdict(dict)
     player_names: dict[int, str] = {}
 
     for player in game_players:
@@ -35,11 +36,9 @@ def build_rawr_observations(
         if minutes is None or minutes <= 0.0:
             raise ValueError(
                 f"Missing positive minutes for appeared player {player.player_id!r} "
-                f"in game {player.game_id!r} and team {player.team_id!r}"
+                f"in game {player.game_id!r} and team {player.team.current.abbreviation!r}"
             )
-        player_minutes_by_game_team[(player.game_id, player.identity_team)][player.player_id] = (
-            minutes
-        )
+        player_minutes_by_game_team[(player.game_id, player.team)][player.player_id] = minutes
 
     games_by_id: dict[str, list[NormalizedGameRecord]] = defaultdict(list)
     for game in games:
@@ -59,19 +58,17 @@ def build_rawr_observations(
 
         home_game = home_games[0]
         away_game = away_games[0]
-        home_player_minutes = player_minutes_by_game_team.get(
-            (game_id, home_game.identity_team), {}
-        )
-        away_player_minutes = player_minutes_by_game_team.get(
-            (game_id, away_game.identity_team), {}
-        )
+        home_player_minutes = player_minutes_by_game_team.get((game_id, home_game.team), {})
+        away_player_minutes = player_minutes_by_game_team.get((game_id, away_game.team), {})
         if not home_player_minutes:
             raise ValueError(
-                f"No appeared players found for game {game_id!r} and team {home_game.team_id!r}"
+                f"No appeared players found for game {game_id!r} and team "
+                f"{home_game.team.abbreviation(season=home_game.season)!r}"
             )
         if not away_player_minutes:
             raise ValueError(
-                f"No appeared players found for game {game_id!r} and team {away_game.team_id!r}"
+                f"No appeared players found for game {game_id!r} and team "
+                f"{away_game.team.abbreviation(season=away_game.season)!r}"
             )
 
         player_weights: dict[int, float] = {}
@@ -88,8 +85,8 @@ def build_rawr_observations(
                 margin=home_game.margin,
                 player_weights=player_weights,
                 player_minutes=home_player_minutes | away_player_minutes,
-                home_team_id=home_game.team_id,
-                away_team_id=away_game.team_id,
+                home_team=home_game.team,
+                away_team=away_game.team,
             )
         )
 
@@ -98,7 +95,7 @@ def build_rawr_observations(
 
 def attach_minute_stats_to_result(
     result: RawrResult,
-    player_minute_stats: dict[tuple[str, int], tuple[float, float]] | None,
+    player_minute_stats: dict[tuple[Season, int], tuple[float, float]] | None,
 ) -> RawrResult:
     if player_minute_stats is None:
         return result
@@ -132,7 +129,7 @@ def attach_minute_stats_to_result(
 
 def filter_rawr_estimates_by_minutes(
     result: RawrResult,
-    player_minute_stats: dict[tuple[str, int], tuple[float, float]] | None,
+    player_minute_stats: dict[tuple[Season, int], tuple[float, float]] | None,
     min_average_minutes: float | None,
     min_total_minutes: float | None,
 ) -> RawrResult:
@@ -163,20 +160,19 @@ def filter_rawr_estimates_by_minutes(
 def filter_rawr_scope(
     games: list[NormalizedGameRecord],
     game_players: list[NormalizedGamePlayerRecord],
-    teams: list[str] | None,
-    seasons: list[str] | None,
-    team_ids: list[int] | None = None,
+    teams: list[Team] | None,
+    seasons: list[Season] | None,
 ) -> tuple[list[NormalizedGameRecord], list[NormalizedGamePlayerRecord]]:
-    if not teams and not seasons and not team_ids:
+    if not teams and not seasons:
         return games, game_players
 
-    normalized_team_ids = _normalize_scope_team_ids(teams=teams, team_ids=team_ids)
+    normalized_teams = set(teams or [])
     normalized_seasons = set(seasons or [])
     selected_game_ids = {
         game.game_id
         for game in games
         if (not normalized_seasons or game.season in normalized_seasons)
-        and (not normalized_team_ids or game.team_id in normalized_team_ids)
+        and (not normalized_teams or game.team in normalized_teams)
     }
     if not selected_game_ids:
         raise ValueError("No games matched the requested RAWR scope")
@@ -186,14 +182,3 @@ def filter_rawr_scope(
         player for player in game_players if player.game_id in selected_game_ids
     ]
     return filtered_games, filtered_game_players
-
-
-def _normalize_scope_team_ids(
-    *,
-    teams: list[str] | None,
-    team_ids: list[int] | None,
-) -> set[int]:
-    normalized_team_ids = {int(team_id) for team_id in team_ids or [] if int(team_id) > 0}
-    if normalized_team_ids:
-        return normalized_team_ids
-    return {Team.from_abbreviation(team).team_id for team in teams or []}

@@ -8,6 +8,7 @@ from rawr_analytics.data.player_metrics_db.queries import (
     load_metric_full_span_series_rows,
     load_metric_rows,
 )
+from rawr_analytics.metrics._scope_values import season_ids
 from rawr_analytics.metrics.constants import Metric
 from rawr_analytics.metrics.rawr import (
     build_custom_query as _build_rawr_custom_query,
@@ -19,6 +20,8 @@ from rawr_analytics.metrics.scope import build_scope_key, build_team_filter
 from rawr_analytics.metrics.wowy import (
     build_custom_query as _build_wowy_custom_query,
 )
+from rawr_analytics.shared.season import Season, SeasonType
+from rawr_analytics.shared.team import Team
 
 from ._models import MetricQuery
 from ._scope import _build_filters_payload, _require_current_metric_scope
@@ -32,7 +35,7 @@ def build_metric_view_payload(
     view: MetricView,
     query: MetricQuery,
 ) -> dict[str, Any]:
-    team_filter = build_team_filter(query.team_ids)
+    team_filter = build_team_filter(query.teams)
     scope_key = build_scope_key(query.season_type, team_filter)
     if view == "player-seasons":
         payload = _build_metric_player_seasons_payload(metric, scope_key=scope_key, query=query)
@@ -54,7 +57,7 @@ def build_metric_export_table(
     view: MetricView,
     query: MetricQuery,
 ) -> tuple[str, list[dict[str, Any]]]:
-    team_filter = build_team_filter(query.team_ids)
+    team_filter = build_team_filter(query.teams)
     scope_key = build_scope_key(query.season_type, team_filter)
     if view == "cached-leaderboard":
         return _build_cached_metric_export_table_rows(metric, scope_key=scope_key, query=query)
@@ -73,7 +76,7 @@ def _build_metric_player_seasons_payload(
     rows = load_metric_rows(
         metric=metric.value,
         scope_key=scope_key,
-        seasons=query.seasons,
+        seasons=season_ids(query.seasons),
         min_average_minutes=query.min_average_minutes,
         min_total_minutes=query.min_total_minutes,
         min_sample_size=_metric_min_sample_size(query),
@@ -96,7 +99,7 @@ def _build_cached_metric_leaderboard_payload(
     rows = load_metric_rows(
         metric=metric.value,
         scope_key=scope_key,
-        seasons=query.seasons,
+        seasons=season_ids(query.seasons),
         min_average_minutes=query.min_average_minutes,
         min_total_minutes=query.min_total_minutes,
         min_sample_size=_metric_min_sample_size(query),
@@ -106,12 +109,17 @@ def _build_cached_metric_leaderboard_payload(
         metric=metric,
         metric_label=catalog_row.metric_label,
         rows=rows,
-        seasons=query.seasons or catalog_row.available_seasons,
+        seasons=season_ids(query.seasons) or catalog_row.available_seasons,
         top_n=query.top_n,
         mode="cached",
     )
-    payload["available_seasons"] = catalog_row.available_seasons
-    payload["available_teams"] = catalog_row.available_team_ids
+    payload["available_seasons"] = [
+        Season(season_id, SeasonType.parse(catalog_row.season_type).to_nba_format())
+        for season_id in catalog_row.available_seasons
+    ]
+    payload["available_teams"] = [
+        Team.from_id(team_id) for team_id in catalog_row.available_team_ids
+    ]
     return payload
 
 
@@ -125,7 +133,7 @@ def _build_cached_metric_export_table_rows(
     rows = load_metric_rows(
         metric=metric.value,
         scope_key=scope_key,
-        seasons=query.seasons,
+        seasons=season_ids(query.seasons),
         min_average_minutes=query.min_average_minutes,
         min_total_minutes=query.min_total_minutes,
         min_sample_size=_metric_min_sample_size(query),
@@ -133,7 +141,7 @@ def _build_cached_metric_export_table_rows(
     )
     table_rows = _build_ranked_table_rows(
         [_serialize_metric_player_season_row(row) for row in rows],
-        seasons=query.seasons or catalog_row.available_seasons,
+        seasons=season_ids(query.seasons) or catalog_row.available_seasons,
         top_n=None,
     )
     return catalog_row.metric_label, table_rows
@@ -179,8 +187,7 @@ def _build_custom_metric_query(
     if metric in {Metric.WOWY, Metric.WOWY_SHRUNK}:
         return _build_wowy_custom_query(
             metric,
-            teams=None,
-            team_ids=query.team_ids,
+            teams=query.teams,
             seasons=query.seasons,
             season_type=query.season_type,
             min_games_with=int(query.min_games_with or 0),
@@ -190,8 +197,7 @@ def _build_custom_metric_query(
         )
     if metric == Metric.RAWR:
         return _build_rawr_custom_query(
-            teams=None,
-            team_ids=query.team_ids,
+            teams=query.teams,
             seasons=query.seasons,
             season_type=query.season_type,
             min_games=int(query.min_games or 0),

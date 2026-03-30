@@ -22,9 +22,8 @@ from ._models import MetricQuery, build_metric_query
 
 @dataclass(frozen=True)
 class MetricFilters:
-    team: None
-    team_id: list[int] | None
-    season: list[str] | None
+    teams: list[Team] | None
+    seasons: list[Season] | None
     season_type: SeasonType
     min_average_minutes: float
     min_total_minutes: float
@@ -37,52 +36,56 @@ class MetricFilters:
 
 @dataclass(frozen=True)
 class TeamOption:
-    team_id: int
+    team: Team
     label: str
-    available_seasons: list[str]
+    available_seasons: list[Season]
 
 
 @dataclass(frozen=True)
 class MetricOptionsPayload:
     metric: str
     metric_label: str
-    available_teams: list[int]
+    available_teams: list[Team]
     team_options: list[TeamOption]
-    available_seasons: list[str]
-    available_teams_by_season: dict[str, list[int]]
+    available_seasons: list[Season]
+    available_teams_by_season: dict[str, list[Team]]
     filters: MetricFilters
 
 
 def build_metric_options_payload(
     metric: Metric,
     *,
-    team_ids: list[int] | None,
+    teams: list[Team] | None,
     season_type: SeasonType,
 ) -> MetricOptionsPayload:
-    query = build_metric_query(metric, team_ids=team_ids, season_type=season_type)
+    query = build_metric_query(metric, teams=teams, season_type=season_type)
     filters = _build_filters_payload(query)
-    team_filter = build_team_filter(team_ids)
+    team_filter = build_team_filter(teams)
     scope_key = build_scope_key(query.season_type, team_filter)
     catalog_row = _require_current_metric_scope(metric=metric, scope_key=scope_key)
+    available_teams = [Team.from_id(team_id) for team_id in catalog_row.available_team_ids]
+    available_seasons = [
+        Season(season_id, SeasonType.parse(catalog_row.season_type).to_nba_format())
+        for season_id in catalog_row.available_seasons
+    ]
     return MetricOptionsPayload(
         metric=catalog_row.metric,
         metric_label=catalog_row.metric_label,
-        available_teams=catalog_row.available_team_ids,
+        available_teams=available_teams,
         team_options=_build_team_options(
             season_type=SeasonType.parse(catalog_row.season_type),
-            available_teams=catalog_row.available_team_ids,
+            available_teams=available_teams,
             available_seasons=catalog_row.available_seasons,
         ),
-        available_seasons=catalog_row.available_seasons,
+        available_seasons=available_seasons,
         available_teams_by_season=_build_available_teams_by_season(
             season_type=SeasonType.parse(catalog_row.season_type),
-            available_teams=catalog_row.available_team_ids,
+            available_teams=available_teams,
             available_seasons=catalog_row.available_seasons,
         ),
         filters=MetricFilters(
-            team=filters.team,
-            team_id=filters.team_id,
-            season=None,
+            teams=filters.teams,
+            seasons=None,
             season_type=filters.season_type,
             min_average_minutes=filters.min_average_minutes,
             min_total_minutes=filters.min_total_minutes,
@@ -97,9 +100,8 @@ def build_metric_options_payload(
 
 def _build_filters_payload(query: MetricQuery) -> MetricFilters:
     return MetricFilters(
-        team=None,
-        team_id=query.team_ids,
-        season=query.seasons,
+        teams=query.teams,
+        seasons=query.seasons,
         season_type=query.season_type,
         min_average_minutes=query.min_average_minutes,
         min_total_minutes=query.min_total_minutes,
@@ -114,26 +116,28 @@ def _build_filters_payload(query: MetricQuery) -> MetricFilters:
 def _build_team_options(
     *,
     season_type: SeasonType,
-    available_teams: list[int],
+    available_teams: list[Team],
     available_seasons: list[str],
 ) -> list[TeamOption]:
-    available_team_set = set(available_teams)
+    available_team_ids = {team.team_id for team in available_teams}
     available_season_set = set(available_seasons)
     seasons_by_team_id: dict[int, set[str]] = {}
     for team_season in list_cached_team_seasons():
         if team_season.season.season_type != season_type:
             continue
-        if team_season.team.team_id not in available_team_set:
+        if team_season.team.team_id not in available_team_ids:
             continue
         if team_season.season.id not in available_season_set:
             continue
         seasons_by_team_id.setdefault(team_season.team.team_id, set()).add(team_season.season.id)
     return [
         TeamOption(
-            team_id=team_id,
+            team=Team.from_id(team_id),
             label=Team.from_id(team_id).current.abbreviation,
             available_seasons=[
-                season for season in available_seasons if season in seasons_by_team_id[team_id]
+                Season(season, season_type.to_nba_format())
+                for season in available_seasons
+                if season in seasons_by_team_id[team_id]
             ],
         )
         for team_id in sorted(
@@ -146,10 +150,10 @@ def _build_team_options(
 def _build_available_teams_by_season(
     *,
     season_type: SeasonType,
-    available_teams: list[int],
+    available_teams: list[Team],
     available_seasons: list[str],
-) -> dict[str, list[int]]:
-    available_team_set = set(available_teams)
+) -> dict[str, list[Team]]:
+    available_team_ids = {team.team_id for team in available_teams}
     available_season_set = set(available_seasons)
     teams_by_season: dict[str, set[int]] = {season: set() for season in available_seasons}
     for team_season in list_cached_team_seasons():
@@ -157,12 +161,12 @@ def _build_available_teams_by_season(
             continue
         if team_season.season.id not in available_season_set:
             continue
-        if team_season.team.team_id not in available_team_set:
+        if team_season.team.team_id not in available_team_ids:
             continue
         teams_by_season.setdefault(team_season.season.id, set()).add(team_season.team.team_id)
     return {
         season: [
-            team_id for team_id in available_teams if team_id in teams_by_season.get(season, set())
+            team for team in available_teams if team.team_id in teams_by_season.get(season, set())
         ]
         for season in available_seasons
     }

@@ -21,7 +21,8 @@ from rawr_analytics.metrics.wowy.models import (
     WowyGameRecord,
     WowyPlayerSeasonRecord,
 )
-from rawr_analytics.shared.season import SeasonType
+from rawr_analytics.shared.season import Season, SeasonType
+from rawr_analytics.shared.team import Team
 
 type WowyPlayerSeasonRow = dict[str, str | int | float | None]
 
@@ -42,17 +43,17 @@ def build_wowy_player_season_records(
     min_games_with: int,
     min_games_without: int,
     player_names: dict[int, str] | None = None,
-    player_season_minute_stats: dict[tuple[str, int], tuple[float, float]] | None = None,
+    player_season_minute_stats: dict[tuple[Season, int], tuple[float, float]] | None = None,
     min_average_minutes: float | None = None,
     min_total_minutes: float | None = None,
 ) -> list[WowyPlayerSeasonRecord]:
     player_names = player_names or {}
-    games_by_season: dict[str, list[WowyGameRecord]] = {}
+    games_by_season: dict[Season, list[WowyGameRecord]] = {}
     for game in games:
         games_by_season.setdefault(game.season, []).append(game)
 
     records: list[WowyPlayerSeasonRecord] = []
-    for season in sorted(games_by_season):
+    for season in sorted(games_by_season, key=lambda item: item.id):
         results = compute_wowy(games_by_season[season])
         results = filter_results(
             results,
@@ -130,7 +131,7 @@ def serialize_wowy_player_season_records(
 
 def available_wowy_seasons(
     records: list[WowyPlayerSeasonRecord],
-) -> list[str]:
+) -> list[Season]:
     return sorted({record.season for record in records})
 
 
@@ -191,25 +192,22 @@ def build_wowy_span_chart_rows(
 
 
 def prepare_wowy_player_season_records(
-    teams: list[str] | None,
-    seasons: list[str] | None,
+    teams: list[Team] | None,
+    seasons: list[Season] | None,
     season_type: SeasonType,
     min_games_with: int,
     min_games_without: int,
-    team_ids: list[int] | None = None,
     min_average_minutes: float | None = None,
     min_total_minutes: float | None = None,
 ) -> list[WowyPlayerSeasonRecord]:
     games, player_names = load_wowy_game_records(
         teams=teams,
         seasons=seasons,
-        team_ids=team_ids,
         season_type=season_type,
     )
     player_season_minute_stats = load_player_season_minute_stats(
         teams=teams,
         seasons=seasons,
-        team_ids=team_ids,
         season_type=season_type,
     )
     return build_wowy_player_season_records(
@@ -228,14 +226,12 @@ def build_wowy_metric_rows(
     scope_key: str,
     team_filter: str,
     season_type: SeasonType,
-    teams: list[str] | None,
-    team_ids: list[int] | None,
+    teams: list[Team] | None,
     rawr_ridge_alpha: float,
 ) -> list[PlayerSeasonMetricRow]:
     del rawr_ridge_alpha
     records = prepare_wowy_player_season_records(
         teams=teams,
-        team_ids=team_ids,
         seasons=None,
         season_type=season_type,
         min_games_with=0,
@@ -258,14 +254,12 @@ def build_wowy_shrunk_metric_rows(
     scope_key: str,
     team_filter: str,
     season_type: SeasonType,
-    teams: list[str] | None,
-    team_ids: list[int] | None,
+    teams: list[Team] | None,
     rawr_ridge_alpha: float,
 ) -> list[PlayerSeasonMetricRow]:
     del rawr_ridge_alpha
     records = prepare_wowy_player_season_records(
         teams=teams,
-        team_ids=team_ids,
         seasons=None,
         season_type=season_type,
         min_games_with=0,

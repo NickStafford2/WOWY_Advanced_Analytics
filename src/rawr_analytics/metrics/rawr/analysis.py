@@ -17,6 +17,8 @@ from rawr_analytics.metrics.rawr.models import (
     RidgeTuningResult,
     RidgeTuningSummary,
 )
+from rawr_analytics.shared.season import Season
+from rawr_analytics.shared.team import Team
 
 ProgressFn = Callable[[int, int, str | None], None]
 ShrinkageMode = str
@@ -95,7 +97,7 @@ def fit_player_rawr(
 
 def fit_regression_model(
     observations: list[RawrObservation],
-    player_keys: list[tuple[str, int]],
+    player_keys: list[tuple[Season, int]],
     ridge_alpha: float = 1.0,
     shrinkage_mode: ShrinkageMode = "uniform",
     shrinkage_strength: float = 1.0,
@@ -109,17 +111,11 @@ def fit_regression_model(
     )
     team_seasons = sorted(
         {
-            team_season_key(
-                observation.home_team_id,
-                observation.season,
-            )
+            _team_season_key(observation.home_team, observation.season)
             for observation in observations
         }
         | {
-            team_season_key(
-                observation.away_team_id,
-                observation.season,
-            )
+            _team_season_key(observation.away_team, observation.season)
             for observation in observations
         }
     )
@@ -151,14 +147,8 @@ def fit_regression_model(
     completed_steps = 0
 
     for observation in observations:
-        home_team_season = team_season_key(
-            observation.home_team_id,
-            observation.season,
-        )
-        away_team_season = team_season_key(
-            observation.away_team_id,
-            observation.season,
-        )
+        home_team_season = _team_season_key(observation.home_team, observation.season)
+        away_team_season = _team_season_key(observation.away_team, observation.season)
         accumulate_row(
             gram=gram,
             target=target,
@@ -243,14 +233,8 @@ def predict_margin(
         season=observation.season,
         player_weights=observation.player_weights,
         home_court_sign=1.0,
-        team_effect_key=team_season_key(
-            observation.home_team_id,
-            observation.season,
-        ),
-        opponent_effect_key=team_season_key(
-            observation.away_team_id,
-            observation.season,
-        ),
+        team_effect_key=_team_season_key(observation.home_team, observation.season),
+        opponent_effect_key=_team_season_key(observation.away_team, observation.season),
     )
     return sum(
         weight * coefficient for weight, coefficient in zip(row, model.coefficients, strict=True)
@@ -320,14 +304,14 @@ def tune_ridge_alpha(
 
 def build_feature_row(
     feature_count: int,
-    player_index: dict[tuple[str, int], int],
-    team_effect_index: dict[str, int],
-    opponent_effect_index: dict[str, int],
-    season: str,
+    player_index: dict[tuple[Season, int], int],
+    team_effect_index: dict[tuple[Team, Season], int],
+    opponent_effect_index: dict[tuple[Team, Season], int],
+    season: Season,
     player_weights: dict[int, float],
     home_court_sign: float,
-    team_effect_key: str,
-    opponent_effect_key: str,
+    team_effect_key: tuple[Team, Season],
+    opponent_effect_key: tuple[Team, Season],
 ) -> np.ndarray:
     row = np.zeros(feature_count, dtype=float)
     row[0] = 1.0
@@ -357,25 +341,25 @@ def validate_shrinkage_settings(
 def build_player_penalties(
     *,
     observations: list[RawrObservation],
-    player_keys: list[tuple[str, int]],
+    player_keys: list[tuple[Season, int]],
     ridge_alpha: float,
     shrinkage_mode: ShrinkageMode,
     shrinkage_strength: float,
     shrinkage_minute_scale: float = 48.0,
-) -> dict[tuple[str, int], float]:
+) -> dict[tuple[Season, int], float]:
     if shrinkage_mode == "uniform":
         return {player_key: ridge_alpha for player_key in player_keys}
 
     if shrinkage_mode == "game-count":
         games_by_player_season = count_player_season_games(observations)
-        penalties: dict[tuple[str, int], float] = {}
+        penalties: dict[tuple[Season, int], float] = {}
         for player_key in player_keys:
             games = games_by_player_season[player_key]
             penalties[player_key] = ridge_alpha / (games**shrinkage_strength)
         return penalties
 
     minutes_by_player_season = count_player_season_minutes(observations)
-    penalties: dict[tuple[str, int], float] = {}
+    penalties: dict[tuple[Season, int], float] = {}
     for player_key in player_keys:
         if player_key not in minutes_by_player_season:
             raise ValueError(
@@ -397,8 +381,8 @@ def accumulate_row(
     gram += np.outer(row, row)
 
 
-def team_season_key(team: int | str, season: str) -> str:
-    return f"{team}:{season}"
+def _team_season_key(team: Team, season: Season) -> tuple[Team, Season]:
+    return team, season
 
 
 def solve_linear_system(

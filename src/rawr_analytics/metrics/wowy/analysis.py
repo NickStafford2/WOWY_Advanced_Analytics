@@ -3,6 +3,8 @@ from __future__ import annotations
 from typing import Callable, overload
 
 from rawr_analytics.metrics.wowy.models import WowyGameRecord, WowyPlayerStats
+from rawr_analytics.shared.season import Season
+from rawr_analytics.shared.team import Team
 
 ProgressFn = Callable[[int, int, str | None], None]
 DEFAULT_WOWY_SHRINKAGE_PRIOR_GAMES = 10.0
@@ -22,14 +24,14 @@ def compute_wowy(
     for index, player in enumerate(sorted_players, start=1):
         margins_with: list[float] = []
         margins_without: list[float] = []
-        team_seasons_with_player: set[tuple[int | str, str]] = set()
+        team_seasons_with_player: set[tuple[Team, Season]] = set()
 
         for game in games:
             if player in game.players:
-                team_seasons_with_player.add((game.team_id, game.season))
+                team_seasons_with_player.add((game.team, game.season))
 
         for game in games:
-            if (game.team_id, game.season) not in team_seasons_with_player:
+            if (game.team, game.season) not in team_seasons_with_player:
                 continue
             if player in game.players:
                 margins_with.append(game.margin)

@@ -16,13 +16,14 @@ from rawr_analytics.metrics.wowy import (
     validate_filters as _validate_wowy_filters,
 )
 from rawr_analytics.shared.season import Season, SeasonType
+from rawr_analytics.shared.team import Team
 
 
 @dataclass(frozen=True)
 class MetricQuery:
     season_type: SeasonType
-    team_ids: list[int] | None
-    seasons: list[str] | None
+    teams: list[Team] | None
+    seasons: list[Season] | None
     top_n: int
     min_average_minutes: float
     min_total_minutes: float
@@ -35,8 +36,8 @@ class MetricQuery:
 def build_metric_query(
     metric: Metric,
     *,
-    team_ids: list[int] | None = None,
-    seasons: list[str] | None = None,
+    teams: list[Team] | None = None,
+    seasons: list[Season] | None = None,
     season_type: SeasonType = SeasonType.REGULAR,
     top_n: int | None = None,
     min_average_minutes: float | None = None,
@@ -47,9 +48,19 @@ def build_metric_query(
     min_games_without: int | None = None,
 ) -> MetricQuery:
     defaults = _metric_default_filters(metric)
-    normalized_team_ids = sorted({team_id for team_id in team_ids or [] if team_id > 0}) or None
+    normalized_teams = (
+        sorted(
+            {team.team_id: team for team in teams or []}.values(),
+            key=lambda team: team.team_id,
+        )
+        or None
+    )
     normalized_seasons = (
-        [Season(season, season_type.to_nba_format()).id for season in seasons] if seasons else None
+        sorted(
+            {(season.start_year, season.season_type): season for season in seasons}.values(),
+            key=lambda season: (season.id, season.season_type.value),
+        )
+        or None
     )
     normalized_season_type = season_type
     normalized_top_n = int(top_n if top_n is not None else defaults["top_n"])
@@ -76,7 +87,7 @@ def build_metric_query(
         )
         return MetricQuery(
             season_type=normalized_season_type,
-            team_ids=normalized_team_ids,
+            teams=normalized_teams,
             seasons=normalized_seasons,
             top_n=normalized_top_n,
             min_average_minutes=normalized_min_average_minutes,
@@ -99,7 +110,7 @@ def build_metric_query(
         )
         return MetricQuery(
             season_type=normalized_season_type,
-            team_ids=normalized_team_ids,
+            teams=normalized_teams,
             seasons=normalized_seasons,
             top_n=normalized_top_n,
             min_average_minutes=normalized_min_average_minutes,

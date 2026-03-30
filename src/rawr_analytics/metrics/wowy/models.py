@@ -2,14 +2,17 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
+from rawr_analytics.shared.season import Season
+from rawr_analytics.shared.team import Team
+
 
 @dataclass(frozen=True)
 class WowyGameRecord:
     game_id: str
-    season: str
+    season: Season
     margin: float
     players: set[int]
-    team_id: int
+    team: Team
 
 
 @dataclass(frozen=True)
@@ -25,7 +28,7 @@ class WowyPlayerStats:
 
 @dataclass(frozen=True)
 class WowyPlayerSeasonRecord:
-    season: str
+    season: Season
     player_id: int
     player_name: str
     games_with: int
