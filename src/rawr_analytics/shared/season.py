@@ -118,10 +118,3 @@ def normalize_seasons(seasons: list[Season] | None) -> list[Season] | None:
         unique_seasons.values(),
         key=lambda season: (season.id, season.season_type.value),
     )
-
-
-def to_season_ids(seasons: list[Season] | None) -> list[str] | None:
-    normalized_seasons = normalize_seasons(seasons)
-    if normalized_seasons is None:
-        return None
-    return [season.id for season in normalized_seasons]
