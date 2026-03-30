@@ -12,6 +12,7 @@ from rawr_analytics.metrics.wowy.models import WowyGameRecord
 from rawr_analytics.progress import TerminalProgressBar, print_status_box
 from rawr_analytics.shared.filters import validate_top_n_and_minutes
 from rawr_analytics.shared.scope import format_scope
+from rawr_analytics.shared.season import SeasonType
 
 __all__ = [
     "build_wowy_report",
@@ -117,6 +118,11 @@ def prepare_and_run_wowy(
     args,
 ) -> str:
     """CLI entrypoint for WOWY using the cache-managed pipeline."""
+    season_type = (
+        args.season_type
+        if isinstance(args.season_type, SeasonType)
+        else SeasonType.parse(args.season_type)
+    )
     validate_filters(
         args.min_games_with,
         args.min_games_without,
@@ -137,12 +143,12 @@ def prepare_and_run_wowy(
     games, player_names = load_wowy_game_records(
         teams=args.team,
         seasons=args.season,
-        season_type=args.season_type,
+        season_type=season_type,
     )
     player_minute_stats = load_player_minute_stats(
         teams=args.team,
         seasons=args.season,
-        season_type=args.season_type,
+        season_type=season_type,
     )
     print(f"[2/3] loaded {len(games)} WOWY game rows from cache")
     print("[3/3] computing WOWY results")

@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+from dataclasses import asdict
 from typing import Any
 
 from rawr_analytics.metrics.constants import Metric
@@ -69,10 +70,12 @@ def create_app():
     def get_metric_options(metric: str):
         return run_json(
             lambda: jsonify(
-                build_metric_options_payload(
-                    Metric.parse(metric),
-                    team_ids=_parse_positive_int_list(request.args.getlist("team_id")),
-                    season_type=request.args.get("season_type", "Regular Season"),
+                asdict(
+                    build_metric_options_payload(
+                        Metric.parse(metric),
+                        team_ids=_parse_positive_int_list(request.args.getlist("team_id")),
+                        season_type=request.args.get("season_type", "Regular Season"),
+                    )
                 )
             )
         )

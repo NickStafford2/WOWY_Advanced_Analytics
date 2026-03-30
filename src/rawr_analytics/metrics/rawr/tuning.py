@@ -13,6 +13,7 @@ from rawr_analytics.metrics.wowy.models import WowyPlayerSeasonRecord
 from rawr_analytics.metrics.wowy.records import prepare_wowy_player_season_records
 from rawr_analytics.nba.source.cache import DEFAULT_SOURCE_DATA_DIR
 from rawr_analytics.progress import TerminalProgressBar, print_status_box
+from rawr_analytics.shared.season import SeasonType
 
 
 @dataclass(frozen=True)
@@ -479,7 +480,7 @@ def build_summary(args, results: list[ComparisonResult]) -> str:
         ),
         (
             f"team_filter={','.join(args.team) if args.team else 'all-teams'} "
-            f"season_type={args.season_type}"
+            f"season_type={args.season_type.to_nba_format()}"
         ),
     ]
     if best is not None:
@@ -500,6 +501,7 @@ def build_summary(args, results: list[ComparisonResult]) -> str:
 def main(argv: list[str] | None = None) -> int:
     parser = build_parser()
     args = parser.parse_args(argv)
+    args.season_type = SeasonType.parse(args.season_type)
     args.rawr_ridge_values = parse_float_grid(args.rawr_ridge_grid)
     args.shrinkage_strength_values = parse_float_grid(args.shrinkage_strength_grid)
     args.shrinkage_minute_scale_values = parse_float_grid(args.shrinkage_minute_scale_grid)

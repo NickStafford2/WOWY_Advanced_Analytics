@@ -21,6 +21,7 @@ from rawr_analytics.metrics.wowy.models import (
     WowyGameRecord,
     WowyPlayerSeasonRecord,
 )
+from rawr_analytics.shared.season import SeasonType
 
 type WowyPlayerSeasonRow = dict[str, str | int | float | None]
 
@@ -192,7 +193,7 @@ def build_wowy_span_chart_rows(
 def prepare_wowy_player_season_records(
     teams: list[str] | None,
     seasons: list[str] | None,
-    season_type: str,
+    season_type: SeasonType,
     min_games_with: int,
     min_games_without: int,
     team_ids: list[int] | None = None,
@@ -226,7 +227,7 @@ def build_wowy_metric_rows(
     *,
     scope_key: str,
     team_filter: str,
-    season_type: str,
+    season_type: SeasonType,
     teams: list[str] | None,
     team_ids: list[int] | None,
     rawr_ridge_alpha: float,
@@ -256,7 +257,7 @@ def build_wowy_shrunk_metric_rows(
     *,
     scope_key: str,
     team_filter: str,
-    season_type: str,
+    season_type: SeasonType,
     teams: list[str] | None,
     team_ids: list[int] | None,
     rawr_ridge_alpha: float,

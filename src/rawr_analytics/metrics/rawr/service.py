@@ -16,6 +16,7 @@ from rawr_analytics.nba.models import NormalizedGamePlayerRecord, NormalizedGame
 from rawr_analytics.progress import TerminalProgressBar, print_status_box
 from rawr_analytics.shared.filters import validate_top_n_and_minutes
 from rawr_analytics.shared.scope import TeamSeasonScope, format_scope
+from rawr_analytics.shared.season import SeasonType
 
 __all__ = [
     "build_tuning_report",
@@ -167,6 +168,11 @@ def _require_team_id(team_id: int | None, game_id: str, field_name: str) -> int:
 
 def prepare_and_run_rawr(args) -> str:
     """CLI entrypoint for RAWR using the cache-managed pipeline."""
+    season_type = (
+        args.season_type
+        if isinstance(args.season_type, SeasonType)
+        else SeasonType.parse(args.season_type)
+    )
     validate_filters(
         min_games=args.min_games,
         ridge_alpha=args.ridge_alpha,
@@ -193,7 +199,7 @@ def prepare_and_run_rawr(args) -> str:
         teams=args.team,
         seasons=args.season,
         team_ids=None,
-        season_type=args.season_type,
+        season_type=season_type,
     )
     if not complete_seasons:
         raise ValueError("No complete cached seasons matched the requested RAWR scope")
@@ -201,7 +207,7 @@ def prepare_and_run_rawr(args) -> str:
     requested_team_seasons = resolve_team_seasons(
         args.team,
         complete_seasons,
-        season_type=args.season_type,
+        season_type=season_type,
     )
     if not requested_team_seasons:
         raise ValueError("No cached data matched the requested scope")

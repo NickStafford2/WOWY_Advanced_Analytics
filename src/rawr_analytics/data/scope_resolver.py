@@ -15,7 +15,7 @@ def resolve_team_seasons(
     seasons: list[str] | None,
     *,
     team_ids: list[int] | None = None,
-    season_type: str | None = None,
+    season_type: SeasonType | None = None,
 ) -> list[TeamSeasonScope]:
     normalized_team_ids = sorted({team_id for team_id in team_ids or [] if team_id > 0}) or None
     normalized_seasons = sorted(dict.fromkeys(seasons or [])) or None
@@ -73,7 +73,7 @@ def resolve_team_seasons(
     return resolved
 
 
-def _normalize_season_type(season_type: str | None) -> SeasonType:
+def _normalize_season_type(season_type: SeasonType | None) -> SeasonType:
     if season_type is None:
         return SeasonType.REGULAR
-    return SeasonType.parse(season_type)
+    return season_type

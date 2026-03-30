@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import argparse
-from pathlib import Path
 
 from rawr_analytics.metrics.wowy.service import prepare_and_run_wowy
 

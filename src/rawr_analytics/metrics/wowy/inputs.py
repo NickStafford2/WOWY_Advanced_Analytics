@@ -4,6 +4,7 @@ from rawr_analytics.data.game_cache.repository import load_normalized_scope_reco
 from rawr_analytics.data.scope_resolver import resolve_team_seasons
 from rawr_analytics.metrics.wowy.derive import derive_wowy_games
 from rawr_analytics.metrics.wowy.models import WowyGameRecord
+from rawr_analytics.shared.season import SeasonType
 
 __all__ = ["load_wowy_game_records"]
 
@@ -13,7 +14,7 @@ def load_wowy_game_records(
     seasons: list[str] | None,
     *,
     team_ids: list[int] | None = None,
-    season_type: str = "Regular Season",
+    season_type: SeasonType = SeasonType.REGULAR,
 ) -> tuple[list[WowyGameRecord], dict[int, str]]:
     team_seasons = resolve_team_seasons(
         teams,

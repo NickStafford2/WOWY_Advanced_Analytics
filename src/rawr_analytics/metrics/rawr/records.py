@@ -12,6 +12,7 @@ from rawr_analytics.metrics.rawr.inputs import (
 )
 from rawr_analytics.metrics.rawr.models import RawrPlayerSeasonRecord
 from rawr_analytics.shared.scope import TeamSeasonScope
+from rawr_analytics.shared.season import SeasonType
 
 __all__ = [
     "prepare_rawr_player_season_records",
@@ -23,7 +24,7 @@ def prepare_rawr_player_season_records(
     teams: list[str] | None,
     seasons: list[str] | None,
     team_ids: list[int] | None = None,
-    season_type: str,
+    season_type: SeasonType,
     min_games: int,
     ridge_alpha: float,
     shrinkage_mode: str,

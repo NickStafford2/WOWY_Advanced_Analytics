@@ -56,7 +56,7 @@ def list_expected_rawr_teams_for_season(season: str) -> list[str]:
 def list_incomplete_rawr_seasons(
     *,
     seasons: list[str],
-    season_type: str,
+    season_type: SeasonType,
 ) -> list[RawrSeasonCompletenessIssue]:
     summaries = _summarize_rawr_cache_seasons(seasons=seasons, season_type=season_type)
     issues: list[RawrSeasonCompletenessIssue] = []
@@ -78,7 +78,7 @@ def list_incomplete_rawr_seasons(
 def list_complete_rawr_seasons(
     *,
     seasons: list[str],
-    season_type: str,
+    season_type: SeasonType,
 ) -> set[str]:
     summaries = _summarize_rawr_cache_seasons(seasons=seasons, season_type=season_type)
     return {
@@ -95,7 +95,7 @@ def list_complete_rawr_seasons(
 def list_incomplete_rawr_season_warnings(
     *,
     seasons: list[str] | None = None,
-    season_type: str,
+    season_type: SeasonType,
 ) -> list[str]:
     requested_seasons = seasons or _list_cached_rawr_seasons_for_type(season_type)
     summaries = _summarize_rawr_cache_seasons(
@@ -117,7 +117,7 @@ def select_complete_rawr_scope_seasons(
     teams: list[str] | None,
     seasons: list[str] | None,
     team_ids: list[int] | None,
-    season_type: str,
+    season_type: SeasonType,
 ) -> list[str]:
     team_seasons = resolve_team_seasons(
         teams,
@@ -139,7 +139,7 @@ def build_rawr_metric_rows(
     *,
     scope_key: str,
     team_filter: str,
-    season_type: str,
+    season_type: SeasonType,
     teams: list[str] | None,
     team_ids: list[int] | None,
     rawr_ridge_alpha: float,
@@ -170,13 +170,12 @@ def build_rawr_metric_rows(
 def _summarize_rawr_cache_seasons(
     *,
     seasons: list[str],
-    season_type: str,
+    season_type: SeasonType,
 ) -> dict[str, _SeasonCacheSummary]:
-    normalized_season_type = SeasonType.parse(season_type)
     season_filter = set(seasons)
     summaries: dict[str, _SeasonCacheSummary] = {}
     for row in list_cache_load_rows():
-        if row.season.id not in season_filter or row.season.season_type != normalized_season_type:
+        if row.season.id not in season_filter or row.season.season_type != season_type:
             continue
         summary = summaries.setdefault(
             row.season.id,
@@ -253,12 +252,11 @@ def _build_rawr_warning_messages(*, season: str, summary: _SeasonCacheSummary) -
     return warnings
 
 
-def _list_cached_rawr_seasons_for_type(season_type: str) -> list[str]:
-    normalized_season_type = SeasonType.parse(season_type)
+def _list_cached_rawr_seasons_for_type(season_type: SeasonType) -> list[str]:
     return sorted(
         {
             row.season.id
             for row in list_cache_load_rows()
-            if row.season.season_type == normalized_season_type
+            if row.season.season_type == season_type
         }
     )

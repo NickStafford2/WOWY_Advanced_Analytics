@@ -1,18 +1,15 @@
 from __future__ import annotations
 
-from rawr_analytics.nba.season_types import canonicalize_season_type
+from rawr_analytics.shared.season import SeasonType
+
+
+def build_team_filter(team_ids: list[int] | None) -> str:
+    normalized_team_ids = sorted({team_id for team_id in team_ids or [] if team_id > 0})
+    return ",".join(str(team_id) for team_id in normalized_team_ids)
 
 
 def build_scope_key(
-    *,
-    team_ids: list[int] | None,
-    season_type: str,
-) -> tuple[str, str]:
-    season_type = canonicalize_season_type(season_type)
-    normalized_team_ids = sorted({team_id for team_id in team_ids or [] if team_id > 0})
-    team_filter = ",".join(str(team_id) for team_id in normalized_team_ids)
-    team_key = team_filter or "all-teams"
-    return (
-        f"team_ids={team_key}|season_type={season_type}",
-        team_filter,
-    )
+    season_type: SeasonType,
+    team_filter: str = "all-teams",
+) -> str:
+    return f"team_ids={team_filter}|season_type={season_type.value}"

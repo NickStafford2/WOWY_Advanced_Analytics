@@ -14,6 +14,7 @@ from rawr_analytics.metrics.wowy.records import (
     prepare_wowy_player_season_records,
 )
 from rawr_analytics.metrics.wowy.service import validate_filters
+from rawr_analytics.shared.season import SeasonType
 
 __all__ = [
     "default_filters",
@@ -63,7 +64,7 @@ def build_cached_rows(
     *,
     scope_key: str,
     team_filter: str,
-    season_type: str,
+    season_type: SeasonType,
     teams: list[str] | None,
     team_ids: list[int] | None,
     rawr_ridge_alpha: float,
@@ -95,7 +96,7 @@ def build_custom_query(
     teams: list[str] | None,
     team_ids: list[int] | None,
     seasons: list[str] | None,
-    season_type: str,
+    season_type: SeasonType,
     min_games_with: int,
     min_games_without: int,
     min_average_minutes: float | None,
@@ -124,7 +125,7 @@ def build_custom_query_rows(
     teams: list[str] | None,
     team_ids: list[int] | None,
     seasons: list[str] | None,
-    season_type: str,
+    season_type: SeasonType,
     min_games_with: int,
     min_games_without: int,
     min_average_minutes: float | None,

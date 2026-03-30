@@ -5,6 +5,7 @@ import subprocess
 import sys
 
 from rawr_analytics.data.constants import DB_PATH
+from rawr_analytics.shared.season import SeasonType
 
 DEFAULT_START_YEAR = 2025
 DEFAULT_FIRST_YEAR = 1998
@@ -100,7 +101,7 @@ def build_cache_command(
     *,
     start_year: int,
     first_year: int,
-    season_type: str,
+    season_type: SeasonType,
     teams: list[str] | None,
 ) -> list[str]:
     command = [
@@ -112,8 +113,8 @@ def build_cache_command(
         "--first-year",
         str(first_year),
     ]
-    if season_type != "Regular Season":
-        command.extend(["--season-type", season_type])
+    if season_type != SeasonType.REGULAR:
+        command.extend(["--season-type", season_type.value])
     if teams:
         command.extend(["--teams", *teams])
     return command
@@ -121,7 +122,7 @@ def build_cache_command(
 
 def build_refresh_command(
     *,
-    season_type: str,
+    season_type: SeasonType,
     metrics: list[str] | None,
 ) -> list[str]:
     command = [
@@ -129,8 +130,8 @@ def build_refresh_command(
         "-m",
         "wowy.web.refresh_cli",
     ]
-    if season_type != "Regular Season":
-        command.extend(["--season-type", season_type])
+    if season_type != SeasonType.REGULAR:
+        command.extend(["--season-type", season_type.value])
     for metric in metrics or []:
         command.extend(["--metric", metric])
     return command

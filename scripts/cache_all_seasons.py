@@ -4,6 +4,8 @@ import argparse
 import subprocess
 import sys
 
+from rawr_analytics.shared.season import SeasonType
+
 DEFAULT_START_YEAR = 2024
 DEFAULT_FIRST_YEAR = 1946
 
@@ -22,10 +24,7 @@ def build_parser() -> argparse.ArgumentParser:
         "--first-year",
         type=int,
         default=DEFAULT_FIRST_YEAR,
-        help=(
-            "Earliest season start year to cache, inclusive "
-            f"(default: {DEFAULT_FIRST_YEAR})"
-        ),
+        help=(f"Earliest season start year to cache, inclusive (default: {DEFAULT_FIRST_YEAR})"),
     )
     parser.add_argument(
         "--season-type",
@@ -59,13 +58,13 @@ def build_season_strings(start_year: int, first_year: int) -> list[str]:
 
 def build_command(
     season: str,
-    season_type: str,
+    season_type: SeasonType,
     teams: list[str] | None,
     skip_combine: bool,
 ) -> list[str]:
     command = [sys.executable, "scripts/cache_season_data.py", season]
-    if season_type != "Regular Season":
-        command.extend(["--season-type", season_type])
+    if season_type != SeasonType.REGULAR:
+        command.extend(["--season-type", season_type.value])
     if teams:
         command.extend(["--teams", *teams])
     if skip_combine:
@@ -83,12 +82,10 @@ def main(argv: list[str] | None = None) -> int:
     for index, season in enumerate(seasons, start=1):
         print(f"[{index}/{total}] caching {season}")
         try:
+            season_type = SeasonType.parse(args.season_type)
             subprocess.run(
                 build_command(
-                    season=season,
-                    season_type=args.season_type,
-                    teams=args.teams,
-                    skip_combine=args.skip_combine,
+                    season, season_type, teams=args.teams, skip_combine=args.skip_combine
                 ),
                 check=True,
             )
