@@ -16,22 +16,22 @@ For every change, know that I want stronger package boundries with simpler data 
 - For multi-step or full-database/full-season jobs, include a status bar or staged progress indicator that makes it clear the process is advancing and roughly how much is done.
 
 ## Code Philosophy
+- Keep It Simple Stupid.
 - Do not ship long-running commands that appear silent or hung during normal execution.
 - Keep changes simple, readable, and focused.
 - Prefer quality code over backwards compatibility.
-- Prefer small pure functions.
-- Prefer private functions and files in submodules.
+- Prefer small stateless functions with single responsibility.
 - Follow Python 3.12 best practices.
-- Use the absolute minimal amount of try catch blocks or inheritance
-- Keep It Simple Stupid. 
+- Avoid writing code you expect will be needed later.
 - Do not add unneeded layers of abstraction or complexity.
-- Avoid function anonymous functions. Prefer decision trees and if statements. 
+- Avoid anonymous functions. Prefer decision trees and if statements.
 
 ## Code Rules
 - All functions not used outside a module must be preceded by an underscore: _foo()
 - Try Catch blocks are highly discouraged. are only to be used for I/O outside of this program. This includes CLI prompts, http requests, and parsing user generated strings. 
 - Inheritance is avoided as much as possible. Only use when it is required by the programming language (such as creating Enum's) or extremely inconvienient
 - Assert statements are good. Even in production. They inform me, the programmer if anything very strange is going on that requires me to rethink my program.
+- Use explicit types instead of Dictionaries containing strings and objects. 
 - Ask for special permission to override any of the above rules
 
 ## Test boundaries
