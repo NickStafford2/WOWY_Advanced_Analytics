@@ -1,4 +1,5 @@
 # AGENTS.md
+I am in the middle of a major rebuild. There are many intentional breaking changes as I refactor. They type system especially is changing rapidly.
 For every change, know that I want stronger package boundries with simpler data contracts. Separation of concerns and simple programs. 
 
 ## Security and scope
@@ -16,26 +17,26 @@ For every change, know that I want stronger package boundries with simpler data 
 - For multi-step or full-database/full-season jobs, include a status bar or staged progress indicator that makes it clear the process is advancing and roughly how much is done.
 
 ## Code Philosophy
-- Keep It Simple Stupid.
-- Do not ship long-running commands that appear silent or hung during normal execution.
-- Keep changes simple, readable, and focused.
-- Prefer quality code over backwards compatibility.
+- Keep It Simple Stupid. (UTMOST IMPORTANCE!)
+- Quality code > backwards compatibility.
 - Prefer small stateless functions with single responsibility.
 - Follow Python 3.12 best practices.
 - Avoid writing code you expect will be needed later.
 - Do not add unneeded layers of abstraction or complexity.
-- Avoid anonymous functions. Prefer decision trees and if statements.
+- Avoid anonymous functions. Prefer decision trees and if/switch statements.
 
 ## Code Rules
 - All functions not used outside a module must be preceded by an underscore: _foo()
+- All functions imported by another module must not be preceded by an underscore. from somewhere import _foo (not allowed)
 - Try Catch blocks are highly discouraged. are only to be used for I/O outside of this program. This includes CLI prompts, http requests, and parsing user generated strings. 
-- Inheritance is avoided as much as possible. Only use when it is required by the programming language (such as creating Enum's) or extremely inconvienient
+- Inheritance is avoided unless required by the programming language, or if avoidance is extremely inconvienient.
 - Assert statements are good. Even in production. They inform me, the programmer if anything very strange is going on that requires me to rethink my program.
 - Use explicit types instead of Dictionaries containing strings and objects. 
 - Ask for special permission to override any of the above rules
+- Do not ship long-running commands that appear silent or hung during normal execution.
 
 ## Test boundaries
-- Tests are currently completely broken. ignore them. 
+- Tests are currently completely broken. ignore them entirely
 - Prefer tests that exercise the package public API rather than internal helper functions or deep module paths.
 - Treat tests as API consumers. If a test imports an internal module directly, that module becomes harder to refactor.
 - When changing structure, rewrite or remove tests that are tightly coupled to internal implementation details unless that internal contract is intentionally public.

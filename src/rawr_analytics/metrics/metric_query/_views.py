@@ -8,15 +8,11 @@ from rawr_analytics.data.metric_store_views import (
     load_cached_metric_player_seasons_snapshot,
     load_cached_metric_span_snapshot,
 )
+from rawr_analytics.data.rawr import build_rawr_custom_query
+from rawr_analytics.data.wowy import build_wowy_custom_query
 from rawr_analytics.metrics.constants import Metric
 from rawr_analytics.metrics.rawr import (
-    build_custom_query as _build_rawr_custom_query,
-)
-from rawr_analytics.metrics.rawr import (
     default_filters as _rawr_default_filters,
-)
-from rawr_analytics.metrics.wowy import (
-    build_custom_query as _build_wowy_custom_query,
 )
 
 from ._models import MetricQuery
@@ -173,7 +169,7 @@ def _build_custom_metric_query(
     query: MetricQuery,
 ) -> dict[str, Any]:
     if metric in {Metric.WOWY, Metric.WOWY_SHRUNK}:
-        return _build_wowy_custom_query(
+        return build_wowy_custom_query(
             metric,
             teams=query.teams,
             seasons=query.seasons,
@@ -184,7 +180,7 @@ def _build_custom_metric_query(
             min_total_minutes=query.min_total_minutes,
         )
     if metric == Metric.RAWR:
-        return _build_rawr_custom_query(
+        return build_rawr_custom_query(
             teams=query.teams,
             seasons=query.seasons,
             season_type=query.season_type,

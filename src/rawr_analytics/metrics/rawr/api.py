@@ -1,21 +1,19 @@
 from __future__ import annotations
 
-from typing import Any
-
 from rawr_analytics.metrics.constants import Metric, MetricSummary
-from rawr_analytics.metrics.rawr.data import (
-    DEFAULT_RAWR_SHRINKAGE_MINUTE_SCALE,
-    DEFAULT_RAWR_SHRINKAGE_MODE,
-    DEFAULT_RAWR_SHRINKAGE_STRENGTH,
-)
-from rawr_analytics.metrics.rawr.records import prepare_rawr_player_season_records
-from rawr_analytics.metrics.rawr.service import validate_filters
-from rawr_analytics.shared.season import Season, SeasonType
-from rawr_analytics.shared.team import Team
+from rawr_analytics.metrics.rawr._inputs import _validate_filters, _validate_request
+from rawr_analytics.metrics.rawr._records import _build_player_season_records
+from rawr_analytics.metrics.rawr.models import RawrPlayerSeasonRecord, RawrRequest
+
+DEFAULT_RAWR_SHRINKAGE_MODE = "uniform"
+DEFAULT_RAWR_SHRINKAGE_STRENGTH = 1.0
+DEFAULT_RAWR_SHRINKAGE_MINUTE_SCALE = 48.0
 
 __all__ = [
-    "build_custom_query",
-    "build_custom_query_rows",
+    "DEFAULT_RAWR_SHRINKAGE_MINUTE_SCALE",
+    "DEFAULT_RAWR_SHRINKAGE_MODE",
+    "DEFAULT_RAWR_SHRINKAGE_STRENGTH",
+    "build_player_season_records",
     "default_filters",
     "describe_metric",
     "validate_filters",
@@ -36,64 +34,28 @@ def describe_metric() -> MetricSummary:
     return MetricSummary(Metric.RAWR, "RAWR", "rawr-player-season-v3")
 
 
-def build_custom_query(
-    *,
-    teams: list[Team] | None,
-    seasons: list[Season] | None,
-    season_type: SeasonType,
+def validate_filters(
     min_games: int,
     ridge_alpha: float,
-    min_average_minutes: float | None,
-    min_total_minutes: float | None,
-) -> dict[str, Any]:
-    return {
-        "metric": Metric.RAWR.value,
-        "metric_label": describe_metric().label,
-        "rows": build_custom_query_rows(
-            teams=teams,
-            seasons=seasons,
-            season_type=season_type,
-            min_games=min_games,
-            ridge_alpha=ridge_alpha,
-            min_average_minutes=min_average_minutes,
-            min_total_minutes=min_total_minutes,
-        ),
-    }
-
-
-def build_custom_query_rows(
-    *,
-    teams: list[Team] | None,
-    seasons: list[Season] | None,
-    season_type: SeasonType,
-    min_games: int,
-    ridge_alpha: float,
-    min_average_minutes: float | None,
-    min_total_minutes: float | None,
-) -> list[dict[str, Any]]:
-    records = prepare_rawr_player_season_records(
-        teams=teams,
-        seasons=seasons,
-        season_type=season_type,
+    shrinkage_mode: str = DEFAULT_RAWR_SHRINKAGE_MODE,
+    shrinkage_strength: float = DEFAULT_RAWR_SHRINKAGE_STRENGTH,
+    shrinkage_minute_scale: float = DEFAULT_RAWR_SHRINKAGE_MINUTE_SCALE,
+    top_n: int | None = None,
+    min_average_minutes: float | None = None,
+    min_total_minutes: float | None = None,
+) -> None:
+    _validate_filters(
         min_games=min_games,
         ridge_alpha=ridge_alpha,
-        shrinkage_mode=DEFAULT_RAWR_SHRINKAGE_MODE,
-        shrinkage_strength=DEFAULT_RAWR_SHRINKAGE_STRENGTH,
-        shrinkage_minute_scale=DEFAULT_RAWR_SHRINKAGE_MINUTE_SCALE,
+        shrinkage_mode=shrinkage_mode,
+        shrinkage_strength=shrinkage_strength,
+        shrinkage_minute_scale=shrinkage_minute_scale,
+        top_n=top_n,
         min_average_minutes=min_average_minutes,
         min_total_minutes=min_total_minutes,
     )
-    return [
-        {
-            "season": record.season,
-            "player_id": record.player_id,
-            "player_name": record.player_name,
-            "value": record.coefficient,
-            "sample_size": record.games,
-            "secondary_sample_size": None,
-            "games": record.games,
-            "average_minutes": record.average_minutes,
-            "total_minutes": record.total_minutes,
-        }
-        for record in records
-    ]
+
+
+def build_player_season_records(request: RawrRequest) -> list[RawrPlayerSeasonRecord]:
+    _validate_request(request)
+    return _build_player_season_records(request)

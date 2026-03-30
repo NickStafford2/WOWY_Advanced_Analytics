@@ -1,8 +1,9 @@
 """WOWY metric package."""
 
 from rawr_analytics.metrics.wowy.api import (
-    build_custom_query,
-    build_custom_query_rows,
+    DEFAULT_WOWY_SHRINKAGE_PRIOR_GAMES,
+    build_player_season_records,
+    compute_wowy_shrinkage_score,
     default_filters,
     describe_metric,
     describe_wowy_metric,
@@ -11,8 +12,9 @@ from rawr_analytics.metrics.wowy.api import (
 )
 
 __all__ = [
-    "build_custom_query",
-    "build_custom_query_rows",
+    "DEFAULT_WOWY_SHRINKAGE_PRIOR_GAMES",
+    "build_player_season_records",
+    "compute_wowy_shrinkage_score",
     "default_filters",
     "describe_metric",
     "describe_wowy_metric",
