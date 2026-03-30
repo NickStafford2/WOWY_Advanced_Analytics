@@ -5,11 +5,10 @@ from dataclasses import asdict
 from typing import Any
 
 from rawr_analytics.metrics.constants import Metric
-from rawr_analytics.metrics.metric_query import (
-    MetricQuery,
+from rawr_analytics.metrics.metric_query.models import MetricQuery, build_metric_query
+from rawr_analytics.metrics.metric_query.scope import build_metric_options_payload
+from rawr_analytics.metrics.metric_query.views import (
     build_metric_export_table,
-    build_metric_options_payload,
-    build_metric_query,
     build_metric_view_payload,
 )
 

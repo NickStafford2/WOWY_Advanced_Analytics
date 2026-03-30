@@ -61,7 +61,7 @@ class SourceAuditReport:
         }
 
 
-def audit_nba_source(
+def _audit_nba_source(
     source_dir: Path = DEFAULT_SOURCE_DATA_DIR,
     *,
     progress: AuditProgressFn | None = None,
@@ -210,7 +210,7 @@ def main(argv: list[str] | None = None) -> int:
 
     progress = None if args.json else _render_progress
     try:
-        report = audit_nba_source(args.source_dir, progress=progress)
+        report = _audit_nba_source(args.source_dir, progress=progress)
     finally:
         if progress is not None:
             _clear_progress_line()

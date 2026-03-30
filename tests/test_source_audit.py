@@ -3,7 +3,7 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
-from rawr_analytics.nba.source_audit import audit_nba_source
+from rawr_analytics.nba.source_audit import _audit_nba_source
 from rawr_analytics.nba.source_audit import main as source_audit_main
 
 
@@ -134,7 +134,7 @@ def test_audit_nba_source_reports_known_classifications_without_failure(tmp_path
         ],
     )
 
-    report = audit_nba_source(tmp_path)
+    report = _audit_nba_source(tmp_path)
 
     assert report.ok is True
     assert report.classification_counts == {
