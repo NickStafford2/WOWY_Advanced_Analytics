@@ -10,7 +10,7 @@ from rawr_analytics.data.rawr import (
     prepare_rawr_player_season_records,
 )
 from rawr_analytics.metrics.rawr._formatting import format_rawr_records
-from rawr_analytics.metrics.rawr.api import validate_filters
+from rawr_analytics.metrics.rawr import validate_filters
 from rawr_analytics.nba.source.cache import DEFAULT_SOURCE_DATA_DIR
 from rawr_analytics.progress import print_status_box
 from rawr_analytics.shared.scope import format_scope

@@ -1,11 +1,12 @@
 from __future__ import annotations
 
 from rawr_analytics.metrics.wowy._analysis import compute_wowy, filter_results
-from rawr_analytics.metrics.wowy._inputs import passes_minute_filters
+from rawr_analytics.metrics.wowy._inputs import passes_minute_filters, validate_request
 from rawr_analytics.metrics.wowy.models import WowyPlayerSeasonRecord, WowyRequest, WowySeasonInput
 
 
 def build_player_season_records(request: WowyRequest) -> list[WowyPlayerSeasonRecord]:
+    validate_request(request)
     records: list[WowyPlayerSeasonRecord] = []
     for season_input in sorted(request.season_inputs, key=lambda item: item.season.id):
         records.extend(_build_season_records(season_input, request=request))

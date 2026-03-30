@@ -6,7 +6,7 @@ from typing import Any
 from rawr_analytics.data.game_cache.repository import load_normalized_scope_records_from_db
 from rawr_analytics.data.scope_resolver import resolve_team_seasons
 from rawr_analytics.metrics.constants import Metric
-from rawr_analytics.metrics.wowy.api import (
+from rawr_analytics.metrics.wowy import (
     DEFAULT_WOWY_SHRINKAGE_PRIOR_GAMES,
     build_player_season_records,
     compute_wowy_shrinkage_score,

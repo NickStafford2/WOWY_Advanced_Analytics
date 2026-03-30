@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from rawr_analytics.metrics.rawr._inputs import passes_minute_filters
+from rawr_analytics.metrics.rawr._inputs import passes_minute_filters, validate_request
 from rawr_analytics.metrics.rawr.analysis import fit_player_rawr
 from rawr_analytics.metrics.rawr.models import (
     RawrPlayerSeasonRecord,
@@ -10,6 +10,7 @@ from rawr_analytics.metrics.rawr.models import (
 
 
 def build_player_season_records(request: RawrRequest) -> list[RawrPlayerSeasonRecord]:
+    validate_request(request)
     records: list[RawrPlayerSeasonRecord] = []
     for season_input in sorted(request.season_inputs, key=lambda item: item.season.id):
         records.extend(_build_season_records(season_input, request=request))

@@ -28,12 +28,14 @@ For every change, know that I want stronger package boundries with simpler data 
 ## Code Rules
 - All functions not used outside a module must be preceded by an underscore: _foo()
 - All functions imported by another module must not be preceded by an underscore. from somewhere import _foo (not allowed)
+- Modules inside a subpackage are to be prefixed by an _, unless they define a function that is used outside the subpackage. 
 - Try Catch blocks are highly discouraged. are only to be used for I/O outside of this program. This includes CLI prompts, http requests, and parsing user generated strings. 
 - Inheritance is avoided unless required by the programming language, or if avoidance is extremely inconvienient.
 - Assert statements are good. Even in production. They inform me, the programmer if anything very strange is going on that requires me to rethink my program.
 - Use explicit types instead of Dictionaries containing strings and objects. 
-- Ask for special permission to override any of the above rules
 - Do not ship long-running commands that appear silent or hung during normal execution.
+- Excluding __init__.py, do not write wrapper functions or wrapper modules that don't edit data. This is unwanted complexity.
+- Ask for special permission to override any of the above rules
 
 ## Test boundaries
 - Tests are currently completely broken. ignore them entirely
