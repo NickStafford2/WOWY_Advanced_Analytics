@@ -36,11 +36,11 @@ from rawr_analytics.data.rawr import (
 from rawr_analytics.data.wowy import prepare_wowy_player_season_records
 from rawr_analytics.metrics.constants import Metric, MetricSummary
 from rawr_analytics.metrics.rawr import describe_metric as describe_rawr_metric
-from rawr_analytics.metrics.wowy import describe_metric as describe_wowy_metric
 from rawr_analytics.metrics.wowy import (
     DEFAULT_WOWY_SHRINKAGE_PRIOR_GAMES,
     compute_wowy_shrinkage_score,
 )
+from rawr_analytics.metrics.wowy import describe_metric as describe_wowy_metric
 from rawr_analytics.shared.scope import TeamSeasonScope
 from rawr_analytics.shared.season import SeasonType
 from rawr_analytics.shared.team import Team, normalize_teams, to_team_ids
