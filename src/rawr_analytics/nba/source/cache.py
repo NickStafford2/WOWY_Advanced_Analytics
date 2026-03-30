@@ -53,13 +53,13 @@ def load_or_fetch_league_games(
     season: Season,
     log_fn: LogFn | None = print,
 ) -> tuple[dict, str]:
-    cache_path = league_games_cache_path(
+    cache_path = _league_games_cache_path(
         team=team,
         season=season,
     )
     cached_payload = load_cached_payload(
         cache_path,
-        validator=league_games_payload_is_valid,
+        validator=_league_games_payload_is_valid,
         log_fn=log_fn,
     )
     if cached_payload is not None:
@@ -67,8 +67,8 @@ def load_or_fetch_league_games(
 
     for attempt in range(1, _LEAGUE_GAMES_REQUEST_RETRIES + 1):
         payload = _fetch(team, season, attempt, log_fn)
-        if league_games_payload_is_valid(payload):
-            write_cached_payload(cache_path, payload)
+        if _league_games_payload_is_valid(payload):
+            _write_cached_payload(cache_path, payload)
             return payload, "fetched"
         if attempt < _LEAGUE_GAMES_REQUEST_RETRIES:
             time.sleep(_LEAGUE_GAMES_RETRY_BACKOFF_SECONDS * attempt)
@@ -93,7 +93,7 @@ def load_or_fetch_box_score_cache(
     game_id: str,
     log_fn: LogFn | None = print,
 ) -> tuple[dict, str]:
-    for cache_path in box_score_cache_paths(game_id):
+    for cache_path in _box_score_cache_paths(game_id):
         cached_payload = load_cached_payload(
             cache_path,
             validator=lambda payload: not box_score_payload_is_empty(payload),
@@ -113,8 +113,8 @@ def load_or_fetch_box_score_cache(
         )
         payload = box_score.get_dict()
         if not box_score_payload_is_empty(payload):
-            write_cached_payload(
-                box_score_cache_path(game_id),
+            _write_cached_payload(
+                _box_score_cache_path(game_id),
                 payload,
             )
             return payload, "fetched"
@@ -125,8 +125,8 @@ def load_or_fetch_box_score_cache(
             timeout=BOX_SCORE_REQUEST_TIMEOUT_SECONDS,
         ).get_dict()
         if not box_score_payload_is_empty(v3_payload):
-            write_cached_payload(
-                box_score_v3_cache_path(game_id),
+            _write_cached_payload(
+                _box_score_v3_cache_path(game_id),
                 v3_payload,
             )
             return v3_payload, "fetched"
@@ -137,8 +137,8 @@ def load_or_fetch_box_score_cache(
             timeout=BOX_SCORE_REQUEST_TIMEOUT_SECONDS,
         ).get_dict()
         if not box_score_payload_is_empty(live_payload):
-            write_cached_payload(
-                box_score_live_cache_path(game_id),
+            _write_cached_payload(
+                _box_score_live_cache_path(game_id),
                 live_payload,
             )
             return live_payload, "fetched"
@@ -160,7 +160,7 @@ def load_or_fetch_box_score_cache(
     )
 
 
-def league_games_cache_path(
+def _league_games_cache_path(
     team: Team,
     season: Season,
 ) -> Path:
@@ -171,23 +171,23 @@ def league_games_cache_path(
     return DEFAULT_SOURCE_DATA_DIR / "team_seasons" / filename
 
 
-def box_score_cache_path(game_id: str) -> Path:
+def _box_score_cache_path(game_id: str) -> Path:
     return DEFAULT_SOURCE_DATA_DIR / "boxscores" / f"{game_id}_boxscoretraditionalv2.json"
 
 
-def box_score_v3_cache_path(game_id: str) -> Path:
+def _box_score_v3_cache_path(game_id: str) -> Path:
     return DEFAULT_SOURCE_DATA_DIR / "boxscores" / f"{game_id}_boxscoretraditionalv3.json"
 
 
-def box_score_live_cache_path(game_id: str) -> Path:
+def _box_score_live_cache_path(game_id: str) -> Path:
     return DEFAULT_SOURCE_DATA_DIR / "boxscores" / f"{game_id}_boxscorelive.json"
 
 
-def box_score_cache_paths(game_id: str) -> tuple[Path, Path, Path]:
+def _box_score_cache_paths(game_id: str) -> tuple[Path, Path, Path]:
     return (
-        box_score_cache_path(game_id),
-        box_score_v3_cache_path(game_id),
-        box_score_live_cache_path(game_id),
+        _box_score_cache_path(game_id),
+        _box_score_v3_cache_path(game_id),
+        _box_score_live_cache_path(game_id),
     )
 
 
@@ -203,7 +203,7 @@ def load_cached_payload(
     return payload
 
 
-def discard_invalid_cached_payload(
+def _discard_invalid_cached_payload(
     cache_path: Path,
     *,
     reason: str,
@@ -240,14 +240,14 @@ def _discard_cache_file(
         log_fn(f"cache discard {cache_path} reason={reason}")
 
 
-def write_cached_payload(cache_path: Path, payload: dict) -> None:
+def _write_cached_payload(cache_path: Path, payload: dict) -> None:
     cache_path.parent.mkdir(parents=True, exist_ok=True)
     temp_path = cache_path.parent / f"{cache_path.name}.tmp-{os.getpid()}"
     temp_path.write_text(json.dumps(payload), encoding="utf-8")
     temp_path.replace(cache_path)
 
 
-def league_games_payload_is_valid(payload: dict) -> bool:
+def _league_games_payload_is_valid(payload: dict) -> bool:
     result_sets = payload.get("resultSets")
     if not isinstance(result_sets, list) or not result_sets:
         return False
@@ -294,15 +294,15 @@ __all__ = [
     "DEFAULT_SOURCE_DATA_DIR",
     "LEAGUE_GAMES_REQUEST_TIMEOUT_SECONDS",
     "box_score_payload_is_empty",
-    "box_score_cache_path",
-    "box_score_cache_paths",
-    "box_score_live_cache_path",
-    "box_score_v3_cache_path",
-    "discard_invalid_cached_payload",
-    "league_games_payload_is_valid",
-    "league_games_cache_path",
+    "_box_score_cache_path",
+    "_box_score_cache_paths",
+    "_box_score_live_cache_path",
+    "_box_score_v3_cache_path",
+    "_discard_invalid_cached_payload",
+    "_league_games_payload_is_valid",
+    "_league_games_cache_path",
     "load_cached_payload",
     "load_or_fetch_box_score_cache",
     "load_or_fetch_league_games",
-    "write_cached_payload",
+    "_write_cached_payload",
 ]

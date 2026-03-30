@@ -196,7 +196,7 @@ def _store(result: IngestResult) -> None:
     )
 
 
-def refresh(
+def _refresh(
     request: IngestRequest,
     *,
     log: LogFn | None = print,
@@ -259,6 +259,6 @@ __all__ = [
     "IngestResult",
     "IngestSummary",
     "_ingest",
-    "refresh",
+    "_refresh",
     "_store",
 ]
