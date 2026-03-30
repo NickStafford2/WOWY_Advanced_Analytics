@@ -2,13 +2,11 @@ from __future__ import annotations
 
 from typing import Any
 
-from rawr_analytics.data.player_metrics_db.models import PlayerSeasonMetricRow
 from rawr_analytics.metrics.constants import Metric, MetricSummary
 from rawr_analytics.metrics.rawr.data import (
     DEFAULT_RAWR_SHRINKAGE_MINUTE_SCALE,
     DEFAULT_RAWR_SHRINKAGE_MODE,
     DEFAULT_RAWR_SHRINKAGE_STRENGTH,
-    build_rawr_metric_rows,
 )
 from rawr_analytics.metrics.rawr.records import prepare_rawr_player_season_records
 from rawr_analytics.metrics.rawr.service import validate_filters
@@ -16,7 +14,6 @@ from rawr_analytics.shared.season import Season, SeasonType
 from rawr_analytics.shared.team import Team
 
 __all__ = [
-    "build_cached_rows",
     "build_custom_query",
     "build_custom_query_rows",
     "default_filters",
@@ -37,22 +34,6 @@ def default_filters() -> dict[str, int | float]:
 
 def describe_metric() -> MetricSummary:
     return MetricSummary(Metric.RAWR, "RAWR", "rawr-player-season-v3")
-
-
-def build_cached_rows(
-    scope_key: str,
-    team_filter: str,
-    season_type: SeasonType,
-    teams: list[Team] | None,
-    rawr_ridge_alpha: float,
-) -> list[PlayerSeasonMetricRow]:
-    return build_rawr_metric_rows(
-        scope_key=scope_key,
-        team_filter=team_filter,
-        season_type=season_type,
-        teams=teams,
-        rawr_ridge_alpha=rawr_ridge_alpha,
-    )
 
 
 def build_custom_query(

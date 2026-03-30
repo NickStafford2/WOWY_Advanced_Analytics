@@ -7,13 +7,13 @@ from rawr_analytics.data.game_cache import (
     list_cache_load_rows,
     list_cached_team_seasons,
 )
+from rawr_analytics.data.metric_store_scope import build_scope_key, build_team_filter
 from rawr_analytics.data.player_metrics_db.models import MetricScopeCatalogRow
 from rawr_analytics.data.player_metrics_db.queries import (
     load_metric_scope_catalog_row,
     load_metric_store_metadata,
 )
 from rawr_analytics.metrics.constants import Metric
-from rawr_analytics.metrics.scope import build_scope_key, build_team_filter
 from rawr_analytics.shared.season import Season, SeasonType
 from rawr_analytics.shared.team import Team
 
@@ -61,7 +61,7 @@ def build_metric_options_payload(
     query = build_metric_query(metric, teams=teams, season_type=season_type)
     filters = _build_filters_payload(query)
     team_filter = build_team_filter(teams)
-    scope_key = build_scope_key(query.season_type, team_filter)
+    scope_key = build_scope_key(season_type=query.season_type, team_filter=team_filter)
     catalog_row = _require_current_metric_scope(metric=metric, scope_key=scope_key)
     available_teams = [Team.from_id(team_id) for team_id in catalog_row.available_team_ids]
     available_seasons = [

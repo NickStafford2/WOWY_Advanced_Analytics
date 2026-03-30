@@ -7,6 +7,11 @@ from typing import Callable
 
 from rawr_analytics.data.game_cache import list_cache_load_rows, list_cached_team_seasons
 from rawr_analytics.data.game_cache.rows import NormalizedCacheLoadRow
+from rawr_analytics.data.metric_store_scope import build_scope_key, build_team_filter
+from rawr_analytics.data.player_metrics_db.builders import (
+    build_rawr_player_season_metric_rows,
+    build_wowy_player_season_metric_rows,
+)
 from rawr_analytics.data.player_metrics_db.models import (
     MetricFullSpanPointRow,
     MetricFullSpanSeriesRow,
@@ -22,20 +27,20 @@ from rawr_analytics.data.player_metrics_db.store import (
     replace_metric_scope_store,
 )
 from rawr_analytics.metrics.constants import Metric, MetricSummary
-from rawr_analytics.metrics.rawr import (
-    build_cached_rows as build_rawr_cached_rows,
+from rawr_analytics.metrics.rawr import describe_metric as describe_rawr_metric
+from rawr_analytics.metrics.rawr.data import (
+    DEFAULT_RAWR_SHRINKAGE_MINUTE_SCALE,
+    DEFAULT_RAWR_SHRINKAGE_MODE,
+    DEFAULT_RAWR_SHRINKAGE_STRENGTH,
+    list_incomplete_rawr_season_warnings,
 )
-from rawr_analytics.metrics.rawr import (
-    describe_metric as describe_rawr_metric,
+from rawr_analytics.metrics.rawr.records import prepare_rawr_player_season_records
+from rawr_analytics.metrics.wowy import describe_metric as describe_wowy_metric
+from rawr_analytics.metrics.wowy.analysis import (
+    DEFAULT_WOWY_SHRINKAGE_PRIOR_GAMES,
+    compute_wowy_shrinkage_score,
 )
-from rawr_analytics.metrics.rawr.data import list_incomplete_rawr_season_warnings
-from rawr_analytics.metrics.scope import build_scope_key, build_team_filter
-from rawr_analytics.metrics.wowy import (
-    build_cached_rows as build_wowy_cached_rows,
-)
-from rawr_analytics.metrics.wowy import (
-    describe_metric as describe_wowy_metric,
-)
+from rawr_analytics.metrics.wowy.records import prepare_wowy_player_season_records
 from rawr_analytics.shared.scope import TeamSeasonScope
 from rawr_analytics.shared.season import SeasonType
 from rawr_analytics.shared.team import Team, normalize_teams, to_team_ids
@@ -260,7 +265,7 @@ def _build_refresh_scope(
     normalized_teams = normalize_teams(teams)
     normalized_team_ids = to_team_ids(normalized_teams)
     team_filter = build_team_filter(normalized_teams)
-    scope_key = build_scope_key(team_filter=team_filter, season_type=season_type)
+    scope_key = build_scope_key(season_type=season_type, team_filter=team_filter)
     return _RefreshScope(
         teams=normalized_teams,
         scope_key=scope_key,
@@ -290,20 +295,58 @@ def _build_cached_rows(
     rawr_ridge_alpha: float,
 ) -> list[PlayerSeasonMetricRow]:
     if metric == Metric.RAWR:
-        return build_rawr_cached_rows(
+        records = prepare_rawr_player_season_records(
+            teams=teams,
+            seasons=None,
+            season_type=season_type,
+            min_games=1,
+            ridge_alpha=rawr_ridge_alpha,
+            shrinkage_mode=DEFAULT_RAWR_SHRINKAGE_MODE,
+            shrinkage_strength=DEFAULT_RAWR_SHRINKAGE_STRENGTH,
+            shrinkage_minute_scale=DEFAULT_RAWR_SHRINKAGE_MINUTE_SCALE,
+            min_average_minutes=None,
+            min_total_minutes=None,
+        )
+        return build_rawr_player_season_metric_rows(
             scope_key=scope_key,
             team_filter=team_filter,
             season_type=season_type,
-            teams=teams,
-            rawr_ridge_alpha=rawr_ridge_alpha,
+            records=records,
         )
-    return build_wowy_cached_rows(
-        metric,
+
+    records = prepare_wowy_player_season_records(
+        teams=teams,
+        seasons=None,
+        season_type=season_type,
+        min_games_with=0,
+        min_games_without=0,
+        min_average_minutes=None,
+        min_total_minutes=None,
+    )
+    values_by_player_season = None
+    metric_label = "WOWY"
+    include_raw_wowy_score = False
+    if metric == Metric.WOWY_SHRUNK:
+        metric_label = "WOWY Shrunk"
+        include_raw_wowy_score = True
+        values_by_player_season = {
+            (record.season, record.player_id): compute_wowy_shrinkage_score(
+                games_with=record.games_with,
+                games_without=record.games_without,
+                wowy_score=record.wowy_score,
+                prior_games=DEFAULT_WOWY_SHRINKAGE_PRIOR_GAMES,
+            )
+            for record in records
+        }
+    return build_wowy_player_season_metric_rows(
         scope_key=scope_key,
         team_filter=team_filter,
         season_type=season_type,
-        teams=teams,
-        rawr_ridge_alpha=rawr_ridge_alpha,
+        metric=metric,
+        metric_label=metric_label,
+        records=records,
+        values_by_player_season=values_by_player_season,
+        include_raw_wowy_score=include_raw_wowy_score,
     )
 
 

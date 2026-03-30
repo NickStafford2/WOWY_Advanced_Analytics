@@ -1,16 +1,6 @@
 from __future__ import annotations
 
-from rawr_analytics.data.player_metrics_db.builders import build_wowy_player_season_metric_rows
-from rawr_analytics.data.player_metrics_db.models import (
-    PlayerSeasonMetricRow,
-)
-from rawr_analytics.metrics.constants import Metric
-from rawr_analytics.metrics.wowy.analysis import (
-    DEFAULT_WOWY_SHRINKAGE_PRIOR_GAMES,
-    compute_wowy,
-    compute_wowy_shrinkage_score,
-    filter_results,
-)
+from rawr_analytics.metrics.wowy.analysis import compute_wowy, filter_results
 from rawr_analytics.metrics.wowy.inputs import load_wowy_game_records
 from rawr_analytics.metrics.wowy.minutes import (
     attach_minute_stats,
@@ -29,10 +19,8 @@ type WowyPlayerSeasonRow = dict[str, str | int | float | None]
 __all__ = [
     "WowyPlayerSeasonRow",
     "available_wowy_seasons",
-    "build_wowy_metric_rows",
     "build_wowy_player_season_records",
     "build_wowy_span_chart_rows",
-    "build_wowy_shrunk_metric_rows",
     "prepare_wowy_player_season_records",
     "serialize_wowy_player_season_records",
 ]
@@ -218,71 +206,4 @@ def prepare_wowy_player_season_records(
         player_season_minute_stats=player_season_minute_stats,
         min_average_minutes=min_average_minutes,
         min_total_minutes=min_total_minutes,
-    )
-
-
-def build_wowy_metric_rows(
-    *,
-    scope_key: str,
-    team_filter: str,
-    season_type: SeasonType,
-    teams: list[Team] | None,
-    rawr_ridge_alpha: float,
-) -> list[PlayerSeasonMetricRow]:
-    del rawr_ridge_alpha
-    records = prepare_wowy_player_season_records(
-        teams=teams,
-        seasons=None,
-        season_type=season_type,
-        min_games_with=0,
-        min_games_without=0,
-        min_average_minutes=None,
-        min_total_minutes=None,
-    )
-    return build_wowy_player_season_metric_rows(
-        scope_key=scope_key,
-        team_filter=team_filter,
-        season_type=season_type,
-        metric=Metric.WOWY,
-        metric_label="WOWY",
-        records=records,
-    )
-
-
-def build_wowy_shrunk_metric_rows(
-    *,
-    scope_key: str,
-    team_filter: str,
-    season_type: SeasonType,
-    teams: list[Team] | None,
-    rawr_ridge_alpha: float,
-) -> list[PlayerSeasonMetricRow]:
-    del rawr_ridge_alpha
-    records = prepare_wowy_player_season_records(
-        teams=teams,
-        seasons=None,
-        season_type=season_type,
-        min_games_with=0,
-        min_games_without=0,
-        min_average_minutes=None,
-        min_total_minutes=None,
-    )
-    values_by_player_season = {
-        (record.season, record.player_id): compute_wowy_shrinkage_score(
-            games_with=record.games_with,
-            games_without=record.games_without,
-            wowy_score=record.wowy_score,
-            prior_games=DEFAULT_WOWY_SHRINKAGE_PRIOR_GAMES,
-        )
-        for record in records
-    }
-    return build_wowy_player_season_metric_rows(
-        scope_key=scope_key,
-        team_filter=team_filter,
-        season_type=season_type,
-        metric=Metric.WOWY_SHRUNK,
-        metric_label="WOWY Shrunk",
-        records=records,
-        values_by_player_season=values_by_player_season,
-        include_raw_wowy_score=True,
     )

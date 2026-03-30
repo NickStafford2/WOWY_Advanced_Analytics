@@ -2,11 +2,11 @@ from __future__ import annotations
 
 import argparse
 
-from rawr_analytics.metrics.constants import Metric
-from rawr_analytics.metrics.store import (
+from rawr_analytics.data.metric_store import (
     DEFAULT_RAWR_RIDGE_ALPHA,
     refresh_metric_store,
 )
+from rawr_analytics.metrics.constants import Metric
 from rawr_analytics.progress import TerminalProgressBar, print_status_box
 
 _choices = [Metric.WOWY, Metric.WOWY_SHRUNK, Metric.RAWR]

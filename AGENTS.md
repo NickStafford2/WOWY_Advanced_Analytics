@@ -15,7 +15,7 @@ For every change, know that I want stronger package boundries with simpler data 
 - Use Pyright and Ruff. (installed with Poetry)
 - For multi-step or full-database/full-season jobs, include a status bar or staged progress indicator that makes it clear the process is advancing and roughly how much is done.
 
-## Coding style
+## Code Philosophy
 - Do not ship long-running commands that appear silent or hung during normal execution.
 - Keep changes simple, readable, and focused.
 - Prefer quality code over backwards compatibility.
@@ -27,7 +27,15 @@ For every change, know that I want stronger package boundries with simpler data 
 - Do not add unneeded layers of abstraction or complexity.
 - Avoid function anonymous functions. Prefer decision trees and if statements. 
 
+## Code Rules
+- All functions not used outside a module must be preceded by an underscore: _foo()
+- Try Catch blocks are highly discouraged. are only to be used for I/O outside of this program. This includes CLI prompts, http requests, and parsing user generated strings. 
+- Inheritance is avoided as much as possible. Only use when it is required by the programming language (such as creating Enum's) or extremely inconvienient
+- Assert statements are good. Even in production. They inform me, the programmer if anything very strange is going on that requires me to rethink my program.
+- Ask for special permission to override any of the above rules
+
 ## Test boundaries
+- Tests are currently completely broken. ignore them. 
 - Prefer tests that exercise the package public API rather than internal helper functions or deep module paths.
 - Treat tests as API consumers. If a test imports an internal module directly, that module becomes harder to refactor.
 - When changing structure, rewrite or remove tests that are tightly coupled to internal implementation details unless that internal contract is intentionally public.

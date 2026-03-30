@@ -2,13 +2,13 @@ from __future__ import annotations
 
 from typing import Any
 
+from rawr_analytics.data.metric_store_scope import build_scope_key, build_team_filter, season_ids
 from rawr_analytics.data.player_metrics_db.models import PlayerSeasonMetricRow
 from rawr_analytics.data.player_metrics_db.queries import (
     load_metric_full_span_points_map,
     load_metric_full_span_series_rows,
     load_metric_rows,
 )
-from rawr_analytics.metrics._scope_values import season_ids
 from rawr_analytics.metrics.constants import Metric
 from rawr_analytics.metrics.rawr import (
     build_custom_query as _build_rawr_custom_query,
@@ -16,7 +16,6 @@ from rawr_analytics.metrics.rawr import (
 from rawr_analytics.metrics.rawr import (
     default_filters as _rawr_default_filters,
 )
-from rawr_analytics.metrics.scope import build_scope_key, build_team_filter
 from rawr_analytics.metrics.wowy import (
     build_custom_query as _build_wowy_custom_query,
 )
@@ -36,7 +35,7 @@ def build_metric_view_payload(
     query: MetricQuery,
 ) -> dict[str, Any]:
     team_filter = build_team_filter(query.teams)
-    scope_key = build_scope_key(query.season_type, team_filter)
+    scope_key = build_scope_key(season_type=query.season_type, team_filter=team_filter)
     if view == "player-seasons":
         payload = _build_metric_player_seasons_payload(metric, scope_key=scope_key, query=query)
     elif view == "span-chart":
@@ -58,7 +57,7 @@ def build_metric_export_table(
     query: MetricQuery,
 ) -> tuple[str, list[dict[str, Any]]]:
     team_filter = build_team_filter(query.teams)
-    scope_key = build_scope_key(query.season_type, team_filter)
+    scope_key = build_scope_key(season_type=query.season_type, team_filter=team_filter)
     if view == "cached-leaderboard":
         return _build_cached_metric_export_table_rows(metric, scope_key=scope_key, query=query)
     if view == "custom-query":

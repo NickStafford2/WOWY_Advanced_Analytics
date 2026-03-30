@@ -3,12 +3,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 
 from rawr_analytics.data.game_cache.repository import list_cache_load_rows
-from rawr_analytics.data.player_metrics_db.builders import build_rawr_player_season_metric_rows
-from rawr_analytics.data.player_metrics_db.models import (
-    PlayerSeasonMetricRow,
-)
 from rawr_analytics.data.scope_resolver import resolve_team_seasons
-from rawr_analytics.metrics._scope_values import season_ids, team_ids
 from rawr_analytics.metrics.rawr._observations import count_player_games
 from rawr_analytics.shared.season import Season, SeasonType
 from rawr_analytics.shared.team import Team
@@ -22,7 +17,6 @@ __all__ = [
     "DEFAULT_RAWR_SHRINKAGE_MODE",
     "DEFAULT_RAWR_SHRINKAGE_STRENGTH",
     "RawrSeasonCompletenessIssue",
-    "build_rawr_metric_rows",
     "count_player_games",
     "list_complete_rawr_seasons",
     "list_incomplete_rawr_seasons",
@@ -120,9 +114,8 @@ def select_complete_rawr_scope_seasons(
     season_type: SeasonType,
 ) -> list[str]:
     team_seasons = resolve_team_seasons(
-        None,
-        season_ids(seasons),
-        team_ids=team_ids(teams),
+        teams,
+        seasons,
         season_type=season_type,
     )
     candidate_seasons = sorted({team_season.season.id for team_season in team_seasons})
@@ -133,36 +126,6 @@ def select_complete_rawr_scope_seasons(
         season_type=season_type,
     )
     return [season for season in candidate_seasons if season in complete_seasons]
-
-
-def build_rawr_metric_rows(
-    *,
-    scope_key: str,
-    team_filter: str,
-    season_type: SeasonType,
-    teams: list[Team] | None,
-    rawr_ridge_alpha: float,
-) -> list[PlayerSeasonMetricRow]:
-    from rawr_analytics.metrics.rawr.records import prepare_rawr_player_season_records
-
-    records = prepare_rawr_player_season_records(
-        teams=teams,
-        seasons=None,
-        season_type=season_type,
-        min_games=1,
-        ridge_alpha=rawr_ridge_alpha,
-        shrinkage_mode=DEFAULT_RAWR_SHRINKAGE_MODE,
-        shrinkage_strength=DEFAULT_RAWR_SHRINKAGE_STRENGTH,
-        shrinkage_minute_scale=DEFAULT_RAWR_SHRINKAGE_MINUTE_SCALE,
-        min_average_minutes=None,
-        min_total_minutes=None,
-    )
-    return build_rawr_player_season_metric_rows(
-        scope_key=scope_key,
-        team_filter=team_filter,
-        season_type=season_type,
-        records=records,
-    )
 
 
 def _summarize_rawr_cache_seasons(

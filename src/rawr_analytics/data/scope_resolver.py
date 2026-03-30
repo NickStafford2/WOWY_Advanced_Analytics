@@ -11,15 +11,25 @@ __all__ = [
 
 
 def resolve_team_seasons(
-    teams: list[str] | None,
-    seasons: list[str] | None,
+    teams: list[Team] | None,
+    seasons: list[Season] | None,
     *,
-    team_ids: list[int] | None = None,
     season_type: SeasonType | None = None,
 ) -> list[TeamSeasonScope]:
-    normalized_team_ids = sorted({team_id for team_id in team_ids or [] if team_id > 0}) or None
-    normalized_seasons = sorted(dict.fromkeys(seasons or [])) or None
-    normalized_teams = [team.strip().upper() for team in teams or [] if team.strip()] or None
+    normalized_teams = (
+        sorted(
+            {team.team_id: team for team in teams or []}.values(),
+            key=lambda team: team.team_id,
+        )
+        or None
+    )
+    normalized_seasons = (
+        sorted(
+            {(season.id, season.season_type.value): season for season in seasons or []}.values(),
+            key=lambda season: (season.id, season.season_type.value),
+        )
+        or None
+    )
     normalized_season_type = _normalize_season_type(season_type)
 
     cached_team_seasons = [
@@ -28,44 +38,29 @@ def resolve_team_seasons(
         if scope.season.season_type == normalized_season_type
     ]
 
-    if normalized_seasons is None and normalized_team_ids is None and normalized_teams is None:
+    if normalized_seasons is None and normalized_teams is None:
         return cached_team_seasons
 
     if normalized_seasons is None:
+        normalized_team_ids = {team.team_id for team in normalized_teams or []}
         return [
             scope
             for scope in cached_team_seasons
-            if (
-                (normalized_team_ids is None or scope.team.team_id in normalized_team_ids)
-                and (
-                    normalized_teams is None
-                    or scope.team.abbreviation(season=scope.season) in normalized_teams
-                )
-            )
+            if normalized_teams is None or scope.team.team_id in normalized_team_ids
         ]
 
     scopes_by_key: dict[tuple[int, str], TeamSeasonScope] = {
         (scope.team.team_id, scope.season.id): scope for scope in cached_team_seasons
     }
     resolved: list[TeamSeasonScope] = []
-    for season_id in normalized_seasons:
-        season = Season(season_id, normalized_season_type.to_nba_format())
-        if normalized_team_ids is not None:
-            for team_id in normalized_team_ids:
-                resolved.append(
-                    scopes_by_key.get(
-                        (team_id, season.id),
-                        TeamSeasonScope(team=Team.from_id(team_id), season=season),
-                    )
-                )
-            continue
+    for requested_season in normalized_seasons:
+        season = Season(requested_season.id, normalized_season_type.to_nba_format())
         if normalized_teams is not None:
-            for abbreviation in normalized_teams:
-                team = Team.from_abbreviation(abbreviation, season=season)
+            for team in normalized_teams:
                 resolved.append(
                     scopes_by_key.get(
                         (team.team_id, season.id),
-                        TeamSeasonScope(team=team, season=season),
+                        TeamSeasonScope(team=team.in_season(season), season=season),
                     )
                 )
             continue

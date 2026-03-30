@@ -2,7 +2,6 @@ from __future__ import annotations
 
 from rawr_analytics.data.game_cache.repository import load_normalized_scope_records_from_db
 from rawr_analytics.data.scope_resolver import resolve_team_seasons
-from rawr_analytics.metrics._scope_values import season_ids, team_ids
 from rawr_analytics.metrics.rawr._observations import build_rawr_player_season_minute_stats
 from rawr_analytics.metrics.rawr.analysis import fit_player_rawr
 from rawr_analytics.metrics.rawr.inputs import (
@@ -35,9 +34,8 @@ def prepare_rawr_player_season_records(
     min_total_minutes: float | None = None,
 ) -> list[RawrPlayerSeasonRecord]:
     team_seasons = resolve_team_seasons(
-        None,
-        season_ids(seasons),
-        team_ids=team_ids(teams),
+        teams,
+        seasons,
         season_type=season_type,
     )
     teams_by_season: dict[Season, list[Team]] = {}
@@ -58,9 +56,8 @@ def prepare_rawr_player_season_records(
         if season not in complete_seasons:
             continue
         requested_team_seasons = resolve_team_seasons(
-            None,
-            [season.id],
-            team_ids=[team.team_id for team in teams_by_season[season]],
+            teams_by_season[season],
+            [season],
             season_type=season_type,
         )
         if not requested_team_seasons:

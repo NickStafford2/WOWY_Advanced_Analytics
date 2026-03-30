@@ -2,17 +2,12 @@ from __future__ import annotations
 
 from typing import Any
 
-from rawr_analytics.data.player_metrics_db.models import PlayerSeasonMetricRow
 from rawr_analytics.metrics.constants import Metric, MetricSummary
 from rawr_analytics.metrics.wowy.analysis import (
     DEFAULT_WOWY_SHRINKAGE_PRIOR_GAMES,
     compute_wowy_shrinkage_score,
 )
-from rawr_analytics.metrics.wowy.records import (
-    build_wowy_metric_rows,
-    build_wowy_shrunk_metric_rows,
-    prepare_wowy_player_season_records,
-)
+from rawr_analytics.metrics.wowy.records import prepare_wowy_player_season_records
 from rawr_analytics.metrics.wowy.service import validate_filters
 from rawr_analytics.shared.season import Season, SeasonType
 from rawr_analytics.shared.team import Team
@@ -57,34 +52,6 @@ def describe_metric(metric: Metric) -> MetricSummary:
         return describe_wowy_metric()
     if metric == Metric.WOWY_SHRUNK:
         return describe_wowy_shrunk_metric()
-    raise ValueError(f"Unknown WOWY metric: {metric}")
-
-
-def build_cached_rows(
-    metric: Metric,
-    *,
-    scope_key: str,
-    team_filter: str,
-    season_type: SeasonType,
-    teams: list[Team] | None,
-    rawr_ridge_alpha: float,
-) -> list[PlayerSeasonMetricRow]:
-    if metric == Metric.WOWY:
-        return build_wowy_metric_rows(
-            scope_key=scope_key,
-            team_filter=team_filter,
-            season_type=season_type,
-            teams=teams,
-            rawr_ridge_alpha=rawr_ridge_alpha,
-        )
-    if metric == Metric.WOWY_SHRUNK:
-        return build_wowy_shrunk_metric_rows(
-            scope_key=scope_key,
-            team_filter=team_filter,
-            season_type=season_type,
-            teams=teams,
-            rawr_ridge_alpha=rawr_ridge_alpha,
-        )
     raise ValueError(f"Unknown WOWY metric: {metric}")
 
 
