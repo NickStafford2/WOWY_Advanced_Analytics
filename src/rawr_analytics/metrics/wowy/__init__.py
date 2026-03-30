@@ -13,6 +13,14 @@ from rawr_analytics.metrics.wowy.defaults import (
 from rawr_analytics.metrics.wowy.inputs import validate_filters
 from rawr_analytics.metrics.wowy.records import build_player_season_records
 
+from rawr_analytics.metrics.wowy.models import (
+    WowyGame,
+    WowyPlayerContext,
+    WowyPlayerSeasonRecord,
+    WowyRequest,
+    WowySeasonInput,
+)
+
 __all__ = [
     "DEFAULT_WOWY_SHRINKAGE_PRIOR_GAMES",
     "build_player_season_records",
@@ -22,4 +30,9 @@ __all__ = [
     "describe_wowy_metric",
     "describe_wowy_shrunk_metric",
     "validate_filters",
+    "WowyGame",
+    "WowyPlayerContext",
+    "WowyPlayerSeasonRecord",
+    "WowyRequest",
+    "WowySeasonInput",
 ]

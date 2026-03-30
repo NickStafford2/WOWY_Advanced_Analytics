@@ -298,6 +298,8 @@ def _is_allowed_from_import(
 
 
 def _has_private_segment(imported_module: str) -> bool:
+    if imported_module == "__future__":
+        return False
     return any(segment.startswith("_") for segment in imported_module.split("."))
 
 
