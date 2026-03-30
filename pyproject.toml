@@ -40,7 +40,9 @@ select = ["E", "F", "I"]
 [tool.pyright]
 include = ["src", "tests"]
 pythonVersion = "3.12"
-typeCheckingMode = "basic"
 venvPath = "."
 reportMissingImports = true
 reportMissingModuleSource = true
+typeCheckingMode = "strict"
+reportPrivateUsage = "error"
+reportPrivateImportUsage = "error"
