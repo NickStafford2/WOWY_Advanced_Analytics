@@ -157,7 +157,7 @@ def list_expected_rawr_teams_for_season(season: str) -> list[str]:
     ]
 
 
-def list_incomplete_rawr_seasons(
+def _list_incomplete_rawr_seasons(
     *,
     seasons: list[str],
     season_type: SeasonType,
@@ -167,14 +167,16 @@ def list_incomplete_rawr_seasons(
     for season in seasons:
         summary = summaries.get(season)
         if summary is None:
-            issues.append(RawrSeasonCompletenessIssue(season=season, reason="no cache load metadata found"))
+            issues.append(
+                RawrSeasonCompletenessIssue(season=season, reason="no cache load metadata found")
+            )
             continue
         for reason in _build_rawr_issue_reasons(season=season, summary=summary):
             issues.append(RawrSeasonCompletenessIssue(season=season, reason=reason))
     return issues
 
 
-def list_complete_rawr_seasons(
+def _list_complete_rawr_seasons(
     *,
     seasons: list[str],
     season_type: SeasonType,
@@ -183,7 +185,8 @@ def list_complete_rawr_seasons(
     return {
         season
         for season in seasons
-        if season in summaries and _is_complete_rawr_summary(season=season, summary=summaries[season])
+        if season in summaries
+        and _is_complete_rawr_summary(season=season, summary=summaries[season])
     }
 
 
@@ -214,7 +217,7 @@ def select_complete_rawr_scope_seasons(
     candidate_seasons = sorted({team_season.season.id for team_season in team_seasons})
     if not candidate_seasons:
         return []
-    complete_seasons = list_complete_rawr_seasons(
+    complete_seasons = _list_complete_rawr_seasons(
         seasons=candidate_seasons,
         season_type=season_type,
     )
@@ -245,7 +248,9 @@ def _load_rawr_season_input(
     )
     player_minute_stats = _build_rawr_player_season_minute_stats(games, game_players)
     observations, player_names = _build_rawr_observations(games, game_players)
-    player_ids = sorted({player_id for observation in observations for player_id in observation.player_weights})
+    player_ids = sorted(
+        {player_id for observation in observations for player_id in observation.player_weights}
+    )
     return RawrSeasonInput(
         season=season,
         observations=observations,
@@ -276,7 +281,9 @@ def _filter_rawr_scope(games, game_players, teams, seasons):
     if not selected_game_ids:
         raise ValueError("No games matched the requested RAWR scope")
     filtered_games = [game for game in games if game.game_id in selected_game_ids]
-    filtered_game_players = [player for player in game_players if player.game_id in selected_game_ids]
+    filtered_game_players = [
+        player for player in game_players if player.game_id in selected_game_ids
+    ]
     return filtered_games, filtered_game_players
 
 
@@ -362,4 +369,6 @@ def _build_rawr_warning_messages(*, season: str, summary: _SeasonCacheSummary) -
 
 
 def _list_cached_rawr_seasons_for_type(season_type: SeasonType) -> list[str]:
-    return sorted({row.season.id for row in list_cache_load_rows() if row.season.season_type == season_type})
+    return sorted(
+        {row.season.id for row in list_cache_load_rows() if row.season.season_type == season_type}
+    )
