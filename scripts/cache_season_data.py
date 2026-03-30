@@ -25,7 +25,7 @@ from rawr_analytics.nba.ingest_logging import (
 )
 from rawr_analytics.shared.season import Season, build_season_list
 from rawr_analytics.shared.team import Team
-from rawr_analytics.workflows.nba_ingest import IngestRequest, refresh
+from rawr_analytics.workflows.nba_ingest import IngestRequest, _refresh
 
 _DEFAULT_START_YEAR = 2000
 _DEFAULT_FIRST_YEAR = 1946
@@ -129,7 +129,7 @@ def main(argv: list[str] | None = None) -> int:
             team_season_scope = f"{team.abbreviation(season=season)} {season}"
             try:
                 request = IngestRequest(team, season)
-                result = refresh(
+                result = _refresh(
                     request,
                     log=filtered_log,
                     progress=lambda payload, team_index=team_index: render_progress_line(

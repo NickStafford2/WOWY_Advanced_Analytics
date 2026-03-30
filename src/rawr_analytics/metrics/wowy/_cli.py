@@ -23,7 +23,7 @@ def _build_parser() -> argparse.ArgumentParser:
     return parser
 
 
-def prepare_and_run_wowy(args) -> str:
+def _prepare_and_run_wowy(args) -> str:
     season_type = (
         args.season_type
         if isinstance(args.season_type, SeasonType)
@@ -61,5 +61,5 @@ def prepare_and_run_wowy(args) -> str:
 def main(argv: list[str] | None = None) -> int:
     parser = _build_parser()
     args = parser.parse_args(argv)
-    print(prepare_and_run_wowy(args))
+    print(_prepare_and_run_wowy(args))
     return 0

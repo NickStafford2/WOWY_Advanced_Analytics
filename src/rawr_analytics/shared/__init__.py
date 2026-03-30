@@ -6,7 +6,7 @@ Keep this package small.
 """
 
 from rawr_analytics.shared.common import LogFn, ProgressFn
-from rawr_analytics.shared.season import Season, SeasonType
+from rawr_analytics.shared.season import Season, SeasonType, build_season_list
 from rawr_analytics.shared.team import Team
 
 __all__ = [
@@ -15,4 +15,5 @@ __all__ = [
     "Season",
     "LogFn",
     "ProgressFn",
+    "build_season_list",
 ]

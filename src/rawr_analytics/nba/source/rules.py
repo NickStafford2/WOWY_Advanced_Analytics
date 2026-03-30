@@ -157,7 +157,7 @@ def _parse_iso_duration_minutes(minute_text: str) -> float | None:
     return parsed_minutes
 
 
-def played_in_game(minutes: object) -> bool:
+def _played_in_game(minutes: object) -> bool:
     parsed_minutes = parse_minutes_to_float(minutes)
     if parsed_minutes is None:
         return False
@@ -166,7 +166,7 @@ def played_in_game(minutes: object) -> bool:
 
 def source_player_played_in_game(row: SourceBoxScorePlayer) -> bool:
     has_stats = _row_has_any_box_score_stats(row.raw_row)
-    has_minutes = played_in_game(row.minutes_raw)
+    has_minutes = _played_in_game(row.minutes_raw)
     if has_stats:
         assert has_minutes, (
             "Box score player row has counting stats without playable minutes; "
@@ -252,6 +252,6 @@ __all__ = [
     "format_source_rows",
     "parse_box_score_numeric_value",
     "parse_minutes_to_float",
-    "played_in_game",
+    "_played_in_game",
     "source_player_played_in_game",
 ]

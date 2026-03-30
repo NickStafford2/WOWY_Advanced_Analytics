@@ -18,11 +18,11 @@ from rawr_analytics.nba.models import NormalizedGamePlayerRecord, NormalizedGame
 from rawr_analytics.nba.source.cache import (
     BOX_SCORE_REQUEST_TIMEOUT_SECONDS,
     LEAGUE_GAMES_REQUEST_TIMEOUT_SECONDS,
-    league_games_cache_path,
+    _league_games_cache_path,
     load_cached_payload,
     load_or_fetch_box_score_cache,
     load_or_fetch_league_games,
-    write_cached_payload,
+    _write_cached_payload,
 )
 from rawr_analytics.shared.scope import TeamSeasonScope
 from tests.support import game as normalized_game
@@ -33,7 +33,7 @@ from tests.support import seed_db_from_team_seasons
 def test_write_cached_payload_writes_json_atomically(tmp_path: Path):
     cache_path = tmp_path / "cache" / "payload.json"
 
-    write_cached_payload(cache_path, {"value": 1})
+    _write_cached_payload(cache_path, {"value": 1})
 
     assert cache_path.exists()
     assert json.loads(cache_path.read_text(encoding="utf-8")) == {"value": 1}
@@ -231,13 +231,13 @@ def test_load_or_fetch_league_games_discards_empty_cached_payload_and_refetches(
     tmp_path: Path,
     monkeypatch,
 ):
-    cache_path = league_games_cache_path(
+    cache_path = _league_games_cache_path(
         team_abbreviation="BOS",
         season="2023-24",
         season_type="Regular Season",
         source_data_dir=tmp_path,
     )
-    write_cached_payload(cache_path, {"resultSets": [{"headers": ["GAME_ID"], "rowSet": []}]})
+    _write_cached_payload(cache_path, {"resultSets": [{"headers": ["GAME_ID"], "rowSet": []}]})
 
     calls: list[int] = []
 
@@ -509,7 +509,7 @@ def test_load_or_fetch_box_score_discards_empty_cached_payload_and_refetches(
     monkeypatch,
 ):
     cache_path = tmp_path / "boxscores" / "0009_boxscoretraditionalv2.json"
-    write_cached_payload(
+    _write_cached_payload(
         cache_path,
         {
             "resultSets": [
@@ -554,7 +554,7 @@ def test_canonicalize_season_type_accepts_common_aliases():
 
 
 def test_league_games_cache_path_uses_canonical_season_type_slug(tmp_path: Path):
-    cache_path = league_games_cache_path(
+    cache_path = _league_games_cache_path(
         team_abbreviation="BOS",
         season="2023-24",
         season_type="postseason",

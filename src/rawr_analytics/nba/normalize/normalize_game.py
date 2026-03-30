@@ -57,7 +57,7 @@ def normalize_source_league_game(
         game_id=source_league_game.game_id,
         season=season,
         game_date=source_league_game.game_date,
-        is_home=extract_is_home(
+        is_home=_extract_is_home(
             source_league_game.matchup, team_stat.team.abbreviation(season=season)
         ),
         margin=margin,
@@ -68,7 +68,7 @@ def normalize_source_league_game(
     return game, players
 
 
-def extract_opponent(matchup: str, team_abbreviation: str) -> str:
+def _extract_opponent(matchup: str, team_abbreviation: str) -> str:
     left, right, _ = _split_matchup(matchup)
     if _validate_matchup(left, team_abbreviation):
         return right
@@ -77,7 +77,7 @@ def extract_opponent(matchup: str, team_abbreviation: str) -> str:
     raise ValueError(f"Failed to parse opponent from matchup {matchup!r}")
 
 
-def extract_is_home(matchup: str, team_abbreviation: str) -> bool:
+def _extract_is_home(matchup: str, team_abbreviation: str) -> bool:
     left, right, separator = _split_matchup(matchup)
     if separator == "vs.":
         if _validate_matchup(left, team_abbreviation):
@@ -211,7 +211,6 @@ def _validate_matchup(side: str, team_abbreviation: str) -> bool:
 
 
 __all__ = [
-    "extract_is_home",
-    "extract_opponent",
+    "_extract_is_home",
     "normalize_source_league_game",
 ]

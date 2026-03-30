@@ -9,8 +9,8 @@ from rawr_analytics.data.rawr import (
     DEFAULT_RAWR_SHRINKAGE_STRENGTH,
     prepare_rawr_player_season_records,
 )
-from rawr_analytics.metrics.rawr._formatting import format_rawr_records
 from rawr_analytics.metrics.rawr import validate_filters
+from rawr_analytics.metrics.rawr._formatting import format_rawr_records
 from rawr_analytics.nba.source.cache import DEFAULT_SOURCE_DATA_DIR
 from rawr_analytics.progress import print_status_box
 from rawr_analytics.shared.scope import format_scope
@@ -38,7 +38,7 @@ def build_parser() -> argparse.ArgumentParser:
     return parser
 
 
-def prepare_and_run_rawr(args) -> str:
+def _prepare_and_run_rawr(args) -> str:
     season_type = (
         args.season_type
         if isinstance(args.season_type, SeasonType)
@@ -82,5 +82,5 @@ def prepare_and_run_rawr(args) -> str:
 def main(argv: list[str] | None = None) -> int:
     parser = build_parser()
     args = parser.parse_args(argv)
-    print(prepare_and_run_rawr(args))
+    print(_prepare_and_run_rawr(args))
     return 0

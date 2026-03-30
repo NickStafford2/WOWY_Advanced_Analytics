@@ -24,7 +24,7 @@ from rawr_analytics.shared.season import Season, SeasonType
 from rawr_analytics.shared.team import Team
 
 
-def load_wowy_season_inputs(
+def _load_wowy_season_inputs(
     teams: list[Team] | None,
     seasons: list[Season] | None,
     *,
@@ -42,11 +42,7 @@ def load_wowy_season_inputs(
     season_inputs: list[WowySeasonInput] = []
     for season in sorted(games_by_season, key=lambda item: item.id):
         player_ids = sorted(
-            {
-                player_id
-                for game in games_by_season[season]
-                for player_id in game.players
-            }
+            {player_id for game in games_by_season[season] for player_id in game.players}
         )
         season_inputs.append(
             WowySeasonInput(
@@ -78,7 +74,7 @@ def prepare_wowy_player_season_records(
 ) -> list[WowyPlayerSeasonRecord]:
     return build_player_season_records(
         WowyRequest(
-            season_inputs=load_wowy_season_inputs(
+            season_inputs=_load_wowy_season_inputs(
                 teams=teams,
                 seasons=seasons,
                 season_type=season_type,
@@ -162,11 +158,11 @@ def _derive_wowy_games_by_season(
     for player in game_players:
         if not player.appeared:
             continue
-        players_by_game_team[(player.game_id, player.identity_team)].add(player.player_id)
+        players_by_game_team[(player.game_id, player.team)].add(player.player_id)
 
     games_by_season: dict[Season, list[WowyGame]] = defaultdict(list)
     for game in games:
-        players = players_by_game_team.get((game.game_id, game.identity_team), set())
+        players = players_by_game_team.get((game.game_id, game.team), set())
         if not players:
             raise ValueError(
                 f"No appeared players found for game {game.game_id!r} and team "

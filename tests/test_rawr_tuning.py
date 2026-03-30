@@ -6,9 +6,9 @@ from rawr_analytics.metrics.rawr.models import RawrPlayerSeasonRecord
 from rawr_analytics.metrics.rawr.tuning import (
     aggregate_rawr_training_records,
     aggregate_wowy_training_records,
-    count_evaluation_steps,
-    evaluate_configs,
-    format_results_table,
+    _count_evaluation_steps,
+    _evaluate_configs,
+    _format_results_table,
     parse_float_grid,
 )
 from rawr_analytics.metrics.wowy.models import WowyPlayerSeasonRecord
@@ -26,7 +26,7 @@ def test_count_evaluation_steps_accounts_for_minute_scale_grid():
         shrinkage_minute_scale_values=[48.0, 240.0, 480.0],
     )
 
-    assert count_evaluation_steps(args) == 19
+    assert _count_evaluation_steps(args) == 19
 
 
 def test_aggregate_training_records_support_latest():
@@ -122,11 +122,11 @@ def test_evaluate_configs_compares_wowy_and_rawr(monkeypatch):
         source_data_dir=None,
     )
 
-    results = evaluate_configs(args)
+    results = _evaluate_configs(args)
 
     assert [result.model for result in results].count("wowy-baseline") == 1
     assert [result.model for result in results].count("rawr") == 2
-    table = format_results_table(results)
+    table = _format_results_table(results)
     assert "RAWR tuning comparison" in table
     assert "wowy-baseline" in table
     assert "minutes" in table
