@@ -37,7 +37,7 @@ class ComparisonResult:
     top_n_overlap: int
 
 
-def build_parser() -> argparse.ArgumentParser:
+def _build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
         description=(
             "Compare WOWY and RAWR training configurations against a holdout-season WOWY target."
@@ -207,7 +207,7 @@ def aggregate_values(
     raise ValueError(f"Unsupported aggregation: {aggregation}")
 
 
-def build_holdout_targets(
+def _build_holdout_targets(
     records: list[WowyPlayerSeasonRecord],
 ) -> dict[int, AggregatedPlayerValue]:
     return {
@@ -221,7 +221,7 @@ def build_holdout_targets(
     }
 
 
-def build_comparison_result(
+def _build_comparison_result(
     *,
     model: str,
     training_scores: dict[int, AggregatedPlayerValue],
@@ -243,13 +243,13 @@ def build_comparison_result(
         shrinkage_strength=shrinkage_strength,
         shrinkage_minute_scale=shrinkage_minute_scale,
         players=len(shared_player_ids),
-        pearson=pearson_correlation(train_values, holdout_values),
-        spearman=spearman_correlation(train_values, holdout_values),
-        top_n_overlap=top_n_overlap(training_scores, holdout_targets, top_n=top_n),
+        pearson=_pearson_correlation(train_values, holdout_values),
+        spearman=_spearman_correlation(train_values, holdout_values),
+        top_n_overlap=_top_n_overlap(training_scores, holdout_targets, top_n=top_n),
     )
 
 
-def pearson_correlation(xs: list[float], ys: list[float]) -> float | None:
+def _pearson_correlation(xs: list[float], ys: list[float]) -> float | None:
     if len(xs) < 2 or len(ys) < 2:
         return None
     if len(set(xs)) <= 1 or len(set(ys)) <= 1:
@@ -257,15 +257,15 @@ def pearson_correlation(xs: list[float], ys: list[float]) -> float | None:
     return float(np.corrcoef(xs, ys)[0][1])
 
 
-def spearman_correlation(xs: list[float], ys: list[float]) -> float | None:
+def _spearman_correlation(xs: list[float], ys: list[float]) -> float | None:
     if len(xs) < 2 or len(ys) < 2:
         return None
-    ranked_xs = rank_values(xs)
-    ranked_ys = rank_values(ys)
-    return pearson_correlation(ranked_xs, ranked_ys)
+    ranked_xs = _rank_values(xs)
+    ranked_ys = _rank_values(ys)
+    return _pearson_correlation(ranked_xs, ranked_ys)
 
 
-def rank_values(values: list[float]) -> list[float]:
+def _rank_values(values: list[float]) -> list[float]:
     indexed = sorted(enumerate(values), key=lambda item: item[1])
     ranks = [0.0] * len(values)
     position = 0
@@ -281,7 +281,7 @@ def rank_values(values: list[float]) -> list[float]:
     return ranks
 
 
-def top_n_overlap(
+def _top_n_overlap(
     training_scores: dict[int, AggregatedPlayerValue],
     holdout_targets: dict[int, AggregatedPlayerValue],
     *,
@@ -311,8 +311,8 @@ def top_n_overlap(
     return len(set(ranked_train) & set(ranked_holdout))
 
 
-def evaluate_configs(args) -> list[ComparisonResult]:
-    total_steps = count_evaluation_steps(args)
+def _evaluate_configs(args) -> list[ComparisonResult]:
+    total_steps = _count_evaluation_steps(args)
     progress_bar = TerminalProgressBar("RAWR tune", total=total_steps)
     completed_steps = 0
 
@@ -327,7 +327,7 @@ def evaluate_configs(args) -> list[ComparisonResult]:
     )
     completed_steps += 1
     progress_bar.update(completed_steps, detail=f"holdout {args.holdout_season}")
-    holdout_targets = build_holdout_targets(holdout_records)
+    holdout_targets = _build_holdout_targets(holdout_records)
 
     training_wowy_records = prepare_wowy_player_season_records(
         teams=args.team,
@@ -341,7 +341,7 @@ def evaluate_configs(args) -> list[ComparisonResult]:
     completed_steps += 1
     progress_bar.update(completed_steps, detail="training WOWY")
     results = [
-        build_comparison_result(
+        _build_comparison_result(
             model="wowy-baseline",
             training_scores=aggregate_wowy_training_records(
                 training_wowy_records,
@@ -387,7 +387,7 @@ def evaluate_configs(args) -> list[ComparisonResult]:
             completed_steps += 1
             progress_bar.update(completed_steps, detail=detail)
             results.append(
-                build_comparison_result(
+                _build_comparison_result(
                     model="rawr",
                     training_scores=aggregate_rawr_training_records(
                         rawr_records,
@@ -416,7 +416,7 @@ def evaluate_configs(args) -> list[ComparisonResult]:
     )
 
 
-def count_evaluation_steps(args) -> int:
+def _count_evaluation_steps(args) -> int:
     shrinkage_modes = args.shrinkage_mode or ["uniform", "game-count", "minutes"]
     rawr_configs = 0
     for _, shrinkage_mode, _ in product(
@@ -431,7 +431,7 @@ def count_evaluation_steps(args) -> int:
     return 3 + rawr_configs
 
 
-def format_results_table(results: list[ComparisonResult]) -> str:
+def _format_results_table(results: list[ComparisonResult]) -> str:
     if not results:
         return "No comparison rows were generated."
 
@@ -448,29 +448,29 @@ def format_results_table(results: list[ComparisonResult]) -> str:
     for result in results:
         lines.append(
             f"{result.model:<14} "
-            f"{format_float(result.ridge_alpha, decimals=2):>7} "
-            f"{format_text(result.shrinkage_mode):<10} "
-            f"{format_float(result.shrinkage_strength, decimals=2):>9} "
-            f"{format_float(result.shrinkage_minute_scale, decimals=1):>10} "
+            f"{_format_float(result.ridge_alpha, decimals=2):>7} "
+            f"{_format_text(result.shrinkage_mode):<10} "
+            f"{_format_float(result.shrinkage_strength, decimals=2):>9} "
+            f"{_format_float(result.shrinkage_minute_scale, decimals=1):>10} "
             f"{result.players:>7} "
-            f"{format_float(result.pearson, decimals=3):>9} "
-            f"{format_float(result.spearman, decimals=3):>9} "
+            f"{_format_float(result.pearson, decimals=3):>9} "
+            f"{_format_float(result.spearman, decimals=3):>9} "
             f"{result.top_n_overlap:>7}"
         )
     return "\n".join(lines)
 
 
-def format_float(value: float | None, *, decimals: int) -> str:
+def _format_float(value: float | None, *, decimals: int) -> str:
     if value is None:
         return "-"
     return f"{value:.{decimals}f}"
 
 
-def format_text(value: str | None) -> str:
+def _format_text(value: str | None) -> str:
     return value if value is not None else "-"
 
 
-def build_summary(args, results: list[ComparisonResult]) -> str:
+def _build_summary(args, results: list[ComparisonResult]) -> str:
     train_label = ",".join(args.train_season)
     best = results[0] if results else None
     lines = [
@@ -499,7 +499,7 @@ def build_summary(args, results: list[ComparisonResult]) -> str:
 
 
 def main(argv: list[str] | None = None) -> int:
-    parser = build_parser()
+    parser = _build_parser()
     args = parser.parse_args(argv)
     args.season_type = SeasonType.parse(args.season_type)
     args.rawr_ridge_values = parse_float_grid(args.rawr_ridge_grid)
@@ -523,7 +523,7 @@ def main(argv: list[str] | None = None) -> int:
             ),
         ],
     )
-    results = evaluate_configs(args)
-    print(build_summary(args, results))
-    print(format_results_table(results))
+    results = _evaluate_configs(args)
+    print(_build_summary(args, results))
+    print(_format_results_table(results))
     return 0

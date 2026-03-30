@@ -3,14 +3,14 @@ from __future__ import annotations
 import argparse
 
 from rawr_analytics.data.wowy import prepare_wowy_player_season_records
-from rawr_analytics.metrics.wowy._formatting import format_results_table
 from rawr_analytics.metrics.wowy import validate_filters
+from rawr_analytics.metrics.wowy._formatting import format_results_table
 from rawr_analytics.progress import print_status_box
 from rawr_analytics.shared.scope import format_scope
 from rawr_analytics.shared.season import SeasonType
 
 
-def build_parser() -> argparse.ArgumentParser:
+def _build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(description="Run WOWY on normalized cached data.")
     parser.add_argument("--team", action="append", default=None)
     parser.add_argument("--season", action="append", default=None)
@@ -59,7 +59,7 @@ def prepare_and_run_wowy(args) -> str:
 
 
 def main(argv: list[str] | None = None) -> int:
-    parser = build_parser()
+    parser = _build_parser()
     args = parser.parse_args(argv)
     print(prepare_and_run_wowy(args))
     return 0
