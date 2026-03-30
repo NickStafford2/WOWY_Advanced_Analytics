@@ -3,6 +3,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Callable
 
+from rawr_analytics.cli import filtered_log
 from rawr_analytics.data.game_cache.repository import replace_team_season_normalized_rows
 from rawr_analytics.nba.errors import FetchError, GameNormalizationFailure, PartialTeamSeasonError
 from rawr_analytics.nba.models import (
@@ -21,10 +22,10 @@ from rawr_analytics.shared.common import LogFn, ProgressFn
 from rawr_analytics.shared.season import Season, build_season_list
 from rawr_analytics.shared.team import Team
 
-TeamSeasonFailureError = FetchError | PartialTeamSeasonError | ValueError
-SeasonStartedFn = Callable[[int, int, Season], None]
-TeamFinishedFn = Callable[[int, int, "IngestResult"], None]
-TeamFailedFn = Callable[[int, int, "SeasonRangeFailure"], None]
+_TeamSeasonFailureError = FetchError | PartialTeamSeasonError | ValueError
+_SeasonStartedFn = Callable[[int, int, Season], None]
+_TeamFinishedFn = Callable[[int, int, "IngestResult"], None]
+_TeamFailedFn = Callable[[int, int, "SeasonRangeFailure"], None]
 
 
 @dataclass(frozen=True)
@@ -66,7 +67,7 @@ class IngestResult:
 class SeasonRangeFailure:
     request: IngestRequest
     failure_kind: str
-    error: TeamSeasonFailureError
+    error: _TeamSeasonFailureError
 
     @property
     def scope(self) -> str:
@@ -98,19 +99,19 @@ class SeasonRangeResult:
 
 def refresh_season_range(
     *,
-    season: str | None = None,
+    season_str: str | None = None,
     start_year: int,
     end_year: int,
     season_type: str,
-    team_codes: list[str] | None = None,
-    log: LogFn | None = print,
-    progress: Callable[[int, int, dict], None] | None = None,
-    season_started: SeasonStartedFn | None = None,
-    team_completed: TeamFinishedFn | None = None,
-    team_failed: TeamFailedFn | None = None,
+    team_abbreviations: list[str] | None = None,
+    log_fn: LogFn | None = filtered_log,
+    progress_fn: Callable[[int, int, dict], None] | None = None,
+    season_started_fn: _SeasonStartedFn | None = None,
+    team_completed_fn: _TeamFinishedFn | None = None,
+    team_failed_fn: _TeamFailedFn | None = None,
 ) -> SeasonRangeResult:
     seasons = _build_seasons(
-        season=season,
+        season=season_str,
         start_year=start_year,
         end_year=end_year,
         season_type=season_type,
@@ -121,10 +122,10 @@ def refresh_season_range(
     failures: list[SeasonRangeFailure] = []
 
     for season_index, current_season in enumerate(seasons, start=1):
-        if season_started is not None:
-            season_started(season_index, season_total, current_season)
+        if season_started_fn is not None:
+            season_started_fn(season_index, season_total, current_season)
 
-        teams = _resolve_teams(team_codes=team_codes, season=current_season)
+        teams = _resolve_teams(team_codes=team_abbreviations, season=current_season)
         team_total = len(teams)
         for team_index, team in enumerate(teams, start=1):
             attempted_team_seasons += 1
@@ -132,11 +133,13 @@ def refresh_season_range(
             try:
                 result = refresh_team_season(
                     request,
-                    log=log,
+                    log=log_fn,
                     progress=(
                         None
-                        if progress is None
-                        else lambda payload, team_index=team_index, team_total=team_total: progress(
+                        if progress_fn is None
+                        else lambda payload,
+                        team_index=team_index,
+                        team_total=team_total: progress_fn(
                             team_index,
                             team_total,
                             payload,
@@ -163,13 +166,13 @@ def refresh_season_range(
                 )
             else:
                 completed_team_seasons += 1
-                if team_completed is not None:
-                    team_completed(team_index, team_total, result)
+                if team_completed_fn is not None:
+                    team_completed_fn(team_index, team_total, result)
                 continue
 
             failures.append(failure)
-            if team_failed is not None:
-                team_failed(team_index, team_total, failure)
+            if team_failed_fn is not None:
+                team_failed_fn(team_index, team_total, failure)
 
     return SeasonRangeResult(
         seasons=seasons,

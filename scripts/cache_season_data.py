@@ -4,7 +4,6 @@ import argparse
 import sys
 
 from rawr_analytics.cli import (
-    filtered_log,
     render_failure_summary,
     render_partial_failure_details,
     render_progress_line,
@@ -13,11 +12,12 @@ from rawr_analytics.cli import (
     render_team_partial_failed_line,
     render_team_validation_failed_line,
 )
-from rawr_analytics.nba.errors import FetchError, PartialTeamSeasonError
-from rawr_analytics.nba.ingest_logging import (
+from rawr_analytics.nba import (
+    FetchError,
+    PartialTeamSeasonError,
     append_ingest_failure_log,
 )
-from rawr_analytics.shared.season import Season
+from rawr_analytics.shared import Season
 from rawr_analytics.workflows import (
     IngestResult,
     SeasonRangeFailure,
@@ -156,16 +156,15 @@ def main(argv: list[str] | None = None) -> int:
     parser = _build_parser()
     args = parser.parse_args(argv)
     result = refresh_season_range(
-        season=args.season,
+        season_str=args.season,
         start_year=args.start_year or _DEFAULT_START_YEAR,
         end_year=args.end_year or _DEFAULT_END_YEAR,
         season_type=args.season_type or _DEFAULT_SEASON_TYPE,
-        team_codes=args.teams,
-        log=filtered_log,
-        progress=_render_progress,
-        season_started=_render_season_started,
-        team_completed=_render_team_completed,
-        team_failed=_render_team_failed,
+        team_abbreviations=args.teams,
+        progress_fn=_render_progress,
+        season_started_fn=_render_season_started,
+        team_completed_fn=_render_team_completed,
+        team_failed_fn=_render_team_failed,
     )
     _render_failure_summary_for_result(result)
     return result.exit_status
