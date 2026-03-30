@@ -4,7 +4,7 @@ from rawr_analytics.metrics.rawr.models import RawrPlayerContext, RawrRequest, R
 from rawr_analytics.shared.filters import validate_top_n_and_minutes
 
 
-def _validate_filters(
+def validate_filters(
     min_games: int,
     ridge_alpha: float,
     *,
@@ -32,8 +32,8 @@ def _validate_filters(
     )
 
 
-def _validate_request(request: RawrRequest) -> None:
-    _validate_filters(
+def validate_request(request: RawrRequest) -> None:
+    validate_filters(
         request.min_games,
         request.ridge_alpha,
         shrinkage_mode=request.shrinkage_mode,
@@ -63,7 +63,7 @@ def _validate_season_input(season_input: RawrSeasonInput) -> None:
             )
 
 
-def _passes_minute_filters(
+def passes_minute_filters(
     player: RawrPlayerContext,
     *,
     min_average_minutes: float | None,

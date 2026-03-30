@@ -16,7 +16,7 @@ from rawr_analytics.metrics.rawr import (
 )
 
 from ._models import MetricQuery
-from ._scope import _build_filters_payload
+from ._scope import build_filters_payload
 
 MetricView = str
 
@@ -39,7 +39,7 @@ def build_metric_view_payload(
         payload = _build_custom_metric_leaderboard_payload(metric, query=query)
     else:
         raise ValueError(f"Unknown metric view: {view}")
-    payload["filters"] = _build_filters_payload(query)
+    payload["filters"] = build_filters_payload(query)
     return payload
 
 

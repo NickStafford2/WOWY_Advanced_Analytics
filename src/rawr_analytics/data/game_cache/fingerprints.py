@@ -3,7 +3,7 @@ from __future__ import annotations
 import hashlib
 
 from rawr_analytics.data.constants import DB_PATH
-from rawr_analytics.data.game_cache.schema import _connect, initialize_game_cache_db
+from rawr_analytics.data.game_cache.schema import connect, initialize_game_cache_db
 from rawr_analytics.shared.season import Season
 
 
@@ -37,7 +37,7 @@ def build_normalized_cache_fingerprint(
     query += " ORDER BY load.season_type, load.season, load.team_id"
 
     digest = hashlib.sha256()
-    with _connect(DB_PATH) as connection:
+    with connect(DB_PATH) as connection:
         rows = connection.execute(query, params).fetchall()
     for row in rows:
         digest.update(row["team"].encode("utf-8"))

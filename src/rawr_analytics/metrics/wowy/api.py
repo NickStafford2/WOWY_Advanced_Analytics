@@ -5,8 +5,8 @@ from rawr_analytics.metrics.wowy._analysis import (
     DEFAULT_WOWY_SHRINKAGE_PRIOR_GAMES,
     compute_wowy_shrinkage_score,
 )
-from rawr_analytics.metrics.wowy._inputs import _validate_filters, _validate_request
-from rawr_analytics.metrics.wowy._records import _build_player_season_records
+from rawr_analytics.metrics.wowy._inputs import validate_filters, validate_request
+from rawr_analytics.metrics.wowy._records import build_player_season_records
 from rawr_analytics.metrics.wowy.models import WowyPlayerSeasonRecord, WowyRequest
 
 __all__ = [
@@ -62,7 +62,7 @@ def validate_filters(
     min_average_minutes: float | None = None,
     min_total_minutes: float | None = None,
 ) -> None:
-    _validate_filters(
+    validate_filters(
         min_games_with,
         min_games_without,
         top_n=top_n,
@@ -72,5 +72,5 @@ def validate_filters(
 
 
 def build_player_season_records(request: WowyRequest) -> list[WowyPlayerSeasonRecord]:
-    _validate_request(request)
-    return _build_player_season_records(request)
+    validate_request(request)
+    return build_player_season_records(request)

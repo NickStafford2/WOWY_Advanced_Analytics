@@ -51,7 +51,7 @@ def build_metric_options_payload(
     season_type: SeasonType,
 ) -> MetricOptionsPayload:
     query = build_metric_query(metric, teams=teams, season_type=season_type)
-    filters = _build_filters_payload(query)
+    filters = build_filters_payload(query)
     snapshot = load_metric_store_scope_snapshot(
         metric,
         teams=teams,
@@ -82,7 +82,7 @@ def build_metric_options_payload(
     )
 
 
-def _build_filters_payload(query: MetricQuery) -> MetricFilters:
+def build_filters_payload(query: MetricQuery) -> MetricFilters:
     return MetricFilters(
         teams=query.teams,
         seasons=query.seasons,

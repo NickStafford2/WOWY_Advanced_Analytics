@@ -8,7 +8,7 @@ from rawr_analytics.data.player_metrics_db.constants import LEGACY_METRIC_RENAME
 
 
 def initialize_player_metrics_db() -> None:
-    with _connect(DB_PATH) as connection:
+    with connect(DB_PATH) as connection:
         connection.executescript(
             """
             CREATE TABLE IF NOT EXISTS metric_player_season_values (
@@ -90,7 +90,7 @@ def initialize_player_metrics_db() -> None:
         _migrate_legacy_metric_names(connection)
 
 
-def _connect(db_path: Path) -> sqlite3.Connection:
+def connect(db_path: Path) -> sqlite3.Connection:
     db_path.parent.mkdir(parents=True, exist_ok=True)
     connection = sqlite3.connect(db_path)
     connection.row_factory = sqlite3.Row

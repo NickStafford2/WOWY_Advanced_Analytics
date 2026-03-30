@@ -1,7 +1,7 @@
 from __future__ import annotations
 
-from rawr_analytics.metrics.rawr.analysis import _fit_player_rawr
-from rawr_analytics.metrics.rawr._inputs import _passes_minute_filters
+from rawr_analytics.metrics.rawr._inputs import passes_minute_filters
+from rawr_analytics.metrics.rawr.analysis import fit_player_rawr
 from rawr_analytics.metrics.rawr.models import (
     RawrPlayerSeasonRecord,
     RawrRequest,
@@ -9,7 +9,7 @@ from rawr_analytics.metrics.rawr.models import (
 )
 
 
-def _build_player_season_records(request: RawrRequest) -> list[RawrPlayerSeasonRecord]:
+def build_player_season_records(request: RawrRequest) -> list[RawrPlayerSeasonRecord]:
     records: list[RawrPlayerSeasonRecord] = []
     for season_input in sorted(request.season_inputs, key=lambda item: item.season.id):
         records.extend(_build_season_records(season_input, request=request))
@@ -25,11 +25,8 @@ def _build_season_records(
     *,
     request: RawrRequest,
 ) -> list[RawrPlayerSeasonRecord]:
-    player_contexts = {
-        player.player_id: player
-        for player in season_input.players
-    }
-    result = _fit_player_rawr(
+    player_contexts = {player.player_id: player for player in season_input.players}
+    result = fit_player_rawr(
         season_input.observations,
         player_names={player.player_id: player.player_name for player in season_input.players},
         season=season_input.season,
@@ -43,7 +40,7 @@ def _build_season_records(
     records: list[RawrPlayerSeasonRecord] = []
     for estimate in result.estimates:
         player = player_contexts[estimate.player_id]
-        if not _passes_minute_filters(
+        if not passes_minute_filters(
             player,
             min_average_minutes=request.min_average_minutes,
             min_total_minutes=request.min_total_minutes,

@@ -23,7 +23,8 @@ from rawr_analytics.shared.team import Team
 ProgressFn = Callable[[int, int, str | None], None]
 ShrinkageMode = str
 
-def _fit_player_rawr(
+
+def fit_player_rawr(
     observations: list[RawrObservation],
     player_names: dict[int, str],
     *,

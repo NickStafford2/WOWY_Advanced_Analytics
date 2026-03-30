@@ -11,7 +11,7 @@ from rawr_analytics.data.player_metrics_db.models import (
     MetricStoreMetadata,
     PlayerSeasonMetricRow,
 )
-from rawr_analytics.data.player_metrics_db.schema import _connect, initialize_player_metrics_db
+from rawr_analytics.data.player_metrics_db.schema import connect, initialize_player_metrics_db
 
 
 def load_metric_store_metadata(
@@ -19,7 +19,7 @@ def load_metric_store_metadata(
     scope_key: str,
 ) -> MetricStoreMetadata | None:
     initialize_player_metrics_db()
-    with _connect(DB_PATH) as connection:
+    with connect(DB_PATH) as connection:
         row = connection.execute(
             """
             SELECT
@@ -53,7 +53,7 @@ def load_metric_scope_catalog_row(
     scope_key: str,
 ) -> MetricScopeCatalogRow | None:
     initialize_player_metrics_db()
-    with _connect(DB_PATH) as connection:
+    with connect(DB_PATH) as connection:
         row = connection.execute(
             """
             SELECT
@@ -112,7 +112,7 @@ def load_metric_full_span_series_rows(
     if top_n is not None:
         query += " LIMIT ?"
         params.append(top_n)
-    with _connect(DB_PATH) as connection:
+    with connect(DB_PATH) as connection:
         rows = connection.execute(query, params).fetchall()
     return [
         MetricFullSpanSeriesRow(
@@ -147,7 +147,7 @@ def load_metric_full_span_points_map(
         WHERE metric = ? AND scope_key = ? AND player_id IN ({placeholders})
     """
     params: list[Any] = [metric, scope_key, *player_ids]
-    with _connect(DB_PATH) as connection:
+    with connect(DB_PATH) as connection:
         rows = connection.execute(query, params).fetchall()
     points: dict[int, dict[str, float]] = {}
     for row in rows:
@@ -161,7 +161,7 @@ def list_metric_seasons(
     scope_key: str,
 ) -> list[str]:
     initialize_player_metrics_db()
-    with _connect(db_path) as connection:
+    with connect(db_path) as connection:
         rows = connection.execute(
             """
             SELECT DISTINCT season
@@ -225,7 +225,7 @@ def load_metric_rows(
 
     query += " ORDER BY season, value DESC, player_name ASC"
 
-    with _connect(DB_PATH) as connection:
+    with connect(DB_PATH) as connection:
         rows = connection.execute(query, params).fetchall()
 
     return [

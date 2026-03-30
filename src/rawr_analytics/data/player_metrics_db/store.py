@@ -11,7 +11,7 @@ from rawr_analytics.data.player_metrics_db.models import (
     MetricScopeCatalogRow,
     PlayerSeasonMetricRow,
 )
-from rawr_analytics.data.player_metrics_db.schema import _connect, initialize_player_metrics_db
+from rawr_analytics.data.player_metrics_db.schema import connect, initialize_player_metrics_db
 from rawr_analytics.data.player_metrics_db.validation import (
     _validate_metric_full_span_rows,
     _validate_metric_rows,
@@ -40,7 +40,7 @@ def replace_metric_rows(
     )
     updated_at = datetime.now(UTC).isoformat()
 
-    with _connect(db_path) as connection:
+    with connect(db_path) as connection:
         connection.execute("BEGIN")
         connection.execute(
             "DELETE FROM metric_player_season_values WHERE metric = ? AND scope_key = ?",
@@ -146,7 +146,7 @@ def replace_metric_scope_store(
     )
     updated_at = datetime.now(UTC).isoformat()
 
-    with _connect(DB_PATH) as connection:
+    with connect(DB_PATH) as connection:
         connection.execute("BEGIN")
         connection.execute(
             "DELETE FROM metric_full_span_points WHERE metric = ? AND scope_key = ?",
@@ -311,7 +311,7 @@ def clear_metric_scope_store(
     scope_key: str,
 ) -> None:
     initialize_player_metrics_db()
-    with _connect(DB_PATH) as connection:
+    with connect(DB_PATH) as connection:
         connection.execute("BEGIN")
         connection.execute(
             "DELETE FROM metric_full_span_points WHERE metric = ? AND scope_key = ?",
@@ -343,7 +343,7 @@ def replace_metric_scope_catalog_row(
 ) -> None:
     initialize_player_metrics_db()
     _validate_metric_scope_catalog_row(row)
-    with _connect(db_path) as connection:
+    with connect(db_path) as connection:
         connection.execute(
             """
             INSERT INTO metric_scope_catalog (
@@ -399,7 +399,7 @@ def replace_metric_full_span_rows(
         series_rows=series_rows,
         point_rows=point_rows,
     )
-    with _connect(db_path) as connection:
+    with connect(db_path) as connection:
         connection.execute("BEGIN")
         connection.execute(
             "DELETE FROM metric_full_span_points WHERE metric = ? AND scope_key = ?",

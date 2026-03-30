@@ -5,7 +5,7 @@ from rawr_analytics.metrics.wowy._inputs import passes_minute_filters
 from rawr_analytics.metrics.wowy.models import WowyPlayerSeasonRecord, WowyRequest, WowySeasonInput
 
 
-def _build_player_season_records(request: WowyRequest) -> list[WowyPlayerSeasonRecord]:
+def build_player_season_records(request: WowyRequest) -> list[WowyPlayerSeasonRecord]:
     records: list[WowyPlayerSeasonRecord] = []
     for season_input in sorted(request.season_inputs, key=lambda item: item.season.id):
         records.extend(_build_season_records(season_input, request=request))

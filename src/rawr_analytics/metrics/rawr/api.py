@@ -1,8 +1,8 @@
 from __future__ import annotations
 
 from rawr_analytics.metrics.constants import Metric, MetricSummary
-from rawr_analytics.metrics.rawr._inputs import _validate_filters, _validate_request
-from rawr_analytics.metrics.rawr._records import _build_player_season_records
+from rawr_analytics.metrics.rawr._inputs import validate_filters, validate_request
+from rawr_analytics.metrics.rawr._records import build_player_season_records
 from rawr_analytics.metrics.rawr.models import RawrPlayerSeasonRecord, RawrRequest
 
 DEFAULT_RAWR_SHRINKAGE_MODE = "uniform"
@@ -44,7 +44,7 @@ def validate_filters(
     min_average_minutes: float | None = None,
     min_total_minutes: float | None = None,
 ) -> None:
-    _validate_filters(
+    validate_filters(
         min_games=min_games,
         ridge_alpha=ridge_alpha,
         shrinkage_mode=shrinkage_mode,
@@ -57,5 +57,5 @@ def validate_filters(
 
 
 def build_player_season_records(request: RawrRequest) -> list[RawrPlayerSeasonRecord]:
-    _validate_request(request)
-    return _build_player_season_records(request)
+    validate_request(request)
+    return build_player_season_records(request)

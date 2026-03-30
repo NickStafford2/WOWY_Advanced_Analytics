@@ -4,7 +4,7 @@ from rawr_analytics.metrics.wowy.models import WowyPlayerContext, WowyRequest, W
 from rawr_analytics.shared.filters import validate_top_n_and_minutes
 
 
-def _validate_filters(
+def validate_filters(
     min_games_with: int,
     min_games_without: int,
     *,
@@ -21,8 +21,8 @@ def _validate_filters(
     )
 
 
-def _validate_request(request: WowyRequest) -> None:
-    _validate_filters(
+def validate_request(request: WowyRequest) -> None:
+    validate_filters(
         request.min_games_with,
         request.min_games_without,
         min_average_minutes=request.min_average_minutes,

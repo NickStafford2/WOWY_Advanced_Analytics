@@ -7,7 +7,7 @@ from rawr_analytics.data.constants import DB_PATH
 
 
 def initialize_game_cache_db() -> None:
-    with _connect(DB_PATH) as connection:
+    with connect(DB_PATH) as connection:
         _migrate_cache_schema_if_needed(connection)
         connection.executescript(
             """
@@ -201,7 +201,7 @@ def _table_exists(connection: sqlite3.Connection, table_name: str) -> bool:
     return table_exists is not None
 
 
-def _connect(db_path: Path) -> sqlite3.Connection:
+def connect(db_path: Path) -> sqlite3.Connection:
     db_path.parent.mkdir(parents=True, exist_ok=True)
     connection = sqlite3.connect(db_path)
     connection.row_factory = sqlite3.Row
