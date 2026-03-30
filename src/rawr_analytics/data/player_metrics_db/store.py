@@ -19,7 +19,7 @@ from rawr_analytics.data.player_metrics_db.validation import (
 )
 
 
-def replace_metric_rows(
+def _replace_metric_rows(
     db_path: Path,
     *,
     metric: str,
@@ -336,7 +336,7 @@ def clear_metric_scope_store(
         connection.commit()
 
 
-def replace_metric_scope_catalog_row(
+def _replace_metric_scope_catalog_row(
     db_path: Path,
     *,
     row: MetricScopeCatalogRow,
@@ -384,7 +384,7 @@ def replace_metric_scope_catalog_row(
         connection.commit()
 
 
-def replace_metric_full_span_rows(
+def _replace_metric_full_span_rows(
     db_path: Path,
     *,
     metric: str,

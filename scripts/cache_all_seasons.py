@@ -10,7 +10,7 @@ DEFAULT_START_YEAR = 2024
 DEFAULT_FIRST_YEAR = 1946
 
 
-def build_parser() -> argparse.ArgumentParser:
+def _build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
         description="Run cache_season_data.py for every season from a start year backward."
     )
@@ -45,18 +45,20 @@ def build_parser() -> argparse.ArgumentParser:
     return parser
 
 
-def season_string(start_year: int) -> str:
+# todo: move/merge with season.py
+def _season_string(start_year: int) -> str:
     end_year = (start_year + 1) % 100
     return f"{start_year}-{end_year:02d}"
 
 
-def build_season_strings(start_year: int, first_year: int) -> list[str]:
+def _build_season_strings(start_year: int, first_year: int) -> list[str]:
+    # todo: move/merge with season.py
     if start_year < first_year:
         raise ValueError("Start year must be greater than or equal to first year")
-    return [season_string(year) for year in range(start_year, first_year - 1, -1)]
+    return [_season_string(year) for year in range(start_year, first_year - 1, -1)]
 
 
-def build_command(
+def _build_command(
     season: str,
     season_type: SeasonType,
     teams: list[str] | None,
@@ -73,10 +75,10 @@ def build_command(
 
 
 def main(argv: list[str] | None = None) -> int:
-    parser = build_parser()
+    parser = _build_parser()
     args = parser.parse_args(argv)
 
-    seasons = build_season_strings(args.start_year, args.first_year)
+    seasons = _build_season_strings(args.start_year, args.first_year)
     total = len(seasons)
     failed_seasons: list[str] = []
     for index, season in enumerate(seasons, start=1):
@@ -84,7 +86,7 @@ def main(argv: list[str] | None = None) -> int:
         try:
             season_type = SeasonType.parse(args.season_type)
             subprocess.run(
-                build_command(
+                _build_command(
                     season, season_type, teams=args.teams, skip_combine=args.skip_combine
                 ),
                 check=True,

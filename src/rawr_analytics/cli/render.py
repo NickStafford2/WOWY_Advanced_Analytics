@@ -160,7 +160,7 @@ def render_team_fetch_failed_line(
     _write_status_line(line)
 
 
-def render_team_skipped_line(
+def _render_team_skipped_line(
     team_index: int,
     team_total: int,
     team: Team,

@@ -7,8 +7,9 @@ from pathlib import Path
 from typing import Iterator, TextIO
 
 
+# TODO This is essential to be used. check to ensure this is being used.
 @contextmanager
-def atomic_text_writer(path: Path | str, newline: str | None = None) -> Iterator[TextIO]:
+def _atomic_text_writer(path: Path | str, newline: str | None = None) -> Iterator[TextIO]:
     """Write a text file atomically by replacing the destination after a flush."""
 
     path = Path(path)

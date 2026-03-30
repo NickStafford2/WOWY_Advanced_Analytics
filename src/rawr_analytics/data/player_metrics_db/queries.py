@@ -155,7 +155,7 @@ def load_metric_full_span_points_map(
     return points
 
 
-def list_metric_seasons(
+def _list_metric_seasons(
     db_path: Path,
     metric: str,
     scope_key: str,

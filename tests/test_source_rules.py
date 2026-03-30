@@ -16,7 +16,7 @@ from rawr_analytics.nba.source.rules import (
     classify_source_team_row,
     parse_box_score_numeric_value,
     parse_minutes_to_float,
-    played_in_game,
+    _played_in_game,
 )
 
 
@@ -42,9 +42,9 @@ def test_parse_minutes_to_float_handles_expected_source_formats(
 
 
 def test_played_in_game_only_treats_positive_minutes_as_appearance() -> None:
-    assert played_in_game("12:00") is True
-    assert played_in_game("0:00") is False
-    assert played_in_game("DND - Injury") is False
+    assert _played_in_game("12:00") is True
+    assert _played_in_game("0:00") is False
+    assert _played_in_game("DND - Injury") is False
 
 
 @pytest.mark.parametrize(

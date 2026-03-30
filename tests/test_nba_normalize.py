@@ -3,8 +3,8 @@ from __future__ import annotations
 import pytest
 
 from rawr_analytics.nba.normalize.normalize_game import (
-    extract_is_home,
-    extract_opponent,
+    _extract_is_home,
+    _extract_opponent,
     normalize_source_league_game,
 )
 from rawr_analytics.nba.source.models import (
@@ -16,9 +16,9 @@ from rawr_analytics.nba.source.models import (
 
 
 def test_extract_matchup_helpers_support_historical_aliases() -> None:
-    assert extract_opponent("NJN @ BOS", "BKN") == "BOS"
-    assert extract_is_home("NJN @ BOS", "BKN") is False
-    assert extract_is_home("SEA vs. BOS", "OKC") is True
+    assert _extract_opponent("NJN @ BOS", "BKN") == "BOS"
+    assert _extract_is_home("NJN @ BOS", "BKN") is False
+    assert _extract_is_home("SEA vs. BOS", "OKC") is True
 
 
 def test_normalize_source_game_uses_point_diff_when_plus_minus_missing() -> None:

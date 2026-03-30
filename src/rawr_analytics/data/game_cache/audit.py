@@ -23,7 +23,7 @@ IssueT = TypeVar("IssueT")
 IssueFactory = Callable[[str, str, str], IssueT]
 
 
-def audit_game_cache_tables(
+def _audit_game_cache_tables(
     connection: sqlite3.Connection,
     issues: list[IssueT],
     *,

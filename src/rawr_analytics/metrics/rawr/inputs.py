@@ -32,7 +32,7 @@ def validate_filters(
     )
 
 
-def validate_request(request: RawrRequest) -> None:
+def _validate_request(request: RawrRequest) -> None:
     validate_filters(
         request.min_games,
         request.ridge_alpha,

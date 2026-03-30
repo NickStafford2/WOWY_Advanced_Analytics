@@ -4,18 +4,18 @@ from argparse import Namespace
 
 from rawr_analytics.metrics.rawr.models import RawrPlayerSeasonRecord
 from rawr_analytics.metrics.rawr.tuning import (
-    aggregate_rawr_training_records,
-    aggregate_wowy_training_records,
+    _aggregate_rawr_training_records,
+    _aggregate_wowy_training_records,
     _count_evaluation_steps,
     _evaluate_configs,
     _format_results_table,
-    parse_float_grid,
+    _parse_float_grid,
 )
 from rawr_analytics.metrics.wowy.models import WowyPlayerSeasonRecord
 
 
 def test_parse_float_grid_parses_values():
-    assert parse_float_grid("1, 3,10.5") == [1.0, 3.0, 10.5]
+    assert _parse_float_grid("1, 3,10.5") == [1.0, 3.0, 10.5]
 
 
 def test_count_evaluation_steps_accounts_for_minute_scale_grid():
@@ -39,8 +39,8 @@ def test_aggregate_training_records_support_latest():
         RawrPlayerSeasonRecord("2022-23", 101, "Player 101", 42, 35.0, 1470.0, 3.0),
     ]
 
-    assert aggregate_wowy_training_records(wowy_records, "latest")[101].value == 6.0
-    assert aggregate_rawr_training_records(rawr_records, "latest")[101].value == 3.0
+    assert _aggregate_wowy_training_records(wowy_records, "latest")[101].value == 6.0
+    assert _aggregate_rawr_training_records(rawr_records, "latest")[101].value == 3.0
 
 
 def test_evaluate_configs_compares_wowy_and_rawr(monkeypatch):

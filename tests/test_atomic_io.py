@@ -4,14 +4,14 @@ from pathlib import Path
 
 import pytest
 
-from rawr_analytics.atomic_io import atomic_text_writer
+from rawr_analytics.atomic_io import _atomic_text_writer
 
 
 def test_atomic_text_writer_replaces_file_atomically(tmp_path: Path) -> None:
     path = tmp_path / "output.csv"
     path.write_text("old\n", encoding="utf-8")
 
-    with atomic_text_writer(path, newline="") as f:
+    with _atomic_text_writer(path, newline="") as f:
         f.write("new\n")
 
     assert path.read_text(encoding="utf-8") == "new\n"
@@ -23,7 +23,7 @@ def test_atomic_text_writer_cleans_up_temp_file_on_error(tmp_path: Path) -> None
     path.write_text("old\n", encoding="utf-8")
 
     with pytest.raises(RuntimeError, match="boom"):
-        with atomic_text_writer(path, newline="") as f:
+        with _atomic_text_writer(path, newline="") as f:
             f.write("new\n")
             raise RuntimeError("boom")
 

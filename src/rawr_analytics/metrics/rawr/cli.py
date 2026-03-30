@@ -17,7 +17,7 @@ from rawr_analytics.shared.scope import format_scope
 from rawr_analytics.shared.season import SeasonType
 
 
-def build_parser() -> argparse.ArgumentParser:
+def _build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(description="Run RAWR on cached normalized data.")
     parser.add_argument("--team", action="append", default=None)
     parser.add_argument("--season", action="append", default=None)
@@ -80,7 +80,7 @@ def _prepare_and_run_rawr(args) -> str:
 
 
 def main(argv: list[str] | None = None) -> int:
-    parser = build_parser()
+    parser = _build_parser()
     args = parser.parse_args(argv)
     print(_prepare_and_run_rawr(args))
     return 0

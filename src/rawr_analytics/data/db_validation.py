@@ -156,7 +156,7 @@ def audit_player_metrics_db(
     return DatabaseValidationReport(issues=issues)
 
 
-def assert_valid_player_metrics_db() -> None:
+def _assert_valid_player_metrics_db() -> None:
     report = audit_player_metrics_db()
     if report.ok:
         return
@@ -176,7 +176,7 @@ def summarize_validation_report(
     trend_examples: dict[tuple[str, str], ValidationIssue] = {}
 
     for issue in report.issues:
-        signature = normalize_issue_message(issue.message)
+        signature = _normalize_issue_message(issue.message)
         key = (issue.table, signature)
         trend_counts[key] += 1
         trend_examples.setdefault(key, issue)
@@ -234,7 +234,7 @@ def render_validation_summary(
     return "\n".join(lines)
 
 
-def normalize_issue_message(message: str) -> str:
+def _normalize_issue_message(message: str) -> str:
     normalized = _QUOTED_VALUE_PATTERN.sub("'<value>'", message)
     normalized = _NUMBER_PATTERN.sub("<num>", normalized)
     return " ".join(normalized.split())

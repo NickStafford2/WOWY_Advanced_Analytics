@@ -13,7 +13,7 @@ from rawr_analytics.data.db_validation import (
 _LAST_PROGRESS_LINE_LENGTH = 0
 
 
-def build_parser() -> argparse.ArgumentParser:
+def _build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(description="Audit the SQLite cache and summarize errors.")
     parser.add_argument(
         "--top",
@@ -29,7 +29,7 @@ def build_parser() -> argparse.ArgumentParser:
     return parser
 
 
-def write_progress_line(line: str) -> None:
+def _write_progress_line(line: str) -> None:
     global _LAST_PROGRESS_LINE_LENGTH
     padding = max(0, _LAST_PROGRESS_LINE_LENGTH - len(line))
     sys.stderr.write(f"\r{line}{' ' * padding}")
@@ -37,7 +37,7 @@ def write_progress_line(line: str) -> None:
     _LAST_PROGRESS_LINE_LENGTH = len(line)
 
 
-def clear_progress_line() -> None:
+def _clear_progress_line() -> None:
     global _LAST_PROGRESS_LINE_LENGTH
     if _LAST_PROGRESS_LINE_LENGTH == 0:
         return
@@ -46,22 +46,22 @@ def clear_progress_line() -> None:
     _LAST_PROGRESS_LINE_LENGTH = 0
 
 
-def render_progress(current: int, total: int, label: str) -> None:
+def _render_progress(current: int, total: int, label: str) -> None:
     filled = total if total == 0 else int((current / total) * 20)
     bar = "#" * filled + "-" * (20 - filled)
-    write_progress_line(f"[{current:>2}/{total}] [{bar}] {label}")
+    _write_progress_line(f"[{current:>2}/{total}] [{bar}] {label}")
 
 
 def main(argv: list[str] | None = None) -> int:
-    parser = build_parser()
+    parser = _build_parser()
     args = parser.parse_args(argv)
 
-    progress_callback = None if args.json else render_progress
+    progress_callback = None if args.json else _render_progress
     try:
         report = audit_player_metrics_db(progress=progress_callback)
     finally:
         if progress_callback is not None:
-            clear_progress_line()
+            _clear_progress_line()
     summary = summarize_validation_report(report)
     if args.json:
         print(json.dumps(summary.to_dict(), indent=2, sort_keys=True))

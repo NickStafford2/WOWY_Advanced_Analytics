@@ -15,8 +15,8 @@ from rawr_analytics.metrics.rawr import (
     default_filters as _rawr_default_filters,
 )
 
-from ._models import MetricQuery
-from ._scope import build_filters_payload
+from .models import MetricQuery
+from .scope import build_filters_payload
 
 MetricView = str
 

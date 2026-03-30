@@ -1,7 +1,7 @@
 from __future__ import annotations
 
-from rawr_analytics.metrics.wowy._analysis import compute_wowy, filter_results
-from rawr_analytics.metrics.wowy._inputs import passes_minute_filters, validate_request
+from rawr_analytics.metrics.wowy.analysis import compute_wowy, filter_results
+from rawr_analytics.metrics.wowy.inputs import passes_minute_filters, validate_request
 from rawr_analytics.metrics.wowy.models import WowyPlayerSeasonRecord, WowyRequest, WowySeasonInput
 
 

@@ -138,7 +138,7 @@ def _build_parser() -> argparse.ArgumentParser:
     return parser
 
 
-def parse_float_grid(raw_value: str) -> list[float]:
+def _parse_float_grid(raw_value: str) -> list[float]:
     values = [part.strip() for part in raw_value.split(",")]
     if not values or any(not value for value in values):
         raise ValueError("Grid values must contain one or more comma-separated numbers")
@@ -148,7 +148,7 @@ def parse_float_grid(raw_value: str) -> list[float]:
     return parsed
 
 
-def aggregate_wowy_training_records(
+def _aggregate_wowy_training_records(
     records: list[WowyPlayerSeasonRecord],
     aggregation: str,
 ) -> dict[int, AggregatedPlayerValue]:
@@ -159,7 +159,7 @@ def aggregate_wowy_training_records(
         player_id: AggregatedPlayerValue(
             player_id=player_id,
             player_name=player_records[0].player_name,
-            value=aggregate_values(
+            value=_aggregate_values(
                 [record.wowy_score for record in player_records],
                 [record.season for record in player_records],
                 aggregation,
@@ -170,7 +170,7 @@ def aggregate_wowy_training_records(
     }
 
 
-def aggregate_rawr_training_records(
+def _aggregate_rawr_training_records(
     records: list[RawrPlayerSeasonRecord],
     aggregation: str,
 ) -> dict[int, AggregatedPlayerValue]:
@@ -181,7 +181,7 @@ def aggregate_rawr_training_records(
         player_id: AggregatedPlayerValue(
             player_id=player_id,
             player_name=player_records[0].player_name,
-            value=aggregate_values(
+            value=_aggregate_values(
                 [record.coefficient for record in player_records],
                 [record.season for record in player_records],
                 aggregation,
@@ -192,7 +192,7 @@ def aggregate_rawr_training_records(
     }
 
 
-def aggregate_values(
+def _aggregate_values(
     values: list[float],
     seasons: list[str],
     aggregation: str,
@@ -343,7 +343,7 @@ def _evaluate_configs(args) -> list[ComparisonResult]:
     results = [
         _build_comparison_result(
             model="wowy-baseline",
-            training_scores=aggregate_wowy_training_records(
+            training_scores=_aggregate_wowy_training_records(
                 training_wowy_records,
                 aggregation=args.aggregation,
             ),
@@ -389,7 +389,7 @@ def _evaluate_configs(args) -> list[ComparisonResult]:
             results.append(
                 _build_comparison_result(
                     model="rawr",
-                    training_scores=aggregate_rawr_training_records(
+                    training_scores=_aggregate_rawr_training_records(
                         rawr_records,
                         aggregation=args.aggregation,
                     ),
@@ -502,9 +502,9 @@ def main(argv: list[str] | None = None) -> int:
     parser = _build_parser()
     args = parser.parse_args(argv)
     args.season_type = SeasonType.parse(args.season_type)
-    args.rawr_ridge_values = parse_float_grid(args.rawr_ridge_grid)
-    args.shrinkage_strength_values = parse_float_grid(args.shrinkage_strength_grid)
-    args.shrinkage_minute_scale_values = parse_float_grid(args.shrinkage_minute_scale_grid)
+    args.rawr_ridge_values = _parse_float_grid(args.rawr_ridge_grid)
+    args.shrinkage_strength_values = _parse_float_grid(args.shrinkage_strength_grid)
+    args.shrinkage_minute_scale_values = _parse_float_grid(args.shrinkage_minute_scale_grid)
     if args.top_n <= 0:
         raise ValueError("top_n must be positive")
     if args.holdout_season in set(args.train_season):

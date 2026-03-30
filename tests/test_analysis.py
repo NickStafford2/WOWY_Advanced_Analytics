@@ -70,7 +70,7 @@ def test_filter_results():
         103: WowyPlayerStats(4, 1, 1.0, -1.0, 2.0),
     }
 
-    filtered = filter_results(results, min_games_with=2, min_games_without=2)
+    filtered = _filter_results(results, min_games_with=2, min_games_without=2)
 
     assert 101 in filtered
     assert 102 not in filtered
