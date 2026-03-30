@@ -139,7 +139,7 @@ def audit_nba_source(
     )
 
 
-def render_source_audit_report(report: SourceAuditReport) -> str:
+def _render_source_audit_report(report: SourceAuditReport) -> str:
     lines = [
         f"Source audit status: {'ok' if report.ok else 'invalid'}",
         f"Scanned schedule files: {report.scanned_schedule_files}",
@@ -162,7 +162,7 @@ def render_source_audit_report(report: SourceAuditReport) -> str:
     return "\n".join(lines)
 
 
-def build_parser() -> argparse.ArgumentParser:
+def _build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
         description="Audit cached NBA source payloads for known anomalies and hard failures."
     )
@@ -180,7 +180,7 @@ def build_parser() -> argparse.ArgumentParser:
     return parser
 
 
-def write_progress_line(line: str) -> None:
+def _write_progress_line(line: str) -> None:
     global _LAST_PROGRESS_LINE_LENGTH
     padding = max(0, _LAST_PROGRESS_LINE_LENGTH - len(line))
     sys.stderr.write(f"\r{line}{' ' * padding}")
@@ -188,7 +188,7 @@ def write_progress_line(line: str) -> None:
     _LAST_PROGRESS_LINE_LENGTH = len(line)
 
 
-def clear_progress_line() -> None:
+def _clear_progress_line() -> None:
     global _LAST_PROGRESS_LINE_LENGTH
     if _LAST_PROGRESS_LINE_LENGTH == 0:
         return
@@ -197,28 +197,28 @@ def clear_progress_line() -> None:
     _LAST_PROGRESS_LINE_LENGTH = 0
 
 
-def render_progress(current: int, total: int, label: str) -> None:
+def _render_progress(current: int, total: int, label: str) -> None:
     total = max(total, 1)
     filled = int((current / total) * 20)
     bar = "#" * filled + "-" * (20 - filled)
-    write_progress_line(f"[{current:>4}/{total}] [{bar}] {label}")
+    _write_progress_line(f"[{current:>4}/{total}] [{bar}] {label}")
 
 
 def main(argv: list[str] | None = None) -> int:
-    parser = build_parser()
+    parser = _build_parser()
     args = parser.parse_args(argv)
 
-    progress = None if args.json else render_progress
+    progress = None if args.json else _render_progress
     try:
         report = audit_nba_source(args.source_dir, progress=progress)
     finally:
         if progress is not None:
-            clear_progress_line()
+            _clear_progress_line()
 
     if args.json:
         print(json.dumps(report.to_dict(), indent=2, sort_keys=True))
     else:
-        print(render_source_audit_report(report))
+        print(_render_source_audit_report(report))
     return 0 if report.ok else 1
 
 

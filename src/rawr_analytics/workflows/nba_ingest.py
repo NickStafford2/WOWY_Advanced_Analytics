@@ -74,7 +74,7 @@ def _get_schedule(
     return games, league_games_source
 
 
-def ingest(
+def _ingest(
     request: IngestRequest,
     *,
     log_fn: LogFn | None = print,
@@ -178,7 +178,7 @@ def ingest(
     return result
 
 
-def store(result: IngestResult) -> None:
+def _store(result: IngestResult) -> None:
     replace_team_season_normalized_rows(
         team=result.request.team,
         season=result.request.season,
@@ -202,12 +202,12 @@ def refresh(
     log: LogFn | None = print,
     progress: ProgressFn | None = None,
 ) -> IngestResult:
-    result = ingest(
+    result = _ingest(
         request,
         log_fn=log,
         progress_fn=progress,
     )
-    store(result)
+    _store(result)
     return result
 
 
@@ -258,7 +258,7 @@ __all__ = [
     "IngestRequest",
     "IngestResult",
     "IngestSummary",
-    "ingest",
+    "_ingest",
     "refresh",
-    "store",
+    "_store",
 ]

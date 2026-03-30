@@ -12,7 +12,7 @@ from rawr_analytics.progress import TerminalProgressBar, print_status_box
 _choices = [Metric.WOWY, Metric.WOWY_SHRUNK, Metric.RAWR]
 
 
-def build_parser() -> argparse.ArgumentParser:
+def _build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
         description="Build the SQLite metric store used by the web app."
     )
@@ -40,7 +40,7 @@ def build_parser() -> argparse.ArgumentParser:
 
 
 def main(argv: list[str] | None = None) -> int:
-    parser = build_parser()
+    parser = _build_parser()
     args = parser.parse_args(argv)
     if args.metric:
         metrics = [Metric.parse(metric) for metric in args.metric]

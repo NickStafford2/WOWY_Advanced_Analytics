@@ -63,7 +63,7 @@ def _validate_season_input(season_input: RawrSeasonInput) -> None:
             )
 
 
-def passes_minute_filters(
+def _passes_minute_filters(
     player: RawrPlayerContext,
     *,
     min_average_minutes: float | None,

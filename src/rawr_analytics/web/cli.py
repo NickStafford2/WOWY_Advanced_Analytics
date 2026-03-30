@@ -11,7 +11,7 @@ from rawr_analytics.shared.season import SeasonType
 from rawr_analytics.web.app import create_app
 
 
-def build_parser() -> argparse.ArgumentParser:
+def _build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(description="Run the WOWY Flask backend for web development.")
     parser.add_argument(
         "--host",
@@ -58,9 +58,9 @@ def build_parser() -> argparse.ArgumentParser:
 
 
 def main(argv: list[str] | None = None) -> int:
-    parser = build_parser()
+    parser = _build_parser()
     args = parser.parse_args(argv)
-    season_type = SeasonType.parse(args.season_type).to_nba_format()
+    season_type = SeasonType.parse(args.season_type)
     if args.refresh_store:
         refresh_metrics = (
             [Metric.parse(metric) for metric in args.refresh_metric]

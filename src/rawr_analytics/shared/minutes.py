@@ -7,7 +7,7 @@ from rawr_analytics.nba.models import NormalizedGamePlayerRecord
 MinuteStats = dict[int, tuple[float, float]]
 
 
-def build_player_minute_stats(
+def _build_player_minute_stats(
     game_players: Iterable[NormalizedGamePlayerRecord],
 ) -> MinuteStats:
     totals: dict[int, float] = {}
@@ -25,7 +25,7 @@ def build_player_minute_stats(
     }
 
 
-def passes_minute_filters(
+def _passes_minute_filters(
     minute_stats: tuple[float, float] | None,
     min_average_minutes: float | None,
     min_total_minutes: float | None,
