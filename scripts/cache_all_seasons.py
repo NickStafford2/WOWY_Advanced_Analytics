@@ -1,18 +1,22 @@
 from __future__ import annotations
 
 import argparse
-import subprocess
 import sys
+from pathlib import Path
 
-from rawr_analytics.shared.season import SeasonType
+if __package__ in {None, ""}:
+    sys.path.insert(0, str(Path(__file__).resolve().parent))
+    import cache_season_data
+else:
+    from . import cache_season_data
 
 DEFAULT_START_YEAR = 2024
-DEFAULT_FIRST_YEAR = 1946
+DEFAULT_END_YEAR = 1946
 
 
 def _build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
-        description="Run cache_season_data.py for every season from a start year backward."
+        description="Compatibility wrapper for caching every season through cache_season_data.py."
     )
     parser.add_argument(
         "--start-year",
@@ -21,10 +25,10 @@ def _build_parser() -> argparse.ArgumentParser:
         help=f"First season start year to cache (default: {DEFAULT_START_YEAR})",
     )
     parser.add_argument(
-        "--first-year",
+        "--end-year",
         type=int,
-        default=DEFAULT_FIRST_YEAR,
-        help=(f"Earliest season start year to cache, inclusive (default: {DEFAULT_FIRST_YEAR})"),
+        default=DEFAULT_END_YEAR,
+        help=(f"End season start year to cache, inclusive (default: {DEFAULT_END_YEAR})"),
     )
     parser.add_argument(
         "--season-type",
@@ -45,68 +49,26 @@ def _build_parser() -> argparse.ArgumentParser:
     return parser
 
 
-# todo: move/merge with season.py
-def _season_string(start_year: int) -> str:
-    end_year = (start_year + 1) % 100
-    return f"{start_year}-{end_year:02d}"
-
-
-def _build_season_strings(start_year: int, first_year: int) -> list[str]:
-    # todo: move/merge with season.py
-    if start_year < first_year:
-        raise ValueError("Start year must be greater than or equal to first year")
-    return [_season_string(year) for year in range(start_year, first_year - 1, -1)]
-
-
-def _build_command(
-    season: str,
-    season_type: SeasonType,
-    teams: list[str] | None,
-    skip_combine: bool,
-) -> list[str]:
-    command = [sys.executable, "scripts/cache_season_data.py", season]
-    if season_type != SeasonType.REGULAR:
-        command.extend(["--season-type", season_type.value])
-    if teams:
-        command.extend(["--teams", *teams])
-    if skip_combine:
-        command.append("--skip-combine")
-    return command
+def _build_forwarded_argv(args: argparse.Namespace) -> list[str]:
+    forwarded = [
+        "--start-year",
+        str(args.start_year),
+        "--end-year",
+        str(args.end_year),
+    ]
+    if args.season_type != "Regular Season":
+        forwarded.extend(["--season-type", args.season_type])
+    if args.teams:
+        forwarded.extend(["--teams", *args.teams])
+    if args.skip_combine:
+        forwarded.append("--skip-combine")
+    return forwarded
 
 
 def main(argv: list[str] | None = None) -> int:
     parser = _build_parser()
     args = parser.parse_args(argv)
-
-    seasons = _build_season_strings(args.start_year, args.first_year)
-    total = len(seasons)
-    failed_seasons: list[str] = []
-    for index, season in enumerate(seasons, start=1):
-        print(f"[{index}/{total}] caching {season}")
-        try:
-            season_type = SeasonType.parse(args.season_type)
-            subprocess.run(
-                _build_command(
-                    season, season_type, teams=args.teams, skip_combine=args.skip_combine
-                ),
-                check=True,
-            )
-        except subprocess.CalledProcessError as exc:
-            failed_seasons.append(season)
-            sys.stderr.write(
-                f"Season caching failed for {season} with exit status {exc.returncode}.\n"
-            )
-            sys.stderr.flush()
-            continue
-
-    if failed_seasons:
-        sys.stderr.write(
-            f"Completed with failures in {len(failed_seasons)}/{total} seasons: "
-            f"{', '.join(failed_seasons)}\n"
-        )
-        sys.stderr.flush()
-        return 1
-    return 0
+    return cache_season_data.main(_build_forwarded_argv(args))
 
 
 def run(argv: list[str] | None = None) -> int:

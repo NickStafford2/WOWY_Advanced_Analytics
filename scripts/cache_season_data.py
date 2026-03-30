@@ -2,7 +2,6 @@ from __future__ import annotations
 
 import argparse
 import sys
-from pathlib import Path
 
 from rawr_analytics.cli import (
     filtered_log,
@@ -24,11 +23,10 @@ from rawr_analytics.nba.ingest_logging import (
 )
 from rawr_analytics.shared.season import Season, build_season_list
 from rawr_analytics.shared.team import Team
-from rawr_analytics.workflows.nba_ingest import IngestRequest, _refresh
+from rawr_analytics.workflows.nba_ingest import IngestRequest, refresh_team_season
 
 _DEFAULT_START_YEAR = 2000
-_DEFAULT_FIRST_YEAR = 1946
-_DEFAULT_YEAR = 2024
+_DEFAULT_END_YEAR = 1946
 _DEFAULT_SEASON_TYPE = "Regular Season"
 
 
@@ -42,27 +40,16 @@ def _build_parser() -> argparse.ArgumentParser:
         help="Optional NBA season string, for example 2023-24. If omitted, refreshes all seasons.",
     )
     parser.add_argument(
-        "--all-seasons",
-        action="store_true",
-        help="Refresh every season from --start-year back to --first-year.",
-    )
-    parser.add_argument(
         "--start-year",
         type=int,
         default=_DEFAULT_START_YEAR,
-        help=(
-            "First season start year to cache when using --all-seasons "
-            f"(default: {_DEFAULT_START_YEAR})"
-        ),
+        help=f"First season start year to cache (default: {_DEFAULT_START_YEAR})",
     )
     parser.add_argument(
-        "--first-year",
+        "--end-year",
         type=int,
-        default=_DEFAULT_FIRST_YEAR,
-        help=(
-            "Earliest season start year to cache, inclusive, when using "
-            f"--all-seasons (default: {_DEFAULT_FIRST_YEAR})"
-        ),
+        default=_DEFAULT_END_YEAR,
+        help=(f"Earliest season end year to cache, inclusive (default: {_DEFAULT_END_YEAR})"),
     )
     parser.add_argument(
         "--season-type",
@@ -80,24 +67,16 @@ def _build_parser() -> argparse.ArgumentParser:
         action="store_true",
         help=argparse.SUPPRESS,
     )
-    parser.add_argument(
-        "--player-metrics-db-path",
-        type=Path,
-        default=Path("data/app/player_metrics.sqlite3"),
-        help="SQLite cache path for normalized team-season rows.",
-    )
     return parser
 
 
 def _get_season_list_from_args(args) -> list[Season]:
     season_type_str = args.season_type or _DEFAULT_SEASON_TYPE
-    if args.start_year and args.first_year:
-        start_year = args.start_year or _DEFAULT_START_YEAR
-        first_year = args.first_year or _DEFAULT_FIRST_YEAR  # todo. rename to end year
-    elif args.season:
+    if args.season:
         start_year = first_year = args.season
     else:
-        start_year = first_year = _DEFAULT_YEAR
+        start_year = args.start_year or _DEFAULT_START_YEAR
+        first_year = args.first_year or _DEFAULT_END_YEAR  # todo: rename to end year
 
     return build_season_list(start_year, first_year, season_type_str)
 
@@ -122,7 +101,7 @@ def main(argv: list[str] | None = None) -> int:
             team_season_scope = f"{team.abbreviation(season=season)} {season}"
             try:
                 request = IngestRequest(team, season)
-                result = _refresh(
+                result = refresh_team_season(
                     request,
                     log=filtered_log,
                     progress=lambda payload, team_index=team_index: render_progress_line(

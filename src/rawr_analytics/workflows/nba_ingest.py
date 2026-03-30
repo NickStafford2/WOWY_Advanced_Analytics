@@ -196,7 +196,7 @@ def _store(result: IngestResult) -> None:
     )
 
 
-def _refresh(
+def refresh_team_season(
     request: IngestRequest,
     *,
     log: LogFn | None = print,
@@ -258,7 +258,7 @@ __all__ = [
     "IngestRequest",
     "IngestResult",
     "IngestSummary",
+    "refresh_team_season",
     "_ingest",
-    "_refresh",
     "_store",
 ]

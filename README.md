@@ -74,7 +74,7 @@ poetry run python scripts/cache_season_data.py 2024-25
 Fetch many seasons:
 
 ```bash
-poetry run python scripts/cache_all_seasons.py --start-year 2024 --first-year 2022
+poetry run python scripts/cache_season_data.py --start-year 2024 --first-year 2022
 ```
 
 Runtime analysis and the web app only depend on two live project data stores: the source cache under `data/source` and the SQLite app store under `data/app`.
