@@ -201,7 +201,7 @@ def load_normalized_games_from_db(
     return games
 
 
-def load_normalized_game_players_from_db(
+def _load_normalized_game_players_from_db(
     *,
     teams: list[Team] | None = None,
     seasons: list[Season] | None = None,
@@ -261,7 +261,7 @@ def load_normalized_game_players_from_db(
     return players
 
 
-def load_cache_load_row(
+def _load_cache_load_row(
     team: Team,
     season: Season,
 ) -> NormalizedCacheLoadRow | None:
@@ -321,7 +321,7 @@ def load_normalized_scope_records_from_db(
         seasons_by_key[key] for key in sorted(seasons_by_key, key=lambda item: (item[0], item[1]))
     ]
     games = load_normalized_games_from_db(teams=teams, seasons=seasons)
-    game_players = load_normalized_game_players_from_db(teams=teams, seasons=seasons)
+    game_players = _load_normalized_game_players_from_db(teams=teams, seasons=seasons)
     filtered_games, filtered_players = _filter_records_to_team_seasons(
         games=games,
         game_players=game_players,
@@ -332,11 +332,11 @@ def load_normalized_scope_records_from_db(
     return filtered_games, filtered_players
 
 
-def has_cached_team_season_scope(
+def _has_cached_team_season_scope(
     team: Team,
     season: Season,
 ) -> bool:
-    row = load_cache_load_row(team, season)
+    row = _load_cache_load_row(team, season)
     return row is not None and row.games_row_count > 0 and row.game_players_row_count > 0
 
 
@@ -430,7 +430,7 @@ def _require_cached_team_season_scope(
     *,
     scope: TeamSeasonScope,
 ) -> None:
-    if has_cached_team_season_scope(scope.team, scope.season):
+    if _has_cached_team_season_scope(scope.team, scope.season):
         return
     raise ValueError(
         "Missing cached team-season scope for "
@@ -458,15 +458,3 @@ def _season_type_value(season: Season) -> str:
 
 def _team_season_keys(team_seasons: Sequence[TeamSeasonScope]) -> set[tuple[int, str]]:
     return {(scope.team.team_id, scope.season.id) for scope in team_seasons}
-
-
-__all__ = [
-    "has_cached_team_season_scope",
-    "list_cache_load_rows",
-    "list_cached_team_seasons",
-    "load_cache_load_row",
-    "load_normalized_game_players_from_db",
-    "load_normalized_games_from_db",
-    "load_normalized_scope_records_from_db",
-    "replace_team_season_normalized_rows",
-]

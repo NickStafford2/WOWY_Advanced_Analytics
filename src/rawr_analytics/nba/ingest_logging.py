@@ -14,7 +14,7 @@ from rawr_analytics.nba.errors import (
 from rawr_analytics.shared.season import Season
 from rawr_analytics.shared.team import Team
 
-DEFAULT_INGEST_FAILURE_LOG_PATH = Path("data/logs/ingest_failures.jsonl")
+_DEFAULT_INGEST_FAILURE_LOG_PATH = Path("data/logs/ingest_failures.jsonl")
 
 
 def append_ingest_failure_log(
@@ -23,7 +23,6 @@ def append_ingest_failure_log(
     season: Season,
     failure_kind: str,
     error: Exception,
-    log_path: Path = DEFAULT_INGEST_FAILURE_LOG_PATH,
 ) -> None:
     record: dict[str, Any] = {
         "timestamp_utc": datetime.now(UTC).isoformat(),
@@ -35,6 +34,7 @@ def append_ingest_failure_log(
     }
     record.update(_build_error_details(error))
 
+    log_path: Path = _DEFAULT_INGEST_FAILURE_LOG_PATH
     log_path.parent.mkdir(parents=True, exist_ok=True)
     with open(log_path, "a", encoding="utf-8") as log_file:
         log_file.write(json.dumps(_to_json_value(record), sort_keys=True))

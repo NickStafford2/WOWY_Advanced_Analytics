@@ -4,7 +4,7 @@ import argparse
 import sys
 from pathlib import Path
 
-from rawr_analytics.cli.render import (
+from rawr_analytics.cli import (
     filtered_log,
     record_failure,
     render_failure_summary,
@@ -15,12 +15,11 @@ from rawr_analytics.cli.render import (
     render_team_partial_failed_line,
     render_team_validation_failed_line,
 )
-from rawr_analytics.nba.errors import (
+from rawr_analytics.nba import (
     FetchError,
     PartialTeamSeasonError,
 )
 from rawr_analytics.nba.ingest_logging import (
-    DEFAULT_INGEST_FAILURE_LOG_PATH,
     append_ingest_failure_log,
 )
 from rawr_analytics.shared.season import Season, build_season_list
@@ -87,12 +86,6 @@ def _build_parser() -> argparse.ArgumentParser:
         default=Path("data/app/player_metrics.sqlite3"),
         help="SQLite cache path for normalized team-season rows.",
     )
-    parser.add_argument(
-        "--failure-log-path",
-        type=Path,
-        default=DEFAULT_INGEST_FAILURE_LOG_PATH,
-        help="JSONL file where ingest failures are appended.",
-    )
     return parser
 
 
@@ -150,7 +143,6 @@ def main(argv: list[str] | None = None) -> int:
                     season=season,
                     failure_kind="fetch_error",
                     error=exc,
-                    log_path=args.failure_log_path,
                 )
                 render_team_fetch_failed_line(
                     team_index=team_index,
@@ -177,7 +169,6 @@ def main(argv: list[str] | None = None) -> int:
                     season=season,
                     failure_kind="partial_scope_error",
                     error=exc,
-                    log_path=args.failure_log_path,
                 )
                 render_team_partial_failed_line(
                     team_index=team_index,
@@ -208,7 +199,6 @@ def main(argv: list[str] | None = None) -> int:
                     season=season,
                     failure_kind="validation_error",
                     error=exc,
-                    log_path=args.failure_log_path,
                 )
                 render_team_validation_failed_line(
                     team_index=team_index,
