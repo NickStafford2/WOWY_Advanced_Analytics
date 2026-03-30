@@ -1,9 +1,10 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+from typing import Callable
 
 from rawr_analytics.data.game_cache.repository import replace_team_season_normalized_rows
-from rawr_analytics.nba.errors import GameNormalizationFailure, PartialTeamSeasonError
+from rawr_analytics.nba.errors import FetchError, GameNormalizationFailure, PartialTeamSeasonError
 from rawr_analytics.nba.models import (
     NormalizedGamePlayerRecord,
     NormalizedGameRecord,
@@ -17,8 +18,13 @@ from rawr_analytics.nba.source.dedupe import dedupe_schedule_games
 from rawr_analytics.nba.source.models import SourceLeagueGame
 from rawr_analytics.nba.source.parsers import parse_league_schedule_payload
 from rawr_analytics.shared.common import LogFn, ProgressFn
-from rawr_analytics.shared.season import Season
+from rawr_analytics.shared.season import Season, build_season_list
 from rawr_analytics.shared.team import Team
+
+TeamSeasonFailureError = FetchError | PartialTeamSeasonError | ValueError
+SeasonStartedFn = Callable[[int, int, Season], None]
+TeamFinishedFn = Callable[[int, int, "IngestResult"], None]
+TeamFailedFn = Callable[[int, int, "SeasonRangeFailure"], None]
 
 
 @dataclass(frozen=True)
@@ -54,6 +60,123 @@ class IngestResult:
             games=self.games,
             game_players=self.game_players,
         )
+
+
+@dataclass(frozen=True)
+class SeasonRangeFailure:
+    request: IngestRequest
+    failure_kind: str
+    error: TeamSeasonFailureError
+
+    @property
+    def scope(self) -> str:
+        return self.request.label
+
+
+@dataclass(frozen=True)
+class SeasonRangeResult:
+    seasons: list[Season]
+    attempted_team_seasons: int
+    completed_team_seasons: int
+    failures: list[SeasonRangeFailure]
+
+    @property
+    def failure_counts(self) -> dict[str, int]:
+        counts: dict[str, int] = {}
+        for failure in self.failures:
+            counts[failure.failure_kind] = counts.get(failure.failure_kind, 0) + 1
+        return counts
+
+    @property
+    def failed_scopes(self) -> list[str]:
+        return [failure.scope for failure in self.failures]
+
+    @property
+    def exit_status(self) -> int:
+        return 1 if self.failures else 0
+
+
+def refresh_season_range(
+    *,
+    season: str | None = None,
+    start_year: int,
+    end_year: int,
+    season_type: str,
+    team_codes: list[str] | None = None,
+    log: LogFn | None = print,
+    progress: Callable[[int, int, dict], None] | None = None,
+    season_started: SeasonStartedFn | None = None,
+    team_completed: TeamFinishedFn | None = None,
+    team_failed: TeamFailedFn | None = None,
+) -> SeasonRangeResult:
+    seasons = _build_seasons(
+        season=season,
+        start_year=start_year,
+        end_year=end_year,
+        season_type=season_type,
+    )
+    season_total = len(seasons)
+    attempted_team_seasons = 0
+    completed_team_seasons = 0
+    failures: list[SeasonRangeFailure] = []
+
+    for season_index, current_season in enumerate(seasons, start=1):
+        if season_started is not None:
+            season_started(season_index, season_total, current_season)
+
+        teams = _resolve_teams(team_codes=team_codes, season=current_season)
+        team_total = len(teams)
+        for team_index, team in enumerate(teams, start=1):
+            attempted_team_seasons += 1
+            request = IngestRequest(team, current_season)
+            try:
+                result = refresh_team_season(
+                    request,
+                    log=log,
+                    progress=(
+                        None
+                        if progress is None
+                        else lambda payload, team_index=team_index, team_total=team_total: progress(
+                            team_index,
+                            team_total,
+                            payload,
+                        )
+                    ),
+                )
+            except FetchError as exc:
+                failure = SeasonRangeFailure(
+                    request=request,
+                    failure_kind="fetch_error",
+                    error=exc,
+                )
+            except PartialTeamSeasonError as exc:
+                failure = SeasonRangeFailure(
+                    request=request,
+                    failure_kind="partial_scope_error",
+                    error=exc,
+                )
+            except ValueError as exc:
+                failure = SeasonRangeFailure(
+                    request=request,
+                    failure_kind="validation_error",
+                    error=exc,
+                )
+            else:
+                completed_team_seasons += 1
+                if team_completed is not None:
+                    team_completed(team_index, team_total, result)
+                continue
+
+            failures.append(failure)
+            if team_failed is not None:
+                team_failed(team_index, team_total, failure)
+
+    return SeasonRangeResult(
+        seasons=seasons,
+        attempted_team_seasons=attempted_team_seasons,
+        completed_team_seasons=completed_team_seasons,
+        failures=failures,
+    )
 
 
 def _get_schedule(
@@ -196,6 +319,24 @@ def _store(result: IngestResult) -> None:
     )
 
 
+def _build_seasons(
+    *,
+    season: str | None,
+    start_year: int,
+    end_year: int,
+    season_type: str,
+) -> list[Season]:
+    if season is not None:
+        return [Season(season, season_type)]
+    return build_season_list(start_year, end_year, season_type)
+
+
+def _resolve_teams(*, team_codes: list[str] | None, season: Season) -> list[Team]:
+    if team_codes is None:
+        return Team.all_active_in_season(season)
+    return [Team.from_abbreviation(team_code, season=season) for team_code in team_codes]
+
+
 def refresh_team_season(
     request: IngestRequest,
     *,
@@ -258,7 +399,8 @@ __all__ = [
     "IngestRequest",
     "IngestResult",
     "IngestSummary",
+    "SeasonRangeFailure",
+    "SeasonRangeResult",
+    "refresh_season_range",
     "refresh_team_season",
-    "_ingest",
-    "_store",
 ]

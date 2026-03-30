@@ -5,7 +5,6 @@ import sys
 
 from rawr_analytics.cli import (
     filtered_log,
-    record_failure,
     render_failure_summary,
     render_partial_failure_details,
     render_progress_line,
@@ -14,16 +13,17 @@ from rawr_analytics.cli import (
     render_team_partial_failed_line,
     render_team_validation_failed_line,
 )
-from rawr_analytics.nba import (
-    FetchError,
-    PartialTeamSeasonError,
-)
+from rawr_analytics.nba.errors import FetchError, PartialTeamSeasonError
 from rawr_analytics.nba.ingest_logging import (
     append_ingest_failure_log,
 )
-from rawr_analytics.shared.season import Season, build_season_list
-from rawr_analytics.shared.team import Team
-from rawr_analytics.workflows.nba_ingest import IngestRequest, refresh_team_season
+from rawr_analytics.shared.season import Season
+from rawr_analytics.workflows import (
+    IngestResult,
+    SeasonRangeFailure,
+    SeasonRangeResult,
+    refresh_season_range,
+)
 
 _DEFAULT_START_YEAR = 2000
 _DEFAULT_END_YEAR = 1946
@@ -70,137 +70,105 @@ def _build_parser() -> argparse.ArgumentParser:
     return parser
 
 
-def _get_season_list_from_args(args) -> list[Season]:
-    season_type_str = args.season_type or _DEFAULT_SEASON_TYPE
-    if args.season:
-        start_year = first_year = args.season
-    else:
-        start_year = args.start_year or _DEFAULT_START_YEAR
-        first_year = args.first_year or _DEFAULT_END_YEAR  # todo: rename to end year
+def _render_season_started(season_index: int, season_count: int, season: Season) -> None:
+    if season_count > 1:
+        print(f"[{season_index}/{season_count}] caching {season}")
 
-    return build_season_list(start_year, first_year, season_type_str)
+
+def _render_progress(team_index: int, team_total: int, payload: dict) -> None:
+    render_progress_line(team_index, team_total, payload)
+
+
+def _render_team_completed(team_index: int, team_total: int, result: IngestResult) -> None:
+    render_team_complete_line(team_index, team_total, result)
+    sys.stdout.write("\n")
+
+
+def _render_team_failed(team_index: int, team_total: int, failure: SeasonRangeFailure) -> None:
+    request = failure.request
+    team = request.team
+    season = request.season
+    error = failure.error
+
+    append_ingest_failure_log(
+        team=team,
+        season=season,
+        failure_kind=failure.failure_kind,
+        error=error,
+    )
+
+    if failure.failure_kind == "fetch_error":
+        assert isinstance(error, FetchError)
+        render_team_fetch_failed_line(
+            team_index=team_index,
+            team_total=team_total,
+            team=team,
+            season=season,
+            error_type=error.last_error_type,
+        )
+        sys.stdout.write("\n")
+        sys.stderr.write(f"Fetch failed for {request.label}: {error}\n")
+        sys.stderr.flush()
+        return
+
+    if failure.failure_kind == "partial_scope_error":
+        assert isinstance(error, PartialTeamSeasonError)
+        render_team_partial_failed_line(
+            team_index=team_index,
+            team_total=team_total,
+            team=team,
+            season=season,
+            failed_games=error.failed_games,
+            total_games=error.total_games,
+        )
+        sys.stdout.write("\n")
+        sys.stderr.write(
+            f"Incomplete cache for {request.label}: "
+            f"{error.failed_games}/{error.total_games} games failed normalization\n"
+        )
+        sys.stderr.write(f"{render_partial_failure_details(error)}\n")
+        sys.stderr.flush()
+        return
+
+    reason = str(error)
+    render_team_validation_failed_line(
+        team_index=team_index,
+        team_total=team_total,
+        team=team,
+        season=season,
+        reason=reason,
+    )
+    sys.stdout.write("\n")
+    sys.stderr.write(f"Validation failed for {request.label}: {reason}\n")
+    sys.stderr.flush()
+
+
+def _render_failure_summary_for_result(result: SeasonRangeResult) -> None:
+    if not result.failures:
+        return
+    render_failure_summary(
+        failure_counts=result.failure_counts,
+        failed_scopes=result.failed_scopes,
+    )
 
 
 def main(argv: list[str] | None = None) -> int:
     parser = _build_parser()
     args = parser.parse_args(argv)
-    seasons_list = _get_season_list_from_args(args)
-    season_count = len(seasons_list)
-    failure_counts: dict[str, int] = {}
-    failed_scopes: list[str] = []
-    for season_index, season in enumerate(seasons_list, start=1):
-        if season_count > 1:
-            print(f"[{season_index}/{season_count}] caching {season}")
-        teams: list[Team]
-        if args.teams:
-            teams = [Team.from_abbreviation(team_code, season=season) for team_code in args.teams]
-        else:
-            teams = Team.all_active_in_season(season)
-        team_total = len(teams)
-        for team_index, team in enumerate(teams, start=1):
-            team_season_scope = f"{team.abbreviation(season=season)} {season}"
-            try:
-                request = IngestRequest(team, season)
-                result = refresh_team_season(
-                    request,
-                    log=filtered_log,
-                    progress=lambda payload, team_index=team_index: render_progress_line(
-                        team_index,
-                        team_total,
-                        payload,
-                    ),
-                )
-            except FetchError as exc:
-                record_failure(
-                    failure_counts,
-                    failed_scopes,
-                    failure_kind="fetch_error",
-                    scope=team_season_scope,
-                )
-                append_ingest_failure_log(
-                    team=team,
-                    season=season,
-                    failure_kind="fetch_error",
-                    error=exc,
-                )
-                render_team_fetch_failed_line(
-                    team_index=team_index,
-                    team_total=team_total,
-                    team=team,
-                    season=season,
-                    error_type=exc.last_error_type,
-                )
-                sys.stdout.write("\n")
-                sys.stderr.write(
-                    f"Fetch failed for {team.abbreviation(season=season)} {season}: {exc}\n"
-                )
-                sys.stderr.flush()
-                continue
-            except PartialTeamSeasonError as exc:
-                record_failure(
-                    failure_counts,
-                    failed_scopes,
-                    failure_kind="partial_scope_error",
-                    scope=team_season_scope,
-                )
-                append_ingest_failure_log(
-                    team=team,
-                    season=season,
-                    failure_kind="partial_scope_error",
-                    error=exc,
-                )
-                render_team_partial_failed_line(
-                    team_index=team_index,
-                    team_total=team_total,
-                    team=team,
-                    season=season,
-                    failed_games=exc.failed_games,
-                    total_games=exc.total_games,
-                )
-                sys.stdout.write("\n")
-                sys.stderr.write(
-                    f"Incomplete cache for {team.abbreviation(season=season)} {season}: "
-                    f"{exc.failed_games}/{exc.total_games} games failed normalization\n"
-                )
-                sys.stderr.write(f"{render_partial_failure_details(exc)}\n")
-                sys.stderr.flush()
-                continue
-            except ValueError as exc:
-                reason = str(exc)
-                record_failure(
-                    failure_counts,
-                    failed_scopes,
-                    failure_kind="validation_error",
-                    scope=team_season_scope,
-                )
-                append_ingest_failure_log(
-                    team=team,
-                    season=season,
-                    failure_kind="validation_error",
-                    error=exc,
-                )
-                render_team_validation_failed_line(
-                    team_index=team_index,
-                    team_total=team_total,
-                    team=team,
-                    season=season,
-                    reason=reason,
-                )
-                sys.stdout.write("\n")
-                sys.stderr.write(
-                    f"Validation failed for {team.abbreviation(season=season)} {season}: {reason}\n"
-                )
-                sys.stderr.flush()
-                continue
-            render_team_complete_line(team_index, team_total, result)
-            sys.stdout.write("\n")
-    if failure_counts:
-        render_failure_summary(
-            failure_counts=failure_counts,
-            failed_scopes=failed_scopes,
-        )
-        return 1
-    return 0
+    result = refresh_season_range(
+        season=args.season,
+        start_year=args.start_year or _DEFAULT_START_YEAR,
+        end_year=args.end_year or _DEFAULT_END_YEAR,
+        season_type=args.season_type or _DEFAULT_SEASON_TYPE,
+        team_codes=args.teams,
+        log=filtered_log,
+        progress=_render_progress,
+        season_started=_render_season_started,
+        team_completed=_render_team_completed,
+        team_failed=_render_team_failed,
+    )
+    _render_failure_summary_for_result(result)
+    return result.exit_status
 
 
 def run(argv: list[str] | None = None) -> int:

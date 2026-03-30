@@ -4,6 +4,9 @@ from rawr_analytics.workflows.nba_ingest import (
     IngestRequest,
     IngestResult,
     IngestSummary,
+    SeasonRangeFailure,
+    SeasonRangeResult,
+    refresh_season_range,
     refresh_team_season,
 )
 
@@ -11,5 +14,8 @@ __all__ = [
     "IngestRequest",
     "IngestResult",
     "IngestSummary",
+    "SeasonRangeFailure",
+    "SeasonRangeResult",
+    "refresh_season_range",
     "refresh_team_season",
 ]
