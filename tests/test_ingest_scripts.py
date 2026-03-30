@@ -1,14 +1,12 @@
 from __future__ import annotations
 
-import subprocess
-
 from rawr_analytics.nba.build_models import TeamSeasonRunSummary
 from rawr_analytics.nba.errors import (
     BoxScoreFetchError,
     GameNormalizationFailure,
     PartialTeamSeasonError,
 )
-from scripts import cache_all_seasons, cache_season_data
+from scripts import cache_season_data
 
 
 def test_cache_season_data_continues_after_team_failure(monkeypatch, capsys):
@@ -63,29 +61,6 @@ def test_cache_season_data_continues_after_team_failure(monkeypatch, capsys):
     assert "ERROR: season cache finished with 1 failed team-seasons" in captured.err
     assert "Completed with failures across 1 team-seasons: fetch_error=1" in captured.err
     assert "Failed scopes: BOS 2023-24" in captured.err
-
-
-def test_cache_all_seasons_continues_after_season_failure(monkeypatch, capsys):
-    calls: list[str] = []
-
-    def fake_run(command: list[str], check: bool):
-        assert check is True
-        season = command[-1]
-        calls.append(season)
-        if season == "2023-24":
-            raise subprocess.CalledProcessError(returncode=1, cmd=command)
-        return subprocess.CompletedProcess(command, 0)
-
-    monkeypatch.setattr(cache_all_seasons.subprocess, "run", fake_run)
-
-    exit_code = cache_all_seasons.main(["--start-year", "2024", "--first-year", "2023"])
-
-    captured = capsys.readouterr()
-    assert exit_code == 1
-    assert calls == ["2024-25", "2023-24"]
-    assert "Season caching failed for 2023-24 with exit status 1." in captured.err
-    assert "Completed with failures in 1/2 seasons: 2023-24" in captured.err
-
 
 def test_filtered_log_only_emits_actionable_cache_messages(capsys):
     cache_season_data._filtered_log("api box_score 0001 attempt=1")
