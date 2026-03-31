@@ -140,7 +140,7 @@ def _build_custom_metric_leaderboard_payload(
 ) -> dict[str, Any]:
     custom_query = _build_custom_metric_query(metric, query=query)
     rows = custom_query["rows"]
-    seasons_in_scope = sorted({row["season"] for row in rows})
+    seasons_in_scope = sorted({row["season_id"] for row in rows})
     return _build_leaderboard_payload_from_custom_rows(
         metric=custom_query["metric"],
         metric_label=custom_query["metric_label"],
@@ -158,7 +158,7 @@ def _build_custom_metric_export_table_rows(
 ) -> tuple[str, list[dict[str, Any]]]:
     custom_query = _build_custom_metric_query(metric, query=query)
     rows = custom_query["rows"]
-    seasons_in_scope = sorted({row["season"] for row in rows})
+    seasons_in_scope = sorted({row["season_id"] for row in rows})
     return (
         custom_query["metric_label"],
         _build_ranked_table_rows(rows, seasons=seasons_in_scope, top_n=None),
@@ -325,7 +325,7 @@ def _build_ranked_table_rows(
                     {
                         "season": season,
                         "value": next(
-                            (row["value"] for row in player_rows if row["season"] == season),
+                            (row["value"] for row in player_rows if row["season_id"] == season),
                             None,
                         ),
                     }

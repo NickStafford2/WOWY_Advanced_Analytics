@@ -6,9 +6,9 @@ from pathlib import Path
 
 from rawr_analytics.data.constants import DB_PATH
 from rawr_analytics.data.player_metrics_db._validation import (
-    _validate_metric_full_span_rows,
-    _validate_metric_rows,
-    _validate_metric_scope_catalog_row,
+    validate_metric_full_span_rows,
+    validate_metric_rows,
+    validate_metric_scope_catalog_row,
 )
 from rawr_analytics.data.player_metrics_db.models import (
     MetricFullSpanPointRow,
@@ -30,7 +30,7 @@ def _replace_metric_rows(
     rows: list[PlayerSeasonMetricRow],
 ) -> None:
     initialize_player_metrics_db()
-    _validate_metric_rows(
+    validate_metric_rows(
         metric_id=metric_id,
         scope_key=scope_key,
         label=label,
@@ -127,7 +127,7 @@ def replace_metric_scope_store(
     point_rows: list[MetricFullSpanPointRow],
 ) -> None:
     initialize_player_metrics_db()
-    _validate_metric_rows(
+    validate_metric_rows(
         metric_id=metric_id,
         scope_key=scope_key,
         label=label,
@@ -135,8 +135,8 @@ def replace_metric_scope_store(
         source_fingerprint=source_fingerprint,
         rows=rows,
     )
-    _validate_metric_scope_catalog_row(catalog_row)
-    _validate_metric_full_span_rows(
+    validate_metric_scope_catalog_row(catalog_row)
+    validate_metric_full_span_rows(
         metric_id=metric_id,
         scope_key=scope_key,
         series_rows=series_rows,
@@ -338,7 +338,7 @@ def _replace_metric_scope_catalog_row(
     row: MetricScopeCatalogRow,
 ) -> None:
     initialize_player_metrics_db()
-    _validate_metric_scope_catalog_row(row)
+    validate_metric_scope_catalog_row(row)
     with connect(db_path) as connection:
         connection.execute(
             """
@@ -389,7 +389,7 @@ def _replace_metric_full_span_rows(
     point_rows: list[MetricFullSpanPointRow],
 ) -> None:
     initialize_player_metrics_db()
-    _validate_metric_full_span_rows(
+    validate_metric_full_span_rows(
         metric_id=metric_id,
         scope_key=scope_key,
         series_rows=series_rows,

@@ -279,6 +279,7 @@ Completed outcomes:
 - exported the new public metric entrypoints from `metrics/rawr/__init__.py` and `metrics/wowy/__init__.py`
 - rewired `data/metric_store.py`, metric CLIs, RAWR tuning, and metric-query views to consume the metric-owned entrypoints
 - deleted `data/rawr.py` and `data/wowy.py` after moving their remaining Phase 2 responsibilities out
+- kept database-facing metric row contracts on `season_id`; custom-query core payloads now also use `season_id`, while web span-point serialization still uses `season` at the HTTP edge
 
 ### Phase 3: Standardize typed request and response contracts
 
@@ -290,6 +291,13 @@ Required outcomes:
 - web serialization happens at the edge, not inside metric or data code
 
 This phase should remove `dict[str, Any]` from core public interfaces wherever practical.
+
+Constraint:
+
+- do not force all metrics into one abstract filter or variable model
+- metric-specific filters and variables may stay metric-specific when the metric logic genuinely differs
+- only standardize the shared contract surface that callers actually consume across package boundaries
+- prefer a small number of explicit typed models over a generic abstraction layer that hides real differences between metrics
 
 ### Phase 4: Split the metric-store god module by responsibility
 
@@ -382,3 +390,4 @@ Implement Phase 3.
 
 Replace dict-heavy metric query payloads with typed core contracts before web serialization.
 Start with the custom-query and cached-row payloads so RAWR and WOWY stop drifting on keys like `season` versus `season_id`.
+Core and DB-facing contracts should use `season_id`; any plain `season` field should be edge serialization only.
