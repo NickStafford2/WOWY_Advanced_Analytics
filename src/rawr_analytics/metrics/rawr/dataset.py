@@ -10,10 +10,15 @@ from rawr_analytics.data.game_cache.repository import (
 )
 from rawr_analytics.data.scope_resolver import resolve_team_seasons
 from rawr_analytics.metrics.constants import Metric
-from rawr_analytics.metrics.rawr import build_player_season_records, describe_metric
 from rawr_analytics.metrics.rawr._observations import (
     _build_rawr_observations,
     _build_rawr_player_season_minute_stats,
+)
+from rawr_analytics.metrics.rawr.defaults import (
+    DEFAULT_RAWR_SHRINKAGE_MINUTE_SCALE,
+    DEFAULT_RAWR_SHRINKAGE_MODE,
+    DEFAULT_RAWR_SHRINKAGE_STRENGTH,
+    describe_metric,
 )
 from rawr_analytics.metrics.rawr.models import (
     RawrPlayerContext,
@@ -21,13 +26,10 @@ from rawr_analytics.metrics.rawr.models import (
     RawrRequest,
     RawrSeasonInput,
 )
+from rawr_analytics.metrics.rawr.records import build_player_season_records
 from rawr_analytics.shared.scope import TeamSeasonScope
 from rawr_analytics.shared.season import Season, SeasonType
 from rawr_analytics.shared.team import Team
-
-DEFAULT_RAWR_SHRINKAGE_MODE = "uniform"
-DEFAULT_RAWR_SHRINKAGE_STRENGTH = 1.0
-DEFAULT_RAWR_SHRINKAGE_MINUTE_SCALE = 48.0
 
 
 @dataclass(frozen=True)
@@ -42,38 +44,6 @@ class _SeasonCacheSummary:
     incomplete_metadata_teams: set[str]
     partial_teams: dict[str, tuple[int, int]]
     skipped_teams: dict[str, int]
-
-
-def _load_rawr_season_inputs(
-    teams: list[Team] | None,
-    seasons: list[Season] | None,
-    *,
-    season_type: SeasonType,
-) -> list[RawrSeasonInput]:
-    requested_team_seasons = resolve_team_seasons(teams, seasons, season_type=season_type)
-    teams_by_season: dict[Season, list[Team]] = defaultdict(list)
-    for scope in requested_team_seasons:
-        teams_by_season[scope.season].append(scope.team)
-
-    complete_seasons = set(
-        _select_complete_rawr_scope_seasons(
-            teams=teams,
-            seasons=seasons,
-            season_type=season_type,
-        )
-    )
-    season_inputs: list[RawrSeasonInput] = []
-    for season in sorted(teams_by_season, key=lambda item: item.id):
-        if season.id not in complete_seasons:
-            continue
-        season_input = _load_rawr_season_input(
-            teams=teams_by_season[season],
-            season=season,
-            season_type=season_type,
-        )
-        if season_input is not None:
-            season_inputs.append(season_input)
-    return season_inputs
 
 
 def prepare_rawr_player_season_records(
@@ -149,47 +119,6 @@ def build_rawr_custom_query(
     }
 
 
-def _list_expected_rawr_teams_for_season(season: str) -> list[str]:
-    resolved_season = Season(season, "Regular Season")
-    return [
-        team.abbreviation(season=resolved_season)
-        for team in Team.all_active_in_season(resolved_season)
-    ]
-
-
-def _list_incomplete_rawr_seasons(
-    *,
-    seasons: list[str],
-    season_type: SeasonType,
-) -> list[RawrSeasonCompletenessIssue]:
-    summaries = _summarize_rawr_cache_seasons(seasons=seasons, season_type=season_type)
-    issues: list[RawrSeasonCompletenessIssue] = []
-    for season in seasons:
-        summary = summaries.get(season)
-        if summary is None:
-            issues.append(
-                RawrSeasonCompletenessIssue(season=season, reason="no cache load metadata found")
-            )
-            continue
-        for reason in _build_rawr_issue_reasons(season=season, summary=summary):
-            issues.append(RawrSeasonCompletenessIssue(season=season, reason=reason))
-    return issues
-
-
-def _list_complete_rawr_seasons(
-    *,
-    seasons: list[str],
-    season_type: SeasonType,
-) -> set[str]:
-    summaries = _summarize_rawr_cache_seasons(seasons=seasons, season_type=season_type)
-    return {
-        season
-        for season in seasons
-        if season in summaries
-        and _is_complete_rawr_summary(season=season, summary=summaries[season])
-    }
-
-
 def list_incomplete_rawr_season_warnings(
     *,
     seasons: list[str] | None = None,
@@ -207,21 +136,36 @@ def list_incomplete_rawr_season_warnings(
     return warnings
 
 
-def _select_complete_rawr_scope_seasons(
-    *,
+def _load_rawr_season_inputs(
     teams: list[Team] | None,
     seasons: list[Season] | None,
+    *,
     season_type: SeasonType,
-) -> list[str]:
-    team_seasons = resolve_team_seasons(teams, seasons, season_type=season_type)
-    candidate_seasons = sorted({team_season.season.id for team_season in team_seasons})
-    if not candidate_seasons:
-        return []
-    complete_seasons = _list_complete_rawr_seasons(
-        seasons=candidate_seasons,
-        season_type=season_type,
+) -> list[RawrSeasonInput]:
+    requested_team_seasons = resolve_team_seasons(teams, seasons, season_type=season_type)
+    teams_by_season: dict[Season, list[Team]] = defaultdict(list)
+    for scope in requested_team_seasons:
+        teams_by_season[scope.season].append(scope.team)
+
+    complete_seasons = set(
+        _select_complete_rawr_scope_seasons(
+            teams=teams,
+            seasons=seasons,
+            season_type=season_type,
+        )
     )
-    return [season for season in candidate_seasons if season in complete_seasons]
+    season_inputs: list[RawrSeasonInput] = []
+    for season in sorted(teams_by_season, key=lambda item: item.id):
+        if season.id not in complete_seasons:
+            continue
+        season_input = _load_rawr_season_input(
+            teams=teams_by_season[season],
+            season=season,
+            season_type=season_type,
+        )
+        if season_input is not None:
+            season_inputs.append(season_input)
+    return season_inputs
 
 
 def _load_rawr_season_input(
@@ -287,6 +231,45 @@ def _filter_rawr_scope(games, game_players, teams, seasons):
     return filtered_games, filtered_game_players
 
 
+def _list_expected_rawr_teams_for_season(season: str) -> list[str]:
+    resolved_season = Season(season, "Regular Season")
+    return [
+        team.abbreviation(season=resolved_season)
+        for team in Team.all_active_in_season(resolved_season)
+    ]
+
+
+def _list_complete_rawr_seasons(
+    *,
+    seasons: list[str],
+    season_type: SeasonType,
+) -> set[str]:
+    summaries = _summarize_rawr_cache_seasons(seasons=seasons, season_type=season_type)
+    return {
+        season
+        for season in seasons
+        if season in summaries
+        and _is_complete_rawr_summary(season=season, summary=summaries[season])
+    }
+
+
+def _select_complete_rawr_scope_seasons(
+    *,
+    teams: list[Team] | None,
+    seasons: list[Season] | None,
+    season_type: SeasonType,
+) -> list[str]:
+    team_seasons = resolve_team_seasons(teams, seasons, season_type=season_type)
+    candidate_seasons = sorted({team_season.season.id for team_season in team_seasons})
+    if not candidate_seasons:
+        return []
+    complete_seasons = _list_complete_rawr_seasons(
+        seasons=candidate_seasons,
+        season_type=season_type,
+    )
+    return [season for season in candidate_seasons if season in complete_seasons]
+
+
 def _summarize_rawr_cache_seasons(
     *,
     seasons: list[str],
@@ -325,27 +308,6 @@ def _is_complete_rawr_summary(*, season: str, summary: _SeasonCacheSummary) -> b
         and not summary.partial_teams
         and not summary.skipped_teams
     )
-
-
-def _build_rawr_issue_reasons(*, season: str, summary: _SeasonCacheSummary) -> list[str]:
-    reasons: list[str] = []
-    missing_teams = sorted(set(_list_expected_rawr_teams_for_season(season)) - summary.team_labels)
-    if missing_teams:
-        reasons.append(f"missing team-seasons: {', '.join(missing_teams)}")
-    if summary.incomplete_metadata_teams:
-        reasons.append(
-            "ERROR: MetaData incomplete/out of date. "
-            f"Run `poetry run python scripts/cache_season_data.py {season}` or repopulate DB."
-        )
-    reasons.extend(
-        f"partial team-season cache for {team_label} ({games}/{expected} games)"
-        for team_label, (games, expected) in sorted(summary.partial_teams.items())
-    )
-    reasons.extend(
-        f"skipped games present for {team_label} ({skipped} skipped)"
-        for team_label, skipped in sorted(summary.skipped_teams.items())
-    )
-    return sorted(reasons)
 
 
 def _build_rawr_warning_messages(*, season: str, summary: _SeasonCacheSummary) -> list[str]:

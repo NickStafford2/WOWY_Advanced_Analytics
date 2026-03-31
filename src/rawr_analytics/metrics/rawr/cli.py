@@ -3,13 +3,13 @@ from __future__ import annotations
 import argparse
 from pathlib import Path
 
-from rawr_analytics.data.rawr import (
+from rawr_analytics.metrics.rawr import (
     DEFAULT_RAWR_SHRINKAGE_MINUTE_SCALE,
     DEFAULT_RAWR_SHRINKAGE_MODE,
     DEFAULT_RAWR_SHRINKAGE_STRENGTH,
     prepare_rawr_player_season_records,
+    validate_filters,
 )
-from rawr_analytics.metrics.rawr import validate_filters
 from rawr_analytics.metrics.rawr._formatting import format_rawr_records
 from rawr_analytics.nba.source.cache import DEFAULT_SOURCE_DATA_DIR
 from rawr_analytics.progress import print_status_box

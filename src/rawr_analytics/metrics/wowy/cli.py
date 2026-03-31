@@ -2,8 +2,7 @@ from __future__ import annotations
 
 import argparse
 
-from rawr_analytics.data.wowy import prepare_wowy_player_season_records
-from rawr_analytics.metrics.wowy import validate_filters
+from rawr_analytics.metrics.wowy import prepare_wowy_player_season_records, validate_filters
 from rawr_analytics.metrics.wowy._formatting import format_results_table
 from rawr_analytics.progress import print_status_box
 from rawr_analytics.shared.scope import format_scope

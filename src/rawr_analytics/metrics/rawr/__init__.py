@@ -1,5 +1,10 @@
 """RAWR metric package."""
 
+from rawr_analytics.metrics.rawr.dataset import (
+    build_rawr_custom_query,
+    list_incomplete_rawr_season_warnings,
+    prepare_rawr_player_season_records,
+)
 from rawr_analytics.metrics.rawr.defaults import (
     DEFAULT_RAWR_SHRINKAGE_MINUTE_SCALE,
     DEFAULT_RAWR_SHRINKAGE_MODE,
@@ -15,8 +20,11 @@ __all__ = [
     "DEFAULT_RAWR_SHRINKAGE_MODE",
     "DEFAULT_RAWR_SHRINKAGE_STRENGTH",
     "build_player_season_records",
+    "build_rawr_custom_query",
     "default_filters",
     "describe_metric",
+    "list_incomplete_rawr_season_warnings",
+    "prepare_rawr_player_season_records",
     "validate_filters",
     "validate_request",
 ]

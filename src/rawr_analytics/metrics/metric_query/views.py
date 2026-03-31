@@ -8,12 +8,14 @@ from rawr_analytics.data.metric_store_views import (
     load_cached_metric_player_seasons_snapshot,
     load_cached_metric_span_snapshot,
 )
-from rawr_analytics.data.rawr import build_rawr_custom_query
-from rawr_analytics.data.wowy import build_wowy_custom_query
 from rawr_analytics.metrics.constants import Metric
+from rawr_analytics.metrics.rawr import (
+    build_rawr_custom_query,
+)
 from rawr_analytics.metrics.rawr import (
     default_filters as _rawr_default_filters,
 )
+from rawr_analytics.metrics.wowy import build_wowy_custom_query
 
 from .models import MetricQuery
 from .scope import build_filters_payload

@@ -6,12 +6,11 @@ from typing import Any
 from rawr_analytics.data.game_cache.repository import load_normalized_scope_records_from_db
 from rawr_analytics.data.scope_resolver import resolve_team_seasons
 from rawr_analytics.metrics.constants import Metric
-from rawr_analytics.metrics.wowy import (
+from rawr_analytics.metrics.wowy.analysis import (
     DEFAULT_WOWY_SHRINKAGE_PRIOR_GAMES,
-    build_player_season_records,
     compute_wowy_shrinkage_score,
-    describe_metric,
 )
+from rawr_analytics.metrics.wowy.defaults import describe_metric
 from rawr_analytics.metrics.wowy.models import (
     WowyGame,
     WowyPlayerContext,
@@ -19,47 +18,10 @@ from rawr_analytics.metrics.wowy.models import (
     WowyRequest,
     WowySeasonInput,
 )
+from rawr_analytics.metrics.wowy.records import build_player_season_records
 from rawr_analytics.nba.models import NormalizedGamePlayerRecord, NormalizedGameRecord
 from rawr_analytics.shared.season import Season, SeasonType
 from rawr_analytics.shared.team import Team
-
-
-def _load_wowy_season_inputs(
-    teams: list[Team] | None,
-    seasons: list[Season] | None,
-    *,
-    season_type: SeasonType,
-) -> list[WowySeasonInput]:
-    team_seasons = resolve_team_seasons(teams, seasons, season_type=season_type)
-    if not team_seasons:
-        raise ValueError("No cached data matched the requested scope")
-
-    games, game_players = load_normalized_scope_records_from_db(team_seasons)
-    player_names = _build_player_names(game_players)
-    minute_stats = _build_player_season_minute_stats(games, game_players)
-    games_by_season = _derive_wowy_games_by_season(games, game_players)
-
-    season_inputs: list[WowySeasonInput] = []
-    for season in sorted(games_by_season, key=lambda item: item.id):
-        player_ids = sorted(
-            {player_id for game in games_by_season[season] for player_id in game.players}
-        )
-        season_inputs.append(
-            WowySeasonInput(
-                season=season,
-                games=games_by_season[season],
-                players=[
-                    WowyPlayerContext(
-                        player_id=player_id,
-                        player_name=player_names.get(player_id, str(player_id)),
-                        average_minutes=minute_stats.get((season, player_id), (None, None))[0],
-                        total_minutes=minute_stats.get((season, player_id), (None, None))[1],
-                    )
-                    for player_id in player_ids
-                ],
-            )
-        )
-    return season_inputs
 
 
 def prepare_wowy_player_season_records(
@@ -112,6 +74,44 @@ def build_wowy_custom_query(
         "metric_label": describe_metric(metric).label,
         "rows": [_build_wowy_query_row(metric, record) for record in records],
     }
+
+
+def _load_wowy_season_inputs(
+    teams: list[Team] | None,
+    seasons: list[Season] | None,
+    *,
+    season_type: SeasonType,
+) -> list[WowySeasonInput]:
+    team_seasons = resolve_team_seasons(teams, seasons, season_type=season_type)
+    if not team_seasons:
+        raise ValueError("No cached data matched the requested scope")
+
+    games, game_players = load_normalized_scope_records_from_db(team_seasons)
+    player_names = _build_player_names(game_players)
+    minute_stats = _build_player_season_minute_stats(games, game_players)
+    games_by_season = _derive_wowy_games_by_season(games, game_players)
+
+    season_inputs: list[WowySeasonInput] = []
+    for season in sorted(games_by_season, key=lambda item: item.id):
+        player_ids = sorted(
+            {player_id for game in games_by_season[season] for player_id in game.players}
+        )
+        season_inputs.append(
+            WowySeasonInput(
+                season=season,
+                games=games_by_season[season],
+                players=[
+                    WowyPlayerContext(
+                        player_id=player_id,
+                        player_name=player_names.get(player_id, str(player_id)),
+                        average_minutes=minute_stats.get((season, player_id), (None, None))[0],
+                        total_minutes=minute_stats.get((season, player_id), (None, None))[1],
+                    )
+                    for player_id in player_ids
+                ],
+            )
+        )
+    return season_inputs
 
 
 def _build_wowy_query_row(

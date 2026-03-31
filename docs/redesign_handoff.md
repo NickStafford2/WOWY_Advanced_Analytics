@@ -259,6 +259,8 @@ Still intentionally deferred after Phase 1:
 
 ### Phase 2: Move metric-specific dataset shaping out of `data/`
 
+Status: completed.
+
 Required outcomes:
 
 - `data/rawr.py` and `data/wowy.py` stop owning metric preparation logic
@@ -269,6 +271,14 @@ Good end state:
 
 - `metrics/rawr/` owns observation and player-context building
 - `metrics/wowy/` owns WOWY game derivation and player-context building
+
+Completed outcomes:
+
+- moved RAWR dataset loading, season completeness filtering, observation derivation, and custom-query row assembly into `metrics/rawr/dataset.py`
+- moved WOWY dataset loading, game derivation, player-context building, and custom-query row assembly into `metrics/wowy/dataset.py`
+- exported the new public metric entrypoints from `metrics/rawr/__init__.py` and `metrics/wowy/__init__.py`
+- rewired `data/metric_store.py`, metric CLIs, RAWR tuning, and metric-query views to consume the metric-owned entrypoints
+- deleted `data/rawr.py` and `data/wowy.py` after moving their remaining Phase 2 responsibilities out
 
 ### Phase 3: Standardize typed request and response contracts
 
@@ -354,7 +364,7 @@ Keep this file concise. Delete stale notes instead of appending history.
 - Phase 1 is complete. Scripts and web now call `rawr_analytics.services` entrypoints.
 - `services/rebuild.py` is now the stable rebuild boundary for ingest refresh, metric-store refresh, and validation.
 - `services/metric_query.py` is now the stable query boundary used by Flask routes.
-- `data/` still owns metric-specific shaping.
+- Phase 2 is complete. Metric-specific dataset shaping now lives under `metrics/rawr/` and `metrics/wowy/`.
 - Metric response contracts are still inconsistent and still rely on dict payloads internally.
 - The metric-store internals are still too coupled inside `data/metric_store.py`, `data/metric_store_query.py`, and `data/metric_store_views.py`.
 
@@ -363,10 +373,12 @@ Keep this file concise. Delete stale notes instead of appending history.
 - Introduced the `services/` package as the stable outer application boundary.
 - Rewired top-level scripts and Flask routes to consume service entrypoints instead of lower-level internals.
 - Repaired the rebuild entrypoint so it uses current package names and current service interfaces.
+- Moved RAWR and WOWY metric-specific dataset shaping and custom-query assembly out of `data/` and into public metric-owned modules under `metrics/`.
+- Deleted the old `data/rawr.py` and `data/wowy.py` modules after rewiring their callers.
 
 ## Next Step
 
-Implement Phase 2.
+Implement Phase 3.
 
-Move metric-specific dataset shaping out of `data/rawr.py` and `data/wowy.py` into `metrics/`.
-After that, start Phase 3 by replacing dict-heavy metric query payloads with typed core contracts before web serialization.
+Replace dict-heavy metric query payloads with typed core contracts before web serialization.
+Start with the custom-query and cached-row payloads so RAWR and WOWY stop drifting on keys like `season` versus `season_id`.
