@@ -16,11 +16,11 @@ def format_results_table(
     player_id_width = max(len("player_id"), *(len(str(record.player_id)) for record in ranked))
     avg_minutes_width = max(
         len("avg_min"),
-        *(_format_minutes_value(record.average_minutes) for record in ranked),
+        *(len(_format_minutes_value(record.average_minutes)) for record in ranked),
     )
     total_minutes_width = max(
         len("tot_min"),
-        *(_format_minutes_value(record.total_minutes) for record in ranked),
+        *(len(_format_minutes_value(record.total_minutes)) for record in ranked),
     )
 
     lines = [

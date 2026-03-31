@@ -16,10 +16,12 @@ def format_rawr_records(
     season_width = max(len("season"), *(len(str(record.season)) for record in ranked))
     player_id_width = max(len("player_id"), *(len(str(record.player_id)) for record in ranked))
     avg_minutes_width = max(
-        len("avg_min"), *(_format_minutes_value(record.average_minutes) for record in ranked)
+        len("avg_min"),
+        *(len(_format_minutes_value(record.average_minutes)) for record in ranked),
     )
     total_minutes_width = max(
-        len("tot_min"), *(_format_minutes_value(record.total_minutes) for record in ranked)
+        len("tot_min"),
+        *(len(_format_minutes_value(record.total_minutes)) for record in ranked),
     )
 
     lines = [
