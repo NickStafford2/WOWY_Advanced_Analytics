@@ -6,21 +6,18 @@ import sys
 from rawr_analytics.nba.errors import GameNormalizationFailure, PartialTeamSeasonError
 from rawr_analytics.shared.season import Season
 from rawr_analytics.shared.team import Team
+from rawr_analytics.workflows.nba_ingest import IngestProgress
 
 _LAST_STATUS_LINE_LENGTH = 0
 
 
-def render_progress_line(
-    team_index: int,
-    team_total: int,
-    payload: dict,
-) -> None:
-    current = payload["current"]
-    total = payload["total"]
-    status = payload["status"]
-    team_id = payload["team"].team_id
-    season = payload["season"]
-    game_id = payload.get("game_id", "")
+def render_progress_line(team_index: int, team_total: int, progress: IngestProgress) -> None:
+    current = progress.current
+    total = progress.total
+    status = progress.status
+    team_id = progress.team.team_id
+    season = progress.season.id
+    game_id = progress.game_id or ""
     filled = 20 if total == 0 else int((current / total) * 20)
     bar = "#" * filled + "-" * (20 - filled)
     line = (

@@ -75,10 +75,6 @@ def _render_season_started(season_index: int, season_count: int, season: Season)
         print(f"[{season_index}/{season_count}] caching {season}")
 
 
-def _render_progress(team_index: int, team_total: int, payload: dict) -> None:
-    render_progress_line(team_index, team_total, payload)
-
-
 def _render_team_completed(team_index: int, team_total: int, result: IngestResult) -> None:
     render_team_complete_line(team_index, team_total, result)
     sys.stdout.write("\n")
@@ -161,7 +157,7 @@ def main(argv: list[str] | None = None) -> int:
         end_year=args.end_year or _DEFAULT_END_YEAR,
         season_type=args.season_type or _DEFAULT_SEASON_TYPE,
         team_abbreviations=args.teams,
-        progress_fn=_render_progress,
+        progress_fn=render_progress_line,
         season_started_fn=_render_season_started,
         team_completed_fn=_render_team_completed,
         team_failed_fn=_render_team_failed,
