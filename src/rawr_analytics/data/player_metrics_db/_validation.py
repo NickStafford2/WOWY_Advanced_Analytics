@@ -24,7 +24,7 @@ from rawr_analytics.metrics.metric_query.validation import (
 )
 
 
-def _validate_metric_rows(
+def validate_metric_rows(
     *,
     metric_id: str,
     scope_key: str,
@@ -129,7 +129,7 @@ def _validate_metric_rows(
         row_keys.add(row_key)
 
 
-def _validate_metric_scope_catalog_row(row: MetricScopeCatalogRow) -> None:
+def validate_metric_scope_catalog_row(row: MetricScopeCatalogRow) -> None:
     _validate_required_text(row.metric_id, "metric_id")
     _validate_required_text(row.scope_key, "scope_key")
     _validate_required_text(row.label, "label")
@@ -145,7 +145,7 @@ def _validate_metric_scope_catalog_row(row: MetricScopeCatalogRow) -> None:
     _validate_iso_datetime(row.updated_at, "catalog updated_at")
 
 
-def _validate_metric_full_span_rows(
+def validate_metric_full_span_rows(
     *,
     metric_id: str,
     scope_key: str,
@@ -221,7 +221,7 @@ def _validate_metric_full_span_rows(
 
 
 __all__ = [
-    "_validate_metric_full_span_rows",
-    "_validate_metric_rows",
-    "_validate_metric_scope_catalog_row",
+    "validate_metric_full_span_rows",
+    "validate_metric_rows",
+    "validate_metric_scope_catalog_row",
 ]

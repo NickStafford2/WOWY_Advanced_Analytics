@@ -25,7 +25,7 @@ from rawr_analytics.shared.season import Season
 from rawr_analytics.shared.team import Team
 
 
-def _validate_normalized_games_table(
+def validate_normalized_games_table(
     connection: sqlite3.Connection,
     issues: list[ValidationIssue],
 ) -> None:
@@ -63,7 +63,7 @@ def _validate_normalized_games_table(
             issues.append(ValidationIssue("normalized_games", key, str(exc)))
 
 
-def _validate_normalized_game_players_table(
+def validate_normalized_game_players_table(
     connection: sqlite3.Connection,
     issues: list[ValidationIssue],
 ) -> None:
@@ -100,7 +100,7 @@ def _validate_normalized_game_players_table(
             issues.append(ValidationIssue("normalized_game_players", key, str(exc)))
 
 
-def _validate_normalized_cache_loads_table(
+def validate_normalized_cache_loads_table(
     connection: sqlite3.Connection,
     issues: list[ValidationIssue],
 ) -> None:
@@ -154,7 +154,7 @@ def _validate_normalized_cache_loads_table(
             issues.append(ValidationIssue("normalized_cache_loads", key, str(exc)))
 
 
-def _validate_normalized_cache_relations(
+def validate_normalized_cache_relations(
     connection: sqlite3.Connection,
     issues: list[ValidationIssue],
 ) -> None:
@@ -387,7 +387,7 @@ def _validate_reciprocal_game_margins(
             )
 
 
-def _validate_team_history_table(
+def validate_team_history_table(
     connection: sqlite3.Connection,
     issues: list[ValidationIssue],
 ) -> None:
@@ -467,10 +467,10 @@ def _build_normalized_game_player_record(
 
 
 __all__ = [
-    "_validate_normalized_cache_loads_table",
-    "_validate_normalized_cache_relations",
-    "_validate_normalized_game_players_table",
-    "_validate_normalized_games_table",
     "_validate_reciprocal_game_margins",
-    "_validate_team_history_table",
+    "validate_normalized_cache_loads_table",
+    "validate_normalized_cache_relations",
+    "validate_normalized_game_players_table",
+    "validate_normalized_games_table",
+    "validate_team_history_table",
 ]

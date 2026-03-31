@@ -7,9 +7,9 @@ from dataclasses import dataclass
 
 from rawr_analytics.data._validation_issue import ValidationIssue
 from rawr_analytics.data.player_metrics_db._validation import (
-    _validate_metric_full_span_rows,
-    _validate_metric_rows,
-    _validate_metric_scope_catalog_row,
+    validate_metric_full_span_rows,
+    validate_metric_rows,
+    validate_metric_scope_catalog_row,
 )
 from rawr_analytics.data.player_metrics_db.models import (
     MetricFullSpanPointRow,
@@ -143,7 +143,7 @@ def _audit_metric_player_season_values_table(
             ),
         )
         try:
-            _validate_metric_rows(
+            validate_metric_rows(
                 metric_id=metric,
                 scope_key=scope_key,
                 label=metadata_row.label,
@@ -201,7 +201,7 @@ def _audit_metric_scope_catalog_table(
         key = (catalog_row.metric_id, catalog_row.scope_key)
         catalog_rows[key] = catalog_row
         try:
-            _validate_metric_scope_catalog_row(catalog_row)
+            validate_metric_scope_catalog_row(catalog_row)
         except ValueError as exc:
             issues.append(
                 ValidationIssue(
@@ -278,7 +278,7 @@ def _audit_metric_full_span_tables(
         points = point_groups.get(key, [])
         groups[key] = (series, points)
         try:
-            _validate_metric_full_span_rows(
+            validate_metric_full_span_rows(
                 metric_id=key[0],
                 scope_key=key[1],
                 series_rows=series,
