@@ -276,7 +276,8 @@ def _validate_metric_store_relations(
                     table="metric_store_metadata_v2",
                     key=f"metric={metric!r},scope_key={scope_key!r}",
                     message=(
-                        f"row_count does not match metric rows: {metadata_row.row_count} != {len(rows)}"
+                        "row_count does not match metric rows:"
+                        f"{metadata_row.row_count} != {len(rows)}"
                     ),
                 )
             )

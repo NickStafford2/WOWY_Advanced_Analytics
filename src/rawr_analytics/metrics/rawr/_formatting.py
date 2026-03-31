@@ -37,7 +37,8 @@ def format_rawr_records(
         ),
         (
             f"{'season':<{season_width}} {'player':<{name_width}} {'player_id':<{player_id_width}} "
-            f"{'games':>6} {'avg_min':>{avg_minutes_width}} {'tot_min':>{total_minutes_width}} {'coef':>10}"
+            f"{'games':>6} {'avg_min':>{avg_minutes_width}} {'tot_min':>{total_minutes_width}} "
+            f"{'coef':>10}"
         ),
         "-"
         * (
