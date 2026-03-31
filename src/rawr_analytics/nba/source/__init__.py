@@ -1,13 +1,13 @@
 from __future__ import annotations
 
+from rawr_analytics.nba.source._load import (
+    load_player_names_from_cache,
+)
 from rawr_analytics.nba.source.api import load_or_fetch_box_score
 from rawr_analytics.nba.source.cache import (
     load_or_fetch_league_games,
 )
 from rawr_analytics.nba.source.dedupe import dedupe_schedule_games
-from rawr_analytics.nba.source._load import (
-    load_player_names_from_cache,
-)
 from rawr_analytics.nba.source.models import (
     SourceBoxScore,
     SourceBoxScorePlayer,
