@@ -25,11 +25,12 @@ Phase 2 is now complete.
 - Split cached season-value storage into `rawr_player_season_values` and `wowy_player_season_values` in `src/rawr_analytics/data/player_metrics_db/schema.py`.
 - Rewired metric-store persistence, cached-row views, and metric-store audit code to use the new metric-specific tables.
 - Added typed RAWR and WOWY custom-query result models and rewired `src/rawr_analytics/metrics/metric_query/views.py` to dispatch through them.
+- Removed the remaining shared row-normalization path from `src/rawr_analytics/metrics/metric_query/views.py` by splitting RAWR and WOWY leaderboard, export, and player-season assembly into separate typed branches.
 
 ## Remaining
 
-1. Remove the remaining generic payload shaping in `src/rawr_analytics/metrics/metric_query/views.py` so RAWR and WOWY do not normalize through dict intermediates inside core code.
-2. Split `src/rawr_analytics/data/metric_store.py` responsibility by concern instead of leaving refresh policy, computation, persistence, and snapshot shaping coupled together.
+1. Split `src/rawr_analytics/data/metric_store.py` and `src/rawr_analytics/data/metric_store_views.py` by concern so refresh policy, computation, persistence, and snapshot loading are no longer coupled behind generic store helpers.
+2. Push the remaining metric-store read/write contracts toward explicit RAWR-owned and WOWY-owned repository paths where behavior or row shape differs.
 3. Remove stale deep imports inside ingest and metric internals once the new public surfaces are stable enough to consume directly.
 4. Unify metric-store fingerprint logic so refresh-time and read-time freshness checks share one implementation.
 
@@ -44,6 +45,11 @@ Phase 2 is now complete.
 - `poetry run python -m py_compile` passed for the new metric-specific DB and metric-query files.
 - `poetry run ruff check` passed for the touched Phase 3 files.
 - `poetry run pyright` passed for the touched Phase 3 files.
-- `poetry run pyright src scripts` still fails only on the same pre-existing import errors in `src/rawr_analytics/data/player_metrics_db/store.py`.
+- `poetry run python -m py_compile src/rawr_analytics/metrics/metric_query/views.py` passed after splitting RAWR and WOWY query assembly paths.
+- `poetry run ruff check src/rawr_analytics/metrics/metric_query/views.py` passed after removing the shared row-normalization path.
+- `poetry run pyright src/rawr_analytics/metrics/metric_query/views.py` passed after adding explicit cached-row narrowing for RAWR and WOWY.
+- `poetry run python -m py_compile $(find src scripts -name '*.py' -print)` passed.
+- `poetry run ruff check` currently fails in the pre-existing `tests/` tree; the new Phase 3 query-view file passes its own Ruff check.
+- `poetry run pyright` currently fails broadly in the pre-existing `tests/` tree; the new Phase 3 query-view file passes its own Pyright check.
 
 Tests were not run, per the current rebuild instructions.

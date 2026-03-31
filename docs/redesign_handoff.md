@@ -381,7 +381,8 @@ Keep this file concise. Delete stale notes instead of appending history.
 - Separate metric tables are now the preferred storage direction because they keep row meaning explicit and reduce generic glue code.
 - RAWR and WOWY now have separate cached season-value tables and separate repository row models.
 - RAWR and WOWY custom-query entrypoints now return metric-specific typed result models instead of generic dict payloads.
-- Metric response payload assembly is still partially generic inside `metrics/metric_query/views.py` and still serializes through dict-shaped intermediate rows.
+- `metrics/metric_query/views.py` now dispatches through separate RAWR and WOWY payload builders for cached leaderboards, custom queries, export rows, and player-season views.
+- Query aggregation now keeps RAWR rows and WOWY rows on separate typed paths instead of normalizing them through a shared dict row contract inside core query code.
 - The metric-store internals are still too coupled inside `data/metric_store.py`, `data/metric_store_query.py`, and `data/metric_store_views.py`.
 
 ## Completed
@@ -394,11 +395,12 @@ Keep this file concise. Delete stale notes instead of appending history.
 - Rewrote the Phase 3 plan to prefer metric-specific query contracts and separate metric tables instead of a shared metric abstraction layer.
 - Added separate `rawr_player_season_values` and `wowy_player_season_values` tables and rewired cached-row loading and storage to use metric-specific repositories.
 - Added metric-specific typed custom-query result models for RAWR and WOWY and rewired metric query views to dispatch through them.
+- Removed the remaining shared row-normalization path from `metrics/metric_query/views.py` by splitting RAWR and WOWY leaderboard, export, and player-season assembly into metric-specific typed branches.
 
 ## Next Step
 
 Implement Phase 3.
 
-Split the generic metric query and metric storage paths into RAWR-owned and WOWY-owned contracts.
-Continue by removing the remaining generic payload shaping in `metrics/metric_query/views.py` and splitting refresh orchestration out of `data/metric_store.py`.
+Split the remaining generic metric storage paths into RAWR-owned and WOWY-owned contracts.
+Continue by moving refresh orchestration and snapshot loading out of `data/metric_store.py` and `data/metric_store_views.py` so metric-specific repository contracts stay explicit through the store boundary.
 Keep `season_id` in core and DB-facing contracts; any plain `season` field should be edge serialization only.
