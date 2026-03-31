@@ -224,24 +224,24 @@ def _refresh_metric_store_scope(
         seasons=scope.available_seasons,
     )
     replace_metric_scope_store(
-        metric=metric.value,
+        metric_id=metric.value,
         scope_key=scope.scope_key,
-        metric_label=metric_label,
+        label=metric_label,
         build_version=build_version,
         source_fingerprint=source_fingerprint,
         rows=rows,
         catalog_row=MetricScopeCatalogRow(
-            metric=metric.value,
+            metric_id=metric.value,
             scope_key=scope.scope_key,
-            metric_label=metric_label,
+            label=metric_label,
             team_filter=scope.team_filter,
             season_type=season_type.to_nba_format(),
-            available_seasons=[season.id for season in scope.available_seasons],
+            available_season_ids=[season.id for season in scope.available_seasons],
             available_team_ids=[team.team_id for team in available_teams],
-            full_span_start_season=(
+            full_span_start_season_id=(
                 scope.available_seasons[0].id if scope.available_seasons else None
             ),
-            full_span_end_season=(
+            full_span_end_season_id=(
                 scope.available_seasons[-1].id if scope.available_seasons else None
             ),
             updated_at=datetime.now(UTC).isoformat(),
@@ -329,10 +329,8 @@ def _build_cached_rows(
         min_total_minutes=None,
     )
     values_by_player_season = None
-    metric_label = "WOWY"
     include_raw_wowy_score = False
     if metric == Metric.WOWY_SHRUNK:
-        metric_label = "WOWY Shrunk"
         include_raw_wowy_score = True
         values_by_player_season = {
             (record.season, record.player_id): compute_wowy_shrinkage_score(
@@ -344,11 +342,10 @@ def _build_cached_rows(
             for record in records
         }
     return build_wowy_player_season_metric_rows(
+        metric_id=metric.value,
         scope_key=scope_key,
         team_filter=team_filter,
         season_type=season_type,
-        metric=metric,
-        metric_label=metric_label,
         records=records,
         values_by_player_season=values_by_player_season,
         include_raw_wowy_score=include_raw_wowy_score,
@@ -371,7 +368,7 @@ def _build_metric_full_span_rows(
         totals[row.player_id] = totals.get(row.player_id, 0.0) + row.value
         counts[row.player_id] = counts.get(row.player_id, 0) + 1
         names[row.player_id] = row.player_name
-        season_values.setdefault(row.player_id, {})[row.season] = row.value
+        season_values.setdefault(row.player_id, {})[row.season_id] = row.value
 
     span_length = len(seasons) or 1
     ranked_player_ids = sorted(
@@ -385,7 +382,7 @@ def _build_metric_full_span_rows(
     for rank_order, player_id in enumerate(ranked_player_ids, start=1):
         series_rows.append(
             MetricFullSpanSeriesRow(
-                metric=metric.value,
+                metric_id=metric.value,
                 scope_key=scope_key,
                 player_id=player_id,
                 player_name=names[player_id],
@@ -400,10 +397,10 @@ def _build_metric_full_span_rows(
                 continue
             point_rows.append(
                 MetricFullSpanPointRow(
-                    metric=metric.value,
+                    metric_id=metric.value,
                     scope_key=scope_key,
                     player_id=player_id,
-                    season=season.id,
+                    season_id=season.id,
                     value=value,
                 )
             )

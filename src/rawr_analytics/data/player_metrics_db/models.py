@@ -6,12 +6,11 @@ from typing import Any
 
 @dataclass(frozen=True)
 class PlayerSeasonMetricRow:
-    metric: str
-    metric_label: str
+    metric_id: str
     scope_key: str
     team_filter: str
     season_type: str
-    season: str
+    season_id: str
     player_id: int
     player_name: str
     value: float
@@ -24,9 +23,9 @@ class PlayerSeasonMetricRow:
 
 @dataclass(frozen=True)
 class MetricStoreMetadata:
-    metric: str
+    metric_id: str
     scope_key: str
-    metric_label: str
+    label: str
     build_version: str
     source_fingerprint: str
     row_count: int
@@ -35,21 +34,21 @@ class MetricStoreMetadata:
 
 @dataclass(frozen=True)
 class MetricScopeCatalogRow:
-    metric: str
+    metric_id: str
     scope_key: str
-    metric_label: str
+    label: str
     team_filter: str
     season_type: str
-    available_seasons: list[str]
+    available_season_ids: list[str]
     available_team_ids: list[int]
-    full_span_start_season: str | None
-    full_span_end_season: str | None
+    full_span_start_season_id: str | None
+    full_span_end_season_id: str | None
     updated_at: str
 
 
 @dataclass(frozen=True)
 class MetricFullSpanSeriesRow:
-    metric: str
+    metric_id: str
     scope_key: str
     player_id: int
     player_name: str
@@ -60,8 +59,8 @@ class MetricFullSpanSeriesRow:
 
 @dataclass(frozen=True)
 class MetricFullSpanPointRow:
-    metric: str
+    metric_id: str
     scope_key: str
     player_id: int
-    season: str
+    season_id: str
     value: float

@@ -74,7 +74,7 @@ def load_cached_metric_player_seasons_snapshot(
     )
     return CachedMetricPlayerSeasonsSnapshot(
         metric=metric.value,
-        metric_label=catalog_row.metric_label,
+        metric_label=catalog_row.label,
         rows=[_serialize_metric_player_season_row(row) for row in rows],
     )
 
@@ -102,14 +102,14 @@ def load_cached_metric_leaderboard_snapshot(
     resolved_season_type = SeasonType.parse(catalog_row.season_type)
     return CachedMetricLeaderboardSnapshot(
         metric=metric.value,
-        metric_label=catalog_row.metric_label,
+        metric_label=catalog_row.label,
         available_seasons=[
             Season(season_id, resolved_season_type.to_nba_format())
-            for season_id in catalog_row.available_seasons
+            for season_id in catalog_row.available_season_ids
         ],
         available_teams=[Team.from_id(team_id) for team_id in catalog_row.available_team_ids],
         rows=[_serialize_metric_player_season_row(row) for row in rows],
-        season_ids=seasons or catalog_row.available_seasons,
+        season_ids=seasons or catalog_row.available_season_ids,
     )
 
 
@@ -133,10 +133,10 @@ def load_cached_metric_span_snapshot(
     )
     return CachedMetricSpanSnapshot(
         metric=metric.value,
-        metric_label=catalog_row.metric_label,
-        start_season=catalog_row.full_span_start_season,
-        end_season=catalog_row.full_span_end_season,
-        available_seasons=catalog_row.available_seasons,
+        metric_label=catalog_row.label,
+        start_season=catalog_row.full_span_start_season_id,
+        end_season=catalog_row.full_span_end_season_id,
+        available_seasons=catalog_row.available_season_ids,
         top_n=top_n,
         series=[
             {
@@ -149,7 +149,7 @@ def load_cached_metric_span_snapshot(
                         "season": season,
                         "value": season_points.get(row.player_id, {}).get(season),
                     }
-                    for season in catalog_row.available_seasons
+                    for season in catalog_row.available_season_ids
                 ],
             }
             for row in series_rows
@@ -159,7 +159,7 @@ def load_cached_metric_span_snapshot(
 
 def _serialize_metric_player_season_row(row: PlayerSeasonMetricRow) -> dict[str, Any]:
     payload = {
-        "season": row.season,
+        "season": row.season_id,
         "player_id": row.player_id,
         "player_name": row.player_name,
         "value": row.value,

@@ -24,7 +24,7 @@ IssueFactory = Callable[[str, str, str], IssueT]
 
 @dataclass(frozen=True)
 class MetricStoreAuditMetadata:
-    metric_label: str
+    label: str
     build_version: str
     source_fingerprint: str
     row_count: int
@@ -81,9 +81,9 @@ def _audit_metric_player_season_values_table(
     metadata_rows = connection.execute(
         """
         SELECT
-            metric,
+            metric_id,
             scope_key,
-            metric_label,
+            label,
             build_version,
             source_fingerprint,
             row_count
@@ -91,8 +91,8 @@ def _audit_metric_player_season_values_table(
         """
     ).fetchall()
     metadata_by_key = {
-        (row["metric"], row["scope_key"]): MetricStoreAuditMetadata(
-            metric_label=row["metric_label"],
+        (row["metric_id"], row["scope_key"]): MetricStoreAuditMetadata(
+            label=row["label"],
             build_version=row["build_version"],
             source_fingerprint=row["source_fingerprint"],
             row_count=row["row_count"],
@@ -103,12 +103,11 @@ def _audit_metric_player_season_values_table(
     rows = connection.execute(
         """
         SELECT
-            metric,
-            metric_label,
+            metric_id,
             scope_key,
             team_filter,
             season_type,
-            season,
+            season_id,
             player_id,
             player_name,
             value,
@@ -118,20 +117,19 @@ def _audit_metric_player_season_values_table(
             total_minutes,
             details_json
         FROM metric_player_season_values
-        ORDER BY metric, scope_key, season, player_id
+        ORDER BY metric_id, scope_key, season_id, player_id
         """
     ).fetchall()
 
     groups: dict[tuple[str, str], list[PlayerSeasonMetricRow]] = defaultdict(list)
     for row in rows:
-        groups[(row["metric"], row["scope_key"])].append(
+        groups[(row["metric_id"], row["scope_key"])].append(
             PlayerSeasonMetricRow(
-                metric=row["metric"],
-                metric_label=row["metric_label"],
+                metric_id=row["metric_id"],
                 scope_key=row["scope_key"],
                 team_filter=row["team_filter"],
                 season_type=row["season_type"],
-                season=row["season"],
+                season_id=row["season_id"],
                 player_id=row["player_id"],
                 player_name=row["player_name"],
                 value=row["value"],
@@ -148,7 +146,7 @@ def _audit_metric_player_season_values_table(
         metadata_row = metadata_by_key.get(
             key,
             MetricStoreAuditMetadata(
-                metric_label=group_rows[0].metric_label,
+                label="missing-metadata",
                 build_version="missing-metadata",
                 source_fingerprint="missing-metadata",
                 row_count=-1,
@@ -156,9 +154,9 @@ def _audit_metric_player_season_values_table(
         )
         try:
             _validate_metric_rows(
-                metric=metric,
+                metric_id=metric,
                 scope_key=scope_key,
-                metric_label=metadata_row.metric_label,
+                label=metadata_row.label,
                 build_version=metadata_row.build_version,
                 source_fingerprint=metadata_row.source_fingerprint,
                 rows=group_rows,
@@ -184,35 +182,35 @@ def _audit_metric_scope_catalog_table(
     rows = connection.execute(
         """
         SELECT
-            metric,
+            metric_id,
             scope_key,
-            metric_label,
+            label,
             team_filter,
             season_type,
-            available_seasons_json,
-            available_teams_json,
-            full_span_start_season,
-            full_span_end_season,
+            available_season_ids_json,
+            available_team_ids_json,
+            full_span_start_season_id,
+            full_span_end_season_id,
             updated_at
         FROM metric_scope_catalog
-        ORDER BY metric, scope_key
+        ORDER BY metric_id, scope_key
         """
     ).fetchall()
     catalog_rows: dict[tuple[str, str], MetricScopeCatalogRow] = {}
     for row in rows:
         catalog_row = MetricScopeCatalogRow(
-            metric=row["metric"],
+            metric_id=row["metric_id"],
             scope_key=row["scope_key"],
-            metric_label=row["metric_label"],
+            label=row["label"],
             team_filter=row["team_filter"],
             season_type=row["season_type"],
-            available_seasons=json.loads(row["available_seasons_json"]),
-                available_team_ids=json.loads(row["available_teams_json"]),
-            full_span_start_season=row["full_span_start_season"],
-            full_span_end_season=row["full_span_end_season"],
+            available_season_ids=json.loads(row["available_season_ids_json"]),
+            available_team_ids=json.loads(row["available_team_ids_json"]),
+            full_span_start_season_id=row["full_span_start_season_id"],
+            full_span_end_season_id=row["full_span_end_season_id"],
             updated_at=row["updated_at"],
         )
-        key = (catalog_row.metric, catalog_row.scope_key)
+        key = (catalog_row.metric_id, catalog_row.scope_key)
         catalog_rows[key] = catalog_row
         try:
             _validate_metric_scope_catalog_row(catalog_row)
@@ -220,7 +218,7 @@ def _audit_metric_scope_catalog_table(
             issues.append(
                 issue_factory(
                     "metric_scope_catalog",
-                    f"metric={catalog_row.metric!r},scope_key={catalog_row.scope_key!r}",
+                    f"metric={catalog_row.metric_id!r},scope_key={catalog_row.scope_key!r}",
                     str(exc),
                 )
             )
@@ -236,7 +234,7 @@ def _audit_metric_full_span_tables(
     series_rows = connection.execute(
         """
         SELECT
-            metric,
+            metric_id,
             scope_key,
             player_id,
             player_name,
@@ -244,19 +242,19 @@ def _audit_metric_full_span_tables(
             season_count,
             rank_order
         FROM metric_full_span_series
-        ORDER BY metric, scope_key, rank_order, player_id
+        ORDER BY metric_id, scope_key, rank_order, player_id
         """
     ).fetchall()
     point_rows = connection.execute(
         """
         SELECT
-            metric,
+            metric_id,
             scope_key,
             player_id,
-            season,
+            season_id,
             value
         FROM metric_full_span_points
-        ORDER BY metric, scope_key, player_id, season
+        ORDER BY metric_id, scope_key, player_id, season_id
         """
     ).fetchall()
 
@@ -264,9 +262,9 @@ def _audit_metric_full_span_tables(
     point_groups: dict[tuple[str, str], list[MetricFullSpanPointRow]] = defaultdict(list)
 
     for row in series_rows:
-        series_groups[(row["metric"], row["scope_key"])].append(
+        series_groups[(row["metric_id"], row["scope_key"])].append(
             MetricFullSpanSeriesRow(
-                metric=row["metric"],
+                metric_id=row["metric_id"],
                 scope_key=row["scope_key"],
                 player_id=row["player_id"],
                 player_name=row["player_name"],
@@ -276,12 +274,12 @@ def _audit_metric_full_span_tables(
             )
         )
     for row in point_rows:
-        point_groups[(row["metric"], row["scope_key"])].append(
+        point_groups[(row["metric_id"], row["scope_key"])].append(
             MetricFullSpanPointRow(
-                metric=row["metric"],
+                metric_id=row["metric_id"],
                 scope_key=row["scope_key"],
                 player_id=row["player_id"],
-                season=row["season"],
+                season_id=row["season_id"],
                 value=row["value"],
             )
         )
@@ -295,7 +293,7 @@ def _audit_metric_full_span_tables(
         groups[key] = (series, points)
         try:
             _validate_metric_full_span_rows(
-                metric=key[0],
+                metric_id=key[0],
                 scope_key=key[1],
                 series_rows=series,
                 point_rows=points,

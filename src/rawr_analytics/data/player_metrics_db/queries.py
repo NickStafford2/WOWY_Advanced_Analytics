@@ -23,24 +23,24 @@ def load_metric_store_metadata(
         row = connection.execute(
             """
             SELECT
-                metric,
+                metric_id,
                 scope_key,
-                metric_label,
+                label,
                 build_version,
                 source_fingerprint,
                 row_count,
                 updated_at
             FROM metric_store_metadata_v2
-            WHERE metric = ? AND scope_key = ?
+            WHERE metric_id = ? AND scope_key = ?
             """,
             (metric, scope_key),
         ).fetchone()
     if row is None:
         return None
     return MetricStoreMetadata(
-        metric=row["metric"],
+        metric_id=row["metric_id"],
         scope_key=row["scope_key"],
-        metric_label=row["metric_label"],
+        label=row["label"],
         build_version=row["build_version"],
         source_fingerprint=row["source_fingerprint"],
         row_count=row["row_count"],
@@ -57,33 +57,33 @@ def load_metric_scope_catalog_row(
         row = connection.execute(
             """
             SELECT
-                metric,
+                metric_id,
                 scope_key,
-                metric_label,
+                label,
                 team_filter,
                 season_type,
-                available_seasons_json,
-                available_teams_json,
-                full_span_start_season,
-                full_span_end_season,
+                available_season_ids_json,
+                available_team_ids_json,
+                full_span_start_season_id,
+                full_span_end_season_id,
                 updated_at
             FROM metric_scope_catalog
-            WHERE metric = ? AND scope_key = ?
+            WHERE metric_id = ? AND scope_key = ?
             """,
             (metric, scope_key),
         ).fetchone()
     if row is None:
         return None
     return MetricScopeCatalogRow(
-        metric=row["metric"],
+        metric_id=row["metric_id"],
         scope_key=row["scope_key"],
-        metric_label=row["metric_label"],
+        label=row["label"],
         team_filter=row["team_filter"],
         season_type=row["season_type"],
-        available_seasons=json.loads(row["available_seasons_json"]),
-        available_team_ids=json.loads(row["available_teams_json"]),
-        full_span_start_season=row["full_span_start_season"],
-        full_span_end_season=row["full_span_end_season"],
+        available_season_ids=json.loads(row["available_season_ids_json"]),
+        available_team_ids=json.loads(row["available_team_ids_json"]),
+        full_span_start_season_id=row["full_span_start_season_id"],
+        full_span_end_season_id=row["full_span_end_season_id"],
         updated_at=row["updated_at"],
     )
 
@@ -97,7 +97,7 @@ def load_metric_full_span_series_rows(
     initialize_player_metrics_db()
     query = """
         SELECT
-            metric,
+            metric_id,
             scope_key,
             player_id,
             player_name,
@@ -105,7 +105,7 @@ def load_metric_full_span_series_rows(
             season_count,
             rank_order
         FROM metric_full_span_series
-        WHERE metric = ? AND scope_key = ?
+        WHERE metric_id = ? AND scope_key = ?
         ORDER BY rank_order
     """
     params: list[Any] = [metric, scope_key]
@@ -116,7 +116,7 @@ def load_metric_full_span_series_rows(
         rows = connection.execute(query, params).fetchall()
     return [
         MetricFullSpanSeriesRow(
-            metric=row["metric"],
+            metric_id=row["metric_id"],
             scope_key=row["scope_key"],
             player_id=row["player_id"],
             player_name=row["player_name"],
@@ -141,17 +141,17 @@ def load_metric_full_span_points_map(
     query = f"""
         SELECT
             player_id,
-            season,
+            season_id,
             value
         FROM metric_full_span_points
-        WHERE metric = ? AND scope_key = ? AND player_id IN ({placeholders})
+        WHERE metric_id = ? AND scope_key = ? AND player_id IN ({placeholders})
     """
     params: list[Any] = [metric, scope_key, *player_ids]
     with connect(DB_PATH) as connection:
         rows = connection.execute(query, params).fetchall()
     points: dict[int, dict[str, float]] = {}
     for row in rows:
-        points.setdefault(row["player_id"], {})[row["season"]] = row["value"]
+        points.setdefault(row["player_id"], {})[row["season_id"]] = row["value"]
     return points
 
 
@@ -164,14 +164,14 @@ def _list_metric_seasons(
     with connect(db_path) as connection:
         rows = connection.execute(
             """
-            SELECT DISTINCT season
+            SELECT DISTINCT season_id
             FROM metric_player_season_values
-            WHERE metric = ? AND scope_key = ?
-            ORDER BY season
+            WHERE metric_id = ? AND scope_key = ?
+            ORDER BY season_id
             """,
             (metric, scope_key),
         ).fetchall()
-    return [row["season"] for row in rows]
+    return [row["season_id"] for row in rows]
 
 
 def load_metric_rows(
@@ -188,12 +188,11 @@ def load_metric_rows(
 
     query = """
         SELECT
-            metric,
-            metric_label,
+            metric_id,
             scope_key,
             team_filter,
             season_type,
-            season,
+            season_id,
             player_id,
             player_name,
             value,
@@ -203,12 +202,12 @@ def load_metric_rows(
             total_minutes,
             details_json
         FROM metric_player_season_values
-        WHERE metric = ? AND scope_key = ?
+        WHERE metric_id = ? AND scope_key = ?
     """
     params: list[Any] = [metric, scope_key]
 
     if seasons:
-        query += f" AND season IN ({','.join('?' for _ in seasons)})"
+        query += f" AND season_id IN ({','.join('?' for _ in seasons)})"
         params.extend(seasons)
     if min_average_minutes is not None:
         query += " AND COALESCE(average_minutes, 0.0) >= ?"
@@ -223,19 +222,18 @@ def load_metric_rows(
         query += " AND COALESCE(secondary_sample_size, 0) >= ?"
         params.append(min_secondary_sample_size)
 
-    query += " ORDER BY season, value DESC, player_name ASC"
+    query += " ORDER BY season_id, value DESC, player_name ASC"
 
     with connect(DB_PATH) as connection:
         rows = connection.execute(query, params).fetchall()
 
     return [
         PlayerSeasonMetricRow(
-            metric=row["metric"],
-            metric_label=row["metric_label"],
+            metric_id=row["metric_id"],
             scope_key=row["scope_key"],
             team_filter=row["team_filter"],
             season_type=row["season_type"],
-            season=row["season"],
+            season_id=row["season_id"],
             player_id=row["player_id"],
             player_name=row["player_name"],
             value=row["value"],

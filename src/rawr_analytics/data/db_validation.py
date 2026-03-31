@@ -259,7 +259,7 @@ def _validate_metric_store_relations(
 
     for key, rows in metric_row_groups.items():
         metric, scope_key = key
-        seasons = sorted({row.season for row in rows})
+        seasons = sorted({row.season_id for row in rows})
         season_set = set(seasons)
         metadata_row = metadata_rows.get(key)
         if metadata_row is None:
@@ -290,14 +290,14 @@ def _validate_metric_store_relations(
                     message="missing catalog row for metric scope",
                 )
             )
-        elif not season_set.issubset(set(catalog_row.available_seasons)):
+        elif not season_set.issubset(set(catalog_row.available_season_ids)):
             issues.append(
                 ValidationIssue(
                     table="metric_scope_catalog",
                     key=f"metric={metric!r},scope_key={scope_key!r}",
                     message=(
                         "available_seasons is missing seasons present in metric rows: "
-                        f"catalog={catalog_row.available_seasons!r} metric_rows={seasons!r}"
+                        f"catalog={catalog_row.available_season_ids!r} metric_rows={seasons!r}"
                     ),
                 )
             )
@@ -376,15 +376,15 @@ def _validate_metric_store_relations(
             )
             continue
         catalog_row = catalog_rows[key]
-        allowed_seasons = set(catalog_row.available_seasons)
+        allowed_seasons = set(catalog_row.available_season_ids)
         for point_row in point_rows:
-            if point_row.season not in allowed_seasons:
+            if point_row.season_id not in allowed_seasons:
                 issues.append(
                     ValidationIssue(
                         table="metric_full_span_points",
                         key=(
                             f"metric={metric!r},scope_key={scope_key!r},"
-                            f"player_id={point_row.player_id!r},season={point_row.season!r}"
+                            f"player_id={point_row.player_id!r},season={point_row.season_id!r}"
                         ),
                         message="point season is not present in catalog available_seasons",
                     )

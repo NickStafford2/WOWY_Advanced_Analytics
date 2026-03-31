@@ -46,7 +46,7 @@ def load_metric_store_scope_snapshot(
     available_teams = [Team.from_id(team_id) for team_id in catalog_row.available_team_ids]
     available_seasons = [
         Season(season_id, resolved_season_type.to_nba_format())
-        for season_id in catalog_row.available_seasons
+        for season_id in catalog_row.available_season_ids
     ]
     return MetricStoreScopeSnapshot(
         catalog_row=catalog_row,
@@ -55,12 +55,12 @@ def load_metric_store_scope_snapshot(
         available_team_seasons=_build_available_team_seasons(
             season_type=resolved_season_type,
             available_teams=available_teams,
-            available_seasons=catalog_row.available_seasons,
+            available_seasons=catalog_row.available_season_ids,
         ),
         available_teams_by_season=_build_available_teams_by_season(
             season_type=resolved_season_type,
             available_teams=available_teams,
-            available_seasons=catalog_row.available_seasons,
+            available_seasons=catalog_row.available_season_ids,
         ),
     )
 

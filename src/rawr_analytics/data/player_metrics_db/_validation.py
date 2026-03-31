@@ -26,16 +26,16 @@ from rawr_analytics.metrics.metric_query.validation import (
 
 def _validate_metric_rows(
     *,
-    metric: str,
+    metric_id: str,
     scope_key: str,
-    metric_label: str,
+    label: str,
     build_version: str,
     source_fingerprint: str,
     rows: list[PlayerSeasonMetricRow],
 ) -> None:
-    _validate_required_text(metric, "metric")
+    _validate_required_text(metric_id, "metric_id")
     _validate_required_text(scope_key, "scope_key")
-    _validate_required_text(metric_label, "metric_label")
+    _validate_required_text(label, "label")
     _validate_required_text(build_version, "build_version")
     _validate_required_text(source_fingerprint, "source_fingerprint")
 
@@ -44,20 +44,15 @@ def _validate_metric_rows(
     expected_season_type: str | None = None
 
     for row in rows:
-        if row.metric != metric:
+        if row.metric_id != metric_id:
             raise ValueError(
-                f"Metric row for player {row.player_id!r} has metric {row.metric!r}; "
-                f"expected {metric!r}"
+                f"Metric row for player {row.player_id!r} has metric_id {row.metric_id!r}; "
+                f"expected {metric_id!r}"
             )
         if row.scope_key != scope_key:
             raise ValueError(
                 f"Metric row for player {row.player_id!r} has scope_key "
                 f"{row.scope_key!r}; expected {scope_key!r}"
-            )
-        if row.metric_label != metric_label:
-            raise ValueError(
-                f"Metric row for player {row.player_id!r} has label {row.metric_label!r}; "
-                f"expected {metric_label!r}"
             )
 
         canonical_season_type = canonicalize_metric_season_type(row.season_type)
@@ -77,10 +72,11 @@ def _validate_metric_rows(
             team_filter=canonical_team_filter,
             season_type=canonical_season_type,
         )
-        canonical_season = canonicalize_metric_season(row.season)
-        if canonical_season != row.season:
+        canonical_season_id = canonicalize_metric_season(row.season_id)
+        if canonical_season_id != row.season_id:
             raise ValueError(
-                f"Metric row for player {row.player_id!r} uses non-canonical season {row.season!r}"
+                "Metric row for player "
+                f"{row.player_id!r} uses non-canonical season_id {row.season_id!r}"
             )
 
         if expected_team_filter is None:
@@ -127,36 +123,36 @@ def _validate_metric_rows(
         if row.details is not None and not isinstance(row.details, dict):
             raise ValueError(f"Metric row for player {row.player_id!r} must use a dict for details")
 
-        row_key = (row.season, row.player_id)
+        row_key = (row.season_id, row.player_id)
         if row_key in row_keys:
             raise ValueError(f"Duplicate metric row for {row_key!r}")
         row_keys.add(row_key)
 
 
 def _validate_metric_scope_catalog_row(row: MetricScopeCatalogRow) -> None:
-    _validate_required_text(row.metric, "metric")
+    _validate_required_text(row.metric_id, "metric_id")
     _validate_required_text(row.scope_key, "scope_key")
-    _validate_required_text(row.metric_label, "metric_label")
+    _validate_required_text(row.label, "label")
     validate_metric_catalog(
         scope_key=row.scope_key,
         team_filter=row.team_filter,
         season_type=row.season_type,
-        available_seasons=row.available_seasons,
+        available_seasons=row.available_season_ids,
         available_team_ids=row.available_team_ids,
-        full_span_start_season=row.full_span_start_season,
-        full_span_end_season=row.full_span_end_season,
+        full_span_start_season=row.full_span_start_season_id,
+        full_span_end_season=row.full_span_end_season_id,
     )
     _validate_iso_datetime(row.updated_at, "catalog updated_at")
 
 
 def _validate_metric_full_span_rows(
     *,
-    metric: str,
+    metric_id: str,
     scope_key: str,
     series_rows: list[MetricFullSpanSeriesRow],
     point_rows: list[MetricFullSpanPointRow],
 ) -> None:
-    _validate_required_text(metric, "metric")
+    _validate_required_text(metric_id, "metric_id")
     _validate_required_text(scope_key, "scope_key")
     if not series_rows and point_rows:
         raise ValueError("Full-span points require matching series rows")
@@ -165,7 +161,7 @@ def _validate_metric_full_span_rows(
     expected_point_counts: dict[int, int] = {}
 
     for row in series_rows:
-        if row.metric != metric or row.scope_key != scope_key:
+        if row.metric_id != metric_id or row.scope_key != scope_key:
             raise ValueError("Full-span series rows must match the requested metric scope")
         if row.player_id <= 0:
             raise ValueError(f"Full-span series row has invalid player_id {row.player_id!r}")
@@ -195,26 +191,26 @@ def _validate_metric_full_span_rows(
 
     points_by_player: dict[int, set[str]] = defaultdict(set)
     for row in point_rows:
-        if row.metric != metric or row.scope_key != scope_key:
+        if row.metric_id != metric_id or row.scope_key != scope_key:
             raise ValueError("Full-span point rows must match the requested metric scope")
         if row.player_id not in expected_point_counts:
             raise ValueError(f"Full-span point row for unknown player {row.player_id!r}")
-        canonical_season = canonicalize_metric_season(row.season)
-        if canonical_season != row.season:
+        canonical_season_id = canonicalize_metric_season(row.season_id)
+        if canonical_season_id != row.season_id:
             raise ValueError(
                 f"Full-span point row for player {row.player_id!r} uses "
-                f"non-canonical season {row.season!r}"
+                f"non-canonical season_id {row.season_id!r}"
             )
         if not math.isfinite(row.value):
             raise ValueError(
                 f"Full-span point row for player {row.player_id!r} has non-finite value"
             )
-        if row.season in points_by_player[row.player_id]:
+        if row.season_id in points_by_player[row.player_id]:
             raise ValueError(
                 f"Duplicate full-span point row for player {row.player_id!r} "
-                f"and season {row.season!r}"
+                f"and season_id {row.season_id!r}"
             )
-        points_by_player[row.player_id].add(row.season)
+        points_by_player[row.player_id].add(row.season_id)
 
     for player_id, season_count in expected_point_counts.items():
         if len(points_by_player[player_id]) != season_count:

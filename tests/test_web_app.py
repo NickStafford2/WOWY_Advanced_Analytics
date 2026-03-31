@@ -228,8 +228,8 @@ def test_refresh_metric_store_builds_rawr_player_season_rows(
         "Player 201",
         "Player 202",
     }
-    assert all(row.metric_label == "RAWR" for row in rows)
-    assert all(row.season == "2023-24" for row in rows)
+    assert all(row.metric_id == "rawr" for row in rows)
+    assert all(row.season_id == "2023-24" for row in rows)
     assert all(row.sample_size and row.sample_size >= 1 for row in rows)
     assert all(row.details == {"games": row.sample_size} for row in rows)
 
@@ -367,7 +367,7 @@ def test_refresh_metric_store_builds_wowy_shrunk_rows(
     )
 
     assert {row.player_name for row in rows} == {"Player 101", "Player 102"}
-    assert all(row.metric_label == "WOWY Shrunk" for row in rows)
+    assert all(row.metric_id == "wowy_shrunk" for row in rows)
     assert all(abs(row.details["raw_wowy_score"]) > abs(row.value) for row in rows)
     assert all(row.details["raw_wowy_score"] * row.value >= 0 for row in rows)
     assert raw_rows == []
@@ -1256,9 +1256,9 @@ def test_wowy_options_endpoint_returns_team_id_team_options_for_frontend(
     )
     replace_metric_scope_store(
         player_metrics_db_path,
-        metric=WOWY_METRIC,
+        metric_id=WOWY_METRIC,
         scope_key=scope_key,
-        metric_label="WOWY",
+        label="WOWY",
         build_version="test-options",
         source_fingerprint=build_normalized_cache_fingerprint(
             player_metrics_db_path,
@@ -1266,12 +1266,11 @@ def test_wowy_options_endpoint_returns_team_id_team_options_for_frontend(
         ),
         rows=[
             PlayerSeasonMetricRow(
-                metric=WOWY_METRIC,
-                metric_label="WOWY",
+                metric_id=WOWY_METRIC,
                 scope_key=scope_key,
                 team_filter="",
                 season_type="Regular Season",
-                season="2002-03",
+                season_id="2002-03",
                 player_id=301,
                 player_name="Player 301",
                 value=1.0,
@@ -1283,20 +1282,20 @@ def test_wowy_options_endpoint_returns_team_id_team_options_for_frontend(
             )
         ],
         catalog_row=MetricScopeCatalogRow(
-            metric=WOWY_METRIC,
+            metric_id=WOWY_METRIC,
             scope_key=scope_key,
-            metric_label="WOWY",
+            label="WOWY",
             team_filter="",
             season_type="Regular Season",
-            available_seasons=["2002-03", "2013-14"],
-            available_teams=["NOH", "NOP"],
-            full_span_start_season="2002-03",
-            full_span_end_season="2013-14",
+            available_season_ids=["2002-03", "2013-14"],
+            available_team_ids=[1610612740],
+            full_span_start_season_id="2002-03",
+            full_span_end_season_id="2013-14",
             updated_at="2026-03-24T00:00:00+00:00",
         ),
         series_rows=[
             MetricFullSpanSeriesRow(
-                metric=WOWY_METRIC,
+                metric_id=WOWY_METRIC,
                 scope_key=scope_key,
                 player_id=301,
                 player_name="Player 301",
@@ -1307,10 +1306,10 @@ def test_wowy_options_endpoint_returns_team_id_team_options_for_frontend(
         ],
         point_rows=[
             MetricFullSpanPointRow(
-                metric=WOWY_METRIC,
+                metric_id=WOWY_METRIC,
                 scope_key=scope_key,
                 player_id=301,
-                season="2002-03",
+                season_id="2002-03",
                 value=1.0,
             )
         ],

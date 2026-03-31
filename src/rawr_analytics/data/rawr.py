@@ -134,7 +134,7 @@ def build_rawr_custom_query(
         "metric_label": describe_metric().label,
         "rows": [
             {
-                "season": record.season.id,
+                "season_id": record.season.id,
                 "player_id": record.player_id,
                 "player_name": record.player_name,
                 "value": record.coefficient,

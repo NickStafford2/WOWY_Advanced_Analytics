@@ -3,7 +3,6 @@ from __future__ import annotations
 from typing import Iterable
 
 from rawr_analytics.data.player_metrics_db.models import PlayerSeasonMetricRow
-from rawr_analytics.metrics.constants import Metric
 from rawr_analytics.metrics.rawr.models import RawrPlayerSeasonRecord
 from rawr_analytics.metrics.wowy.models import WowyPlayerSeasonRecord
 from rawr_analytics.shared.season import Season, SeasonType
@@ -18,12 +17,11 @@ def build_rawr_player_season_metric_rows(
 ) -> list[PlayerSeasonMetricRow]:
     return [
         PlayerSeasonMetricRow(
-            metric=Metric.RAWR.value,
-            metric_label="RAWR",
+            metric_id="rawr",
             scope_key=scope_key,
             team_filter=team_filter,
             season_type=season_type.value,
-            season=record.season.id,
+            season_id=record.season.id,
             player_id=record.player_id,
             player_name=record.player_name,
             value=record.coefficient,
@@ -38,11 +36,10 @@ def build_rawr_player_season_metric_rows(
 
 def build_wowy_player_season_metric_rows(
     *,
+    metric_id: str,
     scope_key: str,
     team_filter: str,
     season_type: SeasonType,
-    metric: Metric,
-    metric_label: str,
     records: Iterable[WowyPlayerSeasonRecord],
     values_by_player_season: dict[tuple[Season, int], float] | None = None,
     include_raw_wowy_score: bool = False,
@@ -64,12 +61,11 @@ def build_wowy_player_season_metric_rows(
             details["raw_wowy_score"] = record.wowy_score
         rows.append(
             PlayerSeasonMetricRow(
-                metric=metric.value,
-                metric_label=metric_label,
+                metric_id=metric_id,
                 scope_key=scope_key,
                 team_filter=team_filter,
                 season_type=season_type.value,
-                season=record.season.id,
+                season_id=record.season.id,
                 player_id=record.player_id,
                 player_name=record.player_name,
                 value=value,

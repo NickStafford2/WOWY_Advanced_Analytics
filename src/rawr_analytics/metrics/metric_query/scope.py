@@ -58,8 +58,8 @@ def build_metric_options_payload(
         season_type=query.season_type,
     )
     return MetricOptionsPayload(
-        metric=snapshot.catalog_row.metric,
-        metric_label=snapshot.catalog_row.metric_label,
+        metric=snapshot.catalog_row.metric_id,
+        metric_label=snapshot.catalog_row.label,
         available_teams=snapshot.available_teams,
         team_options=_build_team_options(
             available_teams=snapshot.available_teams,
