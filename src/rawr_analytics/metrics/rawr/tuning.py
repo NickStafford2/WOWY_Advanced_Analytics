@@ -13,7 +13,7 @@ from rawr_analytics.metrics.rawr.models import RawrPlayerSeasonRecord
 from rawr_analytics.metrics.wowy.models import WowyPlayerSeasonRecord
 from rawr_analytics.nba.source.cache import DEFAULT_SOURCE_DATA_DIR
 from rawr_analytics.progress import TerminalProgressBar, print_status_box
-from rawr_analytics.shared.season import SeasonType
+from rawr_analytics.shared.season import Season, SeasonType
 
 
 @dataclass(frozen=True)
@@ -194,7 +194,7 @@ def _aggregate_rawr_training_records(
 
 def _aggregate_values(
     values: list[float],
-    seasons: list[str],
+    seasons: list[Season],
     aggregation: str,
 ) -> float:
     if aggregation == "mean":
@@ -202,7 +202,10 @@ def _aggregate_values(
     if aggregation == "max":
         return max(values)
     if aggregation == "latest":
-        latest_index = max(range(len(seasons)), key=lambda index: seasons[index])
+        latest_index = max(
+            range(len(seasons)),
+            key=lambda index: (seasons[index].start_year, seasons[index].season_type.value),
+        )
         return values[latest_index]
     raise ValueError(f"Unsupported aggregation: {aggregation}")
 

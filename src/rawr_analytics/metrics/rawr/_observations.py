@@ -5,6 +5,7 @@ from collections import defaultdict
 from rawr_analytics.metrics.rawr.models import RawrObservation
 from rawr_analytics.nba.models import NormalizedGamePlayerRecord, NormalizedGameRecord
 from rawr_analytics.shared.season import Season
+from rawr_analytics.shared.team import Team
 
 _LINEUP_WEIGHT_SUM = 5.0
 
@@ -33,7 +34,7 @@ def _count_player_season_games(
     *,
     season: Season,
 ) -> dict[tuple[Season, int], int]:
-    games_by_player_season: dict[tuple[object, int], int] = defaultdict(int)
+    games_by_player_season: dict[tuple[Season, int], int] = defaultdict(int)
     for observation in observations:
         for player_id in observation.player_weights:
             games_by_player_season[(season, player_id)] += 1
@@ -45,7 +46,7 @@ def _count_player_season_minutes(
     *,
     season: Season,
 ) -> dict[tuple[Season, int], float]:
-    minutes_by_player_season: dict[tuple[object, int], float] = {}
+    minutes_by_player_season: dict[tuple[Season, int], float] = {}
     for observation in observations:
         if observation.player_minutes is None:
             continue
@@ -59,7 +60,7 @@ def _build_rawr_observations(
     games: list[NormalizedGameRecord],
     game_players: list[NormalizedGamePlayerRecord],
 ) -> tuple[list[RawrObservation], dict[int, str]]:
-    player_minutes_by_game_team: dict[tuple[str, object], dict[int, float]] = defaultdict(dict)
+    player_minutes_by_game_team: dict[tuple[str, Team], dict[int, float]] = defaultdict(dict)
     player_names: dict[int, str] = {}
 
     for player in game_players:
@@ -129,8 +130,8 @@ def _build_rawr_player_season_minute_stats(
     game_players: list[NormalizedGamePlayerRecord],
 ) -> dict[tuple[Season, int], tuple[float, float]]:
     season_by_game_id = {game.game_id: game.season for game in games}
-    totals: dict[tuple[object, int], float] = {}
-    counts: dict[tuple[object, int], int] = {}
+    totals: dict[tuple[Season, int], float] = {}
+    counts: dict[tuple[Season, int], int] = {}
 
     for player in game_players:
         season = season_by_game_id.get(player.game_id)

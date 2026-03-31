@@ -42,7 +42,7 @@ from rawr_analytics.metrics.wowy import (
 )
 from rawr_analytics.metrics.wowy import describe_metric as describe_wowy_metric
 from rawr_analytics.shared.scope import TeamSeasonScope
-from rawr_analytics.shared.season import SeasonType
+from rawr_analytics.shared.season import Season, SeasonType
 from rawr_analytics.shared.team import Team, normalize_teams, to_team_ids
 
 RefreshProgressFn = Callable[[int, int, str], None]
@@ -79,7 +79,7 @@ class _RefreshScope:
     scope_key: str
     team_filter: str
     scope_label: str
-    available_seasons: list[str]
+    available_seasons: list[Season]
 
 
 def refresh_metric_store(
@@ -236,10 +236,14 @@ def _refresh_metric_store_scope(
             metric_label=metric_label,
             team_filter=scope.team_filter,
             season_type=season_type.to_nba_format(),
-            available_seasons=scope.available_seasons,
+            available_seasons=[season.id for season in scope.available_seasons],
             available_team_ids=[team.team_id for team in available_teams],
-            full_span_start_season=scope.available_seasons[0] if scope.available_seasons else None,
-            full_span_end_season=scope.available_seasons[-1] if scope.available_seasons else None,
+            full_span_start_season=(
+                scope.available_seasons[0].id if scope.available_seasons else None
+            ),
+            full_span_end_season=(
+                scope.available_seasons[-1].id if scope.available_seasons else None
+            ),
             updated_at=datetime.now(UTC).isoformat(),
         ),
         series_rows=series_rows,
@@ -277,10 +281,11 @@ def _build_refresh_scope(
         ),
         available_seasons=sorted(
             {
-                scope.season.id
+                scope.season
                 for scope in cached_team_seasons
                 if normalized_team_ids is None or scope.team.team_id in normalized_team_ids
-            }
+            },
+            key=lambda season: season.id,
         ),
     )
 
@@ -355,7 +360,7 @@ def _build_metric_full_span_rows(
     *,
     metric: Metric,
     scope_key: str,
-    seasons: list[str],
+    seasons: list[Season],
 ) -> tuple[list[MetricFullSpanSeriesRow], list[MetricFullSpanPointRow]]:
     totals: dict[int, float] = {}
     counts: dict[int, int] = {}
@@ -390,7 +395,7 @@ def _build_metric_full_span_rows(
             )
         )
         for season in seasons:
-            value = season_values[player_id].get(season)
+            value = season_values[player_id].get(season.id)
             if value is None:
                 continue
             point_rows.append(
@@ -398,7 +403,7 @@ def _build_metric_full_span_rows(
                     metric=metric.value,
                     scope_key=scope_key,
                     player_id=player_id,
-                    season=season,
+                    season=season.id,
                     value=value,
                 )
             )

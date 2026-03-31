@@ -60,7 +60,7 @@ def resolve_team_seasons(
                 resolved.append(
                     scopes_by_key.get(
                         (team.team_id, season.id),
-                        TeamSeasonScope(team=team.in_season(season), season=season),
+                        TeamSeasonScope(team=team, season=season),
                     )
                 )
             continue

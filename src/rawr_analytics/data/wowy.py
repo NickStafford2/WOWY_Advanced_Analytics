@@ -158,11 +158,11 @@ def _derive_wowy_games_by_season(
     for player in game_players:
         if not player.appeared:
             continue
-        players_by_game_team[(player.game_id, player.team)].add(player.player_id)
+        players_by_game_team[(player.game_id, player.team.team_id)].add(player.player_id)
 
     games_by_season: dict[Season, list[WowyGame]] = defaultdict(list)
     for game in games:
-        players = players_by_game_team.get((game.game_id, game.team), set())
+        players = players_by_game_team.get((game.game_id, game.team.team_id), set())
         if not players:
             raise ValueError(
                 f"No appeared players found for game {game.game_id!r} and team "
