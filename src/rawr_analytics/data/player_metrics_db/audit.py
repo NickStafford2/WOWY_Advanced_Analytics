@@ -3,9 +3,9 @@ from __future__ import annotations
 import json
 import sqlite3
 from collections import defaultdict
-from collections.abc import Callable
 from dataclasses import dataclass
 
+from rawr_analytics.data._validation_issue import ValidationIssue
 from rawr_analytics.data.player_metrics_db._validation import (
     _validate_metric_full_span_rows,
     _validate_metric_rows,
@@ -17,8 +17,6 @@ from rawr_analytics.data.player_metrics_db.models import (
     MetricScopeCatalogRow,
     PlayerSeasonMetricRow,
 )
-
-type IssueFactory[IssueT] = Callable[[str, str, str], IssueT]
 
 
 @dataclass(frozen=True)
@@ -39,26 +37,21 @@ class MetricStoreAuditState:
     ]
 
 
-def audit_metric_store_tables[IssueT](
+def audit_metric_store_tables(
     connection: sqlite3.Connection,
-    issues: list[IssueT],
-    *,
-    issue_factory: IssueFactory[IssueT],
+    issues: list[ValidationIssue],
 ) -> MetricStoreAuditState:
     metric_row_groups, metadata_rows = _audit_metric_player_season_values_table(
         connection,
         issues,
-        issue_factory=issue_factory,
     )
     catalog_rows = _audit_metric_scope_catalog_table(
         connection,
         issues,
-        issue_factory=issue_factory,
     )
     full_span_groups = _audit_metric_full_span_tables(
         connection,
         issues,
-        issue_factory=issue_factory,
     )
     return MetricStoreAuditState(
         metric_row_groups=metric_row_groups,
@@ -68,11 +61,9 @@ def audit_metric_store_tables[IssueT](
     )
 
 
-def _audit_metric_player_season_values_table[IssueT](
+def _audit_metric_player_season_values_table(
     connection: sqlite3.Connection,
-    issues: list[IssueT],
-    *,
-    issue_factory: IssueFactory[IssueT],
+    issues: list[ValidationIssue],
 ) -> tuple[
     dict[tuple[str, str], list[PlayerSeasonMetricRow]],
     dict[tuple[str, str], MetricStoreAuditMetadata],
@@ -162,7 +153,7 @@ def _audit_metric_player_season_values_table[IssueT](
             )
         except ValueError as exc:
             issues.append(
-                issue_factory(
+                ValidationIssue(
                     "metric_player_season_values",
                     f"metric={metric!r},scope_key={scope_key!r}",
                     str(exc),
@@ -172,11 +163,9 @@ def _audit_metric_player_season_values_table[IssueT](
     return groups, metadata_by_key
 
 
-def _audit_metric_scope_catalog_table[IssueT](
+def _audit_metric_scope_catalog_table(
     connection: sqlite3.Connection,
-    issues: list[IssueT],
-    *,
-    issue_factory: IssueFactory[IssueT],
+    issues: list[ValidationIssue],
 ) -> dict[tuple[str, str], MetricScopeCatalogRow]:
     rows = connection.execute(
         """
@@ -215,7 +204,7 @@ def _audit_metric_scope_catalog_table[IssueT](
             _validate_metric_scope_catalog_row(catalog_row)
         except ValueError as exc:
             issues.append(
-                issue_factory(
+                ValidationIssue(
                     "metric_scope_catalog",
                     f"metric={catalog_row.metric_id!r},scope_key={catalog_row.scope_key!r}",
                     str(exc),
@@ -224,11 +213,9 @@ def _audit_metric_scope_catalog_table[IssueT](
     return catalog_rows
 
 
-def _audit_metric_full_span_tables[IssueT](
+def _audit_metric_full_span_tables(
     connection: sqlite3.Connection,
-    issues: list[IssueT],
-    *,
-    issue_factory: IssueFactory[IssueT],
+    issues: list[ValidationIssue],
 ) -> dict[tuple[str, str], tuple[list[MetricFullSpanSeriesRow], list[MetricFullSpanPointRow]]]:
     series_rows = connection.execute(
         """
@@ -299,7 +286,7 @@ def _audit_metric_full_span_tables[IssueT](
             )
         except ValueError as exc:
             issues.append(
-                issue_factory(
+                ValidationIssue(
                     "metric_full_span",
                     f"metric={key[0]!r},scope_key={key[1]!r}",
                     str(exc),

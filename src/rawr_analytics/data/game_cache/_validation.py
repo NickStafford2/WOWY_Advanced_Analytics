@@ -3,7 +3,6 @@ from __future__ import annotations
 import math
 import sqlite3
 from collections import defaultdict
-from collections.abc import Callable
 from datetime import date
 
 from rawr_analytics.data._validation import (
@@ -11,6 +10,7 @@ from rawr_analytics.data._validation import (
     _validate_optional_non_negative_int,
     _validate_required_text,
 )
+from rawr_analytics.data._validation_issue import ValidationIssue
 from rawr_analytics.nba.models import (
     NormalizedGamePlayerRecord,
     NormalizedGameRecord,
@@ -24,14 +24,10 @@ from rawr_analytics.nba.normalize import (
 from rawr_analytics.shared.season import Season
 from rawr_analytics.shared.team import Team
 
-type IssueFactory[IssueT] = Callable[[str, str, str], IssueT]
 
-
-def _validate_normalized_games_table[IssueT](
+def _validate_normalized_games_table(
     connection: sqlite3.Connection,
-    issues: list[IssueT],
-    *,
-    issue_factory: IssueFactory[IssueT],
+    issues: list[ValidationIssue],
 ) -> None:
     rows = connection.execute(
         """
@@ -64,14 +60,12 @@ def _validate_normalized_games_table[IssueT](
                 expected_season=game.season,
             )
         except (AssertionError, ValueError) as exc:
-            issues.append(issue_factory("normalized_games", key, str(exc)))
+            issues.append(ValidationIssue("normalized_games", key, str(exc)))
 
 
-def _validate_normalized_game_players_table[IssueT](
+def _validate_normalized_game_players_table(
     connection: sqlite3.Connection,
-    issues: list[IssueT],
-    *,
-    issue_factory: IssueFactory[IssueT],
+    issues: list[ValidationIssue],
 ) -> None:
     rows = connection.execute(
         """
@@ -103,14 +97,12 @@ def _validate_normalized_game_players_table[IssueT](
             )
             player.team.for_season(season)
         except (AssertionError, ValueError) as exc:
-            issues.append(issue_factory("normalized_game_players", key, str(exc)))
+            issues.append(ValidationIssue("normalized_game_players", key, str(exc)))
 
 
-def _validate_normalized_cache_loads_table[IssueT](
+def _validate_normalized_cache_loads_table(
     connection: sqlite3.Connection,
-    issues: list[IssueT],
-    *,
-    issue_factory: IssueFactory[IssueT],
+    issues: list[ValidationIssue],
 ) -> None:
     rows = connection.execute(
         """
@@ -159,14 +151,12 @@ def _validate_normalized_cache_loads_table[IssueT](
                 "skipped_games_row_count",
             )
         except (AssertionError, ValueError) as exc:
-            issues.append(issue_factory("normalized_cache_loads", key, str(exc)))
+            issues.append(ValidationIssue("normalized_cache_loads", key, str(exc)))
 
 
-def _validate_normalized_cache_relations[IssueT](
+def _validate_normalized_cache_relations(
     connection: sqlite3.Connection,
-    issues: list[IssueT],
-    *,
-    issue_factory: IssueFactory[IssueT],
+    issues: list[ValidationIssue],
 ) -> None:
     game_rows = connection.execute(
         """
@@ -236,7 +226,7 @@ def _validate_normalized_cache_relations[IssueT](
         game_scope = game_key_scope_map.get((player.game_id, player.team.team_id))
         if game_scope is None:
             issues.append(
-                issue_factory(
+                ValidationIssue(
                     "normalized_game_players",
                     (
                         f"game_id={player.game_id!r},team_id={player.team.team_id!r},"
@@ -247,7 +237,7 @@ def _validate_normalized_cache_relations[IssueT](
             )
         elif game_scope != scope:
             issues.append(
-                issue_factory(
+                ValidationIssue(
                     "normalized_game_players",
                     (
                         f"game_id={player.game_id!r},team_id={player.team.team_id!r},"
@@ -257,7 +247,7 @@ def _validate_normalized_cache_relations[IssueT](
                 )
             )
 
-    _validate_reciprocal_game_margins(game_rows, issues, issue_factory=issue_factory)
+    _validate_reciprocal_game_margins(game_rows, issues)
 
     game_scopes = set(games_by_scope)
     player_scopes = set(players_by_scope)
@@ -275,7 +265,7 @@ def _validate_normalized_cache_relations[IssueT](
             validate_normalized_team_season_batch(batch)
         except (AssertionError, ValueError) as exc:
             issues.append(
-                issue_factory(
+                ValidationIssue(
                     "normalized_cache_relations",
                     f"team_id={team_id!r},season={season_id!r},season_type={season_type!r}",
                     str(exc),
@@ -289,7 +279,7 @@ def _validate_normalized_cache_relations[IssueT](
         key = f"team_id={scope[0]!r},season={scope[1]!r},season_type={scope[2]!r}"
         if row["games_row_count"] != game_count:
             issues.append(
-                issue_factory(
+                ValidationIssue(
                     "normalized_cache_loads",
                     key,
                     "games_row_count does not match normalized_games count: "
@@ -298,7 +288,7 @@ def _validate_normalized_cache_relations[IssueT](
             )
         if row["game_players_row_count"] != player_count:
             issues.append(
-                issue_factory(
+                ValidationIssue(
                     "normalized_cache_loads",
                     key,
                     (
@@ -310,7 +300,7 @@ def _validate_normalized_cache_relations[IssueT](
 
     for scope in sorted((game_scopes | player_scopes) - load_scopes):
         issues.append(
-            issue_factory(
+            ValidationIssue(
                 "normalized_cache_loads",
                 f"team_id={scope[0]!r},season={scope[1]!r},season_type={scope[2]!r}",
                 "missing normalized_cache_loads row for existing normalized cache scope",
@@ -318,11 +308,9 @@ def _validate_normalized_cache_relations[IssueT](
         )
 
 
-def _validate_reciprocal_game_margins[IssueT](
+def _validate_reciprocal_game_margins(
     game_rows: list[sqlite3.Row],
-    issues: list[IssueT],
-    *,
-    issue_factory: IssueFactory[IssueT],
+    issues: list[ValidationIssue],
 ) -> None:
     games_by_id: dict[tuple[str, str, str], list[NormalizedGameRecord]] = defaultdict(list)
 
@@ -340,7 +328,7 @@ def _validate_reciprocal_game_margins[IssueT](
         first_game, second_game = games
         if first_game.team.team_id != second_game.opponent_team.team_id:
             issues.append(
-                issue_factory(
+                ValidationIssue(
                     "normalized_games",
                     (
                         f"game_id={first_game.game_id!r},season={first_game.season.id!r},"
@@ -351,7 +339,7 @@ def _validate_reciprocal_game_margins[IssueT](
             )
         if second_game.team.team_id != first_game.opponent_team.team_id:
             issues.append(
-                issue_factory(
+                ValidationIssue(
                     "normalized_games",
                     (
                         f"game_id={first_game.game_id!r},season={first_game.season.id!r},"
@@ -362,7 +350,7 @@ def _validate_reciprocal_game_margins[IssueT](
             )
         if first_game.is_home == second_game.is_home:
             issues.append(
-                issue_factory(
+                ValidationIssue(
                     "normalized_games",
                     (
                         f"game_id={first_game.game_id!r},season={first_game.season.id!r},"
@@ -373,7 +361,7 @@ def _validate_reciprocal_game_margins[IssueT](
             )
         if first_game.game_date != second_game.game_date:
             issues.append(
-                issue_factory(
+                ValidationIssue(
                     "normalized_games",
                     (
                         f"game_id={first_game.game_id!r},season={first_game.season.id!r},"
@@ -384,7 +372,7 @@ def _validate_reciprocal_game_margins[IssueT](
             )
         if first_game.margin != -second_game.margin:
             issues.append(
-                issue_factory(
+                ValidationIssue(
                     "normalized_games",
                     (
                         f"game_id={first_game.game_id!r},season={first_game.season.id!r},"
@@ -399,11 +387,9 @@ def _validate_reciprocal_game_margins[IssueT](
             )
 
 
-def _validate_team_history_table[IssueT](
+def _validate_team_history_table(
     connection: sqlite3.Connection,
-    issues: list[IssueT],
-    *,
-    issue_factory: IssueFactory[IssueT],
+    issues: list[ValidationIssue],
 ) -> None:
     rows = connection.execute(
         """
@@ -434,7 +420,7 @@ def _validate_team_history_table[IssueT](
             if row["franchise_id"] != expected_franchise_id:
                 raise ValueError("franchise_id does not match official team history")
         except (AssertionError, ValueError) as exc:
-            issues.append(issue_factory("team_history", key, str(exc)))
+            issues.append(ValidationIssue("team_history", key, str(exc)))
 
 
 def _build_normalized_game_record(row: sqlite3.Row) -> NormalizedGameRecord:

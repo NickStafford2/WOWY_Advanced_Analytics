@@ -7,6 +7,7 @@ from collections import Counter, defaultdict
 from collections.abc import Callable
 from dataclasses import dataclass
 
+from rawr_analytics.data._validation_issue import ValidationIssue
 from rawr_analytics.data.constants import DB_PATH
 from rawr_analytics.data.game_cache.audit import (
     audit_normalized_cache_loads_table,
@@ -26,13 +27,6 @@ from rawr_analytics.data.player_metrics_db.models import (
     MetricScopeCatalogRow,
     PlayerSeasonMetricRow,
 )
-
-
-@dataclass(frozen=True)
-class ValidationIssue:
-    table: str
-    key: str
-    message: str
 
 
 @dataclass(frozen=True)
@@ -118,25 +112,24 @@ def audit_player_metrics_db(
         connection.row_factory = sqlite3.Row
         current_step = 1
         report_progress("Validating team history")
-        audit_team_history_table(connection, issues, issue_factory=ValidationIssue)
+        audit_team_history_table(connection, issues)
         current_step = 2
         report_progress("Validating normalized games")
-        audit_normalized_games_table(connection, issues, issue_factory=ValidationIssue)
+        audit_normalized_games_table(connection, issues)
         current_step = 3
         report_progress("Validating normalized game players")
-        audit_normalized_game_players_table(connection, issues, issue_factory=ValidationIssue)
+        audit_normalized_game_players_table(connection, issues)
         current_step = 4
         report_progress("Validating normalized cache loads")
-        audit_normalized_cache_loads_table(connection, issues, issue_factory=ValidationIssue)
+        audit_normalized_cache_loads_table(connection, issues)
         current_step = 5
         report_progress("Validating normalized cache relations")
-        audit_normalized_cache_relations(connection, issues, issue_factory=ValidationIssue)
+        audit_normalized_cache_relations(connection, issues)
         current_step = 6
         report_progress("Validating metric player season values")
         metric_audit_state = audit_metric_store_tables(
             connection,
             issues,
-            issue_factory=ValidationIssue,
         )
         current_step = 7
         report_progress("Validating metric scope catalog")
