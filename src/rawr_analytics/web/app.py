@@ -11,6 +11,8 @@ from rawr_analytics.metrics.metric_query.views import (
     build_metric_export_table,
     build_metric_view_payload,
 )
+from rawr_analytics.shared.season import Season, SeasonType
+from rawr_analytics.shared.team import Team
 
 
 def create_app():
@@ -20,11 +22,12 @@ def create_app():
 
     def parse_metric_query(metric: str) -> MetricQuery:
         metric_type = Metric.parse(metric)
+        season_type = SeasonType.parse(request.args.get("season_type", "Regular Season"))
         return build_metric_query(
             metric_type,
-            season_type=request.args.get("season_type", "Regular Season"),
-            team_ids=_parse_positive_int_list(request.args.getlist("team_id")),
-            seasons=request.args.getlist("season") or None,
+            season_type=season_type,
+            teams=_parse_team_list(request.args.getlist("team_id")),
+            seasons=_parse_season_list(request.args.getlist("season"), season_type=season_type),
             top_n=_parse_optional_int(request.args.get("top_n")),
             min_average_minutes=_parse_optional_float(request.args.get("min_average_minutes")),
             min_total_minutes=_parse_optional_float(request.args.get("min_total_minutes")),
@@ -72,8 +75,10 @@ def create_app():
                 asdict(
                     build_metric_options_payload(
                         Metric.parse(metric),
-                        team_ids=_parse_positive_int_list(request.args.getlist("team_id")),
-                        season_type=request.args.get("season_type", "Regular Season"),
+                        teams=_parse_team_list(request.args.getlist("team_id")),
+                        season_type=SeasonType.parse(
+                            request.args.get("season_type", "Regular Season")
+                        ),
                     )
                 )
             )
@@ -219,3 +224,20 @@ def _parse_positive_int_list(raw_values: list[str]) -> list[int] | None:
             raise ValueError("team_id values must be positive integers")
         parsed_values.append(value)
     return parsed_values
+
+
+def _parse_team_list(raw_values: list[str]) -> list[Team] | None:
+    team_ids = _parse_positive_int_list(raw_values)
+    if team_ids is None:
+        return None
+    return [Team.from_id(team_id) for team_id in team_ids]
+
+
+def _parse_season_list(
+    raw_values: list[str],
+    *,
+    season_type: SeasonType,
+) -> list[Season] | None:
+    if not raw_values:
+        return None
+    return [Season(raw_value, season_type.value) for raw_value in raw_values]

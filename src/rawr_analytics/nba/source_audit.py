@@ -19,6 +19,8 @@ from rawr_analytics.nba.source.rules import (
     classify_source_schedule_row,
     classify_source_team_row,
 )
+from rawr_analytics.shared.season import Season, SeasonType
+from rawr_analytics.shared.team import Team
 
 AuditProgressFn = Callable[[int, int, str], None]
 _LAST_PROGRESS_LINE_LENGTH = 0
@@ -85,12 +87,11 @@ def _audit_nba_source(
         report_progress(f"schedule {schedule_path.name}")
         try:
             payload = _load_json_payload(schedule_path)
-            team, season, season_type = _scope_from_schedule_path(schedule_path)
+            team, season = _scope_from_schedule_path(schedule_path)
             schedule = parse_league_schedule_payload(
                 payload,
-                requested_team=team,
+                team=team,
                 season=season,
-                season_type=season_type,
             )
             for game in schedule.games:
                 classification = classify_source_schedule_row(game.raw_row)
@@ -229,12 +230,14 @@ def _load_json_payload(path: Path) -> dict:
         raise ValueError(f"Corrupt cached JSON: {exc}") from exc
 
 
-def _scope_from_schedule_path(path: Path) -> tuple[str, str, str]:
-    team, season, season_type_slug = path.stem.removesuffix("_leaguegamefinder").split(
+def _scope_from_schedule_path(path: Path) -> tuple[Team, Season]:
+    team_abbreviation, season_id, season_type_slug = path.stem.removesuffix("_leaguegamefinder").split(
         "_",
         maxsplit=2,
     )
-    return team, season, season_type_slug.replace("_", " ").title()
+    season_type = SeasonType.parse(season_type_slug.replace("_", " ").title())
+    season = Season(season_id, season_type.value)
+    return Team.from_abbreviation(team_abbreviation, season=season), season
 
 
 def _record_failure(
