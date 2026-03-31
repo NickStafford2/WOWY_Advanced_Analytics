@@ -10,11 +10,11 @@ from rawr_analytics.data.game_cache.repository import (
 )
 from rawr_analytics.data.scope_resolver import resolve_team_seasons
 from rawr_analytics.metrics.constants import Metric
+from rawr_analytics.metrics.rawr import build_player_season_records, describe_metric
 from rawr_analytics.metrics.rawr._observations import (
     _build_rawr_observations,
     _build_rawr_player_season_minute_stats,
 )
-from rawr_analytics.metrics.rawr import build_player_season_records, describe_metric
 from rawr_analytics.metrics.rawr.models import (
     RawrPlayerContext,
     RawrPlayerSeasonRecord,
