@@ -1,5 +1,8 @@
 # Architecture
 
+`docs/redesign_handoff.md` is the active instruction doc for the current boundary redesign.
+If this file and that file disagree, follow `docs/redesign_handoff.md`.
+
 ## Goal
 
 The system is a layered pipeline:
@@ -40,24 +43,17 @@ The intended direction is:
 2. `data` persists those outputs and owns DB row types and write operations.
 
 
-## Next Refactors
+## Current Refactor Direction
 
-Do these in order. Prefer medium PRs.
+The active rebuild direction is:
 
-### 1. Tighten metric package entrypoints
+1. create a stable service/application boundary
+2. move metric-specific shaping out of `data/`
+3. standardize typed public contracts
+4. split mixed-responsibility metric-store code
+5. tighten import boundaries
 
-After the rename:
-
-- reduce direct web imports from metric internals where convenient
-- prefer a smaller set of stable metric-owned entrypoints for validation, custom-query building, and cached-row construction
-
-### 1. Continue shrinking mixed-responsibility files
-
-Examples:
-
-- `data/player_metrics_db.py`
-- `data/db_validation.py`
-- `metrics/rawr/data.py`
+See `docs/redesign_handoff.md` for the concrete execution order and update protocol.
 
 ## Working Rules For Future Refactors
 
