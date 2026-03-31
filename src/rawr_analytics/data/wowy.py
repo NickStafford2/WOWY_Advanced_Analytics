@@ -119,7 +119,7 @@ def _build_wowy_query_row(
     record: WowyPlayerSeasonRecord,
 ) -> dict[str, Any]:
     row: dict[str, Any] = {
-        "season": record.season,
+        "season": record.season.id,
         "player_id": record.player_id,
         "player_name": record.player_name,
         "sample_size": record.games_with,
