@@ -2,12 +2,14 @@ from __future__ import annotations
 
 import argparse
 
-from rawr_analytics.data.metric_store import (
-    DEFAULT_RAWR_RIDGE_ALPHA,
-    refresh_metric_store,
-)
 from rawr_analytics.metrics.constants import Metric
 from rawr_analytics.progress import TerminalProgressBar, print_status_box
+from rawr_analytics.services import (
+    DEFAULT_RAWR_RIDGE_ALPHA,
+    MetricStoreRefreshRequest,
+    refresh_metric_store,
+)
+from rawr_analytics.shared.season import SeasonType
 
 _choices = [Metric.WOWY, Metric.WOWY_SHRUNK, Metric.RAWR]
 
@@ -42,6 +44,7 @@ def _build_parser() -> argparse.ArgumentParser:
 def main(argv: list[str] | None = None) -> int:
     parser = _build_parser()
     args = parser.parse_args(argv)
+    season_type = SeasonType.parse(args.season_type)
     metrics = [Metric.parse(metric) for metric in args.metric] if args.metric else _choices
     print_status_box(
         "Web Store Refresh",
@@ -55,10 +58,12 @@ def main(argv: list[str] | None = None) -> int:
     for metric in metrics:
         progress_bar = TerminalProgressBar(f"Refresh {metric.value}", total=1)
         result = refresh_metric_store(
-            metric,
-            season_type=args.season_type,
-            rawr_ridge_alpha=args.rawr_ridge_alpha,
-            include_team_scopes=False,
+            MetricStoreRefreshRequest(
+                metric=metric,
+                season_type=season_type,
+                rawr_ridge_alpha=args.rawr_ridge_alpha,
+                include_team_scopes=False,
+            ),
             progress=lambda current, total, detail, progress_bar=progress_bar: _update_progress(
                 progress_bar,
                 current=current,

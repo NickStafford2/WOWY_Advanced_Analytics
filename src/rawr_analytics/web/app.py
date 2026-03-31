@@ -5,11 +5,11 @@ from dataclasses import asdict
 from typing import Any
 
 from rawr_analytics.metrics.constants import Metric
-from rawr_analytics.metrics.metric_query.models import MetricQuery, build_metric_query
-from rawr_analytics.metrics.metric_query.scope import build_metric_options_payload
-from rawr_analytics.metrics.metric_query.views import (
-    build_metric_export_table,
-    build_metric_view_payload,
+from rawr_analytics.services import (
+    MetricQueryRequest,
+    build_metric_options_payload,
+    build_metric_query_export,
+    build_metric_query_view,
 )
 from rawr_analytics.shared.season import Season, SeasonType
 from rawr_analytics.shared.team import Team
@@ -20,11 +20,11 @@ def create_app():
 
     app = Flask(__name__)
 
-    def parse_metric_query(metric: str) -> MetricQuery:
+    def parse_metric_query(metric: str) -> MetricQueryRequest:
         metric_type = Metric.parse(metric)
         season_type = SeasonType.parse(request.args.get("season_type", "Regular Season"))
-        return build_metric_query(
-            metric_type,
+        return MetricQueryRequest(
+            metric=metric_type,
             season_type=season_type,
             teams=_parse_team_list(request.args.getlist("team_id")),
             seasons=_parse_season_list(request.args.getlist("season"), season_type=season_type),
@@ -39,13 +39,12 @@ def create_app():
 
     def json_metric_response(metric: str, view: str):
         metric_type = Metric.parse(metric)
-        query = parse_metric_query(metric)
-        payload = build_metric_view_payload(
-            metric_type,
+        result = build_metric_query_view(
+            parse_metric_query(metric),
             view=view,
-            query=query,
         )
-        return jsonify(payload)
+        assert result.metric == metric_type
+        return jsonify(result.payload)
 
     def run_json(handler):
         try:
@@ -55,15 +54,14 @@ def create_app():
 
     def csv_metric_response(metric: str, view: str):
         metric_type = Metric.parse(metric)
-        query = parse_metric_query(metric)
-        metric_label, table_rows = build_metric_export_table(
-            metric_type,
+        result = build_metric_query_export(
+            parse_metric_query(metric),
             view=view,
-            query=query,
         )
+        assert result.metric == metric_type
         filename = f"{metric}-all-players.csv"
         return Response(
-            _render_leaderboard_csv(metric_label=metric_label, table_rows=table_rows),
+            _render_leaderboard_csv(metric_label=result.metric_label, table_rows=result.rows),
             mimetype="text/csv",
             headers={"Content-Disposition": f'attachment; filename="{filename}"'},
         )
@@ -74,11 +72,13 @@ def create_app():
             lambda: jsonify(
                 asdict(
                     build_metric_options_payload(
-                        Metric.parse(metric),
-                        teams=_parse_team_list(request.args.getlist("team_id")),
-                        season_type=SeasonType.parse(
-                            request.args.get("season_type", "Regular Season")
-                        ),
+                        MetricQueryRequest(
+                            metric=Metric.parse(metric),
+                            teams=_parse_team_list(request.args.getlist("team_id")),
+                            season_type=SeasonType.parse(
+                                request.args.get("season_type", "Regular Season")
+                            ),
+                        )
                     )
                 )
             )

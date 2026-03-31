@@ -2,11 +2,12 @@ from __future__ import annotations
 
 import argparse
 
-from rawr_analytics.data.metric_store import (
+from rawr_analytics.metrics.constants import Metric
+from rawr_analytics.services import (
     DEFAULT_RAWR_RIDGE_ALPHA,
+    MetricStoreRefreshRequest,
     refresh_metric_store,
 )
-from rawr_analytics.metrics.constants import Metric
 from rawr_analytics.shared.season import SeasonType
 from rawr_analytics.web.app import create_app
 
@@ -70,10 +71,12 @@ def main(argv: list[str] | None = None) -> int:
         for metric in refresh_metrics:
             print(f"refreshing {metric.value} web store")
             result = refresh_metric_store(
-                metric,
-                season_type=season_type,
-                rawr_ridge_alpha=args.rawr_ridge_alpha,
-                include_team_scopes=False,
+                MetricStoreRefreshRequest(
+                    metric=metric,
+                    season_type=season_type,
+                    rawr_ridge_alpha=args.rawr_ridge_alpha,
+                    include_team_scopes=False,
+                )
             )
             if not result.ok:
                 print(result.failure_message)

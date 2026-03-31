@@ -80,7 +80,8 @@ Allowed examples:
 
 - `rawr_analytics.services.ingest.refresh_season_range`
 - `rawr_analytics.services.metric_store.refresh_metric_store`
-- `rawr_analytics.services.metric_query.build_metric_view_payload`
+- `rawr_analytics.services.metric_query.build_metric_query_view`
+- `rawr_analytics.services.rebuild.rebuild_player_metrics_db`
 - package `__init__` exports that are explicitly meant to be public
 
 Avoid:
@@ -190,6 +191,7 @@ Expected modules:
 - `services/ingest.py`
 - `services/metric_store.py`
 - `services/metric_query.py`
+- `services/rebuild.py`
 
 Exact names can change if the responsibilities stay clean.
 
@@ -237,21 +239,23 @@ Do these in order.
 
 ### Phase 1: Create the service boundary
 
-This is the first task.
+Status: completed.
 
-Required outcomes:
+Completed outcomes:
 
-- scripts stop stitching lower-level modules together directly
-- Flask routes call service functions instead of assembling queries themselves
-- rebuild entrypoints are repaired to use current package names and current CLI/service interfaces
+- introduced `rawr_analytics.services` as the public application boundary
+- added typed request/result models for ingest refresh, metric-store refresh, metric-query execution, and rebuild orchestration
+- moved `scripts/cache_season_data.py` to `services.ingest`
+- moved `scripts/rebuild_player_metrics_db.py` to `services.rebuild`
+- moved Flask routes in `web/app.py` to `services.metric_query`
+- moved `web/cli.py` and `web/refresh_cli.py` to `services.metric_store`
+- removed the stale rebuild script calls to old module names and stale CLI flags
 
-Concrete first targets:
+Still intentionally deferred after Phase 1:
 
-- fix `scripts/rebuild_player_metrics_db.py`
-- introduce service entrypoints for ingest, metric store refresh, and metric query
-- make `scripts/` and `web/` consume those entrypoints
-
-Do not try to perfect all inner layers first. Stabilize the outer seam first.
+- inner metric-store responsibilities are still split across `data/` and `metrics/`
+- custom-query and cached-row payloads still use dict-heavy internal shapes
+- ingest internals still live under `workflows/` and reach into lower packages directly
 
 ### Phase 2: Move metric-specific dataset shaping out of `data/`
 
@@ -347,18 +351,22 @@ Keep this file concise. Delete stale notes instead of appending history.
 
 ## Current State
 
-- The redesign plan exists, but Phase 1 has not been completed.
-- Scripts and web still do too much direct orchestration.
+- Phase 1 is complete. Scripts and web now call `rawr_analytics.services` entrypoints.
+- `services/rebuild.py` is now the stable rebuild boundary for ingest refresh, metric-store refresh, and validation.
+- `services/metric_query.py` is now the stable query boundary used by Flask routes.
 - `data/` still owns metric-specific shaping.
-- Metric response contracts are still inconsistent.
+- Metric response contracts are still inconsistent and still rely on dict payloads internally.
+- The metric-store internals are still too coupled inside `data/metric_store.py`, `data/metric_store_query.py`, and `data/metric_store_views.py`.
 
 ## Completed
 
-- Wrote this redesign handoff document.
+- Introduced the `services/` package as the stable outer application boundary.
+- Rewired top-level scripts and Flask routes to consume service entrypoints instead of lower-level internals.
+- Repaired the rebuild entrypoint so it uses current package names and current service interfaces.
 
 ## Next Step
 
-Implement Phase 1.
+Implement Phase 2.
 
-Start by creating a stable service boundary for rebuild, ingest refresh, metric-store refresh, and metric-query execution.
-Then move the top-level scripts and Flask routes to that boundary before touching deeper cleanup.
+Move metric-specific dataset shaping out of `data/rawr.py` and `data/wowy.py` into `metrics/`.
+After that, start Phase 3 by replacing dict-heavy metric query payloads with typed core contracts before web serialization.

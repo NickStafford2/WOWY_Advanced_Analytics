@@ -17,13 +17,14 @@ from rawr_analytics.nba import (
     PartialTeamSeasonError,
     append_ingest_failure_log,
 )
-from rawr_analytics.shared import Season
-from rawr_analytics.workflows import (
+from rawr_analytics.services import (
+    IngestRefreshRequest,
     IngestResult,
     SeasonRangeFailure,
     SeasonRangeResult,
     refresh_season_range,
 )
+from rawr_analytics.shared import Season
 
 _DEFAULT_START_YEAR = 2000
 _DEFAULT_END_YEAR = 1946
@@ -152,11 +153,13 @@ def main(argv: list[str] | None = None) -> int:
     parser = _build_parser()
     args = parser.parse_args(argv)
     result = refresh_season_range(
-        season_str=args.season,
-        start_year=args.start_year or _DEFAULT_START_YEAR,
-        end_year=args.end_year or _DEFAULT_END_YEAR,
-        season_type=args.season_type or _DEFAULT_SEASON_TYPE,
-        team_abbreviations=args.teams,
+        IngestRefreshRequest(
+            season_str=args.season,
+            start_year=args.start_year or _DEFAULT_START_YEAR,
+            end_year=args.end_year or _DEFAULT_END_YEAR,
+            season_type=args.season_type or _DEFAULT_SEASON_TYPE,
+            team_abbreviations=args.teams,
+        ),
         progress_fn=render_progress_line,
         season_started_fn=_render_season_started,
         team_completed_fn=_render_team_completed,
