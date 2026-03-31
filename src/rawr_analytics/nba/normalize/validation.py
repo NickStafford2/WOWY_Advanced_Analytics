@@ -166,13 +166,6 @@ def validate_normalized_game_player_record(
         )
 
 
-def _canonical_team_abbreviation(value: str) -> str:
-    team = value.strip().upper()
-    if not _TEAM_ABBREVIATION_PATTERN.fullmatch(team):
-        raise ValueError(f"Invalid team abbreviation {value!r}")
-    return team
-
-
 __all__ = [
     "validate_normalized_cache_batch",
     "validate_normalized_game_player_record",
