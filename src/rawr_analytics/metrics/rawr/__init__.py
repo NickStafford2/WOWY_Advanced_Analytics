@@ -7,7 +7,7 @@ from rawr_analytics.metrics.rawr.defaults import (
     default_filters,
     describe_metric,
 )
-from rawr_analytics.metrics.rawr.inputs import validate_filters
+from rawr_analytics.metrics.rawr.inputs import validate_filters, validate_request
 from rawr_analytics.metrics.rawr.records import build_player_season_records
 
 __all__ = [
@@ -18,4 +18,5 @@ __all__ = [
     "default_filters",
     "describe_metric",
     "validate_filters",
+    "validate_request",
 ]

@@ -1,7 +1,7 @@
 from __future__ import annotations
 
-from rawr_analytics.metrics.rawr._inputs import passes_minute_filters, validate_request
 from rawr_analytics.metrics.rawr.analysis import fit_player_rawr
+from rawr_analytics.metrics.rawr.inputs import passes_minute_filters, validate_request
 from rawr_analytics.metrics.rawr.models import (
     RawrPlayerSeasonRecord,
     RawrRequest,

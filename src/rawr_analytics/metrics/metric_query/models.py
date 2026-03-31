@@ -57,7 +57,7 @@ def build_metric_query(
     )
     normalized_seasons = (
         sorted(
-            {(season.start_year, season.season_type): season for season in seasons}.values(),
+            {(season.start_year, season.season_type): season for season in seasons or []}.values(),
             key=lambda season: (season.id, season.season_type.value),
         )
         or None

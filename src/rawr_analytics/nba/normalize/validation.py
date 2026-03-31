@@ -22,7 +22,11 @@ def validate_normalized_team_season_batch(batch: NormalizedTeamSeasonBatch) -> N
     players_by_game_key: dict[tuple[str, int], list[NormalizedGamePlayerRecord]] = defaultdict(list)
 
     for game in batch.games:
-        _validate_canonical_game(game, batch.team, batch.season)
+        validate_normalized_game_record(
+            game,
+            expected_team=batch.team,
+            expected_season=batch.season,
+        )
         game_key = (game.game_id, game.team.team_id)
         if game_key in game_keys:
             raise ValueError(f"Duplicate canonical game row for {game_key!r}")
@@ -30,7 +34,7 @@ def validate_normalized_team_season_batch(batch: NormalizedTeamSeasonBatch) -> N
 
     player_keys: set[tuple[str, int, int]] = set()
     for player in batch.game_players:
-        _validate_canonical_game_player(player, expected_team=batch.team)
+        validate_normalized_game_player_record(player, expected_team=batch.team)
         player_key = (player.game_id, player.team.team_id, player.player_id)
         if player_key in player_keys:
             raise ValueError(f"Duplicate canonical player row for {player_key!r}")
@@ -79,8 +83,9 @@ def validate_normalized_cache_batch(
     validate_normalized_team_season_batch(batch)
 
 
-def _validate_canonical_game(
+def validate_normalized_game_record(
     game: NormalizedGameRecord,
+    *,
     expected_team: Team,
     expected_season: Season,
 ) -> None:
@@ -92,7 +97,8 @@ def _validate_canonical_game(
         )
     if not Team.are_same(game.team, expected_team):
         raise ValueError(
-            f"Canonical game {game.game_id!r} is not the same as {game.team!r}; expected {expected_team!r}"
+            f"Canonical game {game.game_id!r} is not the same as {game.team!r}; "
+            f"expected {expected_team!r}"
         )
     if game.opponent_team.team_id is None or game.opponent_team.team_id <= 0:
         raise ValueError(f"Canonical game {game.game_id!r} must have a positive opponent_team_id")
@@ -116,8 +122,9 @@ def _validate_canonical_game(
         raise ValueError(f"Canonical game {game.game_id!r} must have a non-empty source")
 
 
-def _validate_canonical_game_player(
+def validate_normalized_game_player_record(
     player: NormalizedGamePlayerRecord,
+    *,
     expected_team: Team,
 ) -> None:
     player_ref = (
@@ -127,8 +134,8 @@ def _validate_canonical_game_player(
         raise ValueError("Canonical player game_id must not be empty")
     if player.team.team_id != expected_team.team_id:
         raise ValueError(
-            f"Canonical player row for game {player.game_id!r} has team_id {player.team.team_id!r}; "
-            f"expected {expected_team.team_id!r}"
+            f"Canonical player row for game {player.game_id!r} has team_id "
+            f"{player.team.team_id!r}; expected {expected_team.team_id!r}"
         )
     if player.player_id <= 0:
         raise ValueError(f"Canonical player row for {player_ref} has invalid player_id")
@@ -168,6 +175,7 @@ def _canonical_team_abbreviation(value: str) -> str:
 
 __all__ = [
     "validate_normalized_cache_batch",
+    "validate_normalized_game_player_record",
+    "validate_normalized_game_record",
     "validate_normalized_team_season_batch",
-    "_canonical_team_abbreviation",
 ]

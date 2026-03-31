@@ -3,19 +3,19 @@ from __future__ import annotations
 import sqlite3
 from typing import Callable, TypeVar
 
-from rawr_analytics.data.game_cache.validation import (
+from rawr_analytics.data.game_cache._validation import (
     _validate_normalized_cache_loads_table as _validate_normalized_cache_loads_table_impl,
 )
-from rawr_analytics.data.game_cache.validation import (
+from rawr_analytics.data.game_cache._validation import (
     _validate_normalized_cache_relations as _validate_normalized_cache_relations_impl,
 )
-from rawr_analytics.data.game_cache.validation import (
+from rawr_analytics.data.game_cache._validation import (
     _validate_normalized_game_players_table as _validate_normalized_game_players_table_impl,
 )
-from rawr_analytics.data.game_cache.validation import (
+from rawr_analytics.data.game_cache._validation import (
     _validate_normalized_games_table as _validate_normalized_games_table_impl,
 )
-from rawr_analytics.data.game_cache.validation import (
+from rawr_analytics.data.game_cache._validation import (
     _validate_team_history_table as _validate_team_history_table_impl,
 )
 

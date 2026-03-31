@@ -9,7 +9,7 @@ from rawr_analytics.metrics.constants import Metric
 from rawr_analytics.shared.season import Season, SeasonType
 from rawr_analytics.shared.team import Team
 
-from ._models import MetricQuery, build_metric_query
+from .models import MetricQuery, build_metric_query
 
 
 @dataclass(frozen=True)

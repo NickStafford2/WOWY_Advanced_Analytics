@@ -1,20 +1,27 @@
 from __future__ import annotations
 
 import math
-import re
 from collections import defaultdict
-from datetime import datetime
 
+from rawr_analytics.data._validation import (
+    _validate_iso_datetime,
+    _validate_optional_non_negative_float,
+    _validate_optional_non_negative_int,
+    _validate_required_text,
+)
 from rawr_analytics.data.player_metrics_db.models import (
     MetricFullSpanPointRow,
     MetricFullSpanSeriesRow,
     MetricScopeCatalogRow,
     PlayerSeasonMetricRow,
 )
-from rawr_analytics.shared.season import SeasonType
-
-_TEAM_ID_FILTER_PATTERN = re.compile(r"^[1-9]\d*$")
-_SEASON_YEAR_PATTERN = re.compile(r"^\d{4}-\d{2}$")
+from rawr_analytics.metrics.metric_query.validation import (
+    canonicalize_metric_season,
+    canonicalize_metric_season_type,
+    canonicalize_metric_team_filter,
+    validate_metric_catalog,
+    validate_metric_scope,
+)
 
 
 def _validate_metric_rows(
@@ -44,8 +51,8 @@ def _validate_metric_rows(
             )
         if row.scope_key != scope_key:
             raise ValueError(
-                f"Metric row for player {row.player_id!r} has scope_key {row.scope_key!r}; "
-                f"expected {scope_key!r}"
+                f"Metric row for player {row.player_id!r} has scope_key "
+                f"{row.scope_key!r}; expected {scope_key!r}"
             )
         if row.metric_label != metric_label:
             raise ValueError(
@@ -53,24 +60,24 @@ def _validate_metric_rows(
                 f"expected {metric_label!r}"
             )
 
-        canonical_season_type = _canonicalize_season_type(row.season_type)
+        canonical_season_type = canonicalize_metric_season_type(row.season_type)
         if row.season_type != canonical_season_type:
             raise ValueError(
-                f"Metric row for player {row.player_id!r} uses non-canonical season_type "
-                f"{row.season_type!r}"
+                f"Metric row for player {row.player_id!r} uses non-canonical "
+                f"season_type {row.season_type!r}"
             )
-        canonical_team_filter = _canonical_team_filter(row.team_filter)
+        canonical_team_filter = canonicalize_metric_team_filter(row.team_filter)
         if row.team_filter != canonical_team_filter:
             raise ValueError(
-                f"Metric row for player {row.player_id!r} uses non-canonical team_filter "
-                f"{row.team_filter!r}"
+                f"Metric row for player {row.player_id!r} uses non-canonical "
+                f"team_filter {row.team_filter!r}"
             )
-        _validate_scope_shape(
+        validate_metric_scope(
             scope_key=row.scope_key,
             team_filter=canonical_team_filter,
             season_type=canonical_season_type,
         )
-        canonical_season = _canonicalize_season_year_string(row.season)
+        canonical_season = canonicalize_metric_season(row.season)
         if canonical_season != row.season:
             raise ValueError(
                 f"Metric row for player {row.player_id!r} uses non-canonical season {row.season!r}"
@@ -114,8 +121,8 @@ def _validate_metric_rows(
             and row.total_minutes + 1e-9 < row.average_minutes
         ):
             raise ValueError(
-                f"Metric row for player {row.player_id!r} has total_minutes smaller "
-                "than average_minutes"
+                f"Metric row for player {row.player_id!r} has total_minutes "
+                "smaller than average_minutes"
             )
         if row.details is not None and not isinstance(row.details, dict):
             raise ValueError(f"Metric row for player {row.player_id!r} must use a dict for details")
@@ -130,40 +137,15 @@ def _validate_metric_scope_catalog_row(row: MetricScopeCatalogRow) -> None:
     _validate_required_text(row.metric, "metric")
     _validate_required_text(row.scope_key, "scope_key")
     _validate_required_text(row.metric_label, "metric_label")
-    canonical_season_type = _canonicalize_season_type(row.season_type)
-    if row.season_type != canonical_season_type:
-        raise ValueError("Catalog season_type must use canonical season type")
-    canonical_team_filter = _canonical_team_filter(row.team_filter)
-    if row.team_filter != canonical_team_filter:
-        raise ValueError("Catalog team_filter must use canonical positive team_ids")
-    _validate_scope_shape(
+    validate_metric_catalog(
         scope_key=row.scope_key,
-        team_filter=canonical_team_filter,
-        season_type=canonical_season_type,
+        team_filter=row.team_filter,
+        season_type=row.season_type,
+        available_seasons=row.available_seasons,
+        available_team_ids=row.available_team_ids,
+        full_span_start_season=row.full_span_start_season,
+        full_span_end_season=row.full_span_end_season,
     )
-
-    seasons = [_canonicalize_season_year_string(season) for season in row.available_seasons]
-    if seasons != row.available_seasons:
-        raise ValueError("Catalog available_seasons must use canonical season strings")
-    if seasons != sorted(set(seasons), key=_season_sort_key):
-        raise ValueError("Catalog available_seasons must be unique and sorted")
-
-    team_ids = [_canonical_team_id(team_id) for team_id in row.available_team_ids]
-    if team_ids != row.available_team_ids:
-        raise ValueError("Catalog available_team_ids must use canonical positive team ids")
-    if team_ids != sorted(set(team_ids)):
-        raise ValueError("Catalog available_team_ids must be unique and sorted")
-
-    if (row.full_span_start_season is None) != (row.full_span_end_season is None):
-        raise ValueError("Catalog full-span seasons must both be set or both be null")
-    if row.full_span_start_season is not None:
-        start = _canonicalize_season_year_string(row.full_span_start_season)
-        end = _canonicalize_season_year_string(row.full_span_end_season or "")
-        if start not in seasons or end not in seasons:
-            raise ValueError("Catalog full-span seasons must be present in available_seasons")
-        if _season_sort_key(start) > _season_sort_key(end):
-            raise ValueError("Catalog full-span start season must not be after end season")
-
     _validate_iso_datetime(row.updated_at, "catalog updated_at")
 
 
@@ -217,11 +199,11 @@ def _validate_metric_full_span_rows(
             raise ValueError("Full-span point rows must match the requested metric scope")
         if row.player_id not in expected_point_counts:
             raise ValueError(f"Full-span point row for unknown player {row.player_id!r}")
-        canonical_season = _canonicalize_season_year_string(row.season)
+        canonical_season = canonicalize_metric_season(row.season)
         if canonical_season != row.season:
             raise ValueError(
-                f"Full-span point row for player {row.player_id!r} uses non-canonical "
-                f"season {row.season!r}"
+                f"Full-span point row for player {row.player_id!r} uses "
+                f"non-canonical season {row.season!r}"
             )
         if not math.isfinite(row.value):
             raise ValueError(
@@ -229,96 +211,21 @@ def _validate_metric_full_span_rows(
             )
         if row.season in points_by_player[row.player_id]:
             raise ValueError(
-                f"Duplicate full-span point row for player {row.player_id!r} and "
-                f"season {row.season!r}"
+                f"Duplicate full-span point row for player {row.player_id!r} "
+                f"and season {row.season!r}"
             )
         points_by_player[row.player_id].add(row.season)
 
     for player_id, season_count in expected_point_counts.items():
         if len(points_by_player[player_id]) != season_count:
             raise ValueError(
-                f"Full-span player {player_id!r} expected {season_count} season points "
-                f"but found {len(points_by_player[player_id])}"
+                f"Full-span player {player_id!r} expected {season_count} "
+                f"season points but found {len(points_by_player[player_id])}"
             )
 
 
-def _validate_scope_shape(*, scope_key: str, team_filter: str, season_type: str) -> None:
-    expected_team_key = team_filter or "all-teams"
-    expected_scope_key = f"team_ids={expected_team_key}|season_type={season_type}"
-    if scope_key != expected_scope_key:
-        raise ValueError(
-            f"Invalid scope_key {scope_key!r}; expected canonical {expected_scope_key!r}"
-        )
-    if not team_filter:
-        return
-    team_ids = team_filter.split(",")
-    if team_ids != sorted(set(team_ids), key=int):
-        raise ValueError("team_filter must be unique and sorted")
-    for team_id in team_ids:
-        _canonical_team_id_filter_value(team_id)
-
-
-def _canonical_team_filter(value: str) -> str:
-    if not value:
-        return ""
-    team_ids = value.split(",")
-    canonical_team_ids = [_canonical_team_id_filter_value(team_id) for team_id in team_ids]
-    if canonical_team_ids != sorted(set(canonical_team_ids), key=int):
-        raise ValueError("team_filter must be unique and sorted")
-    return ",".join(canonical_team_ids)
-
-
-def _canonical_team_id(value: int) -> int:
-    if value <= 0:
-        raise ValueError(f"Invalid team id {value!r}")
-    return value
-
-
-def _canonical_team_id_filter_value(value: str) -> str:
-    team_id = value.strip()
-    if not _TEAM_ID_FILTER_PATTERN.fullmatch(team_id):
-        raise ValueError(f"Invalid team_id filter value {value!r}")
-    return team_id
-
-
-def _validate_required_text(value: str, label: str) -> None:
-    if not value.strip():
-        raise ValueError(f"{label} must not be empty")
-
-
-def _validate_optional_non_negative_int(value: int | None, label: str) -> None:
-    if value is None:
-        return
-    if value < 0:
-        raise ValueError(f"{label} must not be negative")
-
-
-def _validate_optional_non_negative_float(value: float | None, label: str) -> None:
-    if value is None:
-        return
-    if not math.isfinite(value) or value < 0.0:
-        raise ValueError(f"{label} must be a finite non-negative number")
-
-
-def _validate_iso_datetime(value: str, label: str) -> None:
-    _validate_required_text(value, label)
-    try:
-        datetime.fromisoformat(value)
-    except ValueError as exc:
-        raise ValueError(f"{label} must be an ISO datetime") from exc
-
-
-def _canonicalize_season_type(value: str) -> str:
-    return SeasonType.parse(value).to_nba_format()
-
-
-def _canonicalize_season_year_string(value: str) -> str:
-    season = value.strip()
-    if not _SEASON_YEAR_PATTERN.fullmatch(season):
-        raise ValueError(f"Invalid season string {value!r}")
-    return season
-
-
-def _season_sort_key(value: str) -> tuple[int, str]:
-    season = _canonicalize_season_year_string(value)
-    return (int(season[:4]), season)
+__all__ = [
+    "_validate_metric_full_span_rows",
+    "_validate_metric_rows",
+    "_validate_metric_scope_catalog_row",
+]

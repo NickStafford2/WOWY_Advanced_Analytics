@@ -5,6 +5,11 @@ from datetime import UTC, datetime
 from pathlib import Path
 
 from rawr_analytics.data.constants import DB_PATH
+from rawr_analytics.data.player_metrics_db._validation import (
+    _validate_metric_full_span_rows,
+    _validate_metric_rows,
+    _validate_metric_scope_catalog_row,
+)
 from rawr_analytics.data.player_metrics_db.models import (
     MetricFullSpanPointRow,
     MetricFullSpanSeriesRow,
@@ -12,11 +17,6 @@ from rawr_analytics.data.player_metrics_db.models import (
     PlayerSeasonMetricRow,
 )
 from rawr_analytics.data.player_metrics_db.schema import connect, initialize_player_metrics_db
-from rawr_analytics.data.player_metrics_db.validation import (
-    _validate_metric_full_span_rows,
-    _validate_metric_rows,
-    _validate_metric_scope_catalog_row,
-)
 
 
 def _replace_metric_rows(

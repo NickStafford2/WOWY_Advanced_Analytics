@@ -32,7 +32,7 @@ def validate_filters(
     )
 
 
-def _validate_request(request: RawrRequest) -> None:
+def validate_request(request: RawrRequest) -> None:
     validate_filters(
         request.min_games,
         request.ridge_alpha,
@@ -63,7 +63,7 @@ def _validate_season_input(season_input: RawrSeasonInput) -> None:
             )
 
 
-def _passes_minute_filters(
+def passes_minute_filters(
     player: RawrPlayerContext,
     *,
     min_average_minutes: float | None,

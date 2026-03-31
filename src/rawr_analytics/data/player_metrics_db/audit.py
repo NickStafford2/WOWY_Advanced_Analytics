@@ -6,16 +6,16 @@ from collections import defaultdict
 from dataclasses import dataclass
 from typing import Callable, TypeVar
 
+from rawr_analytics.data.player_metrics_db._validation import (
+    _validate_metric_full_span_rows,
+    _validate_metric_rows,
+    _validate_metric_scope_catalog_row,
+)
 from rawr_analytics.data.player_metrics_db.models import (
     MetricFullSpanPointRow,
     MetricFullSpanSeriesRow,
     MetricScopeCatalogRow,
     PlayerSeasonMetricRow,
-)
-from rawr_analytics.data.player_metrics_db.validation import (
-    _validate_metric_full_span_rows,
-    _validate_metric_rows,
-    _validate_metric_scope_catalog_row,
 )
 
 IssueT = TypeVar("IssueT")
@@ -207,7 +207,7 @@ def _audit_metric_scope_catalog_table(
             team_filter=row["team_filter"],
             season_type=row["season_type"],
             available_seasons=json.loads(row["available_seasons_json"]),
-            available_teams=json.loads(row["available_teams_json"]),
+                available_team_ids=json.loads(row["available_teams_json"]),
             full_span_start_season=row["full_span_start_season"],
             full_span_end_season=row["full_span_end_season"],
             updated_at=row["updated_at"],
