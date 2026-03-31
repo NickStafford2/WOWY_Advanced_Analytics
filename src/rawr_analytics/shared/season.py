@@ -21,7 +21,7 @@ class SeasonType(Enum):
             return SeasonType.REGULAR
         if season_type in ["pre", "preseason", "pre season"]:
             return SeasonType.PRESEASON
-        assert False, (
+        raise AssertionError(
             f"Invalid season type {value!r}. Expected 'Regular Season', 'Playoffs', or 'Preseason'."
         )
 
@@ -32,7 +32,7 @@ class SeasonType(Enum):
             return "Playoffs"
         if self == SeasonType.PRESEASON:
             return "Pre Season"
-        assert False, f"Unsupported season type: {self!r}"
+        raise AssertionError(f"Unsupported season type: {self!r}")
 
     def to_slug(self) -> str:
         if self == SeasonType.REGULAR:
@@ -41,7 +41,7 @@ class SeasonType(Enum):
             return "playoffs"
         if self == SeasonType.PRESEASON:
             return "preseason"
-        assert False, f"Unsupported season type: {self!r}"
+        raise AssertionError(f"Unsupported season type: {self!r}")
 
 
 @dataclass(frozen=True)

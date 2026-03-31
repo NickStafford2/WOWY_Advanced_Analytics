@@ -130,9 +130,7 @@ class _TeamSpan:
     def includes_year(self, season_start_year: int) -> bool:
         if season_start_year < self.season_start:
             return False
-        if self.season_end is not None and season_start_year > self.season_end:
-            return False
-        return True
+        return self.season_end is None or season_start_year <= self.season_end
 
 
 _TEAM_SPANS: tuple[_TeamSpan, ...] = (
@@ -242,7 +240,9 @@ def _resolve_span_for_abbreviation_and_year(abbreviation: str, season_start_year
     for span in spans:
         if span.includes_year(season_start_year):
             return span
-    assert False, f"Team {abbreviation!r} was not active in season {season_start_year!r}"
+    raise AssertionError(
+        f"Team {abbreviation!r} was not active in season {season_start_year!r}"
+    )
 
 
 def _season_start_year_from_game_date(game_date: str) -> int:

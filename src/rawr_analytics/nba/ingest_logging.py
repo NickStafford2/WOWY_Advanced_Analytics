@@ -229,9 +229,7 @@ def _serialize_partial_team_season_details(details: _PartialTeamSeasonLogDetails
         "failed_game_details": [
             _serialize_logged_game_failure(failure) for failure in details.failed_game_details
         ],
-        "failure_reason_counts": {
-            reason: count for reason, count in details.failure_reason_counts.items()
-        },
+        "failure_reason_counts": dict(details.failure_reason_counts),
         "failure_reason_examples": {
             reason: list(example_game_ids)
             for reason, example_game_ids in details.failure_reason_examples.items()

@@ -42,10 +42,7 @@ def _build_parser() -> argparse.ArgumentParser:
 def main(argv: list[str] | None = None) -> int:
     parser = _build_parser()
     args = parser.parse_args(argv)
-    if args.metric:
-        metrics = [Metric.parse(metric) for metric in args.metric]
-    else:
-        metrics = _choices
+    metrics = [Metric.parse(metric) for metric in args.metric] if args.metric else _choices
     print_status_box(
         "Web Store Refresh",
         [

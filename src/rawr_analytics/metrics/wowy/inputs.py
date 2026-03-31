@@ -51,10 +51,10 @@ def passes_minute_filters(
     min_average_minutes: float | None,
     min_total_minutes: float | None,
 ) -> bool:
-    if min_average_minutes is not None:
-        if player.average_minutes is None or player.average_minutes < min_average_minutes:
-            return False
-    if min_total_minutes is not None:
-        if player.total_minutes is None or player.total_minutes < min_total_minutes:
-            return False
-    return True
+    if min_average_minutes is not None and (
+        player.average_minutes is None or player.average_minutes < min_average_minutes
+    ):
+        return False
+    return min_total_minutes is None or (
+        player.total_minutes is not None and player.total_minutes >= min_total_minutes
+    )

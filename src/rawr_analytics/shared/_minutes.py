@@ -36,6 +36,4 @@ def _passes_minute_filters(
     average_minutes, total_minutes = minute_stats
     if min_average_minutes is not None and average_minutes < min_average_minutes:
         return False
-    if min_total_minutes is not None and total_minutes < min_total_minutes:
-        return False
-    return True
+    return min_total_minutes is None or total_minutes >= min_total_minutes

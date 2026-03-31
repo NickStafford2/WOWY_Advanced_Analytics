@@ -5,7 +5,6 @@ import sqlite3
 from collections import defaultdict
 from collections.abc import Callable
 from dataclasses import dataclass
-from typing import TypeVar
 
 from rawr_analytics.data.player_metrics_db._validation import (
     _validate_metric_full_span_rows,
@@ -19,8 +18,7 @@ from rawr_analytics.data.player_metrics_db.models import (
     PlayerSeasonMetricRow,
 )
 
-IssueT = TypeVar("IssueT")
-IssueFactory = Callable[[str, str, str], IssueT]
+type IssueFactory[IssueT] = Callable[[str, str, str], IssueT]
 
 
 @dataclass(frozen=True)
@@ -41,7 +39,7 @@ class MetricStoreAuditState:
     ]
 
 
-def audit_metric_store_tables(
+def audit_metric_store_tables[IssueT](
     connection: sqlite3.Connection,
     issues: list[IssueT],
     *,
@@ -70,7 +68,7 @@ def audit_metric_store_tables(
     )
 
 
-def _audit_metric_player_season_values_table(
+def _audit_metric_player_season_values_table[IssueT](
     connection: sqlite3.Connection,
     issues: list[IssueT],
     *,
@@ -174,7 +172,7 @@ def _audit_metric_player_season_values_table(
     return groups, metadata_by_key
 
 
-def _audit_metric_scope_catalog_table(
+def _audit_metric_scope_catalog_table[IssueT](
     connection: sqlite3.Connection,
     issues: list[IssueT],
     *,
@@ -226,7 +224,7 @@ def _audit_metric_scope_catalog_table(
     return catalog_rows
 
 
-def _audit_metric_full_span_tables(
+def _audit_metric_full_span_tables[IssueT](
     connection: sqlite3.Connection,
     issues: list[IssueT],
     *,

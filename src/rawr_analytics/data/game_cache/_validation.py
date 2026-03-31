@@ -5,7 +5,6 @@ import sqlite3
 from collections import defaultdict
 from collections.abc import Callable
 from datetime import date
-from typing import TypeVar
 
 from rawr_analytics.data._validation import (
     _validate_iso_datetime,
@@ -25,11 +24,10 @@ from rawr_analytics.nba.normalize import (
 from rawr_analytics.shared.season import Season
 from rawr_analytics.shared.team import Team
 
-IssueT = TypeVar("IssueT")
-IssueFactory = Callable[[str, str, str], IssueT]
+type IssueFactory[IssueT] = Callable[[str, str, str], IssueT]
 
 
-def _validate_normalized_games_table(
+def _validate_normalized_games_table[IssueT](
     connection: sqlite3.Connection,
     issues: list[IssueT],
     *,
@@ -69,7 +67,7 @@ def _validate_normalized_games_table(
             issues.append(issue_factory("normalized_games", key, str(exc)))
 
 
-def _validate_normalized_game_players_table(
+def _validate_normalized_game_players_table[IssueT](
     connection: sqlite3.Connection,
     issues: list[IssueT],
     *,
@@ -108,7 +106,7 @@ def _validate_normalized_game_players_table(
             issues.append(issue_factory("normalized_game_players", key, str(exc)))
 
 
-def _validate_normalized_cache_loads_table(
+def _validate_normalized_cache_loads_table[IssueT](
     connection: sqlite3.Connection,
     issues: list[IssueT],
     *,
@@ -164,7 +162,7 @@ def _validate_normalized_cache_loads_table(
             issues.append(issue_factory("normalized_cache_loads", key, str(exc)))
 
 
-def _validate_normalized_cache_relations(
+def _validate_normalized_cache_relations[IssueT](
     connection: sqlite3.Connection,
     issues: list[IssueT],
     *,
@@ -320,7 +318,7 @@ def _validate_normalized_cache_relations(
         )
 
 
-def _validate_reciprocal_game_margins(
+def _validate_reciprocal_game_margins[IssueT](
     game_rows: list[sqlite3.Row],
     issues: list[IssueT],
     *,
@@ -401,7 +399,7 @@ def _validate_reciprocal_game_margins(
             )
 
 
-def _validate_team_history_table(
+def _validate_team_history_table[IssueT](
     connection: sqlite3.Connection,
     issues: list[IssueT],
     *,

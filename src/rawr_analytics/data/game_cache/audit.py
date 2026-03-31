@@ -2,7 +2,6 @@ from __future__ import annotations
 
 import sqlite3
 from collections.abc import Callable
-from typing import TypeVar
 
 from rawr_analytics.data.game_cache._validation import (
     _validate_normalized_cache_loads_table as _validate_normalized_cache_loads_table_impl,
@@ -20,11 +19,10 @@ from rawr_analytics.data.game_cache._validation import (
     _validate_team_history_table as _validate_team_history_table_impl,
 )
 
-IssueT = TypeVar("IssueT")
-IssueFactory = Callable[[str, str, str], IssueT]
+type IssueFactory[IssueT] = Callable[[str, str, str], IssueT]
 
 
-def _audit_game_cache_tables(
+def _audit_game_cache_tables[IssueT](
     connection: sqlite3.Connection,
     issues: list[IssueT],
     *,
@@ -37,7 +35,7 @@ def _audit_game_cache_tables(
     audit_normalized_cache_relations(connection, issues, issue_factory=issue_factory)
 
 
-def audit_team_history_table(
+def audit_team_history_table[IssueT](
     connection: sqlite3.Connection,
     issues: list[IssueT],
     *,
@@ -50,7 +48,7 @@ def audit_team_history_table(
     )
 
 
-def audit_normalized_games_table(
+def audit_normalized_games_table[IssueT](
     connection: sqlite3.Connection,
     issues: list[IssueT],
     *,
@@ -63,7 +61,7 @@ def audit_normalized_games_table(
     )
 
 
-def audit_normalized_game_players_table(
+def audit_normalized_game_players_table[IssueT](
     connection: sqlite3.Connection,
     issues: list[IssueT],
     *,
@@ -76,7 +74,7 @@ def audit_normalized_game_players_table(
     )
 
 
-def audit_normalized_cache_loads_table(
+def audit_normalized_cache_loads_table[IssueT](
     connection: sqlite3.Connection,
     issues: list[IssueT],
     *,
@@ -89,7 +87,7 @@ def audit_normalized_cache_loads_table(
     )
 
 
-def audit_normalized_cache_relations(
+def audit_normalized_cache_relations[IssueT](
     connection: sqlite3.Connection,
     issues: list[IssueT],
     *,

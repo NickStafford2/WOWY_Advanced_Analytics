@@ -316,7 +316,7 @@ def _required_int(row: dict[str, object], key: str, *, row_label: str) -> int:
     value = _optional_int(row, key, row_label=row_label)
     if value is None:
         _fail_on_row(row_label, row, f"Missing required {key}")
-        assert False, "unreachable after _fail_on_row"
+        raise AssertionError("unreachable after _fail_on_row")
     return value
 
 
@@ -343,7 +343,7 @@ def _optional_int(
             _fail_on_row(row_label, row, f"Invalid integer value for {key}: {value!r}")
         return int(float(stripped))
     _fail_on_row(row_label, row, f"Invalid integer value for {key}: {value!r}")
-    assert False, "unreachable after _fail_on_row"
+    raise AssertionError("unreachable after _fail_on_row")
 
 
 def _optional_minutes_value(
@@ -362,7 +362,7 @@ def _optional_minutes_value(
     if isinstance(value, str):
         return value
     _fail_on_row(row_label, row, f"Invalid MIN value for {key}: {value!r}")
-    assert False, "unreachable after _fail_on_row"
+    raise AssertionError("unreachable after _fail_on_row")
 
 
 def _optional_minutes(
@@ -390,7 +390,7 @@ def _optional_plus_minus(
         return None
     if isinstance(value, bool) or not isinstance(value, int | float):
         _fail_on_row(row_label, row, f"Invalid PLUS_MINUS value for {key}: {value!r}")
-        assert False, "unreachable after _fail_on_row"
+        raise AssertionError("unreachable after _fail_on_row")
     return value
 
 
