@@ -254,7 +254,7 @@ Completed outcomes:
 Still intentionally deferred after Phase 1:
 
 - inner metric-store responsibilities are still split across `data/` and `metrics/`
-- custom-query and cached-row payloads still use dict-heavy internal shapes
+- metric query and storage paths still route through generic code that blurs RAWR and WOWY responsibilities
 - ingest internals still live under `workflows/` and reach into lower packages directly
 
 ### Phase 2: Move metric-specific dataset shaping out of `data/`
@@ -281,23 +281,26 @@ Completed outcomes:
 - deleted `data/rawr.py` and `data/wowy.py` after moving their remaining Phase 2 responsibilities out
 - kept database-facing metric row contracts on `season_id`; custom-query core payloads now also use `season_id`, while web span-point serialization still uses `season` at the HTTP edge
 
-### Phase 3: Standardize typed request and response contracts
+### Phase 3: Split metric query and storage contracts by metric
 
 Required outcomes:
 
-- one consistent custom-query row model across metrics
-- one consistent cached row model across metrics
-- no metric-specific dict shape drift like `season` vs `season_id`
+- RAWR owns RAWR query inputs, defaults, validation, cached row models, and custom-query row models
+- WOWY owns WOWY query inputs, defaults, validation, cached row models, and custom-query row models
+- separate metric tables and repositories are preferred over one generic player-metric table
+- no shared row model that mixes WOWY-only fields and RAWR-only fields
+- core and DB-facing contracts use `season_id`; any plain `season` field remains edge serialization only
 - web serialization happens at the edge, not inside metric or data code
 
-This phase should remove `dict[str, Any]` from core public interfaces wherever practical.
+This phase should remove `dict[str, Any]` from core public interfaces wherever practical, but it should not replace those dicts with a fake universal metric model.
 
 Constraint:
 
-- do not force all metrics into one abstract filter or variable model
-- metric-specific filters and variables may stay metric-specific when the metric logic genuinely differs
-- only standardize the shared contract surface that callers actually consume across package boundaries
-- prefer a small number of explicit typed models over a generic abstraction layer that hides real differences between metrics
+- do not force all metrics into one abstract filter, variable, row, or payload model
+- metric-specific filters and variables should stay metric-specific when the metric logic differs
+- separate tables are preferred when that keeps the data contract simpler and more explicit
+- only share code when both behavior and data shape are actually the same
+- service-layer dispatch is fine; generic metric abstractions that hide real differences are not
 
 ### Phase 4: Split the metric-store god module by responsibility
 
@@ -329,7 +332,7 @@ If useful after the structure settles, add lint rules or review rules to reject 
 These are already known and should be resolved during the redesign:
 
 1. `scripts/rebuild_player_metrics_db.py` still uses stale module names and stale CLI flags.
-2. RAWR and WOWY custom query rows do not share one stable contract.
+2. RAWR and WOWY query and storage paths are still too generic and hide metric-specific meaning.
 3. `data/metric_store.py` currently owns too many responsibilities.
 4. metric-store fingerprint logic is duplicated and should become one shared implementation.
 5. workflow and web code still bypass package public APIs with deep imports.
@@ -339,7 +342,8 @@ These are already known and should be resolved during the redesign:
 A future contributor should be able to answer these questions quickly:
 
 - If I want to rebuild data, which service function do I call?
-- If I want metric rows for the web app, which service function do I call?
+- If I want RAWR rows for the web app, which service function do I call?
+- If I want WOWY rows for the web app, which service function do I call?
 - If I want to load canonical stored games, which repository function do I call?
 - If I want to compute RAWR inputs from canonical records, which metric module owns that?
 - If I want JSON for the frontend, which serializer owns that?
@@ -373,6 +377,8 @@ Keep this file concise. Delete stale notes instead of appending history.
 - `services/rebuild.py` is now the stable rebuild boundary for ingest refresh, metric-store refresh, and validation.
 - `services/metric_query.py` is now the stable query boundary used by Flask routes.
 - Phase 2 is complete. Metric-specific dataset shaping now lives under `metrics/rawr/` and `metrics/wowy/`.
+- Phase 3 has been redesigned toward metric-specific query contracts and metric-specific storage, not a shared abstraction layer over all metrics.
+- Separate metric tables are now the preferred storage direction because they keep row meaning explicit and reduce generic glue code.
 - Metric response contracts are still inconsistent and still rely on dict payloads internally.
 - The metric-store internals are still too coupled inside `data/metric_store.py`, `data/metric_store_query.py`, and `data/metric_store_views.py`.
 
@@ -383,11 +389,12 @@ Keep this file concise. Delete stale notes instead of appending history.
 - Repaired the rebuild entrypoint so it uses current package names and current service interfaces.
 - Moved RAWR and WOWY metric-specific dataset shaping and custom-query assembly out of `data/` and into public metric-owned modules under `metrics/`.
 - Deleted the old `data/rawr.py` and `data/wowy.py` modules after rewiring their callers.
+- Rewrote the Phase 3 plan to prefer metric-specific query contracts and separate metric tables instead of a shared metric abstraction layer.
 
 ## Next Step
 
 Implement Phase 3.
 
-Replace dict-heavy metric query payloads with typed core contracts before web serialization.
-Start with the custom-query and cached-row payloads so RAWR and WOWY stop drifting on keys like `season` versus `season_id`.
-Core and DB-facing contracts should use `season_id`; any plain `season` field should be edge serialization only.
+Split the generic metric query and metric storage paths into RAWR-owned and WOWY-owned contracts.
+Start by defining metric-specific cached-row and custom-query models, then split persistence into separate metric tables and repositories.
+Keep `season_id` in core and DB-facing contracts; any plain `season` field should be edge serialization only.

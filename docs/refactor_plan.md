@@ -20,11 +20,13 @@ Phase 2 is now complete.
 - Deleted `src/rawr_analytics/data/rawr.py` and `src/rawr_analytics/data/wowy.py` after their metric-specific shaping responsibilities moved into `metrics/`.
 - Cleaned up `src/rawr_analytics/data/player_metrics_db/store.py` to import the current public validation functions.
 - Kept DB-facing season fields on `season_id` and aligned WOWY custom-query core rows with that naming.
+- Rewrote the Phase 3 plan to prefer metric-specific query contracts and separate metric tables over a shared metric abstraction layer.
 
 ## Remaining
 
-1. Replace dict-heavy metric query payloads with typed core contracts before JSON and CSV serialization.
-   Keep metric-specific filters and variables metric-specific where needed; do not add a generic abstraction layer that pretends RAWR and WOWY query inputs are the same.
+1. Split the generic metric query and metric storage paths into RAWR-owned and WOWY-owned contracts.
+   Start with metric-specific cached-row and custom-query models, then split persistence into separate metric tables and repositories.
+   Keep `season_id` in core and DB-facing contracts; any plain `season` field should be edge serialization only.
 2. Split `src/rawr_analytics/data/metric_store.py` responsibility by concern instead of leaving refresh policy, computation, persistence, and snapshot shaping coupled together.
 3. Remove stale deep imports inside ingest and metric internals once the new public surfaces are stable enough to consume directly.
 4. Unify metric-store fingerprint logic so refresh-time and read-time freshness checks share one implementation.
