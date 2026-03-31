@@ -1,7 +1,8 @@
 from __future__ import annotations
 
 import sqlite3
-from typing import Callable, TypeVar
+from collections.abc import Callable
+from typing import TypeVar
 
 from rawr_analytics.data.game_cache._validation import (
     _validate_normalized_cache_loads_table as _validate_normalized_cache_loads_table_impl,

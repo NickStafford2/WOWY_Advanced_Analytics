@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import Callable
+from collections.abc import Callable
 
 from rawr_analytics.nba.source.cache import (
     DEFAULT_SOURCE_DATA_DIR,

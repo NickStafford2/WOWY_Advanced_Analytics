@@ -35,7 +35,10 @@ target-version = "py312"
 line-length = 100
 
 [tool.ruff.lint]
-select = ["E", "F", "I"]
+select = ["E", "F", "I", "B", "UP", "SIM", "C4", "ARG", "RUF"]
+ignore = [
+  "ARG001", # often noisy for callbacks / interfaces
+]
 
 [tool.pyright]
 include = ["src", "tests"]

@@ -1,7 +1,7 @@
 from __future__ import annotations
 
+from collections.abc import Callable
 from dataclasses import dataclass
-from typing import Callable
 
 from rawr_analytics.data.game_cache.repository import replace_team_season_normalized_rows
 from rawr_analytics.nba.errors import GameNormalizationFailure, PartialTeamSeasonError

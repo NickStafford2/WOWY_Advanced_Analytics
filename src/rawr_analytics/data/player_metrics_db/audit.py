@@ -3,8 +3,9 @@ from __future__ import annotations
 import json
 import sqlite3
 from collections import defaultdict
+from collections.abc import Callable
 from dataclasses import dataclass
-from typing import Callable, TypeVar
+from typing import TypeVar
 
 from rawr_analytics.data.player_metrics_db._validation import (
     _validate_metric_full_span_rows,

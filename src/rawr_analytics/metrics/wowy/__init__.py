@@ -22,6 +22,11 @@ from rawr_analytics.metrics.wowy.records import build_player_season_records
 
 __all__ = [
     "DEFAULT_WOWY_SHRINKAGE_PRIOR_GAMES",
+    "WowyGame",
+    "WowyPlayerContext",
+    "WowyPlayerSeasonRecord",
+    "WowyRequest",
+    "WowySeasonInput",
     "build_player_season_records",
     "compute_wowy_shrinkage_score",
     "default_filters",
@@ -29,9 +34,4 @@ __all__ = [
     "describe_wowy_metric",
     "describe_wowy_shrunk_metric",
     "validate_filters",
-    "WowyGame",
-    "WowyPlayerContext",
-    "WowyPlayerSeasonRecord",
-    "WowyRequest",
-    "WowySeasonInput",
 ]

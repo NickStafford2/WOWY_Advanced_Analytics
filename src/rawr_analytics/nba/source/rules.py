@@ -245,6 +245,7 @@ __all__ = [
     "SourcePlayerRowClassification",
     "SourceScheduleRowClassification",
     "SourceTeamRowClassification",
+    "_played_in_game",
     "classify_source_player_row",
     "classify_source_schedule_row",
     "classify_source_team_row",
@@ -252,6 +253,5 @@ __all__ = [
     "format_source_rows",
     "parse_box_score_numeric_value",
     "parse_minutes_to_float",
-    "_played_in_game",
     "source_player_played_in_game",
 ]

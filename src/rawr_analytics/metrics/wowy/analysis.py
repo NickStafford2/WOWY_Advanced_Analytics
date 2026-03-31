@@ -1,6 +1,7 @@
 from __future__ import annotations
 
-from typing import Callable, overload
+from collections.abc import Callable
+from typing import overload
 
 from rawr_analytics.metrics.wowy.models import WowyGame, WowyPlayerValue
 

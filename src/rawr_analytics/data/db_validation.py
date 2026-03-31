@@ -4,8 +4,8 @@ import hashlib
 import re
 import sqlite3
 from collections import Counter, defaultdict
+from collections.abc import Callable
 from dataclasses import dataclass
-from typing import Callable
 
 from rawr_analytics.data.constants import DB_PATH
 from rawr_analytics.data.game_cache.audit import (

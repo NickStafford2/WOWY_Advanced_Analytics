@@ -4,9 +4,9 @@ import argparse
 import json
 import sys
 from collections import Counter
+from collections.abc import Callable
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Callable
 
 from rawr_analytics.nba.source.cache import DEFAULT_SOURCE_DATA_DIR
 from rawr_analytics.nba.source.dedupe import dedupe_schedule_games

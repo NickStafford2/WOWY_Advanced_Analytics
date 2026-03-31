@@ -1,7 +1,7 @@
 from __future__ import annotations
 
+from collections.abc import Callable
 from statistics import mean
-from typing import Callable
 
 import numpy as np
 
@@ -346,7 +346,7 @@ def _build_player_penalties(
     shrinkage_minute_scale: float = 48.0,
 ) -> dict[tuple[Season, int], float]:
     if shrinkage_mode == "uniform":
-        return {player_key: ridge_alpha for player_key in player_keys}
+        return dict.fromkeys(player_keys, ridge_alpha)
 
     if shrinkage_mode == "game-count":
         games_by_player_season = _count_player_season_games(observations, season=season)

@@ -1,9 +1,9 @@
 from __future__ import annotations
 
 import hashlib
+from collections.abc import Callable
 from dataclasses import dataclass
 from datetime import UTC, datetime
-from typing import Callable
 
 from rawr_analytics.data.game_cache import list_cache_load_rows, list_cached_team_seasons
 from rawr_analytics.data.game_cache.rows import NormalizedCacheLoadRow

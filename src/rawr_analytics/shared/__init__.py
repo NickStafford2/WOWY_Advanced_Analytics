@@ -10,10 +10,10 @@ from rawr_analytics.shared.season import Season, SeasonType, build_season_list
 from rawr_analytics.shared.team import Team
 
 __all__ = [
-    "Team",
-    "SeasonType",
-    "Season",
     "LogFn",
     "ProgressFn",
+    "Season",
+    "SeasonType",
+    "Team",
     "build_season_list",
 ]

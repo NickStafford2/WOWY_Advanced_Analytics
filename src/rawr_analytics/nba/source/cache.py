@@ -3,8 +3,8 @@ from __future__ import annotations
 import json
 import os
 import time
+from collections.abc import Callable
 from pathlib import Path
-from typing import Callable
 
 from nba_api.live.nba.endpoints import boxscore as live_boxscore
 from nba_api.stats.endpoints import (
@@ -293,16 +293,16 @@ __all__ = [
     "BOX_SCORE_REQUEST_TIMEOUT_SECONDS",
     "DEFAULT_SOURCE_DATA_DIR",
     "LEAGUE_GAMES_REQUEST_TIMEOUT_SECONDS",
-    "box_score_payload_is_empty",
     "_box_score_cache_path",
     "_box_score_cache_paths",
     "_box_score_live_cache_path",
     "_box_score_v3_cache_path",
     "_discard_invalid_cached_payload",
-    "_league_games_payload_is_valid",
     "_league_games_cache_path",
+    "_league_games_payload_is_valid",
+    "_write_cached_payload",
+    "box_score_payload_is_empty",
     "load_cached_payload",
     "load_or_fetch_box_score_cache",
     "load_or_fetch_league_games",
-    "_write_cached_payload",
 ]

@@ -1,7 +1,7 @@
 from __future__ import annotations
 
+from collections.abc import Callable
 from dataclasses import dataclass
-from typing import Callable
 
 from rawr_analytics.nba.errors import FetchError, PartialTeamSeasonError
 from rawr_analytics.shared.common import LogFn

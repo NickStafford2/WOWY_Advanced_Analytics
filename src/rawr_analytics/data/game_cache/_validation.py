@@ -3,8 +3,9 @@ from __future__ import annotations
 import math
 import sqlite3
 from collections import defaultdict
+from collections.abc import Callable
 from datetime import date
-from typing import Callable, TypeVar
+from typing import TypeVar
 
 from rawr_analytics.data._validation import (
     _validate_iso_datetime,
