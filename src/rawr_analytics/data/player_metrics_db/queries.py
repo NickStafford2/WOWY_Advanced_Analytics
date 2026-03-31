@@ -5,6 +5,7 @@ from pathlib import Path
 from typing import Any
 
 from rawr_analytics.data.constants import DB_PATH
+from rawr_analytics.data.player_metrics_db._tables import metric_values_table
 from rawr_analytics.data.player_metrics_db.models import (
     MetricFullSpanSeriesRow,
     MetricScopeCatalogRow,
@@ -162,10 +163,11 @@ def _list_metric_seasons(
 ) -> list[str]:
     initialize_player_metrics_db()
     with connect(db_path) as connection:
+        table_name = metric_values_table(metric)
         rows = connection.execute(
-            """
+            f"""
             SELECT DISTINCT season_id
-            FROM metric_player_season_values
+            FROM {table_name}
             WHERE metric_id = ? AND scope_key = ?
             ORDER BY season_id
             """,
@@ -186,6 +188,35 @@ def load_metric_rows(
 ) -> list[PlayerSeasonMetricRow]:
     initialize_player_metrics_db()
 
+    if metric == "rawr":
+        return _load_rawr_metric_rows(
+            metric=metric,
+            scope_key=scope_key,
+            seasons=seasons,
+            min_average_minutes=min_average_minutes,
+            min_total_minutes=min_total_minutes,
+            min_sample_size=min_sample_size,
+        )
+    return _load_wowy_metric_rows(
+        metric=metric,
+        scope_key=scope_key,
+        seasons=seasons,
+        min_average_minutes=min_average_minutes,
+        min_total_minutes=min_total_minutes,
+        min_sample_size=min_sample_size,
+        min_secondary_sample_size=min_secondary_sample_size,
+    )
+
+
+def _load_rawr_metric_rows(
+    *,
+    metric: str,
+    scope_key: str,
+    seasons: list[str] | None,
+    min_average_minutes: float | None,
+    min_total_minutes: float | None,
+    min_sample_size: int | None,
+) -> list[PlayerSeasonMetricRow]:
     query = """
         SELECT
             metric_id,
@@ -195,17 +226,14 @@ def load_metric_rows(
             season_id,
             player_id,
             player_name,
-            value,
-            sample_size,
-            secondary_sample_size,
+            coefficient,
+            games,
             average_minutes,
-            total_minutes,
-            details_json
-        FROM metric_player_season_values
+            total_minutes
+        FROM rawr_player_season_values
         WHERE metric_id = ? AND scope_key = ?
     """
     params: list[Any] = [metric, scope_key]
-
     if seasons:
         query += f" AND season_id IN ({','.join('?' for _ in seasons)})"
         params.extend(seasons)
@@ -216,17 +244,80 @@ def load_metric_rows(
         query += " AND COALESCE(total_minutes, 0.0) >= ?"
         params.append(min_total_minutes)
     if min_sample_size is not None:
-        query += " AND COALESCE(sample_size, 0) >= ?"
+        query += " AND games >= ?"
         params.append(min_sample_size)
-    if min_secondary_sample_size is not None:
-        query += " AND COALESCE(secondary_sample_size, 0) >= ?"
-        params.append(min_secondary_sample_size)
-
-    query += " ORDER BY season_id, value DESC, player_name ASC"
-
+    query += " ORDER BY season_id, coefficient DESC, player_name ASC"
     with connect(DB_PATH) as connection:
         rows = connection.execute(query, params).fetchall()
+    return [
+        PlayerSeasonMetricRow(
+            metric_id=row["metric_id"],
+            scope_key=row["scope_key"],
+            team_filter=row["team_filter"],
+            season_type=row["season_type"],
+            season_id=row["season_id"],
+            player_id=row["player_id"],
+            player_name=row["player_name"],
+            value=row["coefficient"],
+            sample_size=row["games"],
+            secondary_sample_size=None,
+            average_minutes=row["average_minutes"],
+            total_minutes=row["total_minutes"],
+            details={"games": row["games"]},
+        )
+        for row in rows
+    ]
 
+
+def _load_wowy_metric_rows(
+    *,
+    metric: str,
+    scope_key: str,
+    seasons: list[str] | None,
+    min_average_minutes: float | None,
+    min_total_minutes: float | None,
+    min_sample_size: int | None,
+    min_secondary_sample_size: int | None,
+) -> list[PlayerSeasonMetricRow]:
+    query = """
+        SELECT
+            metric_id,
+            scope_key,
+            team_filter,
+            season_type,
+            season_id,
+            player_id,
+            player_name,
+            value,
+            games_with,
+            games_without,
+            avg_margin_with,
+            avg_margin_without,
+            average_minutes,
+            total_minutes,
+            raw_wowy_score
+        FROM wowy_player_season_values
+        WHERE metric_id = ? AND scope_key = ?
+    """
+    params: list[Any] = [metric, scope_key]
+    if seasons:
+        query += f" AND season_id IN ({','.join('?' for _ in seasons)})"
+        params.extend(seasons)
+    if min_average_minutes is not None:
+        query += " AND COALESCE(average_minutes, 0.0) >= ?"
+        params.append(min_average_minutes)
+    if min_total_minutes is not None:
+        query += " AND COALESCE(total_minutes, 0.0) >= ?"
+        params.append(min_total_minutes)
+    if min_sample_size is not None:
+        query += " AND games_with >= ?"
+        params.append(min_sample_size)
+    if min_secondary_sample_size is not None:
+        query += " AND games_without >= ?"
+        params.append(min_secondary_sample_size)
+    query += " ORDER BY season_id, value DESC, player_name ASC"
+    with connect(DB_PATH) as connection:
+        rows = connection.execute(query, params).fetchall()
     return [
         PlayerSeasonMetricRow(
             metric_id=row["metric_id"],
@@ -237,11 +328,21 @@ def load_metric_rows(
             player_id=row["player_id"],
             player_name=row["player_name"],
             value=row["value"],
-            sample_size=row["sample_size"],
-            secondary_sample_size=row["secondary_sample_size"],
+            sample_size=row["games_with"],
+            secondary_sample_size=row["games_without"],
             average_minutes=row["average_minutes"],
             total_minutes=row["total_minutes"],
-            details=json.loads(row["details_json"]),
+            details={
+                "games_with": row["games_with"],
+                "games_without": row["games_without"],
+                "avg_margin_with": row["avg_margin_with"],
+                "avg_margin_without": row["avg_margin_without"],
+                **(
+                    {"raw_wowy_score": row["raw_wowy_score"]}
+                    if row["raw_wowy_score"] is not None
+                    else {}
+                ),
+            },
         )
         for row in rows
     ]

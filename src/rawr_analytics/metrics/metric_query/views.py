@@ -4,10 +4,12 @@ from typing import Any
 
 from rawr_analytics.data.metric_store_scope import build_scope_key, build_team_filter, season_ids
 from rawr_analytics.data.metric_store_views import (
+    CachedMetricRow,
     load_cached_metric_leaderboard_snapshot,
     load_cached_metric_player_seasons_snapshot,
     load_cached_metric_span_snapshot,
 )
+from rawr_analytics.data.player_metrics_db.rawr import RawrPlayerSeasonValueRow
 from rawr_analytics.metrics.constants import Metric
 from rawr_analytics.metrics.rawr import (
     build_rawr_custom_query,
@@ -15,7 +17,9 @@ from rawr_analytics.metrics.rawr import (
 from rawr_analytics.metrics.rawr import (
     default_filters as _rawr_default_filters,
 )
+from rawr_analytics.metrics.rawr.models import RawrCustomQueryResult, RawrCustomQueryRow
 from rawr_analytics.metrics.wowy import build_wowy_custom_query
+from rawr_analytics.metrics.wowy.models import WowyCustomQueryResult, WowyCustomQueryRow
 
 from .models import MetricQuery
 from .scope import build_filters_payload
@@ -78,7 +82,7 @@ def _build_metric_player_seasons_payload(
     return {
         "metric": snapshot.metric,
         "metric_label": snapshot.metric_label,
-        "rows": snapshot.rows,
+        "rows": [_serialize_cached_row(row) for row in snapshot.rows],
     }
 
 
@@ -100,7 +104,7 @@ def _build_cached_metric_leaderboard_payload(
     payload = _build_leaderboard_payload_from_rows(
         metric=snapshot.metric,
         metric_label=snapshot.metric_label,
-        rows=snapshot.rows,
+        rows=[_serialize_cached_row(row) for row in snapshot.rows],
         seasons=snapshot.season_ids,
         top_n=query.top_n,
         mode="cached",
@@ -126,7 +130,7 @@ def _build_cached_metric_export_table_rows(
         min_secondary_sample_size=_metric_secondary_sample_size(query),
     )
     table_rows = _build_ranked_table_rows(
-        snapshot.rows,
+        [_serialize_cached_row(row) for row in snapshot.rows],
         seasons=snapshot.season_ids,
         top_n=None,
     )
@@ -139,11 +143,11 @@ def _build_custom_metric_leaderboard_payload(
     query: MetricQuery,
 ) -> dict[str, Any]:
     custom_query = _build_custom_metric_query(metric, query=query)
-    rows = custom_query["rows"]
+    rows = _serialize_custom_query_rows(custom_query)
     seasons_in_scope = sorted({row["season_id"] for row in rows})
     return _build_leaderboard_payload_from_custom_rows(
-        metric=custom_query["metric"],
-        metric_label=custom_query["metric_label"],
+        metric=custom_query.metric,
+        metric_label=custom_query.metric_label,
         rows=rows,
         seasons=seasons_in_scope,
         top_n=query.top_n,
@@ -157,10 +161,10 @@ def _build_custom_metric_export_table_rows(
     query: MetricQuery,
 ) -> tuple[str, list[dict[str, Any]]]:
     custom_query = _build_custom_metric_query(metric, query=query)
-    rows = custom_query["rows"]
+    rows = _serialize_custom_query_rows(custom_query)
     seasons_in_scope = sorted({row["season_id"] for row in rows})
     return (
-        custom_query["metric_label"],
+        custom_query.metric_label,
         _build_ranked_table_rows(rows, seasons=seasons_in_scope, top_n=None),
     )
 
@@ -169,7 +173,7 @@ def _build_custom_metric_query(
     metric: Metric,
     *,
     query: MetricQuery,
-) -> dict[str, Any]:
+) -> RawrCustomQueryResult | WowyCustomQueryResult:
     if metric in {Metric.WOWY, Metric.WOWY_SHRUNK}:
         return build_wowy_custom_query(
             metric,
@@ -192,6 +196,76 @@ def _build_custom_metric_query(
             min_total_minutes=query.min_total_minutes,
         )
     raise ValueError(f"Unknown metric: {metric}")
+
+
+def _serialize_cached_row(row: CachedMetricRow) -> dict[str, Any]:
+    if isinstance(row, RawrPlayerSeasonValueRow):
+        return {
+            "season_id": row.season_id,
+            "player_id": row.player_id,
+            "player_name": row.player_name,
+            "value": row.coefficient,
+            "sample_size": row.games,
+            "secondary_sample_size": None,
+            "games": row.games,
+            "average_minutes": row.average_minutes,
+            "total_minutes": row.total_minutes,
+        }
+    return {
+        "season_id": row.season_id,
+        "player_id": row.player_id,
+        "player_name": row.player_name,
+        "value": row.value,
+        "sample_size": row.games_with,
+        "secondary_sample_size": row.games_without,
+        "games_with": row.games_with,
+        "games_without": row.games_without,
+        "avg_margin_with": row.avg_margin_with,
+        "avg_margin_without": row.avg_margin_without,
+        "average_minutes": row.average_minutes,
+        "total_minutes": row.total_minutes,
+        "raw_wowy_score": row.raw_wowy_score,
+    }
+
+
+def _serialize_custom_query_rows(
+    result: RawrCustomQueryResult | WowyCustomQueryResult,
+) -> list[dict[str, Any]]:
+    if isinstance(result, RawrCustomQueryResult):
+        return [_serialize_rawr_custom_query_row(row) for row in result.rows]
+    return [_serialize_wowy_custom_query_row(row) for row in result.rows]
+
+
+def _serialize_rawr_custom_query_row(row: RawrCustomQueryRow) -> dict[str, Any]:
+    return {
+        "season_id": row.season_id,
+        "player_id": row.player_id,
+        "player_name": row.player_name,
+        "value": row.coefficient,
+        "sample_size": row.games,
+        "secondary_sample_size": None,
+        "games": row.games,
+        "average_minutes": row.average_minutes,
+        "total_minutes": row.total_minutes,
+    }
+
+
+def _serialize_wowy_custom_query_row(row: WowyCustomQueryRow) -> dict[str, Any]:
+    return {
+        "season_id": row.season_id,
+        "player_id": row.player_id,
+        "player_name": row.player_name,
+        "value": row.value,
+        "sample_size": row.games_with,
+        "secondary_sample_size": row.games_without,
+        "games_with": row.games_with,
+        "games_without": row.games_without,
+        "avg_margin_with": row.avg_margin_with,
+        "avg_margin_without": row.avg_margin_without,
+        "average_minutes": row.average_minutes,
+        "total_minutes": row.total_minutes,
+        "raw_wowy_score": row.raw_wowy_score,
+    }
 
 
 def _build_metric_span_chart_payload(

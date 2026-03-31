@@ -68,6 +68,24 @@ class RawrPlayerSeasonRecord:
 
 
 @dataclass(frozen=True)
+class RawrCustomQueryRow:
+    season_id: str
+    player_id: int
+    player_name: str
+    coefficient: float
+    games: int
+    average_minutes: float | None
+    total_minutes: float | None
+
+
+@dataclass(frozen=True)
+class RawrCustomQueryResult:
+    metric: str
+    metric_label: str
+    rows: list[RawrCustomQueryRow]
+
+
+@dataclass(frozen=True)
 class RawrResult:
     observations: int
     players: int

@@ -2,7 +2,6 @@ from __future__ import annotations
 
 from collections import defaultdict
 from dataclasses import dataclass
-from typing import Any
 
 from rawr_analytics.data.game_cache.repository import (
     list_cache_load_rows,
@@ -21,6 +20,8 @@ from rawr_analytics.metrics.rawr.defaults import (
     describe_metric,
 )
 from rawr_analytics.metrics.rawr.models import (
+    RawrCustomQueryResult,
+    RawrCustomQueryRow,
     RawrPlayerContext,
     RawrPlayerSeasonRecord,
     RawrRequest,
@@ -86,7 +87,7 @@ def build_rawr_custom_query(
     ridge_alpha: float,
     min_average_minutes: float | None,
     min_total_minutes: float | None,
-) -> dict[str, Any]:
+) -> RawrCustomQueryResult:
     records = prepare_rawr_player_season_records(
         teams=teams,
         seasons=seasons,
@@ -99,24 +100,22 @@ def build_rawr_custom_query(
         min_average_minutes=min_average_minutes,
         min_total_minutes=min_total_minutes,
     )
-    return {
-        "metric": Metric.RAWR.value,
-        "metric_label": describe_metric().label,
-        "rows": [
-            {
-                "season_id": record.season.id,
-                "player_id": record.player_id,
-                "player_name": record.player_name,
-                "value": record.coefficient,
-                "sample_size": record.games,
-                "secondary_sample_size": None,
-                "games": record.games,
-                "average_minutes": record.average_minutes,
-                "total_minutes": record.total_minutes,
-            }
+    return RawrCustomQueryResult(
+        metric=Metric.RAWR.value,
+        metric_label=describe_metric().label,
+        rows=[
+            RawrCustomQueryRow(
+                season_id=record.season.id,
+                player_id=record.player_id,
+                player_name=record.player_name,
+                coefficient=record.coefficient,
+                games=record.games,
+                average_minutes=record.average_minutes,
+                total_minutes=record.total_minutes,
+            )
             for record in records
         ],
-    }
+    )
 
 
 def list_incomplete_rawr_season_warnings(

@@ -13,12 +13,15 @@ from rawr_analytics.metrics.rawr.defaults import (
     describe_metric,
 )
 from rawr_analytics.metrics.rawr.inputs import validate_filters, validate_request
+from rawr_analytics.metrics.rawr.models import RawrCustomQueryResult, RawrCustomQueryRow
 from rawr_analytics.metrics.rawr.records import build_player_season_records
 
 __all__ = [
     "DEFAULT_RAWR_SHRINKAGE_MINUTE_SCALE",
     "DEFAULT_RAWR_SHRINKAGE_MODE",
     "DEFAULT_RAWR_SHRINKAGE_STRENGTH",
+    "RawrCustomQueryResult",
+    "RawrCustomQueryRow",
     "build_player_season_records",
     "build_rawr_custom_query",
     "default_filters",

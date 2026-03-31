@@ -379,7 +379,9 @@ Keep this file concise. Delete stale notes instead of appending history.
 - Phase 2 is complete. Metric-specific dataset shaping now lives under `metrics/rawr/` and `metrics/wowy/`.
 - Phase 3 has been redesigned toward metric-specific query contracts and metric-specific storage, not a shared abstraction layer over all metrics.
 - Separate metric tables are now the preferred storage direction because they keep row meaning explicit and reduce generic glue code.
-- Metric response contracts are still inconsistent and still rely on dict payloads internally.
+- RAWR and WOWY now have separate cached season-value tables and separate repository row models.
+- RAWR and WOWY custom-query entrypoints now return metric-specific typed result models instead of generic dict payloads.
+- Metric response payload assembly is still partially generic inside `metrics/metric_query/views.py` and still serializes through dict-shaped intermediate rows.
 - The metric-store internals are still too coupled inside `data/metric_store.py`, `data/metric_store_query.py`, and `data/metric_store_views.py`.
 
 ## Completed
@@ -390,11 +392,13 @@ Keep this file concise. Delete stale notes instead of appending history.
 - Moved RAWR and WOWY metric-specific dataset shaping and custom-query assembly out of `data/` and into public metric-owned modules under `metrics/`.
 - Deleted the old `data/rawr.py` and `data/wowy.py` modules after rewiring their callers.
 - Rewrote the Phase 3 plan to prefer metric-specific query contracts and separate metric tables instead of a shared metric abstraction layer.
+- Added separate `rawr_player_season_values` and `wowy_player_season_values` tables and rewired cached-row loading and storage to use metric-specific repositories.
+- Added metric-specific typed custom-query result models for RAWR and WOWY and rewired metric query views to dispatch through them.
 
 ## Next Step
 
 Implement Phase 3.
 
 Split the generic metric query and metric storage paths into RAWR-owned and WOWY-owned contracts.
-Start by defining metric-specific cached-row and custom-query models, then split persistence into separate metric tables and repositories.
+Continue by removing the remaining generic payload shaping in `metrics/metric_query/views.py` and splitting refresh orchestration out of `data/metric_store.py`.
 Keep `season_id` in core and DB-facing contracts; any plain `season` field should be edge serialization only.

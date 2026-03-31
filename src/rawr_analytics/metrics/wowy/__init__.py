@@ -16,6 +16,8 @@ from rawr_analytics.metrics.wowy.defaults import (
 )
 from rawr_analytics.metrics.wowy.inputs import validate_filters
 from rawr_analytics.metrics.wowy.models import (
+    WowyCustomQueryResult,
+    WowyCustomQueryRow,
     WowyGame,
     WowyPlayerContext,
     WowyPlayerSeasonRecord,
@@ -26,6 +28,8 @@ from rawr_analytics.metrics.wowy.records import build_player_season_records
 
 __all__ = [
     "DEFAULT_WOWY_SHRINKAGE_PRIOR_GAMES",
+    "WowyCustomQueryResult",
+    "WowyCustomQueryRow",
     "WowyGame",
     "WowyPlayerContext",
     "WowyPlayerSeasonRecord",

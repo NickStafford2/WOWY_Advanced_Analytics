@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 from collections import defaultdict
-from typing import Any
 
 from rawr_analytics.data.game_cache.repository import load_normalized_scope_records_from_db
 from rawr_analytics.data.scope_resolver import resolve_team_seasons
@@ -12,6 +11,8 @@ from rawr_analytics.metrics.wowy.analysis import (
 )
 from rawr_analytics.metrics.wowy.defaults import describe_metric
 from rawr_analytics.metrics.wowy.models import (
+    WowyCustomQueryResult,
+    WowyCustomQueryRow,
     WowyGame,
     WowyPlayerContext,
     WowyPlayerSeasonRecord,
@@ -59,7 +60,7 @@ def build_wowy_custom_query(
     min_games_without: int,
     min_average_minutes: float | None,
     min_total_minutes: float | None,
-) -> dict[str, Any]:
+) -> WowyCustomQueryResult:
     records = prepare_wowy_player_season_records(
         teams=teams,
         seasons=seasons,
@@ -69,11 +70,11 @@ def build_wowy_custom_query(
         min_average_minutes=min_average_minutes,
         min_total_minutes=min_total_minutes,
     )
-    return {
-        "metric": metric.value,
-        "metric_label": describe_metric(metric).label,
-        "rows": [_build_wowy_query_row(metric, record) for record in records],
-    }
+    return WowyCustomQueryResult(
+        metric=metric.value,
+        metric_label=describe_metric(metric).label,
+        rows=[_build_wowy_query_row(metric, record) for record in records],
+    )
 
 
 def _load_wowy_season_inputs(
@@ -117,32 +118,39 @@ def _load_wowy_season_inputs(
 def _build_wowy_query_row(
     metric: Metric,
     record: WowyPlayerSeasonRecord,
-) -> dict[str, Any]:
-    row: dict[str, Any] = {
-        "season_id": record.season.id,
-        "player_id": record.player_id,
-        "player_name": record.player_name,
-        "sample_size": record.games_with,
-        "secondary_sample_size": record.games_without,
-        "games_with": record.games_with,
-        "games_without": record.games_without,
-        "avg_margin_with": record.avg_margin_with,
-        "avg_margin_without": record.avg_margin_without,
-        "average_minutes": record.average_minutes,
-        "total_minutes": record.total_minutes,
-    }
+) -> WowyCustomQueryRow:
     if metric == Metric.WOWY:
-        row["value"] = record.wowy_score
-        return row
-    if metric == Metric.WOWY_SHRUNK:
-        row["value"] = compute_wowy_shrinkage_score(
+        return WowyCustomQueryRow(
+            season_id=record.season.id,
+            player_id=record.player_id,
+            player_name=record.player_name,
+            value=record.wowy_score,
             games_with=record.games_with,
             games_without=record.games_without,
-            wowy_score=record.wowy_score,
-            prior_games=DEFAULT_WOWY_SHRINKAGE_PRIOR_GAMES,
+            avg_margin_with=record.avg_margin_with,
+            avg_margin_without=record.avg_margin_without,
+            average_minutes=record.average_minutes,
+            total_minutes=record.total_minutes,
         )
-        row["raw_wowy_score"] = record.wowy_score
-        return row
+    if metric == Metric.WOWY_SHRUNK:
+        return WowyCustomQueryRow(
+            season_id=record.season.id,
+            player_id=record.player_id,
+            player_name=record.player_name,
+            value=compute_wowy_shrinkage_score(
+                games_with=record.games_with,
+                games_without=record.games_without,
+                wowy_score=record.wowy_score,
+                prior_games=DEFAULT_WOWY_SHRINKAGE_PRIOR_GAMES,
+            ),
+            games_with=record.games_with,
+            games_without=record.games_without,
+            avg_margin_with=record.avg_margin_with,
+            avg_margin_without=record.avg_margin_without,
+            average_minutes=record.average_minutes,
+            total_minutes=record.total_minutes,
+            raw_wowy_score=record.wowy_score,
+        )
     raise ValueError(f"Unknown WOWY metric: {metric}")
 
 

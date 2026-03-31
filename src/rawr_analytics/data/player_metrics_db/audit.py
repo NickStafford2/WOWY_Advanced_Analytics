@@ -90,46 +90,9 @@ def _audit_metric_player_season_values_table(
         for row in metadata_rows
     }
 
-    rows = connection.execute(
-        """
-        SELECT
-            metric_id,
-            scope_key,
-            team_filter,
-            season_type,
-            season_id,
-            player_id,
-            player_name,
-            value,
-            sample_size,
-            secondary_sample_size,
-            average_minutes,
-            total_minutes,
-            details_json
-        FROM metric_player_season_values
-        ORDER BY metric_id, scope_key, season_id, player_id
-        """
-    ).fetchall()
-
     groups: dict[tuple[str, str], list[PlayerSeasonMetricRow]] = defaultdict(list)
-    for row in rows:
-        groups[(row["metric_id"], row["scope_key"])].append(
-            PlayerSeasonMetricRow(
-                metric_id=row["metric_id"],
-                scope_key=row["scope_key"],
-                team_filter=row["team_filter"],
-                season_type=row["season_type"],
-                season_id=row["season_id"],
-                player_id=row["player_id"],
-                player_name=row["player_name"],
-                value=row["value"],
-                sample_size=row["sample_size"],
-                secondary_sample_size=row["secondary_sample_size"],
-                average_minutes=row["average_minutes"],
-                total_minutes=row["total_minutes"],
-                details=json.loads(row["details_json"]),
-            )
-        )
+    _load_rawr_metric_rows(connection, groups)
+    _load_wowy_metric_rows(connection, groups)
 
     for key, group_rows in groups.items():
         metric, scope_key = key
@@ -154,13 +117,115 @@ def _audit_metric_player_season_values_table(
         except ValueError as exc:
             issues.append(
                 ValidationIssue(
-                    "metric_player_season_values",
+                    _metric_rows_table_name(metric),
                     f"metric={metric!r},scope_key={scope_key!r}",
                     str(exc),
                 )
             )
 
     return groups, metadata_by_key
+
+
+def _load_rawr_metric_rows(
+    connection: sqlite3.Connection,
+    groups: dict[tuple[str, str], list[PlayerSeasonMetricRow]],
+) -> None:
+    rows = connection.execute(
+        """
+        SELECT
+            metric_id,
+            scope_key,
+            team_filter,
+            season_type,
+            season_id,
+            player_id,
+            player_name,
+            coefficient,
+            games,
+            average_minutes,
+            total_minutes
+        FROM rawr_player_season_values
+        ORDER BY metric_id, scope_key, season_id, player_id
+        """
+    ).fetchall()
+    for row in rows:
+        groups[(row["metric_id"], row["scope_key"])].append(
+            PlayerSeasonMetricRow(
+                metric_id=row["metric_id"],
+                scope_key=row["scope_key"],
+                team_filter=row["team_filter"],
+                season_type=row["season_type"],
+                season_id=row["season_id"],
+                player_id=row["player_id"],
+                player_name=row["player_name"],
+                value=row["coefficient"],
+                sample_size=row["games"],
+                secondary_sample_size=None,
+                average_minutes=row["average_minutes"],
+                total_minutes=row["total_minutes"],
+                details={"games": row["games"]},
+            )
+        )
+
+
+def _load_wowy_metric_rows(
+    connection: sqlite3.Connection,
+    groups: dict[tuple[str, str], list[PlayerSeasonMetricRow]],
+) -> None:
+    rows = connection.execute(
+        """
+        SELECT
+            metric_id,
+            scope_key,
+            team_filter,
+            season_type,
+            season_id,
+            player_id,
+            player_name,
+            value,
+            games_with,
+            games_without,
+            avg_margin_with,
+            avg_margin_without,
+            average_minutes,
+            total_minutes,
+            raw_wowy_score
+        FROM wowy_player_season_values
+        ORDER BY metric_id, scope_key, season_id, player_id
+        """
+    ).fetchall()
+    for row in rows:
+        details = {
+            "games_with": row["games_with"],
+            "games_without": row["games_without"],
+            "avg_margin_with": row["avg_margin_with"],
+            "avg_margin_without": row["avg_margin_without"],
+        }
+        if row["raw_wowy_score"] is not None:
+            details["raw_wowy_score"] = row["raw_wowy_score"]
+        groups[(row["metric_id"], row["scope_key"])].append(
+            PlayerSeasonMetricRow(
+                metric_id=row["metric_id"],
+                scope_key=row["scope_key"],
+                team_filter=row["team_filter"],
+                season_type=row["season_type"],
+                season_id=row["season_id"],
+                player_id=row["player_id"],
+                player_name=row["player_name"],
+                value=row["value"],
+                sample_size=row["games_with"],
+                secondary_sample_size=row["games_without"],
+                average_minutes=row["average_minutes"],
+                total_minutes=row["total_minutes"],
+                details=details,
+            )
+        )
+
+
+def _metric_rows_table_name(metric: str) -> str:
+    if metric == "rawr":
+        return "rawr_player_season_values"
+    return "wowy_player_season_values"
 
 
 def _audit_metric_scope_catalog_table(

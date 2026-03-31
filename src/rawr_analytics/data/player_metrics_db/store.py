@@ -5,6 +5,7 @@ from datetime import UTC, datetime
 from pathlib import Path
 
 from rawr_analytics.data.constants import DB_PATH
+from rawr_analytics.data.player_metrics_db._tables import metric_values_table
 from rawr_analytics.data.player_metrics_db._validation import (
     validate_metric_full_span_rows,
     validate_metric_rows,
@@ -43,46 +44,10 @@ def _replace_metric_rows(
     with connect(db_path) as connection:
         connection.execute("BEGIN")
         connection.execute(
-            "DELETE FROM metric_player_season_values WHERE metric_id = ? AND scope_key = ?",
+            f"DELETE FROM {metric_values_table(metric_id)} WHERE metric_id = ? AND scope_key = ?",
             (metric_id, scope_key),
         )
-        connection.executemany(
-            """
-            INSERT INTO metric_player_season_values (
-                metric_id,
-                scope_key,
-                team_filter,
-                season_type,
-                season_id,
-                player_id,
-                player_name,
-                value,
-                sample_size,
-                secondary_sample_size,
-                average_minutes,
-                total_minutes,
-                details_json
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-            """,
-            [
-                (
-                    row.metric_id,
-                    row.scope_key,
-                    row.team_filter,
-                    row.season_type,
-                    row.season_id,
-                    row.player_id,
-                    row.player_name,
-                    row.value,
-                    row.sample_size,
-                    row.secondary_sample_size,
-                    row.average_minutes,
-                    row.total_minutes,
-                    json.dumps(row.details or {}, sort_keys=True),
-                )
-                for row in rows
-            ],
-        )
+        _insert_metric_rows(connection, rows)
         connection.execute(
             """
             INSERT INTO metric_store_metadata_v2 (
@@ -163,46 +128,10 @@ def replace_metric_scope_store(
             (metric_id, scope_key),
         )
         connection.execute(
-            "DELETE FROM metric_player_season_values WHERE metric_id = ? AND scope_key = ?",
+            f"DELETE FROM {metric_values_table(metric_id)} WHERE metric_id = ? AND scope_key = ?",
             (metric_id, scope_key),
         )
-        connection.executemany(
-            """
-            INSERT INTO metric_player_season_values (
-                metric_id,
-                scope_key,
-                team_filter,
-                season_type,
-                season_id,
-                player_id,
-                player_name,
-                value,
-                sample_size,
-                secondary_sample_size,
-                average_minutes,
-                total_minutes,
-                details_json
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-            """,
-            [
-                (
-                    row.metric_id,
-                    row.scope_key,
-                    row.team_filter,
-                    row.season_type,
-                    row.season_id,
-                    row.player_id,
-                    row.player_name,
-                    row.value,
-                    row.sample_size,
-                    row.secondary_sample_size,
-                    row.average_minutes,
-                    row.total_minutes,
-                    json.dumps(row.details or {}, sort_keys=True),
-                )
-                for row in rows
-            ],
-        )
+        _insert_metric_rows(connection, rows)
         connection.execute(
             """
             INSERT INTO metric_store_metadata_v2 (
@@ -326,10 +255,115 @@ def clear_metric_scope_store(
             (metric, scope_key),
         )
         connection.execute(
-            "DELETE FROM metric_player_season_values WHERE metric_id = ? AND scope_key = ?",
+            f"DELETE FROM {metric_values_table(metric)} WHERE metric_id = ? AND scope_key = ?",
             (metric, scope_key),
         )
         connection.commit()
+
+
+def _insert_metric_rows(
+    connection,
+    rows: list[PlayerSeasonMetricRow],
+) -> None:
+    if not rows:
+        return
+    metric_id = rows[0].metric_id
+    if metric_id == "rawr":
+        connection.executemany(
+            """
+            INSERT INTO rawr_player_season_values (
+                metric_id,
+                scope_key,
+                team_filter,
+                season_type,
+                season_id,
+                player_id,
+                player_name,
+                coefficient,
+                games,
+                average_minutes,
+                total_minutes
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            """,
+            [
+                (
+                    row.metric_id,
+                    row.scope_key,
+                    row.team_filter,
+                    row.season_type,
+                    row.season_id,
+                    row.player_id,
+                    row.player_name,
+                    row.value,
+                    _int_detail(row, "games"),
+                    row.average_minutes,
+                    row.total_minutes,
+                )
+                for row in rows
+            ],
+        )
+        return
+    if metric_id in {"wowy", "wowy-shrunk"}:
+        connection.executemany(
+            """
+            INSERT INTO wowy_player_season_values (
+                metric_id,
+                scope_key,
+                team_filter,
+                season_type,
+                season_id,
+                player_id,
+                player_name,
+                value,
+                games_with,
+                games_without,
+                avg_margin_with,
+                avg_margin_without,
+                average_minutes,
+                total_minutes,
+                raw_wowy_score
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            """,
+            [
+                (
+                    row.metric_id,
+                    row.scope_key,
+                    row.team_filter,
+                    row.season_type,
+                    row.season_id,
+                    row.player_id,
+                    row.player_name,
+                    row.value,
+                    _int_detail(row, "games_with"),
+                    _int_detail(row, "games_without"),
+                    _float_detail(row, "avg_margin_with"),
+                    _float_detail(row, "avg_margin_without"),
+                    row.average_minutes,
+                    row.total_minutes,
+                    _require_details(row).get("raw_wowy_score"),
+                )
+                for row in rows
+            ],
+        )
+        return
+    raise ValueError(f"Unknown metric row batch {metric_id!r}")
+
+
+def _require_details(row: PlayerSeasonMetricRow) -> dict[str, object]:
+    assert row.details is not None
+    return row.details
+
+
+def _int_detail(row: PlayerSeasonMetricRow, key: str) -> int:
+    value = _require_details(row)[key]
+    assert isinstance(value, int)
+    return value
+
+
+def _float_detail(row: PlayerSeasonMetricRow, key: str) -> float:
+    value = _require_details(row)[key]
+    assert isinstance(value, (int, float))
+    return float(value)
 
 
 def _replace_metric_scope_catalog_row(

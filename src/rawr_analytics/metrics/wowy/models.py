@@ -59,3 +59,25 @@ class WowyPlayerSeasonRecord:
     wowy_score: float
     average_minutes: float | None
     total_minutes: float | None
+
+
+@dataclass(frozen=True)
+class WowyCustomQueryRow:
+    season_id: str
+    player_id: int
+    player_name: str
+    value: float
+    games_with: int
+    games_without: int
+    avg_margin_with: float
+    avg_margin_without: float
+    average_minutes: float | None
+    total_minutes: float | None
+    raw_wowy_score: float | None = None
+
+
+@dataclass(frozen=True)
+class WowyCustomQueryResult:
+    metric: str
+    metric_label: str
+    rows: list[WowyCustomQueryRow]

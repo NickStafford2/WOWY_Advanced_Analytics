@@ -11,7 +11,28 @@ def initialize_player_metrics_db() -> None:
     with connect(DB_PATH) as connection:
         connection.executescript(
             """
-            CREATE TABLE IF NOT EXISTS metric_player_season_values (
+            CREATE TABLE IF NOT EXISTS rawr_player_season_values (
+                metric_id TEXT NOT NULL,
+                scope_key TEXT NOT NULL,
+                team_filter TEXT NOT NULL DEFAULT '',
+                season_type TEXT NOT NULL DEFAULT 'Regular Season',
+                season_id TEXT NOT NULL,
+                player_id INTEGER NOT NULL,
+                player_name TEXT NOT NULL,
+                coefficient REAL NOT NULL,
+                games INTEGER NOT NULL,
+                average_minutes REAL,
+                total_minutes REAL,
+                PRIMARY KEY (metric_id, scope_key, season_id, player_id)
+            );
+
+            CREATE INDEX IF NOT EXISTS idx_rawr_player_season_values_metric_scope_season
+            ON rawr_player_season_values (metric_id, scope_key, season_id);
+
+            CREATE INDEX IF NOT EXISTS idx_rawr_player_season_values_metric_scope_player
+            ON rawr_player_season_values (metric_id, scope_key, player_id, season_id);
+
+            CREATE TABLE IF NOT EXISTS wowy_player_season_values (
                 metric_id TEXT NOT NULL,
                 scope_key TEXT NOT NULL,
                 team_filter TEXT NOT NULL DEFAULT '',
@@ -20,19 +41,21 @@ def initialize_player_metrics_db() -> None:
                 player_id INTEGER NOT NULL,
                 player_name TEXT NOT NULL,
                 value REAL NOT NULL,
-                sample_size INTEGER,
-                secondary_sample_size INTEGER,
+                games_with INTEGER NOT NULL,
+                games_without INTEGER NOT NULL,
+                avg_margin_with REAL NOT NULL,
+                avg_margin_without REAL NOT NULL,
                 average_minutes REAL,
                 total_minutes REAL,
-                details_json TEXT NOT NULL DEFAULT '{}',
+                raw_wowy_score REAL,
                 PRIMARY KEY (metric_id, scope_key, season_id, player_id)
             );
 
-            CREATE INDEX IF NOT EXISTS idx_metric_player_season_values_metric_scope_season
-            ON metric_player_season_values (metric_id, scope_key, season_id);
+            CREATE INDEX IF NOT EXISTS idx_wowy_player_season_values_metric_scope_season
+            ON wowy_player_season_values (metric_id, scope_key, season_id);
 
-            CREATE INDEX IF NOT EXISTS idx_metric_player_season_values_metric_scope_player
-            ON metric_player_season_values (metric_id, scope_key, player_id, season_id);
+            CREATE INDEX IF NOT EXISTS idx_wowy_player_season_values_metric_scope_player
+            ON wowy_player_season_values (metric_id, scope_key, player_id, season_id);
 
             CREATE TABLE IF NOT EXISTS metric_store_metadata_v2 (
                 metric_id TEXT NOT NULL,
@@ -102,7 +125,15 @@ def _migrate_legacy_metric_names(connection: sqlite3.Connection) -> None:
         connection.execute("BEGIN")
         connection.execute(
             """
-            UPDATE OR REPLACE metric_player_season_values
+            UPDATE OR REPLACE rawr_player_season_values
+            SET metric_id = ?
+            WHERE metric_id = ?
+            """,
+            (new_metric, old_metric),
+        )
+        connection.execute(
+            """
+            UPDATE OR REPLACE wowy_player_season_values
             SET metric_id = ?
             WHERE metric_id = ?
             """,
