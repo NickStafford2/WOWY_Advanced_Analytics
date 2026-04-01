@@ -212,7 +212,7 @@ def validate_normalized_cache_relations(
             game = _build_normalized_game_record(row)
         except (AssertionError, ValueError):
             continue
-        scope = (game.team.team_id, game.season.id, game.season.season_type.value)
+        scope = (game.team.team_id, game.season.id, game.season.season_type.to_nba_format())
         games_by_scope[scope].append(game)
         game_key_scope_map[(game.game_id, game.team.team_id)] = scope
 
@@ -221,7 +221,7 @@ def validate_normalized_cache_relations(
             player, season = _build_normalized_game_player_record(row)
         except (AssertionError, ValueError):
             continue
-        scope = (player.team.team_id, season.id, season.season_type.value)
+        scope = (player.team.team_id, season.id, season.season_type.to_nba_format())
         players_by_scope[scope].append(player)
         game_scope = game_key_scope_map.get((player.game_id, player.team.team_id))
         if game_scope is None:

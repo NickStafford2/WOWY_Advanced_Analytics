@@ -179,9 +179,16 @@ def _load_rawr_season_input(
 
     games, _ = load_normalized_scope_records_from_db(requested_team_seasons)
     team_scopes = list(requested_team_seasons)
-    for scope in {TeamSeasonScope(team=game.opponent_team, season=game.season) for game in games}:
-        if scope not in team_scopes:
-            team_scopes.append(scope)
+    seen_scope_keys = {
+        (scope.team.team_id, scope.season.id, scope.season.season_type.value) for scope in team_scopes
+    }
+    for game in games:
+        scope = TeamSeasonScope(team=game.opponent_team, season=game.season)
+        scope_key = (scope.team.team_id, scope.season.id, scope.season.season_type.value)
+        if scope_key in seen_scope_keys:
+            continue
+        team_scopes.append(scope)
+        seen_scope_keys.add(scope_key)
     games, game_players = load_normalized_scope_records_from_db(team_scopes)
     games, game_players = _filter_rawr_scope(
         games,
@@ -213,13 +220,13 @@ def _load_rawr_season_input(
 def _filter_rawr_scope(games, game_players, teams, seasons):
     if not teams and not seasons:
         return games, game_players
-    normalized_teams = set(teams or [])
+    normalized_team_ids = {team.team_id for team in teams or []}
     normalized_seasons = set(seasons or [])
     selected_game_ids = {
         game.game_id
         for game in games
         if (not normalized_seasons or game.season in normalized_seasons)
-        and (not normalized_teams or game.team in normalized_teams)
+        and (not normalized_team_ids or game.team.team_id in normalized_team_ids)
     }
     if not selected_game_ids:
         raise ValueError("No games matched the requested RAWR scope")
