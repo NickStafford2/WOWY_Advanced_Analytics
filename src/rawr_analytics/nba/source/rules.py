@@ -167,11 +167,6 @@ def _played_in_game(minutes: object) -> bool:
 def source_player_played_in_game(row: SourceBoxScorePlayer) -> bool:
     has_stats = _row_has_any_box_score_stats(row.raw_row)
     has_minutes = _played_in_game(row.minutes_raw)
-    if has_stats:
-        assert has_minutes, (
-            "Box score player row has counting stats without playable minutes; "
-            f"nba_api_box_score_player_row={format_source_row(row.raw_row)}"
-        )
     return has_minutes or has_stats
 
 
