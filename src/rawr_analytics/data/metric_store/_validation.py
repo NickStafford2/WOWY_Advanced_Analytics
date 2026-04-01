@@ -40,6 +40,8 @@ def validate_rawr_rows(
     row_keys: set[tuple[str, int]] = set()
     expected_team_filter: str | None = None
     expected_season_type: str | None = None
+    expected_snapshot_id: int | None = None
+    snapshot_id_seen = False
 
     for row in rows:
         if row.metric_id != "rawr":
@@ -86,6 +88,17 @@ def validate_rawr_rows(
             expected_season_type = canonical_season_type
         elif canonical_season_type != expected_season_type:
             raise ValueError("Metric rows in the same batch must use one canonical season_type")
+
+        if row.snapshot_id is not None and row.snapshot_id <= 0:
+            raise ValueError(
+                f"Metric row for player {row.player_id!r} has invalid snapshot_id "
+                f"{row.snapshot_id!r}"
+            )
+        if not snapshot_id_seen:
+            expected_snapshot_id = row.snapshot_id
+            snapshot_id_seen = True
+        elif row.snapshot_id != expected_snapshot_id:
+            raise ValueError("Metric rows in the same batch must use one snapshot_id")
 
         if row.player_id <= 0:
             raise ValueError(f"Metric row has invalid player_id {row.player_id!r}")

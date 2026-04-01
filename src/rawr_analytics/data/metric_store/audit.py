@@ -170,6 +170,7 @@ def _load_rawr_metric_rows(
     rows = connection.execute(
         """
         SELECT
+            snapshot.snapshot_id,
             snapshot.metric_id,
             snapshot.scope_key,
             rawr.team_filter,
@@ -190,6 +191,7 @@ def _load_rawr_metric_rows(
     for row in rows:
         groups[(row["metric_id"], row["scope_key"])].append(
             RawrPlayerSeasonValueRow(
+                snapshot_id=row["snapshot_id"],
                 metric_id=row["metric_id"],
                 scope_key=row["scope_key"],
                 team_filter=row["team_filter"],

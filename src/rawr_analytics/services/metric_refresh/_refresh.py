@@ -351,6 +351,7 @@ def _build_rawr_cached_rows(
     )
     return [
         RawrPlayerSeasonValueRow(
+            snapshot_id=None,
             metric_id="rawr",
             scope_key=scope_key,
             team_filter=team_filter,
