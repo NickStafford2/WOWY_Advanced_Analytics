@@ -197,10 +197,7 @@ def load_cached_payload(
     validator: PayloadValidator | None = None,
     log_fn: LogFn | None = print,
 ) -> dict | None:
-    payload = _load_cached_payload(cache_path, validator=validator, log_fn=log_fn)
-    if payload is None:
-        raise ValueError(f"Missing valid cached league games payload: {cache_path}")
-    return payload
+    return _load_cached_payload(cache_path, validator=validator, log_fn=log_fn)
 
 
 def _discard_invalid_cached_payload(
