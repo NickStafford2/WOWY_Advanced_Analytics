@@ -168,7 +168,7 @@ def require_current_metric_scope(
         )
 
     current_fingerprint = build_normalized_cache_fingerprint(
-        season=Season("2000", catalog_row.season_type)
+        season_type=SeasonType.parse(catalog_row.season_type)
     )
     if snapshot_state.source_fingerprint != current_fingerprint:
         raise ValueError(

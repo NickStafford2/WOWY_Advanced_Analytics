@@ -1,11 +1,13 @@
 from __future__ import annotations
 
-import hashlib
 from collections.abc import Callable
 from dataclasses import dataclass
 
-from rawr_analytics.data.game_cache import list_cache_load_rows, list_cached_team_seasons
-from rawr_analytics.data.game_cache.rows import NormalizedCacheLoadRow
+from rawr_analytics.data.game_cache import (
+    build_normalized_cache_fingerprint,
+    list_cache_load_rows,
+    list_cached_team_seasons,
+)
 from rawr_analytics.data.metric_store import (
     RawrPlayerSeasonValueRow,
     WowyPlayerSeasonValueRow,
@@ -175,7 +177,7 @@ def _prepare_metric_store_refresh(
         team_scopes.extend([[team] for team in unique_available_teams])
 
     metric_info = _describe_metric(metric)
-    source_fingerprint = _build_cache_load_fingerprint(cache_load_rows)
+    source_fingerprint = build_normalized_cache_fingerprint(season_type=season_type)
     build_version = (
         f"{metric_info.build_version}-alpha-{rawr_ridge_alpha:.4f}"
         if metric == Metric.RAWR
@@ -442,20 +444,3 @@ def _list_cached_team_scopes_for_season_type(season_type: SeasonType) -> list[Te
     return [
         scope for scope in list_cached_team_seasons() if scope.season.season_type == season_type
     ]
-
-
-def _build_cache_load_fingerprint(rows: list[NormalizedCacheLoadRow]) -> str:
-    digest = hashlib.sha256()
-    for row in sorted(rows, key=lambda item: (item.season.id, item.team.team_id)):
-        digest.update(str(row.team.team_id).encode("utf-8"))
-        digest.update(row.season.id.encode("utf-8"))
-        digest.update(row.season.season_type.value.encode("utf-8"))
-        digest.update(row.source_path.encode("utf-8"))
-        digest.update(row.source_snapshot.encode("utf-8"))
-        digest.update(row.source_kind.encode("utf-8"))
-        digest.update(row.build_version.encode("utf-8"))
-        digest.update(str(row.games_row_count).encode("utf-8"))
-        digest.update(str(row.game_players_row_count).encode("utf-8"))
-        digest.update(str(row.expected_games_row_count).encode("utf-8"))
-        digest.update(str(row.skipped_games_row_count).encode("utf-8"))
-    return digest.hexdigest()

@@ -4,12 +4,12 @@ import hashlib
 
 from rawr_analytics.data._paths import NORMALIZED_CACHE_DB_PATH
 from rawr_analytics.data.game_cache.schema import connect, initialize_game_cache_db
-from rawr_analytics.shared.season import Season
+from rawr_analytics.shared.season import SeasonType
 
 
 def build_normalized_cache_fingerprint(
     *,
-    season: Season,
+    season_type: SeasonType,
 ) -> str:
     initialize_game_cache_db()
     query = """
@@ -29,7 +29,7 @@ def build_normalized_cache_fingerprint(
     """
     params: list[object] = []
     query += " WHERE load.season_type = ?"
-    params.append(season.season_type.value)
+    params.append(season_type.to_nba_format())
     query += " ORDER BY load.season_type, load.season, load.team_id"
 
     digest = hashlib.sha256()
