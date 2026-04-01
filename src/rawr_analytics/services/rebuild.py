@@ -22,7 +22,7 @@ from rawr_analytics.services.ingest import (
     SeasonRangeResult,
     refresh_season_range,
 )
-from rawr_analytics.services.metric_store import (
+from rawr_analytics.services.metric_refresh import (
     DEFAULT_RAWR_RIDGE_ALPHA,
     MetricStoreRefreshRequest,
     RefreshMetricStoreResult,

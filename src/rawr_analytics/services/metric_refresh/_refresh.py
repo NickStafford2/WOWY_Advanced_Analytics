@@ -6,7 +6,6 @@ from dataclasses import dataclass
 
 from rawr_analytics.data.game_cache import list_cache_load_rows, list_cached_team_seasons
 from rawr_analytics.data.game_cache.rows import NormalizedCacheLoadRow
-from rawr_analytics.data.metric_store_scope import build_scope_key, build_team_filter
 from rawr_analytics.data.metric_store import (
     RawrPlayerSeasonValueRow,
     WowyPlayerSeasonValueRow,
@@ -15,6 +14,7 @@ from rawr_analytics.data.metric_store import (
     replace_rawr_scope_snapshot,
     replace_wowy_scope_snapshot,
 )
+from rawr_analytics.data.metric_store_scope import build_scope_key, build_team_filter
 from rawr_analytics.metrics.constants import Metric, MetricSummary
 from rawr_analytics.metrics.rawr import (
     DEFAULT_RAWR_SHRINKAGE_MINUTE_SCALE,
@@ -47,18 +47,42 @@ class RefreshScopeResult:
 
 
 @dataclass(frozen=True)
-class MetricStoreRefreshPlan:
+class MetricStoreRefreshRequest:
+    metric: Metric
+    season_type: SeasonType
+    rawr_ridge_alpha: float = DEFAULT_RAWR_RIDGE_ALPHA
+    include_team_scopes: bool = True
+
+
+@dataclass(frozen=True)
+class RefreshMetricStoreResult:
+    metric: Metric
+    scope_results: list[RefreshScopeResult]
+    warnings: list[str]
+    failure_message: str | None = None
+
+    @property
+    def ok(self) -> bool:
+        return self.failure_message is None
+
+    @property
+    def total_rows(self) -> int:
+        return sum(scope.row_count for scope in self.scope_results)
+
+
+@dataclass(frozen=True)
+class _MetricStoreRefreshPlan:
     metric_label: str
     build_version: str
     source_fingerprint: str
     warnings: list[str]
     failure_message: str | None = None
     available_teams: list[Team] | None = None
-    scopes: list[MetricStoreRefreshScope] | None = None
+    scopes: list[_MetricStoreRefreshScope] | None = None
 
 
 @dataclass(frozen=True)
-class MetricStoreRefreshScope:
+class _MetricStoreRefreshScope:
     teams: list[Team] | None
     scope_key: str
     team_filter: str
@@ -66,16 +90,73 @@ class MetricStoreRefreshScope:
     available_seasons: list[Season]
 
 
-def prepare_metric_store_refresh(
+def refresh_metric_store(
+    request: MetricStoreRefreshRequest,
+    *,
+    progress: RefreshProgressFn | None = None,
+) -> RefreshMetricStoreResult:
+    plan = _prepare_metric_store_refresh(
+        request.metric,
+        season_type=request.season_type,
+        rawr_ridge_alpha=request.rawr_ridge_alpha,
+        include_team_scopes=request.include_team_scopes,
+    )
+    if plan.failure_message is not None:
+        return RefreshMetricStoreResult(
+            metric=request.metric,
+            scope_results=[],
+            warnings=plan.warnings,
+            failure_message=plan.failure_message,
+        )
+
+    scope_results: list[RefreshScopeResult] = []
+    scopes = plan.scopes or []
+    available_teams = plan.available_teams or []
+    failure_message: str | None = None
+    for index, scope in enumerate(scopes):
+        if progress is not None:
+            progress(index, len(scopes), f"building {scope.scope_label}")
+
+        scope_result, should_fail_empty_rawr_scope = _refresh_metric_store_scope(
+            metric=request.metric,
+            metric_label=plan.metric_label,
+            scope=scope,
+            season_type=request.season_type,
+            rawr_ridge_alpha=request.rawr_ridge_alpha,
+            available_teams=available_teams,
+            source_fingerprint=plan.source_fingerprint,
+            build_version=plan.build_version,
+        )
+        scope_results.append(scope_result)
+
+        if progress is not None:
+            progress(index + 1, len(scopes), f"{scope_result.status} {scope.scope_label}")
+
+        if should_fail_empty_rawr_scope:
+            failure_message = (
+                "RAWR refresh produced no all-teams rows. "
+                "The normalized cache is incomplete, so the web store was not updated."
+            )
+            break
+
+    return RefreshMetricStoreResult(
+        metric=request.metric,
+        scope_results=scope_results,
+        warnings=plan.warnings,
+        failure_message=failure_message,
+    )
+
+
+def _prepare_metric_store_refresh(
     metric: Metric,
     *,
     season_type: SeasonType,
     rawr_ridge_alpha: float = DEFAULT_RAWR_RIDGE_ALPHA,
     include_team_scopes: bool = True,
-) -> MetricStoreRefreshPlan:
+) -> _MetricStoreRefreshPlan:
     cache_load_rows = _list_cache_load_rows_for_season_type(season_type)
     if not cache_load_rows:
-        return MetricStoreRefreshPlan(
+        return _MetricStoreRefreshPlan(
             metric_label=_describe_metric(metric).label,
             build_version="",
             source_fingerprint="",
@@ -114,7 +195,7 @@ def prepare_metric_store_refresh(
         )
         for teams in team_scopes
     ]
-    return MetricStoreRefreshPlan(
+    return _MetricStoreRefreshPlan(
         metric_label=metric_info.label,
         build_version=build_version,
         source_fingerprint=source_fingerprint,
@@ -124,11 +205,11 @@ def prepare_metric_store_refresh(
     )
 
 
-def refresh_metric_store_scope(
+def _refresh_metric_store_scope(
     *,
     metric: Metric,
     metric_label: str,
-    scope: MetricStoreRefreshScope,
+    scope: _MetricStoreRefreshScope,
     season_type: SeasonType,
     rawr_ridge_alpha: float,
     available_teams: list[Team],
@@ -223,12 +304,12 @@ def _build_refresh_scope(
     teams: list[Team] | None,
     season_type: SeasonType,
     cached_team_seasons: list[TeamSeasonScope],
-) -> MetricStoreRefreshScope:
+) -> _MetricStoreRefreshScope:
     normalized_teams = normalize_teams(teams)
     normalized_team_ids = to_team_ids(normalized_teams)
     team_filter = build_team_filter(normalized_teams)
     scope_key = build_scope_key(season_type=season_type, team_filter=team_filter)
-    return MetricStoreRefreshScope(
+    return _MetricStoreRefreshScope(
         teams=normalized_teams,
         scope_key=scope_key,
         team_filter=team_filter,
@@ -344,6 +425,7 @@ def _build_wowy_cached_rows(
         )
     return rows
 
+
 def _describe_metric(metric: Metric) -> MetricSummary:
     if metric == Metric.RAWR:
         return describe_rawr_metric()
@@ -375,13 +457,3 @@ def _build_cache_load_fingerprint(rows: list[NormalizedCacheLoadRow]) -> str:
         digest.update(str(row.expected_games_row_count).encode("utf-8"))
         digest.update(str(row.skipped_games_row_count).encode("utf-8"))
     return digest.hexdigest()
-
-
-__all__ = [
-    "DEFAULT_RAWR_RIDGE_ALPHA",
-    "MetricStoreRefreshPlan",
-    "MetricStoreRefreshScope",
-    "RefreshScopeResult",
-    "prepare_metric_store_refresh",
-    "refresh_metric_store_scope",
-]

@@ -15,7 +15,7 @@ from rawr_analytics.services.metric_query import (
     build_metric_query_export,
     build_metric_query_view,
 )
-from rawr_analytics.services.metric_store import (
+from rawr_analytics.services.metric_refresh import (
     DEFAULT_RAWR_RIDGE_ALPHA,
     MetricStoreRefreshRequest,
     RefreshMetricStoreResult,

@@ -12,7 +12,7 @@ The package is not a single data layer. It is three different things:
 2. derived metric snapshot persistence
 3. metric refresh orchestration
 
-Those concerns are currently interleaved.
+The first two are now separated better than before. The remaining weak spot is the generic metric row contract inside `data/metric_store`.
 
 ## Important Current Facts
 
@@ -41,26 +41,24 @@ The cache design is not perfect, but it is at least a recognizable bounded conte
 
 Derived metric tables live under:
 
-- `src/rawr_analytics/data/player_metrics_db/schema.py`
-- `src/rawr_analytics/data/player_metrics_db/store.py`
-- `src/rawr_analytics/data/player_metrics_db/queries.py`
+- `src/rawr_analytics/data/metric_store/schema.py`
+- `src/rawr_analytics/data/metric_store/store.py`
+- `src/rawr_analytics/data/metric_store/queries.py`
 
-The package name is misleading. It is not just “player metrics DB.” It is the full derived metric snapshot store.
+The rename is complete. The package name now matches the bounded context.
 
 ### Wrong-layer orchestration
 
-`src/rawr_analytics/data/metric_store.py` currently performs service-layer work:
+Refresh orchestration now lives under:
 
-- refresh planning
-- stale checks
-- metric computation calls
-- snapshot replacement decisions
+- `src/rawr_analytics/services/metric_refresh/_refresh.py`
+- `src/rawr_analytics/services/metric_refresh/__init__.py`
 
-This module should leave `data/` entirely.
+`data/metric_store` is now a persistence package again.
 
 ### Weak type boundary
 
-`PlayerSeasonMetricRow` in `src/rawr_analytics/data/player_metrics_db/models.py` is too generic.
+`PlayerSeasonMetricRow` in `src/rawr_analytics/data/metric_store/models.py` is still too generic.
 
 Problems:
 
@@ -68,7 +66,7 @@ Problems:
 - it uses `details: dict[str, Any] | None`
 - it encourages generic query code instead of explicit contracts
 
-This should be removed after the new query API is in place.
+This is the next slice.
 
 ## Decisions Already Made
 
@@ -79,19 +77,35 @@ This should be removed after the new query API is in place.
 - keep metric-specific value rows explicit
 - move orchestration out of `data`
 
-## Completed In The First Slice
+## Completed Slices
+
+### Slice 1: physical DB split
 
 - added `src/rawr_analytics/data/_paths.py`
 - deleted `src/rawr_analytics/data/constants.py`
 - wired `src/rawr_analytics/data/game_cache/*` to `NORMALIZED_CACHE_DB_PATH`
-- wired `src/rawr_analytics/data/player_metrics_db/*` to `METRIC_STORE_DB_PATH`
-- removed legacy metric rename migration code from `src/rawr_analytics/data/player_metrics_db/schema.py`
+- wired the metric-store package to `METRIC_STORE_DB_PATH`
+- removed legacy metric rename migration code from `src/rawr_analytics/data/metric_store/schema.py`
 - updated rebuild cleanup in `src/rawr_analytics/services/rebuild.py` to delete both new DB files and the old mixed path
 - updated validation and cache fingerprint code so they no longer depend on the mixed-layout DB
 
+### Slice 2: package rename
+
+- renamed `src/rawr_analytics/data/player_metrics_db/` to `src/rawr_analytics/data/metric_store/`
+- updated imports to use `rawr_analytics.data.metric_store`
+- kept the schema and row shapes unchanged
+- did not preserve the old package name as compatibility glue
+
+### Slice 3: service extraction
+
+- created `src/rawr_analytics/services/metric_refresh/`
+- moved metric refresh planning/build logic there
+- deleted `src/rawr_analytics/data/_metric_store_refresh.py`
+- deleted `src/rawr_analytics/services/metric_store.py`
+
 Verification already done:
 
-- `poetry run python -m compileall src` passed
+- `poetry run python -m py_compile $(find src -name '*.py' -print)` passed
 
 Local DB state when this handoff was written:
 
@@ -148,23 +162,21 @@ Owns:
 
 ## Delete after replacement exists
 
-- `src/rawr_analytics/data/metric_store.py`
 - `src/rawr_analytics/data/metric_store_rawr.py`
 - `src/rawr_analytics/data/metric_store_wowy.py`
-- `src/rawr_analytics/data/player_metrics_db/`
 
 ## Delete from repo if tracked
 
 - `src/rawr_analytics/data/__pycache__/`
 - `src/rawr_analytics/data/game_cache/__pycache__/`
-- `src/rawr_analytics/data/player_metrics_db/__pycache__/`
+- `src/rawr_analytics/data/metric_store/__pycache__/`
 
 ## Suggested Execution Order
 
 1. Rename `player_metrics_db` to `metric_store`.
 2. Move refresh logic into `services/metric_refresh`.
-3. Rebuild the metric-store schema around scope and snapshot tables.
-4. Replace generic metric row APIs with explicit RAWR/WOWY APIs.
+3. Replace generic metric row APIs with explicit RAWR/WOWY APIs.
+4. Rebuild the metric-store schema around scope and snapshot tables.
 5. Delete the old wrappers and remaining glue code.
 
 ## Risks To Watch
@@ -188,14 +200,14 @@ RAWR and WOWY should stay explicit.
 
 The best next slice is:
 
-1. rename `src/rawr_analytics/data/player_metrics_db` to `src/rawr_analytics/data/metric_store`
-2. update imports only
-3. keep the schema and row shapes as-is for now
-4. keep the public API small
-5. do not move orchestration in the same pass
+1. replace `PlayerSeasonMetricRow` in `src/rawr_analytics/data/metric_store/models.py`
+2. keep explicit RAWR and WOWY row contracts only
+3. update `queries.py`, `audit.py`, and `db_validation.py` to use those explicit types
+4. keep the current SQLite schema unless a tiny repair is required
+5. do not start the snapshot-table schema rewrite in the same pass
 
-That gives naming clarity without mixing together rename work, service extraction, and schema redesign.
+That strengthens the type boundary without mixing together contract cleanup and schema redesign.
 
 ## Suggested Commit Message
 
-`docs: add data-layer refactor plan and handoff`
+`docs: refresh data-layer refactor status`

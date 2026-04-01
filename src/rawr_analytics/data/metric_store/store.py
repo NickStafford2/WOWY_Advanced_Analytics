@@ -9,8 +9,9 @@ from rawr_analytics.data._paths import METRIC_STORE_DB_PATH
 from rawr_analytics.data.metric_store._tables import metric_values_table
 from rawr_analytics.data.metric_store._validation import (
     validate_metric_full_span_rows,
-    validate_metric_rows,
     validate_metric_scope_catalog_row,
+    validate_rawr_rows,
+    validate_wowy_rows,
 )
 from rawr_analytics.data.metric_store.full_span import (
     build_rawr_full_span_rows,
@@ -20,7 +21,6 @@ from rawr_analytics.data.metric_store.models import (
     MetricFullSpanPointRow,
     MetricFullSpanSeriesRow,
     MetricScopeCatalogRow,
-    PlayerSeasonMetricRow,
 )
 from rawr_analytics.data.metric_store.rawr import RawrPlayerSeasonValueRow
 from rawr_analytics.data.metric_store.schema import connect, initialize_player_metrics_db
@@ -426,29 +426,12 @@ def _validate_rawr_rows(
     source_fingerprint: str,
     rows: list[RawrPlayerSeasonValueRow],
 ) -> None:
-    validate_metric_rows(
-        metric_id="rawr",
+    validate_rawr_rows(
         scope_key=scope_key,
         label=label,
         build_version=build_version,
         source_fingerprint=source_fingerprint,
-        rows=[
-            PlayerSeasonMetricRow(
-                metric_id=row.metric_id,
-                scope_key=row.scope_key,
-                team_filter=row.team_filter,
-                season_type=row.season_type,
-                season_id=row.season_id,
-                player_id=row.player_id,
-                player_name=row.player_name,
-                value=row.coefficient,
-                sample_size=row.games,
-                average_minutes=row.average_minutes,
-                total_minutes=row.total_minutes,
-                details={"games": row.games},
-            )
-            for row in rows
-        ],
+        rows=rows,
     )
 
 
@@ -461,38 +444,11 @@ def _validate_wowy_rows(
     source_fingerprint: str,
     rows: list[WowyPlayerSeasonValueRow],
 ) -> None:
-    validate_metric_rows(
+    validate_wowy_rows(
         metric_id=metric_id,
         scope_key=scope_key,
         label=label,
         build_version=build_version,
         source_fingerprint=source_fingerprint,
-        rows=[
-            PlayerSeasonMetricRow(
-                metric_id=row.metric_id,
-                scope_key=row.scope_key,
-                team_filter=row.team_filter,
-                season_type=row.season_type,
-                season_id=row.season_id,
-                player_id=row.player_id,
-                player_name=row.player_name,
-                value=row.value,
-                sample_size=row.games_with,
-                secondary_sample_size=row.games_without,
-                average_minutes=row.average_minutes,
-                total_minutes=row.total_minutes,
-                details={
-                    "games_with": row.games_with,
-                    "games_without": row.games_without,
-                    "avg_margin_with": row.avg_margin_with,
-                    "avg_margin_without": row.avg_margin_without,
-                    **(
-                        {"raw_wowy_score": row.raw_wowy_score}
-                        if row.raw_wowy_score is not None
-                        else {}
-                    ),
-                },
-            )
-            for row in rows
-        ],
+        rows=rows,
     )

@@ -245,9 +245,9 @@ Notes:
 
 - `src/rawr_analytics/data/_paths.py` now defines the explicit DB paths
 - `game_cache/*` reads and writes only `NORMALIZED_CACHE_DB_PATH`
-- `player_metrics_db/*` reads and writes only `METRIC_STORE_DB_PATH`
+- `metric_store/*` reads and writes only `METRIC_STORE_DB_PATH`
 - `src/rawr_analytics/data/constants.py` was deleted
-- `src/rawr_analytics/data/player_metrics_db/schema.py` no longer preserves legacy metric rename migration logic
+- `src/rawr_analytics/data/metric_store/schema.py` no longer preserves legacy metric rename migration logic
 - validation and cache fingerprint code were updated so they no longer depend on the old mixed-layout DB assumption
 
 ## Phase 2: Rename `player_metrics_db` to `metric_store`
@@ -273,6 +273,17 @@ Keep this slice small:
 - keep the public API narrow
 - delete wrapper modules only if the replacement is already clear and direct
 
+Status:
+
+- completed
+
+Notes:
+
+- `src/rawr_analytics/data/player_metrics_db/` was renamed to `src/rawr_analytics/data/metric_store/`
+- imports now target `rawr_analytics.data.metric_store`
+- the schema and persisted row shapes were intentionally left unchanged in this slice
+- the old package name was removed instead of preserved behind compatibility glue
+
 ## Phase 3: Move refresh logic out of `data`
 
 Objective:
@@ -288,6 +299,17 @@ Work:
 Success condition:
 
 - `data` no longer imports `rawr_analytics.metrics.*`
+
+Status:
+
+- completed
+
+Notes:
+
+- refresh orchestration now lives under `src/rawr_analytics/services/metric_refresh/`
+- `src/rawr_analytics/data/` no longer owns refresh planning or metric computation calls
+- the old `src/rawr_analytics/data/_metric_store_refresh.py` and `src/rawr_analytics/services/metric_store.py` modules were deleted
+- persistence still lives under `src/rawr_analytics/data/metric_store/`
 
 ## Phase 4: Rebuild metric-store schema around snapshots
 
@@ -323,6 +345,12 @@ Success condition:
 
 - no `dict[str, Any]` details payload is needed for metric rows
 
+Recommended first slice inside this phase:
+
+- replace `PlayerSeasonMetricRow` with explicit RAWR and WOWY contracts
+- update `queries.py`, `audit.py`, and `db_validation.py` to use those explicit types
+- do not redesign the SQLite schema in the same pass
+
 ## Phase 6: Collapse wrapper modules
 
 Objective:
@@ -347,8 +375,8 @@ These are good candidates because the user is willing to rebuild the DB:
 
 - `data/app/player_metrics.sqlite3`
 - any old derived-metric SQLite file that exists only for the current mixed layout
-- legacy schema migration logic in `src/rawr_analytics/data/player_metrics_db/schema.py`
-- legacy metric rename migration logic in `src/rawr_analytics/data/player_metrics_db/schema.py`
+- legacy schema migration logic in `src/rawr_analytics/data/metric_store/schema.py`
+- legacy metric rename migration logic in `src/rawr_analytics/data/metric_store/schema.py`
 
 Specific code to remove during the refactor:
 
@@ -362,15 +390,14 @@ Specific code to remove during the refactor:
 - do not split into one DB file per metric right now
 - do not preserve wrapper modules that add no behavior
 
-## First Execution Slice
+## Current Recommended Slice
 
 If continuing this refactor in code, start here:
 
-1. add `_paths.py` with two DB path constants
-2. move shared `connect()` into one internal helper module
-3. update `game_cache` to use `NORMALIZED_CACHE_DB_PATH`
-4. update `player_metrics_db` to use `METRIC_STORE_DB_PATH`
-5. remove legacy metric migration code
-6. delete and rebuild local DB files
+1. replace `PlayerSeasonMetricRow` in `src/rawr_analytics/data/metric_store/models.py`
+2. introduce explicit typed read paths for RAWR and WOWY
+3. update validation and audit code to consume explicit metric-specific rows
+4. keep the physical schema unchanged unless a small query repair requires it
+5. do not start the snapshot-table schema rewrite in the same pass
 
-That slice gives the biggest clarity gain with the smallest code movement.
+That slice strengthens the type boundary without mixing together contract cleanup and schema redesign.

@@ -1,24 +1,6 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Any
-
-
-@dataclass(frozen=True)
-class PlayerSeasonMetricRow:
-    metric_id: str
-    scope_key: str
-    team_filter: str
-    season_type: str
-    season_id: str
-    player_id: int
-    player_name: str
-    value: float
-    sample_size: int | None = None
-    secondary_sample_size: int | None = None
-    average_minutes: float | None = None
-    total_minutes: float | None = None
-    details: dict[str, Any] | None = None
 
 
 @dataclass(frozen=True)

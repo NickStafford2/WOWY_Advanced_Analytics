@@ -7,8 +7,8 @@ from collections import Counter, defaultdict
 from collections.abc import Callable
 from dataclasses import dataclass
 
-from rawr_analytics.data._validation_issue import ValidationIssue
 from rawr_analytics.data._paths import METRIC_STORE_DB_PATH, NORMALIZED_CACHE_DB_PATH
+from rawr_analytics.data._validation_issue import ValidationIssue
 from rawr_analytics.data.game_cache._validation import (
     validate_normalized_cache_loads_table,
     validate_normalized_cache_relations,
@@ -24,9 +24,10 @@ from rawr_analytics.data.metric_store.models import (
     MetricFullSpanPointRow,
     MetricFullSpanSeriesRow,
     MetricScopeCatalogRow,
-    PlayerSeasonMetricRow,
 )
+from rawr_analytics.data.metric_store.rawr import RawrPlayerSeasonValueRow
 from rawr_analytics.data.metric_store.schema import initialize_player_metrics_db
+from rawr_analytics.data.metric_store.wowy import WowyPlayerSeasonValueRow
 
 
 @dataclass(frozen=True)
@@ -139,7 +140,8 @@ def audit_player_metrics_db(
         current_step = 8
         report_progress("Validating metric store relations")
         _validate_metric_store_relations(
-            metric_row_groups=metric_audit_state.metric_row_groups,
+            rawr_row_groups=metric_audit_state.rawr_row_groups,
+            wowy_row_groups=metric_audit_state.wowy_row_groups,
             metadata_rows=metric_audit_state.metadata_rows,
             catalog_rows=metric_audit_state.catalog_rows,
             full_span_groups=metric_audit_state.full_span_groups,
@@ -235,7 +237,8 @@ def _normalize_issue_message(message: str) -> str:
 
 def _validate_metric_store_relations(
     *,
-    metric_row_groups: dict[tuple[str, str], list[PlayerSeasonMetricRow]],
+    rawr_row_groups: dict[tuple[str, str], list[RawrPlayerSeasonValueRow]],
+    wowy_row_groups: dict[tuple[str, str], list[WowyPlayerSeasonValueRow]],
     metadata_rows: dict[tuple[str, str], MetricStoreAuditMetadata],
     catalog_rows: dict[tuple[str, str], MetricScopeCatalogRow],
     full_span_groups: dict[
@@ -243,6 +246,7 @@ def _validate_metric_store_relations(
     ],
     issues: list[ValidationIssue],
 ) -> None:
+    metric_row_groups = rawr_row_groups | wowy_row_groups
     metric_scopes = set(metric_row_groups)
     metadata_scopes = set(metadata_rows)
     catalog_scopes = set(catalog_rows)
@@ -302,7 +306,7 @@ def _validate_metric_store_relations(
         season_type = (
             catalog_row.season_type
             if catalog_row is not None
-            else group_rows[0].season_type
+            else _metric_group_season_type(group_rows)
             if group_rows
             else None
         )
@@ -398,6 +402,13 @@ def _validate_metric_store_relations(
                 message="metric scope has no matching full-span rows",
             )
         )
+
+
+def _metric_group_season_type(
+    rows: list[RawrPlayerSeasonValueRow] | list[WowyPlayerSeasonValueRow],
+) -> str:
+    assert rows, "metric group rows must not be empty"
+    return rows[0].season_type
 
 
 def _load_normalized_cache_state() -> tuple[dict[str, int], dict[str, str]]:

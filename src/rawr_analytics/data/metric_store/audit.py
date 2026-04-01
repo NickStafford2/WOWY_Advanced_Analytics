@@ -8,15 +8,17 @@ from dataclasses import dataclass
 from rawr_analytics.data._validation_issue import ValidationIssue
 from rawr_analytics.data.metric_store._validation import (
     validate_metric_full_span_rows,
-    validate_metric_rows,
     validate_metric_scope_catalog_row,
+    validate_rawr_rows,
+    validate_wowy_rows,
 )
 from rawr_analytics.data.metric_store.models import (
     MetricFullSpanPointRow,
     MetricFullSpanSeriesRow,
     MetricScopeCatalogRow,
-    PlayerSeasonMetricRow,
 )
+from rawr_analytics.data.metric_store.rawr import RawrPlayerSeasonValueRow
+from rawr_analytics.data.metric_store.wowy import WowyPlayerSeasonValueRow
 
 
 @dataclass(frozen=True)
@@ -29,7 +31,8 @@ class MetricStoreAuditMetadata:
 
 @dataclass(frozen=True)
 class MetricStoreAuditState:
-    metric_row_groups: dict[tuple[str, str], list[PlayerSeasonMetricRow]]
+    rawr_row_groups: dict[tuple[str, str], list[RawrPlayerSeasonValueRow]]
+    wowy_row_groups: dict[tuple[str, str], list[WowyPlayerSeasonValueRow]]
     metadata_rows: dict[tuple[str, str], MetricStoreAuditMetadata]
     catalog_rows: dict[tuple[str, str], MetricScopeCatalogRow]
     full_span_groups: dict[
@@ -41,7 +44,7 @@ def audit_metric_store_tables(
     connection: sqlite3.Connection,
     issues: list[ValidationIssue],
 ) -> MetricStoreAuditState:
-    metric_row_groups, metadata_rows = _audit_metric_player_season_values_table(
+    rawr_row_groups, wowy_row_groups, metadata_rows = _audit_metric_player_season_values_table(
         connection,
         issues,
     )
@@ -54,7 +57,8 @@ def audit_metric_store_tables(
         issues,
     )
     return MetricStoreAuditState(
-        metric_row_groups=metric_row_groups,
+        rawr_row_groups=rawr_row_groups,
+        wowy_row_groups=wowy_row_groups,
         metadata_rows=metadata_rows,
         catalog_rows=catalog_rows,
         full_span_groups=full_span_groups,
@@ -65,7 +69,8 @@ def _audit_metric_player_season_values_table(
     connection: sqlite3.Connection,
     issues: list[ValidationIssue],
 ) -> tuple[
-    dict[tuple[str, str], list[PlayerSeasonMetricRow]],
+    dict[tuple[str, str], list[RawrPlayerSeasonValueRow]],
+    dict[tuple[str, str], list[WowyPlayerSeasonValueRow]],
     dict[tuple[str, str], MetricStoreAuditMetadata],
 ]:
     metadata_rows = connection.execute(
@@ -90,12 +95,12 @@ def _audit_metric_player_season_values_table(
         for row in metadata_rows
     }
 
-    groups: dict[tuple[str, str], list[PlayerSeasonMetricRow]] = defaultdict(list)
-    _load_rawr_metric_rows(connection, groups)
-    _load_wowy_metric_rows(connection, groups)
+    rawr_groups: dict[tuple[str, str], list[RawrPlayerSeasonValueRow]] = defaultdict(list)
+    wowy_groups: dict[tuple[str, str], list[WowyPlayerSeasonValueRow]] = defaultdict(list)
+    _load_rawr_metric_rows(connection, rawr_groups)
+    _load_wowy_metric_rows(connection, wowy_groups)
 
-    for key, group_rows in groups.items():
-        metric, scope_key = key
+    for key, group_rows in rawr_groups.items():
         metadata_row = metadata_by_key.get(
             key,
             MetricStoreAuditMetadata(
@@ -106,9 +111,8 @@ def _audit_metric_player_season_values_table(
             ),
         )
         try:
-            validate_metric_rows(
-                metric_id=metric,
-                scope_key=scope_key,
+            validate_rawr_rows(
+                scope_key=key[1],
                 label=metadata_row.label,
                 build_version=metadata_row.build_version,
                 source_fingerprint=metadata_row.source_fingerprint,
@@ -117,18 +121,46 @@ def _audit_metric_player_season_values_table(
         except ValueError as exc:
             issues.append(
                 ValidationIssue(
-                    _metric_rows_table_name(metric),
-                    f"metric={metric!r},scope_key={scope_key!r}",
+                    "rawr_player_season_values",
+                    f"metric={key[0]!r},scope_key={key[1]!r}",
                     str(exc),
                 )
             )
 
-    return groups, metadata_by_key
+    for key, group_rows in wowy_groups.items():
+        metadata_row = metadata_by_key.get(
+            key,
+            MetricStoreAuditMetadata(
+                label="missing-metadata",
+                build_version="missing-metadata",
+                source_fingerprint="missing-metadata",
+                row_count=-1,
+            ),
+        )
+        try:
+            validate_wowy_rows(
+                metric_id=key[0],
+                scope_key=key[1],
+                label=metadata_row.label,
+                build_version=metadata_row.build_version,
+                source_fingerprint=metadata_row.source_fingerprint,
+                rows=group_rows,
+            )
+        except ValueError as exc:
+            issues.append(
+                ValidationIssue(
+                    "wowy_player_season_values",
+                    f"metric={key[0]!r},scope_key={key[1]!r}",
+                    str(exc),
+                )
+            )
+
+    return rawr_groups, wowy_groups, metadata_by_key
 
 
 def _load_rawr_metric_rows(
     connection: sqlite3.Connection,
-    groups: dict[tuple[str, str], list[PlayerSeasonMetricRow]],
+    groups: dict[tuple[str, str], list[RawrPlayerSeasonValueRow]],
 ) -> None:
     rows = connection.execute(
         """
@@ -150,7 +182,7 @@ def _load_rawr_metric_rows(
     ).fetchall()
     for row in rows:
         groups[(row["metric_id"], row["scope_key"])].append(
-            PlayerSeasonMetricRow(
+            RawrPlayerSeasonValueRow(
                 metric_id=row["metric_id"],
                 scope_key=row["scope_key"],
                 team_filter=row["team_filter"],
@@ -158,19 +190,17 @@ def _load_rawr_metric_rows(
                 season_id=row["season_id"],
                 player_id=row["player_id"],
                 player_name=row["player_name"],
-                value=row["coefficient"],
-                sample_size=row["games"],
-                secondary_sample_size=None,
+                coefficient=row["coefficient"],
+                games=row["games"],
                 average_minutes=row["average_minutes"],
                 total_minutes=row["total_minutes"],
-                details={"games": row["games"]},
             )
         )
 
 
 def _load_wowy_metric_rows(
     connection: sqlite3.Connection,
-    groups: dict[tuple[str, str], list[PlayerSeasonMetricRow]],
+    groups: dict[tuple[str, str], list[WowyPlayerSeasonValueRow]],
 ) -> None:
     rows = connection.execute(
         """
@@ -195,16 +225,8 @@ def _load_wowy_metric_rows(
         """
     ).fetchall()
     for row in rows:
-        details = {
-            "games_with": row["games_with"],
-            "games_without": row["games_without"],
-            "avg_margin_with": row["avg_margin_with"],
-            "avg_margin_without": row["avg_margin_without"],
-        }
-        if row["raw_wowy_score"] is not None:
-            details["raw_wowy_score"] = row["raw_wowy_score"]
         groups[(row["metric_id"], row["scope_key"])].append(
-            PlayerSeasonMetricRow(
+            WowyPlayerSeasonValueRow(
                 metric_id=row["metric_id"],
                 scope_key=row["scope_key"],
                 team_filter=row["team_filter"],
@@ -213,19 +235,15 @@ def _load_wowy_metric_rows(
                 player_id=row["player_id"],
                 player_name=row["player_name"],
                 value=row["value"],
-                sample_size=row["games_with"],
-                secondary_sample_size=row["games_without"],
+                games_with=row["games_with"],
+                games_without=row["games_without"],
+                avg_margin_with=row["avg_margin_with"],
+                avg_margin_without=row["avg_margin_without"],
                 average_minutes=row["average_minutes"],
                 total_minutes=row["total_minutes"],
-                details=details,
+                raw_wowy_score=row["raw_wowy_score"],
             )
         )
-
-
-def _metric_rows_table_name(metric: str) -> str:
-    if metric == "rawr":
-        return "rawr_player_season_values"
-    return "wowy_player_season_values"
 
 
 def _audit_metric_scope_catalog_table(
