@@ -96,7 +96,8 @@ Current state:
 
 - `label` now lives only on `metric_scope_catalog`
 - `metric_store_metadata_v2` now owns only build freshness and row count fields
-- `available_season_ids_json` and `available_team_ids_json` are still stored on `metric_scope_catalog`
+- `available_season_ids_json` is still stored on `metric_scope_catalog`
+- scope-team membership now lives in `metric_scope_team`
 
 The next schema work should keep shrinking duplicated scope metadata before touching the larger snapshot-table redesign.
 

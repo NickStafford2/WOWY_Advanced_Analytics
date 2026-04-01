@@ -144,6 +144,7 @@ def audit_player_metrics_db(
             wowy_row_groups=metric_audit_state.wowy_row_groups,
             metadata_rows=metric_audit_state.metadata_rows,
             catalog_rows=metric_audit_state.catalog_rows,
+            scope_team_rows=metric_audit_state.scope_team_rows,
             full_span_groups=metric_audit_state.full_span_groups,
             issues=issues,
         )
@@ -241,6 +242,7 @@ def _validate_metric_store_relations(
     wowy_row_groups: dict[tuple[str, str], list[WowyPlayerSeasonValueRow]],
     metadata_rows: dict[tuple[str, str], MetricStoreAuditMetadata],
     catalog_rows: dict[tuple[str, str], MetricScopeCatalogRow],
+    scope_team_rows: dict[tuple[str, str], list[int]],
     full_span_groups: dict[
         tuple[str, str], tuple[list[MetricFullSpanSeriesRow], list[MetricFullSpanPointRow]]
     ],
@@ -250,6 +252,7 @@ def _validate_metric_store_relations(
     metric_scopes = set(metric_row_groups)
     metadata_scopes = set(metadata_rows)
     catalog_scopes = set(catalog_rows)
+    scope_team_scopes = set(scope_team_rows)
     full_span_scopes = set(full_span_groups)
     cache_load_counts, fingerprint_by_season_type = _load_normalized_cache_state()
 
@@ -297,8 +300,25 @@ def _validate_metric_store_relations(
                     ),
                 )
             )
+        if (
+            catalog_row is not None
+            and scope_team_rows.get(key, []) != catalog_row.available_team_ids
+        ):
+            issues.append(
+                ValidationIssue(
+                    table="metric_scope_team",
+                    key=f"metric={metric!r},scope_key={scope_key!r}",
+                    message="scope-team rows do not match catalog available_team_ids",
+                )
+            )
 
-    all_scopes = metric_scopes | metadata_scopes | catalog_scopes | full_span_scopes
+    all_scopes = (
+        metric_scopes
+        | metadata_scopes
+        | catalog_scopes
+        | scope_team_scopes
+        | full_span_scopes
+    )
     for key in sorted(all_scopes):
         metric, scope_key = key
         catalog_row = catalog_rows.get(key)
@@ -357,6 +377,15 @@ def _validate_metric_store_relations(
                 table="metric_scope_catalog",
                 key=f"metric={key[0]!r},scope_key={key[1]!r}",
                 message="catalog row has no matching metric rows",
+            )
+        )
+
+    for key in sorted(scope_team_scopes - catalog_scopes):
+        issues.append(
+            ValidationIssue(
+                table="metric_scope_team",
+                key=f"metric={key[0]!r},scope_key={key[1]!r}",
+                message="scope-team rows have no matching catalog row",
             )
         )
 

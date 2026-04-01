@@ -153,12 +153,23 @@ This slice is complete.
 - updated audit and validation paths to stop expecting `label` on metadata
 - left `label` owned by `metric_scope_catalog`
 
+### Slice 8: replace scope team JSON with a real relation
+
+- removed `available_team_ids_json` from `metric_scope_catalog`
+- added `metric_scope_team` with primary key `(metric_id, scope_key, team_id)`
+- updated metric-store writes to replace scope-team rows alongside catalog rows
+- updated metric-store reads to hydrate `available_team_ids` from `metric_scope_team`
+- updated audit and DB validation to check the new scope-team relation
+- left `available_season_ids_json` in place to keep the slice small
+
 Verification already done:
 
 - `poetry run python -m py_compile $(find src -name '*.py' -print)` passed
 - `poetry run ruff check src/rawr_analytics/data/metric_store src/rawr_analytics/data/db_validation.py src/rawr_analytics/metrics/metric_query/views.py` passed
 - `poetry run python -m py_compile src/rawr_analytics/data/metric_store/models.py src/rawr_analytics/data/metric_store/queries.py src/rawr_analytics/data/metric_store/store.py src/rawr_analytics/data/metric_store/audit.py src/rawr_analytics/data/metric_store/_validation.py src/rawr_analytics/metrics/metric_query/scope.py src/rawr_analytics/metrics/metric_query/views.py` passed
 - `poetry run ruff check src/rawr_analytics/data/metric_store/models.py src/rawr_analytics/data/metric_store/queries.py src/rawr_analytics/data/metric_store/store.py src/rawr_analytics/data/metric_store/audit.py src/rawr_analytics/data/metric_store/_validation.py src/rawr_analytics/metrics/metric_query/scope.py src/rawr_analytics/metrics/metric_query/views.py` passed
+- `poetry run python -m py_compile src/rawr_analytics/data/metric_store/schema.py src/rawr_analytics/data/metric_store/queries.py src/rawr_analytics/data/metric_store/store.py src/rawr_analytics/data/metric_store/audit.py src/rawr_analytics/data/db_validation.py` passed
+- `poetry run ruff check src/rawr_analytics/data/metric_store/schema.py src/rawr_analytics/data/metric_store/queries.py src/rawr_analytics/data/metric_store/store.py src/rawr_analytics/data/metric_store/audit.py src/rawr_analytics/data/db_validation.py` passed
 
 Local DB state when this handoff was written:
 
@@ -252,13 +263,13 @@ RAWR and WOWY should stay explicit.
 
 The best next slice is:
 
-1. replace `metric_scope_catalog.available_team_ids_json` with a real scope-team table
+1. replace `metric_scope_catalog.available_season_ids_json` with a real scope-season table
 2. update metric-store writes and reads to use that table
-3. update audit and DB validation to check the new scope-team relation
-4. leave `available_season_ids_json` in place for now if that keeps the change small
+3. update audit and DB validation to check the new scope-season relation
+4. keep the current `(metric_id, scope_key)`-based value tables for now
 5. do not start the larger `snapshot_id` schema rewrite in the same pass
 
-That keeps the next step concrete and moves one more piece of duplicated scope metadata out of JSON without mixing in the bigger snapshot redesign.
+That keeps the next step concrete and removes the last remaining JSON-backed scope membership field before the snapshot redesign.
 
 ## Suggested Commit Message
 

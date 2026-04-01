@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import json
 import sqlite3
 from collections import defaultdict
 from dataclasses import dataclass
@@ -34,6 +33,7 @@ class MetricStoreAuditState:
     wowy_row_groups: dict[tuple[str, str], list[WowyPlayerSeasonValueRow]]
     metadata_rows: dict[tuple[str, str], MetricStoreAuditMetadata]
     catalog_rows: dict[tuple[str, str], MetricScopeCatalogRow]
+    scope_team_rows: dict[tuple[str, str], list[int]]
     full_span_groups: dict[
         tuple[str, str], tuple[list[MetricFullSpanSeriesRow], list[MetricFullSpanPointRow]]
     ]
@@ -47,7 +47,7 @@ def audit_metric_store_tables(
         connection,
         issues,
     )
-    catalog_rows = _audit_metric_scope_catalog_table(
+    catalog_rows, scope_team_rows = _audit_metric_scope_catalog_table(
         connection,
         issues,
     )
@@ -60,6 +60,7 @@ def audit_metric_store_tables(
         wowy_row_groups=wowy_row_groups,
         metadata_rows=metadata_rows,
         catalog_rows=catalog_rows,
+        scope_team_rows=scope_team_rows,
         full_span_groups=full_span_groups,
     )
 
@@ -242,7 +243,7 @@ def _load_wowy_metric_rows(
 def _audit_metric_scope_catalog_table(
     connection: sqlite3.Connection,
     issues: list[ValidationIssue],
-) -> dict[tuple[str, str], MetricScopeCatalogRow]:
+) -> tuple[dict[tuple[str, str], MetricScopeCatalogRow], dict[tuple[str, str], list[int]]]:
     rows = connection.execute(
         """
         SELECT
@@ -252,7 +253,6 @@ def _audit_metric_scope_catalog_table(
             team_filter,
             season_type,
             available_season_ids_json,
-            available_team_ids_json,
             full_span_start_season_id,
             full_span_end_season_id,
             updated_at
@@ -260,21 +260,34 @@ def _audit_metric_scope_catalog_table(
         ORDER BY metric_id, scope_key
         """
     ).fetchall()
+    team_rows = connection.execute(
+        """
+        SELECT
+            metric_id,
+            scope_key,
+            team_id
+        FROM metric_scope_team
+        ORDER BY metric_id, scope_key, team_id
+        """
+    ).fetchall()
+    scope_team_rows: dict[tuple[str, str], list[int]] = defaultdict(list)
+    for row in team_rows:
+        scope_team_rows[(row["metric_id"], row["scope_key"])].append(row["team_id"])
     catalog_rows: dict[tuple[str, str], MetricScopeCatalogRow] = {}
     for row in rows:
+        key = (row["metric_id"], row["scope_key"])
         catalog_row = MetricScopeCatalogRow(
             metric_id=row["metric_id"],
             scope_key=row["scope_key"],
             label=row["label"],
             team_filter=row["team_filter"],
             season_type=row["season_type"],
-            available_season_ids=json.loads(row["available_season_ids_json"]),
-            available_team_ids=json.loads(row["available_team_ids_json"]),
+            available_season_ids=_load_json_list(row["available_season_ids_json"]),
+            available_team_ids=list(scope_team_rows.get(key, [])),
             full_span_start_season_id=row["full_span_start_season_id"],
             full_span_end_season_id=row["full_span_end_season_id"],
             updated_at=row["updated_at"],
         )
-        key = (catalog_row.metric_id, catalog_row.scope_key)
         catalog_rows[key] = catalog_row
         try:
             validate_metric_scope_catalog_row(catalog_row)
@@ -286,7 +299,7 @@ def _audit_metric_scope_catalog_table(
                     str(exc),
                 )
             )
-    return catalog_rows
+    return catalog_rows, dict(scope_team_rows)
 
 
 def _audit_metric_full_span_tables(
@@ -370,3 +383,11 @@ def _audit_metric_full_span_tables(
             )
 
     return groups
+
+
+def _load_json_list(value: str) -> list[str]:
+    import json
+
+    loaded = json.loads(value)
+    assert isinstance(loaded, list), "metric store JSON column must decode to a list"
+    return loaded

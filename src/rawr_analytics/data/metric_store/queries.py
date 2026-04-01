@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import json
 from typing import Any
 
 from rawr_analytics.data._paths import METRIC_STORE_DB_PATH
@@ -59,7 +58,6 @@ def load_metric_scope_catalog_row(
                 team_filter,
                 season_type,
                 available_season_ids_json,
-                available_team_ids_json,
                 full_span_start_season_id,
                 full_span_end_season_id,
                 updated_at
@@ -68,6 +66,15 @@ def load_metric_scope_catalog_row(
             """,
             (metric, scope_key),
         ).fetchone()
+        team_rows = connection.execute(
+            """
+            SELECT team_id
+            FROM metric_scope_team
+            WHERE metric_id = ? AND scope_key = ?
+            ORDER BY team_id
+            """,
+            (metric, scope_key),
+        ).fetchall()
     if row is None:
         return None
     return MetricScopeCatalogRow(
@@ -76,8 +83,8 @@ def load_metric_scope_catalog_row(
         label=row["label"],
         team_filter=row["team_filter"],
         season_type=row["season_type"],
-        available_season_ids=json.loads(row["available_season_ids_json"]),
-        available_team_ids=json.loads(row["available_team_ids_json"]),
+        available_season_ids=_load_json_list(row["available_season_ids_json"]),
+        available_team_ids=[team_row["team_id"] for team_row in team_rows],
         full_span_start_season_id=row["full_span_start_season_id"],
         full_span_end_season_id=row["full_span_end_season_id"],
         updated_at=row["updated_at"],
@@ -149,3 +156,11 @@ def load_metric_full_span_points_map(
     for row in rows:
         points.setdefault(row["player_id"], {})[row["season_id"]] = row["value"]
     return points
+
+
+def _load_json_list(value: str) -> list[str]:
+    import json
+
+    loaded = json.loads(value)
+    assert isinstance(loaded, list), "metric store JSON column must decode to a list"
+    return loaded

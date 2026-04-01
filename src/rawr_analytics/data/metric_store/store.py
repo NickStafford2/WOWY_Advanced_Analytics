@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import json
 from collections.abc import Callable
 from datetime import UTC, datetime
 from typing import Any
@@ -142,6 +141,10 @@ def clear_metric_scope_store(
             (metric, scope_key),
         )
         connection.execute(
+            "DELETE FROM metric_scope_team WHERE metric_id = ? AND scope_key = ?",
+            (metric, scope_key),
+        )
+        connection.execute(
             "DELETE FROM metric_store_metadata_v2 WHERE metric_id = ? AND scope_key = ?",
             (metric, scope_key),
         )
@@ -189,6 +192,10 @@ def _replace_metric_scope_snapshot(
             (metric_id, scope_key),
         )
         connection.execute(
+            "DELETE FROM metric_scope_team WHERE metric_id = ? AND scope_key = ?",
+            (metric_id, scope_key),
+        )
+        connection.execute(
             "DELETE FROM metric_store_metadata_v2 WHERE metric_id = ? AND scope_key = ?",
             (metric_id, scope_key),
         )
@@ -226,11 +233,10 @@ def _replace_metric_scope_snapshot(
                 team_filter,
                 season_type,
                 available_season_ids_json,
-                available_team_ids_json,
                 full_span_start_season_id,
                 full_span_end_season_id,
                 updated_at
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
             """,
             (
                 catalog_row.metric_id,
@@ -238,13 +244,13 @@ def _replace_metric_scope_snapshot(
                 catalog_row.label,
                 catalog_row.team_filter,
                 catalog_row.season_type,
-                json.dumps(catalog_row.available_season_ids),
-                json.dumps(catalog_row.available_team_ids),
+                _dump_json_list(catalog_row.available_season_ids),
                 catalog_row.full_span_start_season_id,
                 catalog_row.full_span_end_season_id,
                 catalog_row.updated_at,
             ),
         )
+        _insert_metric_scope_teams(connection, catalog_row)
         _insert_full_span_rows(connection, series_rows, point_rows)
         connection.commit()
 
@@ -358,6 +364,28 @@ def _insert_wowy_rows(connection, rows: list[WowyPlayerSeasonValueRow]) -> None:
     )
 
 
+def _insert_metric_scope_teams(connection, row: MetricScopeCatalogRow) -> None:
+    if not row.available_team_ids:
+        return
+    connection.executemany(
+        """
+        INSERT INTO metric_scope_team (
+            metric_id,
+            scope_key,
+            team_id
+        ) VALUES (?, ?, ?)
+        """,
+        [
+            (
+                row.metric_id,
+                row.scope_key,
+                team_id,
+            )
+            for team_id in row.available_team_ids
+        ],
+    )
+
+
 def _insert_full_span_rows(
     connection,
     series_rows: list[MetricFullSpanSeriesRow],
@@ -414,14 +442,12 @@ def _insert_full_span_rows(
 def _validate_rawr_rows(
     *,
     scope_key: str,
-    label: str,
     build_version: str,
     source_fingerprint: str,
     rows: list[RawrPlayerSeasonValueRow],
 ) -> None:
     validate_rawr_rows(
         scope_key=scope_key,
-        label=label,
         build_version=build_version,
         source_fingerprint=source_fingerprint,
         rows=rows,
@@ -432,7 +458,6 @@ def _validate_wowy_rows(
     *,
     metric_id: str,
     scope_key: str,
-    label: str,
     build_version: str,
     source_fingerprint: str,
     rows: list[WowyPlayerSeasonValueRow],
@@ -440,8 +465,13 @@ def _validate_wowy_rows(
     validate_wowy_rows(
         metric_id=metric_id,
         scope_key=scope_key,
-        label=label,
         build_version=build_version,
         source_fingerprint=source_fingerprint,
         rows=rows,
     )
+
+
+def _dump_json_list(values: list[str]) -> str:
+    import json
+
+    return json.dumps(values)

@@ -73,12 +73,21 @@ def initialize_player_metrics_db() -> None:
                 team_filter TEXT NOT NULL DEFAULT '',
                 season_type TEXT NOT NULL DEFAULT 'Regular Season',
                 available_season_ids_json TEXT NOT NULL DEFAULT '[]',
-                available_team_ids_json TEXT NOT NULL DEFAULT '[]',
                 full_span_start_season_id TEXT,
                 full_span_end_season_id TEXT,
                 updated_at TEXT NOT NULL,
                 PRIMARY KEY (metric_id, scope_key)
             );
+
+            CREATE TABLE IF NOT EXISTS metric_scope_team (
+                metric_id TEXT NOT NULL,
+                scope_key TEXT NOT NULL,
+                team_id INTEGER NOT NULL,
+                PRIMARY KEY (metric_id, scope_key, team_id)
+            );
+
+            CREATE INDEX IF NOT EXISTS idx_metric_scope_team_metric_scope
+            ON metric_scope_team (metric_id, scope_key);
 
             CREATE TABLE IF NOT EXISTS metric_full_span_series (
                 metric_id TEXT NOT NULL,
