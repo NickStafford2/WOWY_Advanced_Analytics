@@ -219,15 +219,15 @@ def _refresh_metric_store_scope(
     state = load_metric_scope_store_state(metric.value, scope.scope_key)
     if (
         state is not None
-        and state.metadata.source_fingerprint == source_fingerprint
-        and state.metadata.build_version == build_version
-        and state.metadata.row_count > 0
+        and state.snapshot_state.source_fingerprint == source_fingerprint
+        and state.snapshot_state.build_version == build_version
+        and state.snapshot_state.row_count > 0
     ):
         return (
             RefreshScopeResult(
                 scope_key=scope.scope_key,
                 scope_label=scope.scope_label,
-                row_count=state.metadata.row_count,
+                row_count=state.snapshot_state.row_count,
                 status="cached",
             ),
             False,

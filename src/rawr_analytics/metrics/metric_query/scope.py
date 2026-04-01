@@ -154,7 +154,7 @@ def require_current_metric_scope(
     if state is None:
         raise ValueError("Metric store has not been built for the requested scope")
     catalog_row = state.catalog_row
-    metadata = state.metadata
+    snapshot_state = state.snapshot_state
 
     cache_load_rows = [
         row
@@ -170,7 +170,7 @@ def require_current_metric_scope(
     current_fingerprint = build_normalized_cache_fingerprint(
         season=Season("2000", catalog_row.season_type)
     )
-    if metadata.source_fingerprint != current_fingerprint:
+    if snapshot_state.source_fingerprint != current_fingerprint:
         raise ValueError(
             "Cached metric store is stale relative to normalized cache. "
             "Refresh the web metric store after ingest is rebuilt."

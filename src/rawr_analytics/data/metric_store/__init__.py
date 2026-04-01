@@ -7,13 +7,13 @@ from dataclasses import dataclass
 from rawr_analytics.data.metric_store.models import (
     MetricFullSpanSeriesRow,
     MetricScopeCatalogRow,
-    MetricStoreMetadata,
+    MetricSnapshotState,
 )
 from rawr_analytics.data.metric_store.queries import (
     load_metric_full_span_points_map,
     load_metric_full_span_series_rows,
     load_metric_scope_catalog_row,
-    load_metric_store_metadata,
+    load_metric_snapshot_state,
 )
 from rawr_analytics.data.metric_store.rawr import (
     RawrPlayerSeasonValueRow,
@@ -34,7 +34,7 @@ from rawr_analytics.data.metric_store.wowy import (
 @dataclass(frozen=True)
 class MetricScopeStoreState:
     catalog_row: MetricScopeCatalogRow
-    metadata: MetricStoreMetadata
+    snapshot_state: MetricSnapshotState
 
 
 @dataclass(frozen=True)
@@ -50,10 +50,10 @@ def load_metric_scope_store_state(
     catalog_row = load_metric_scope_catalog_row(metric, scope_key)
     if catalog_row is None:
         return None
-    metadata = load_metric_store_metadata(metric, scope_key)
-    if metadata is None:
+    snapshot_state = load_metric_snapshot_state(metric, scope_key)
+    if snapshot_state is None:
         return None
-    return MetricScopeStoreState(catalog_row=catalog_row, metadata=metadata)
+    return MetricScopeStoreState(catalog_row=catalog_row, snapshot_state=snapshot_state)
 
 
 def load_metric_span_store_rows(

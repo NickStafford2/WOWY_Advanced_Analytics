@@ -6,15 +6,15 @@ from rawr_analytics.data._paths import METRIC_STORE_DB_PATH
 from rawr_analytics.data.metric_store.models import (
     MetricFullSpanSeriesRow,
     MetricScopeCatalogRow,
-    MetricStoreMetadata,
+    MetricSnapshotState,
 )
 from rawr_analytics.data.metric_store.schema import connect, initialize_player_metrics_db
 
 
-def load_metric_store_metadata(
+def load_metric_snapshot_state(
     metric: str,
     scope_key: str,
-) -> MetricStoreMetadata | None:
+) -> MetricSnapshotState | None:
     initialize_player_metrics_db()
     with connect(METRIC_STORE_DB_PATH) as connection:
         row = connection.execute(
@@ -34,7 +34,7 @@ def load_metric_store_metadata(
         ).fetchone()
     if row is None:
         return None
-    return MetricStoreMetadata(
+    return MetricSnapshotState(
         snapshot_id=row["snapshot_id"],
         metric_id=row["metric_id"],
         scope_key=row["scope_key"],
