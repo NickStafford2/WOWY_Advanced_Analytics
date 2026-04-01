@@ -274,20 +274,33 @@ def _validate_metric_store_relations(
                 ValidationIssue(
                     table=metadata_table,
                     key=f"metric={metric!r},scope_key={scope_key!r}",
-                    message="missing metadata row for metric scope",
+                    message="missing snapshot row for metric scope",
                 )
             )
-        elif metadata_row.row_count != len(rows):
-            issues.append(
-                ValidationIssue(
-                    table=metadata_table,
-                    key=f"metric={metric!r},scope_key={scope_key!r}",
-                    message=(
-                        "row_count does not match metric rows:"
-                        f"{metadata_row.row_count} != {len(rows)}"
-                    ),
+        else:
+            row_snapshot_id = _metric_group_snapshot_id(rows)
+            if row_snapshot_id != metadata_row.snapshot_id:
+                issues.append(
+                    ValidationIssue(
+                        table=metadata_table,
+                        key=f"metric={metric!r},scope_key={scope_key!r}",
+                        message=(
+                            "metric value rows point at a different snapshot_id than "
+                            "metric_snapshot"
+                        ),
+                    )
                 )
-            )
+            if metadata_row.row_count != len(rows):
+                issues.append(
+                    ValidationIssue(
+                        table=metadata_table,
+                        key=f"metric={metric!r},scope_key={scope_key!r}",
+                        message=(
+                            "row_count does not match metric value rows:"
+                            f"{metadata_row.row_count} != {len(rows)}"
+                        ),
+                    )
+                )
         catalog_row = catalog_rows.get(key)
         if catalog_row is None:
             issues.append(
@@ -303,8 +316,9 @@ def _validate_metric_store_relations(
                     table="metric_scope_catalog",
                     key=f"metric={metric!r},scope_key={scope_key!r}",
                     message=(
-                        "available_seasons is missing seasons present in metric rows: "
-                        f"catalog={catalog_row.available_season_ids!r} metric_rows={seasons!r}"
+                        "available_seasons is missing seasons present in metric value rows: "
+                        f"catalog={catalog_row.available_season_ids!r} "
+                        f"metric_value_rows={seasons!r}"
                     ),
                 )
             )
@@ -364,7 +378,7 @@ def _validate_metric_store_relations(
                     table=metadata_table,
                     key=f"metric={metric!r},scope_key={scope_key!r}",
                     message=(
-                        "derived metric scope exists but normalized cache is empty for "
+                        "derived snapshot scope exists but normalized cache is empty for "
                         f"season_type {season_type!r}"
                     ),
                 )
@@ -393,7 +407,7 @@ def _validate_metric_store_relations(
             ValidationIssue(
                 table=metadata_table,
                 key=f"metric={key[0]!r},scope_key={key[1]!r}",
-                message="metadata row has no matching metric rows",
+                message="snapshot row has no matching metric value rows",
             )
         )
 
@@ -402,7 +416,7 @@ def _validate_metric_store_relations(
             ValidationIssue(
                 table="metric_scope_catalog",
                 key=f"metric={key[0]!r},scope_key={key[1]!r}",
-                message="catalog row has no matching metric rows",
+                message="catalog row has no matching metric value rows",
             )
         )
 
@@ -436,6 +450,20 @@ def _validate_metric_store_relations(
             )
             continue
         catalog_row = catalog_rows[key]
+        metadata_row = metadata_rows.get(key)
+        if metadata_row is not None:
+            full_span_snapshot_id = _full_span_group_snapshot_id(series_rows, point_rows)
+            if full_span_snapshot_id != metadata_row.snapshot_id:
+                issues.append(
+                    ValidationIssue(
+                        table="metric_full_span",
+                        key=f"metric={metric!r},scope_key={scope_key!r}",
+                        message=(
+                            "full-span rows point at a different snapshot_id than "
+                            "metric_snapshot"
+                        ),
+                    )
+                )
         allowed_seasons = set(catalog_row.available_season_ids)
         for point_row in point_rows:
             if point_row.season_id not in allowed_seasons:
@@ -454,7 +482,7 @@ def _validate_metric_store_relations(
                 ValidationIssue(
                     table="metric_full_span_series",
                     key=f"metric={metric!r},scope_key={scope_key!r}",
-                    message="metric rows exist but no full-span series rows were stored",
+                    message="metric value rows exist but no full-span series rows were stored",
                 )
             )
 
@@ -466,6 +494,24 @@ def _validate_metric_store_relations(
                 message="metric scope has no matching full-span rows",
             )
         )
+
+
+def _metric_group_snapshot_id(
+    rows: list[RawrPlayerSeasonValueRow] | list[WowyPlayerSeasonValueRow],
+) -> int | None:
+    assert rows, "metric group rows must not be empty"
+    return rows[0].snapshot_id
+
+
+def _full_span_group_snapshot_id(
+    series_rows: list[MetricFullSpanSeriesRow],
+    point_rows: list[MetricFullSpanPointRow],
+) -> int | None:
+    if series_rows:
+        return series_rows[0].snapshot_id
+    if point_rows:
+        return point_rows[0].snapshot_id
+    return None
 
 
 def _metric_group_season_type(
