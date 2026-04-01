@@ -97,7 +97,9 @@ Current state:
 - `label` now lives only on `metric_scope_catalog`
 - `metric_snapshot` now exists as the parent build-state table
 - RAWR now reads and writes through `snapshot_id`
-- `metric_store_metadata_v2` still exists as legacy build metadata for WOWY paths
+- WOWY build metadata now also lives on `metric_snapshot`
+- one cached WOWY write/read path now uses `snapshot_id`
+- `metric_store_metadata_v2` is now legacy cleanup only
 - scope-team membership now lives in `metric_scope_team`
 - scope-season membership now lives in `metric_scope_season`
 
@@ -245,7 +247,7 @@ Notes:
 - `scope_key` can remain a string if that is the simplest stable contract.
 - `team_filter` should not be stored redundantly on every value row.
 - if all query paths already know the metric, `metric_id` can be omitted from metric-specific value tables.
-- the current codebase is in a transitional state where RAWR uses `metric_snapshot` first and WOWY still uses `metric_store_metadata_v2`
+- the current codebase is in a transitional state where metadata is snapshot-backed for both metrics, but several WOWY/full-span tables still keep the older `(metric_id, scope_key)` shape
 
 ## Refactor Phases
 
@@ -361,8 +363,8 @@ Success condition:
 
 Recommended first slice inside this phase:
 
-- keep `metric_store_metadata_v2` limited to freshness fields plus `row_count`
-- add a real `metric_snapshot` parent row keyed by `snapshot_id`
+- move build metadata to `metric_snapshot`
+- thread one write/read path through `snapshot_id`
 - keep the larger value-table rewrite incremental instead of doing it all at once
 
 ## Phase 5: Delete generic row contracts
@@ -430,10 +432,10 @@ Specific code to remove during the refactor:
 
 If continuing this refactor in code, start here:
 
-1. add a `metric_snapshot` table with `snapshot_id` plus build metadata
-2. keep scope definition in scope tables and build state in snapshot rows
-3. thread one metric-store write/read path through `snapshot_id`
+1. delete `metric_store_metadata_v2` once no code depends on it
+2. move another small WOWY or full-span path from `(metric_id, scope_key)` to `snapshot_id`
+3. keep scope definition in scope tables and build state in snapshot rows
 4. keep the current metric-specific value tables for now if that keeps the slice small
 5. do not try to finish the whole snapshot redesign in one pass
 
-That slice starts the snapshot redesign without mixing it with a full value-table rewrite.
+That slice keeps the snapshot redesign moving without mixing it with a full value-table rewrite.

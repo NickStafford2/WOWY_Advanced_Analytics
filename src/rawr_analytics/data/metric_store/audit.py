@@ -99,30 +99,6 @@ def _audit_metric_player_season_values_table(
         )
         for row in snapshot_rows
     }
-    legacy_metadata_rows = connection.execute(
-        """
-        SELECT
-            metric_id,
-            scope_key,
-            build_version,
-            source_fingerprint,
-            row_count
-        FROM metric_store_metadata_v2
-        """
-    ).fetchall()
-    for row in legacy_metadata_rows:
-        key = (row["metric_id"], row["scope_key"])
-        if row["metric_id"] == "rawr":
-            continue
-        if key in metadata_by_key:
-            continue
-        metadata_by_key[key] = MetricStoreAuditMetadata(
-            source_table="metric_store_metadata_v2",
-            snapshot_id=None,
-            build_version=row["build_version"],
-            source_fingerprint=row["source_fingerprint"],
-            row_count=row["row_count"],
-        )
 
     rawr_groups: dict[tuple[str, str], list[RawrPlayerSeasonValueRow]] = defaultdict(list)
     wowy_groups: dict[tuple[str, str], list[WowyPlayerSeasonValueRow]] = defaultdict(list)
@@ -160,7 +136,7 @@ def _audit_metric_player_season_values_table(
         metadata_row = metadata_by_key.get(
             key,
             MetricStoreAuditMetadata(
-                source_table="metric_store_metadata_v2",
+                source_table="metric_snapshot",
                 snapshot_id=None,
                 build_version="missing-metadata",
                 source_fingerprint="missing-metadata",

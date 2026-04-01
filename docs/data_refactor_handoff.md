@@ -84,7 +84,7 @@ This slice is complete.
 This slice is complete.
 
 - `MetricStoreMetadata` no longer includes `label`
-- `metric_store_metadata_v2` is now treated as freshness metadata only
+- `metric_store_metadata_v2` is now legacy cleanup only
 - `label` is owned by `metric_scope_catalog`
 - this removed a fresh-DB inconsistency where code queried and inserted a metadata `label` column that the schema did not define
 
@@ -98,9 +98,11 @@ Current state:
 - scope definition still lives separately in `metric_scope_catalog`, `metric_scope_team`, and `metric_scope_season`
 - RAWR writes now create a snapshot row and store `snapshot_id` on `rawr_player_season_values`
 - RAWR reads now join through `metric_snapshot`
-- WOWY still uses `metric_store_metadata_v2` and the old `(metric_id, scope_key)` value-table path
+- WOWY writes now create a snapshot row and store `snapshot_id` on `wowy_player_season_values`
+- the main cached WOWY read path now joins through `metric_snapshot`
+- WOWY value rows and full-span rows still keep the older `(metric_id, scope_key)` shape outside that narrow snapshot path
 - `MetricStoreMetadata` now includes optional `snapshot_id`
-- old RAWR rows without `metric_snapshot` are intentionally treated as stale and will rebuild
+- old pre-snapshot rows are intentionally treated as stale and will rebuild
 
 ## Decisions Already Made
 
@@ -190,9 +192,19 @@ Current state:
 - added `snapshot_id` to `rawr_player_season_values`
 - updated RAWR writes to insert `metric_snapshot` first and then write value rows with that `snapshot_id`
 - updated RAWR reads to join through `metric_snapshot`
-- updated metadata reads so RAWR uses `metric_snapshot` and WOWY still falls back to `metric_store_metadata_v2`
+- updated metadata reads so both RAWR and WOWY use `metric_snapshot`
 - updated audit and DB validation so RAWR build-state issues are attributed to `metric_snapshot`
-- kept WOWY value tables, full-span tables, and scope relations on the old `(metric_id, scope_key)` keys for now
+- kept most WOWY value-table and full-span storage on the old `(metric_id, scope_key)` keys for now
+
+### Slice 11: move WOWY build metadata onto snapshot
+
+- added `snapshot_id` to `wowy_player_season_values`
+- updated WOWY writes to insert `metric_snapshot` first and then write value rows with that `snapshot_id`
+- updated `load_metric_store_metadata()` so it no longer falls back to `metric_store_metadata_v2`
+- updated the main cached WOWY row loader to join through `metric_snapshot`
+- updated audit and DB validation so WOWY build-state issues are also attributed to `metric_snapshot`
+- kept scope definition separate from build state
+- kept current WOWY/full-span table shapes to avoid widening the slice
 
 Verification already done:
 
@@ -204,11 +216,14 @@ Verification already done:
 - `poetry run ruff check src/rawr_analytics/data/metric_store/schema.py src/rawr_analytics/data/metric_store/queries.py src/rawr_analytics/data/metric_store/store.py src/rawr_analytics/data/metric_store/audit.py src/rawr_analytics/data/db_validation.py` passed
 - `poetry run python -m py_compile src/rawr_analytics/data/metric_store/models.py src/rawr_analytics/data/metric_store/schema.py src/rawr_analytics/data/metric_store/store.py src/rawr_analytics/data/metric_store/queries.py src/rawr_analytics/data/metric_store/rawr.py src/rawr_analytics/data/metric_store/audit.py src/rawr_analytics/data/db_validation.py` passed
 - `poetry run ruff check src/rawr_analytics/data/metric_store/models.py src/rawr_analytics/data/metric_store/schema.py src/rawr_analytics/data/metric_store/store.py src/rawr_analytics/data/metric_store/queries.py src/rawr_analytics/data/metric_store/rawr.py src/rawr_analytics/data/metric_store/audit.py src/rawr_analytics/data/db_validation.py` passed
+- `poetry run python -m py_compile src/rawr_analytics/data/metric_store/schema.py src/rawr_analytics/data/metric_store/store.py src/rawr_analytics/data/metric_store/queries.py src/rawr_analytics/data/metric_store/wowy.py src/rawr_analytics/data/metric_store/audit.py src/rawr_analytics/data/db_validation.py src/rawr_analytics/services/metric_refresh/_refresh.py src/rawr_analytics/metrics/metric_query/views.py` passed
+- `poetry run ruff check src/rawr_analytics/data/metric_store/schema.py src/rawr_analytics/data/metric_store/store.py src/rawr_analytics/data/metric_store/queries.py src/rawr_analytics/data/metric_store/wowy.py src/rawr_analytics/data/metric_store/audit.py src/rawr_analytics/data/db_validation.py src/rawr_analytics/services/metric_refresh/_refresh.py src/rawr_analytics/metrics/metric_query/views.py` passed
 
 Local DB state when this handoff was written:
 
 - no live `data/app/player_metrics.sqlite3` file was present
 - only `.bak` files remained under `data/app/`
+- later, the live derived DB was explicitly deleted and will be rebuilt from normalized cache
 
 ## Recommended Target Shape
 

@@ -74,7 +74,6 @@ def replace_rawr_scope_snapshot(
             snapshot_id,
         ),
         row_count=len(rows),
-        use_snapshot_metadata=True,
     )
 
 
@@ -128,7 +127,6 @@ def replace_wowy_scope_snapshot(
             snapshot_id,
         ),
         row_count=len(rows),
-        use_snapshot_metadata=False,
     )
 
 
@@ -185,7 +183,6 @@ def _replace_metric_scope_snapshot(
     point_rows: list[MetricFullSpanPointRow],
     insert_rows: Callable[[Any, int | None], None],
     row_count: int,
-    use_snapshot_metadata: bool,
 ) -> None:
     initialize_player_metrics_db()
     validate_metric_scope_catalog_row(catalog_row)
@@ -231,38 +228,15 @@ def _replace_metric_scope_snapshot(
             f"DELETE FROM {metric_values_table(metric_id)} WHERE metric_id = ? AND scope_key = ?",
             (metric_id, scope_key),
         )
-        snapshot_id: int | None = None
-        if use_snapshot_metadata:
-            snapshot_id = _insert_metric_snapshot(
-                connection,
-                metric_id=metric_id,
-                scope_key=scope_key,
-                build_version=build_version,
-                source_fingerprint=source_fingerprint,
-                row_count=row_count,
-                updated_at=updated_at,
-            )
-        else:
-            connection.execute(
-                """
-                INSERT INTO metric_store_metadata_v2 (
-                    metric_id,
-                    scope_key,
-                    build_version,
-                    source_fingerprint,
-                    row_count,
-                    updated_at
-                ) VALUES (?, ?, ?, ?, ?, ?)
-                """,
-                (
-                    metric_id,
-                    scope_key,
-                    build_version,
-                    source_fingerprint,
-                    row_count,
-                    updated_at,
-                ),
-            )
+        snapshot_id = _insert_metric_snapshot(
+            connection,
+            metric_id=metric_id,
+            scope_key=scope_key,
+            build_version=build_version,
+            source_fingerprint=source_fingerprint,
+            row_count=row_count,
+            updated_at=updated_at,
+        )
         insert_rows(connection, snapshot_id)
         connection.execute(
             """
@@ -405,10 +379,11 @@ def _insert_wowy_rows(
 ) -> None:
     if not rows:
         return
-    assert snapshot_id is None, "wowy legacy writes must not receive snapshot_id"
+    assert snapshot_id is not None, "wowy snapshot writes require snapshot_id"
     connection.executemany(
         """
         INSERT INTO wowy_player_season_values (
+            snapshot_id,
             metric_id,
             scope_key,
             team_filter,
@@ -424,10 +399,11 @@ def _insert_wowy_rows(
             average_minutes,
             total_minutes,
             raw_wowy_score
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         """,
         [
             (
+                snapshot_id,
                 row.metric_id,
                 row.scope_key,
                 row.team_filter,

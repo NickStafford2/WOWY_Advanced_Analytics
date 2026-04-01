@@ -38,23 +38,25 @@ def load_wowy_player_season_value_rows(
     initialize_player_metrics_db()
     query = """
         SELECT
-            metric_id,
-            scope_key,
-            team_filter,
-            season_type,
-            season_id,
-            player_id,
-            player_name,
-            value,
-            games_with,
-            games_without,
-            avg_margin_with,
-            avg_margin_without,
-            average_minutes,
-            total_minutes,
-            raw_wowy_score
-        FROM wowy_player_season_values
-        WHERE metric_id = ? AND scope_key = ?
+            wowy.metric_id,
+            wowy.scope_key,
+            wowy.team_filter,
+            wowy.season_type,
+            wowy.season_id,
+            wowy.player_id,
+            wowy.player_name,
+            wowy.value,
+            wowy.games_with,
+            wowy.games_without,
+            wowy.avg_margin_with,
+            wowy.avg_margin_without,
+            wowy.average_minutes,
+            wowy.total_minutes,
+            wowy.raw_wowy_score
+        FROM wowy_player_season_values AS wowy
+        INNER JOIN metric_snapshot AS snapshot
+            ON snapshot.snapshot_id = wowy.snapshot_id
+        WHERE snapshot.metric_id = ? AND snapshot.scope_key = ?
     """
     params: list[object] = [metric_id, scope_key]
     if seasons:

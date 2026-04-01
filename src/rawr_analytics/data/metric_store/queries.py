@@ -32,22 +32,6 @@ def load_metric_store_metadata(
             """,
             (metric, scope_key),
         ).fetchone()
-        if row is None and metric != "rawr":
-            row = connection.execute(
-                """
-                SELECT
-                    NULL AS snapshot_id,
-                    metric_id,
-                    scope_key,
-                    build_version,
-                    source_fingerprint,
-                    row_count,
-                    updated_at
-                FROM metric_store_metadata_v2
-                WHERE metric_id = ? AND scope_key = ?
-                """,
-                (metric, scope_key),
-            ).fetchone()
     if row is None:
         return None
     return MetricStoreMetadata(

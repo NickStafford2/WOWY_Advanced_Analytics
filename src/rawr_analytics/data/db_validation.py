@@ -268,8 +268,6 @@ def _validate_metric_store_relations(
             metadata_row.source_table
             if metadata_row is not None
             else "metric_snapshot"
-            if metric == "rawr"
-            else "metric_store_metadata_v2"
         )
         if metadata_row is None:
             issues.append(
@@ -348,8 +346,6 @@ def _validate_metric_store_relations(
             metadata_row.source_table
             if metadata_row is not None
             else "metric_snapshot"
-            if metric == "rawr"
-            else "metric_store_metadata_v2"
         )
         catalog_row = catalog_rows.get(key)
         group_rows = metric_row_groups.get(key, [])
