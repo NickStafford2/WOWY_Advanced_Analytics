@@ -9,6 +9,7 @@ from rawr_analytics.data._validation import (
     _validate_optional_non_negative_int,
     _validate_required_text,
 )
+from rawr_analytics.data.metric_store_scope import validate_metric_scope
 from rawr_analytics.data.metric_store.models import (
     MetricFullSpanPointRow,
     MetricFullSpanSeriesRow,
@@ -16,13 +17,8 @@ from rawr_analytics.data.metric_store.models import (
 )
 from rawr_analytics.data.metric_store.rawr import RawrPlayerSeasonValueRow
 from rawr_analytics.data.metric_store.wowy import WowyPlayerSeasonValueRow
-from rawr_analytics.metrics.metric_query.validation import (
-    canonicalize_metric_season,
-    canonicalize_metric_season_type,
-    canonicalize_metric_team_filter,
-    validate_metric_catalog,
-    validate_metric_scope,
-)
+from rawr_analytics.shared.season import Season, SeasonType
+from rawr_analytics.shared.team import canonicalize_metric_team_filter
 
 
 def validate_rawr_rows(
@@ -55,7 +51,7 @@ def validate_rawr_rows(
                 f"{row.scope_key!r}; expected {scope_key!r}"
             )
 
-        canonical_season_type = canonicalize_metric_season_type(row.season_type)
+        canonical_season_type = SeasonType.parse(row.season_type).value
         if row.season_type != canonical_season_type:
             raise ValueError(
                 f"Metric row for player {row.player_id!r} uses non-canonical "
@@ -72,7 +68,9 @@ def validate_rawr_rows(
             team_filter=canonical_team_filter,
             season_type=canonical_season_type,
         )
-        canonical_season_id = canonicalize_metric_season(row.season_id)
+        canonical_season_id = Season(
+            row.season_id, SeasonType.REGULAR.value
+        ).id  # todo. this may be wrong. why regular as parameter?
         if canonical_season_id != row.season_id:
             raise ValueError(
                 "Metric row for player "
@@ -160,7 +158,7 @@ def validate_wowy_rows(
                 f"{row.scope_key!r}; expected {scope_key!r}"
             )
 
-        canonical_season_type = canonicalize_metric_season_type(row.season_type)
+        canonical_season_type = SeasonType.parse(row.season_type).value
         if row.season_type != canonical_season_type:
             raise ValueError(
                 f"Metric row for player {row.player_id!r} uses non-canonical "
@@ -177,7 +175,7 @@ def validate_wowy_rows(
             team_filter=canonical_team_filter,
             season_type=canonical_season_type,
         )
-        canonical_season_id = canonicalize_metric_season(row.season_id)
+        canonical_season_id = Season(row.season_id, SeasonType.REGULAR.value).id
         if canonical_season_id != row.season_id:
             raise ValueError(
                 "Metric row for player "
@@ -258,7 +256,7 @@ def validate_metric_scope_catalog_row(row: MetricScopeCatalogRow) -> None:
     _validate_required_text(row.metric_id, "metric_id")
     _validate_required_text(row.scope_key, "scope_key")
     _validate_required_text(row.label, "label")
-    validate_metric_catalog(
+    _validate_metric_catalog(
         scope_key=row.scope_key,
         team_filter=row.team_filter,
         season_type=row.season_type,
@@ -268,6 +266,59 @@ def validate_metric_scope_catalog_row(row: MetricScopeCatalogRow) -> None:
         full_span_end_season=row.full_span_end_season_id,
     )
     _validate_iso_datetime(row.updated_at, "catalog updated_at")
+
+
+def _validate_metric_catalog(
+    *,
+    scope_key: str,
+    team_filter: str,
+    season_type: str,
+    available_seasons: list[str],
+    available_team_ids: list[int],
+    full_span_start_season: str | None,
+    full_span_end_season: str | None,
+) -> None:
+    validate_metric_scope(
+        scope_key=scope_key,
+        team_filter=team_filter,
+        season_type=season_type,
+    )
+
+    canonical_seasons = [
+        Season(season, SeasonType.REGULAR.value).id for season in available_seasons
+    ]
+    if canonical_seasons != available_seasons:
+        raise ValueError("Catalog available_seasons must use canonical season strings")
+    if canonical_seasons != sorted(set(canonical_seasons), key=_season_sort_key):
+        raise ValueError("Catalog available_seasons must be unique and sorted")
+
+    canonical_team_ids = [_canonical_team_id(team_id) for team_id in available_team_ids]
+    if canonical_team_ids != available_team_ids:
+        raise ValueError("Catalog available_team_ids must use canonical positive team ids")
+    if canonical_team_ids != sorted(set(canonical_team_ids)):
+        raise ValueError("Catalog available_team_ids must be unique and sorted")
+
+    if (full_span_start_season is None) != (full_span_end_season is None):
+        raise ValueError("Catalog full-span seasons must both be set or both be null")
+    if full_span_start_season is None:
+        return
+
+    start = Season(full_span_start_season, SeasonType.REGULAR.value).id
+    end = Season(full_span_end_season or "", SeasonType.REGULAR.value).id
+    if start not in canonical_seasons or end not in canonical_seasons:
+        raise ValueError("Catalog full-span seasons must be present in available_seasons")
+    if _season_sort_key(start) > _season_sort_key(end):
+        raise ValueError("Catalog full-span start season must not be after end season")
+
+
+def _canonical_team_id(value: int) -> int:
+    if value <= 0:
+        raise ValueError(f"Invalid team_id {value!r}")
+    return value
+
+
+def _season_sort_key(season: str) -> int:
+    return Season(season, SeasonType.REGULAR.value).start_year
 
 
 def validate_metric_full_span_rows(
@@ -320,7 +371,7 @@ def validate_metric_full_span_rows(
             raise ValueError("Full-span point rows must match the requested metric scope")
         if row.player_id not in expected_point_counts:
             raise ValueError(f"Full-span point row for unknown player {row.player_id!r}")
-        canonical_season_id = canonicalize_metric_season(row.season_id)
+        canonical_season_id = Season(row.season_id, SeasonType.REGULAR.value).id
         if canonical_season_id != row.season_id:
             raise ValueError(
                 f"Full-span point row for player {row.player_id!r} uses "

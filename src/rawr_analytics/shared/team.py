@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import re
 from collections.abc import Mapping
 from dataclasses import dataclass
 from datetime import date
@@ -240,9 +241,7 @@ def _resolve_span_for_abbreviation_and_year(abbreviation: str, season_start_year
     for span in spans:
         if span.includes_year(season_start_year):
             return span
-    raise AssertionError(
-        f"Team {abbreviation!r} was not active in season {season_start_year!r}"
-    )
+    raise AssertionError(f"Team {abbreviation!r} was not active in season {season_start_year!r}")
 
 
 def _season_start_year_from_game_date(game_date: str) -> int:
@@ -268,3 +267,24 @@ def to_team_ids(teams: list[Team] | None) -> list[int] | None:
     if normalized_teams is None:
         return None
     return [team.team_id for team in normalized_teams]
+
+
+def canonicalize_metric_team_filter(team_filter: str) -> str:
+    if not team_filter:
+        return ""
+
+    team_ids = team_filter.split(",")
+    if team_ids != sorted(set(team_ids), key=int):
+        raise ValueError("team_filter must be unique and sorted")
+    for team_id in team_ids:
+        _canonical_team_id_filter_value(team_id)
+    return ",".join(team_ids)
+
+
+_TEAM_ID_FILTER_PATTERN = re.compile(r"^[1-9]\d*$")
+
+
+def _canonical_team_id_filter_value(value: str) -> int:
+    if not _TEAM_ID_FILTER_PATTERN.fullmatch(value):
+        raise ValueError(f"Invalid team_filter value {value!r}")
+    return int(value)
