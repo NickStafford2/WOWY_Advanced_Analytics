@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from collections.abc import Iterable
 
+from rawr_analytics.nba import player_has_positive_minutes
 from rawr_analytics.nba.models import NormalizedGamePlayerRecord
 
 MinuteStats = dict[int, tuple[float, float]]
@@ -14,7 +15,7 @@ def _build_player_minute_stats(
     counts: dict[int, int] = {}
 
     for player in game_players:
-        if not player.appeared or player.minutes is None or player.minutes <= 0.0:
+        if not player_has_positive_minutes(player):
             continue
         totals[player.player_id] = totals.get(player.player_id, 0.0) + player.minutes
         counts[player.player_id] = counts.get(player.player_id, 0) + 1

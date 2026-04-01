@@ -3,9 +3,9 @@ from __future__ import annotations
 from collections import defaultdict
 
 from rawr_analytics.metrics.rawr.models import RawrObservation
+from rawr_analytics.nba import player_has_positive_minutes
 from rawr_analytics.nba.models import NormalizedGamePlayerRecord, NormalizedGameRecord
 from rawr_analytics.shared.season import Season
-from rawr_analytics.shared.team import Team
 
 _LINEUP_WEIGHT_SUM = 5.0
 
@@ -60,20 +60,16 @@ def _build_rawr_observations(
     games: list[NormalizedGameRecord],
     game_players: list[NormalizedGamePlayerRecord],
 ) -> tuple[list[RawrObservation], dict[int, str]]:
-    player_minutes_by_game_team: dict[tuple[str, Team], dict[int, float]] = defaultdict(dict)
+    player_minutes_by_game_team: dict[tuple[str, int], dict[int, float]] = defaultdict(dict)
     player_names: dict[int, str] = {}
 
     for player in game_players:
         player_names[player.player_id] = player.player_name
-        if not player.appeared:
+        if not player_has_positive_minutes(player):
             continue
         minutes = player.minutes
-        if minutes is None or minutes <= 0.0:
-            raise ValueError(
-                f"Missing positive minutes for appeared player {player.player_id!r} "
-                f"in game {player.game_id!r} and team {player.team.current.abbreviation!r}"
-            )
-        player_minutes_by_game_team[(player.game_id, player.team)][player.player_id] = minutes
+        assert minutes is not None
+        player_minutes_by_game_team[(player.game_id, player.team.team_id)][player.player_id] = minutes
 
     games_by_id: dict[str, list[NormalizedGameRecord]] = defaultdict(list)
     for game in games:
@@ -92,16 +88,16 @@ def _build_rawr_observations(
 
         home_game = home_games[0]
         away_game = away_games[0]
-        home_player_minutes = player_minutes_by_game_team.get((game_id, home_game.team), {})
-        away_player_minutes = player_minutes_by_game_team.get((game_id, away_game.team), {})
+        home_player_minutes = player_minutes_by_game_team.get((game_id, home_game.team.team_id), {})
+        away_player_minutes = player_minutes_by_game_team.get((game_id, away_game.team.team_id), {})
         if not home_player_minutes:
             raise ValueError(
-                f"No appeared players found for game {game_id!r} and team "
+                f"No players with positive minutes found for game {game_id!r} and team "
                 f"{home_game.team.abbreviation(season=home_game.season)!r}"
             )
         if not away_player_minutes:
             raise ValueError(
-                f"No appeared players found for game {game_id!r} and team "
+                f"No players with positive minutes found for game {game_id!r} and team "
                 f"{away_game.team.abbreviation(season=away_game.season)!r}"
             )
 
@@ -135,8 +131,9 @@ def _build_rawr_player_season_minute_stats(
 
     for player in game_players:
         season = season_by_game_id.get(player.game_id)
-        if season is None or not player.appeared or player.minutes is None or player.minutes <= 0.0:
+        if season is None or not player_has_positive_minutes(player):
             continue
+        assert player.minutes is not None
         key = (season, player.player_id)
         totals[key] = totals.get(key, 0.0) + player.minutes
         counts[key] = counts.get(key, 0) + 1

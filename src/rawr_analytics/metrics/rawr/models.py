@@ -97,7 +97,7 @@ class RawrResult:
 @dataclass(frozen=True)
 class RawrModel:
     player_keys: list[tuple[Season, int]]
-    team_seasons: list[tuple[Team, Season]]
+    team_seasons: list[tuple[int, Season]]
     coefficients: list[float]
 
 

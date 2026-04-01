@@ -302,13 +302,13 @@ def _tune_ridge_alpha(
 def _build_feature_row(
     feature_count: int,
     player_index: dict[tuple[Season, int], int],
-    team_effect_index: dict[tuple[Team, Season], int],
-    opponent_effect_index: dict[tuple[Team, Season], int],
+    team_effect_index: dict[tuple[int, Season], int],
+    opponent_effect_index: dict[tuple[int, Season], int],
     season: Season,
     player_weights: dict[int, float],
     home_court_sign: float,
-    team_effect_key: tuple[Team, Season],
-    opponent_effect_key: tuple[Team, Season],
+    team_effect_key: tuple[int, Season],
+    opponent_effect_key: tuple[int, Season],
 ) -> np.ndarray:
     row = np.zeros(feature_count, dtype=float)
     row[0] = 1.0
@@ -379,8 +379,8 @@ def _accumulate_row(
     gram += np.outer(row, row)
 
 
-def _team_season_key(team: Team, season: Season) -> tuple[Team, Season]:
-    return team, season
+def _team_season_key(team: Team, season: Season) -> tuple[int, Season]:
+    return team.team_id, season
 
 
 def _solve_linear_system(

@@ -15,7 +15,7 @@ def build_player_season_records(request: RawrRequest) -> list[RawrPlayerSeasonRe
     for season_input in sorted(request.season_inputs, key=lambda item: item.season.id):
         records.extend(_build_season_records(season_input, request=request))
     records.sort(
-        key=lambda record: (record.season, record.coefficient, record.player_name),
+        key=lambda record: (record.season.id, record.coefficient, record.player_name),
         reverse=True,
     )
     return records

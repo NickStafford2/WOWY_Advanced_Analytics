@@ -20,6 +20,7 @@ from rawr_analytics.metrics.wowy.models import (
     WowySeasonInput,
 )
 from rawr_analytics.metrics.wowy.records import build_player_season_records
+from rawr_analytics.nba import player_has_positive_minutes
 from rawr_analytics.nba.models import NormalizedGamePlayerRecord, NormalizedGameRecord
 from rawr_analytics.shared.season import Season, SeasonType
 from rawr_analytics.shared.team import Team
@@ -196,8 +197,9 @@ def _build_player_season_minute_stats(
     season_by_game_id = {game.game_id: game.season for game in games}
     for player in game_players:
         season = season_by_game_id.get(player.game_id)
-        if season is None or not player.appeared or player.minutes is None or player.minutes <= 0.0:
+        if season is None or not player_has_positive_minutes(player):
             continue
+        assert player.minutes is not None
         key = (season, player.player_id)
         totals[key] = totals.get(key, 0.0) + player.minutes
         counts[key] = counts.get(key, 0) + 1
