@@ -4,15 +4,15 @@ import json
 from pathlib import Path
 from typing import Any
 
-from rawr_analytics.data.constants import DB_PATH
-from rawr_analytics.data.player_metrics_db._tables import metric_values_table
-from rawr_analytics.data.player_metrics_db.models import (
+from rawr_analytics.data._paths import METRIC_STORE_DB_PATH
+from rawr_analytics.data.metric_store._tables import metric_values_table
+from rawr_analytics.data.metric_store.models import (
     MetricFullSpanSeriesRow,
     MetricScopeCatalogRow,
     MetricStoreMetadata,
     PlayerSeasonMetricRow,
 )
-from rawr_analytics.data.player_metrics_db.schema import connect, initialize_player_metrics_db
+from rawr_analytics.data.metric_store.schema import connect, initialize_player_metrics_db
 
 
 def load_metric_store_metadata(
@@ -20,7 +20,7 @@ def load_metric_store_metadata(
     scope_key: str,
 ) -> MetricStoreMetadata | None:
     initialize_player_metrics_db()
-    with connect(DB_PATH) as connection:
+    with connect(METRIC_STORE_DB_PATH) as connection:
         row = connection.execute(
             """
             SELECT
@@ -54,7 +54,7 @@ def load_metric_scope_catalog_row(
     scope_key: str,
 ) -> MetricScopeCatalogRow | None:
     initialize_player_metrics_db()
-    with connect(DB_PATH) as connection:
+    with connect(METRIC_STORE_DB_PATH) as connection:
         row = connection.execute(
             """
             SELECT
@@ -113,7 +113,7 @@ def load_metric_full_span_series_rows(
     if top_n is not None:
         query += " LIMIT ?"
         params.append(top_n)
-    with connect(DB_PATH) as connection:
+    with connect(METRIC_STORE_DB_PATH) as connection:
         rows = connection.execute(query, params).fetchall()
     return [
         MetricFullSpanSeriesRow(
@@ -148,7 +148,7 @@ def load_metric_full_span_points_map(
         WHERE metric_id = ? AND scope_key = ? AND player_id IN ({placeholders})
     """
     params: list[Any] = [metric, scope_key, *player_ids]
-    with connect(DB_PATH) as connection:
+    with connect(METRIC_STORE_DB_PATH) as connection:
         rows = connection.execute(query, params).fetchall()
     points: dict[int, dict[str, float]] = {}
     for row in rows:
@@ -247,7 +247,7 @@ def _load_rawr_metric_rows(
         query += " AND games >= ?"
         params.append(min_sample_size)
     query += " ORDER BY season_id, coefficient DESC, player_name ASC"
-    with connect(DB_PATH) as connection:
+    with connect(METRIC_STORE_DB_PATH) as connection:
         rows = connection.execute(query, params).fetchall()
     return [
         PlayerSeasonMetricRow(
@@ -316,7 +316,7 @@ def _load_wowy_metric_rows(
         query += " AND games_without >= ?"
         params.append(min_secondary_sample_size)
     query += " ORDER BY season_id, value DESC, player_name ASC"
-    with connect(DB_PATH) as connection:
+    with connect(METRIC_STORE_DB_PATH) as connection:
         rows = connection.execute(query, params).fetchall()
     return [
         PlayerSeasonMetricRow(

@@ -3,7 +3,11 @@ from __future__ import annotations
 from collections.abc import Callable
 from dataclasses import dataclass
 
-from rawr_analytics.data.constants import DB_PATH
+from rawr_analytics.data._paths import (
+    LEGACY_MIXED_DATA_DB_PATH,
+    METRIC_STORE_DB_PATH,
+    NORMALIZED_CACHE_DB_PATH,
+)
 from rawr_analytics.data.db_validation import (
     DatabaseValidationSummary,
     audit_player_metrics_db,
@@ -69,10 +73,16 @@ def rebuild_player_metrics_db(
     validation_progress_fn: ValidationProgressFn | None = None,
 ) -> RebuildResult:
     deleted_existing_db = False
-    if not request.keep_existing_db and DB_PATH.exists():
-        DB_PATH.unlink()
-        deleted_existing_db = True
-    DB_PATH.parent.mkdir(parents=True, exist_ok=True)
+    if not request.keep_existing_db:
+        for db_path in (
+            NORMALIZED_CACHE_DB_PATH,
+            METRIC_STORE_DB_PATH,
+            LEGACY_MIXED_DATA_DB_PATH,
+        ):
+            if db_path.exists():
+                db_path.unlink()
+                deleted_existing_db = True
+    NORMALIZED_CACHE_DB_PATH.parent.mkdir(parents=True, exist_ok=True)
 
     ingest_result = refresh_season_range(
         IngestRefreshRequest(

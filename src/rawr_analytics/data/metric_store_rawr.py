@@ -3,7 +3,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 
 from rawr_analytics.data.metric_store_query import require_current_metric_scope
-from rawr_analytics.data.player_metrics_db import (
+from rawr_analytics.data.metric_store import (
     RawrPlayerSeasonValueRow,
     load_rawr_player_season_value_rows,
 )

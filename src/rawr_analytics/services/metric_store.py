@@ -3,7 +3,7 @@ from __future__ import annotations
 from collections.abc import Callable
 from dataclasses import dataclass
 
-from rawr_analytics.data.metric_store import (
+from rawr_analytics.data._metric_store_refresh import (
     DEFAULT_RAWR_RIDGE_ALPHA,
     RefreshScopeResult,
     prepare_metric_store_refresh,

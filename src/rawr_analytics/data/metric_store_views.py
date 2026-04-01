@@ -4,7 +4,7 @@ from dataclasses import dataclass
 from typing import Any
 
 from rawr_analytics.data.metric_store_query import require_current_metric_scope
-from rawr_analytics.data.player_metrics_db import load_metric_span_store_rows
+from rawr_analytics.data.metric_store import load_metric_span_store_rows
 from rawr_analytics.metrics.constants import Metric
 
 __all__ = [

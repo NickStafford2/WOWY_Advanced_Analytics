@@ -6,12 +6,12 @@ from collections import defaultdict
 from dataclasses import dataclass
 
 from rawr_analytics.data._validation_issue import ValidationIssue
-from rawr_analytics.data.player_metrics_db._validation import (
+from rawr_analytics.data.metric_store._validation import (
     validate_metric_full_span_rows,
     validate_metric_rows,
     validate_metric_scope_catalog_row,
 )
-from rawr_analytics.data.player_metrics_db.models import (
+from rawr_analytics.data.metric_store.models import (
     MetricFullSpanPointRow,
     MetricFullSpanSeriesRow,
     MetricScopeCatalogRow,

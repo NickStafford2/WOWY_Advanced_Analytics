@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import hashlib
 
-from rawr_analytics.data.constants import DB_PATH
+from rawr_analytics.data._paths import NORMALIZED_CACHE_DB_PATH
 from rawr_analytics.data.game_cache.schema import connect, initialize_game_cache_db
 from rawr_analytics.shared.season import Season
 
@@ -14,7 +14,6 @@ def build_normalized_cache_fingerprint(
     initialize_game_cache_db()
     query = """
         SELECT
-            team_history.abbreviation AS team,
             load.team_id,
             load.season,
             load.season_type,
@@ -27,9 +26,6 @@ def build_normalized_cache_fingerprint(
             load.expected_games_row_count,
             load.skipped_games_row_count
         FROM normalized_cache_loads AS load
-        JOIN team_history
-          ON team_history.team_id = load.team_id
-         AND team_history.season = load.season
     """
     params: list[object] = []
     query += " WHERE load.season_type = ?"
@@ -37,10 +33,9 @@ def build_normalized_cache_fingerprint(
     query += " ORDER BY load.season_type, load.season, load.team_id"
 
     digest = hashlib.sha256()
-    with connect(DB_PATH) as connection:
+    with connect(NORMALIZED_CACHE_DB_PATH) as connection:
         rows = connection.execute(query, params).fetchall()
     for row in rows:
-        digest.update(row["team"].encode("utf-8"))
         digest.update(str(row["team_id"]).encode("utf-8"))
         digest.update(row["season"].encode("utf-8"))
         digest.update(row["season_type"].encode("utf-8"))

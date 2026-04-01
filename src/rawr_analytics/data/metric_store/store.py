@@ -5,26 +5,26 @@ from collections.abc import Callable
 from datetime import UTC, datetime
 from typing import Any
 
-from rawr_analytics.data.constants import DB_PATH
-from rawr_analytics.data.player_metrics_db._tables import metric_values_table
-from rawr_analytics.data.player_metrics_db._validation import (
+from rawr_analytics.data._paths import METRIC_STORE_DB_PATH
+from rawr_analytics.data.metric_store._tables import metric_values_table
+from rawr_analytics.data.metric_store._validation import (
     validate_metric_full_span_rows,
     validate_metric_rows,
     validate_metric_scope_catalog_row,
 )
-from rawr_analytics.data.player_metrics_db.full_span import (
+from rawr_analytics.data.metric_store.full_span import (
     build_rawr_full_span_rows,
     build_wowy_full_span_rows,
 )
-from rawr_analytics.data.player_metrics_db.models import (
+from rawr_analytics.data.metric_store.models import (
     MetricFullSpanPointRow,
     MetricFullSpanSeriesRow,
     MetricScopeCatalogRow,
     PlayerSeasonMetricRow,
 )
-from rawr_analytics.data.player_metrics_db.rawr import RawrPlayerSeasonValueRow
-from rawr_analytics.data.player_metrics_db.schema import connect, initialize_player_metrics_db
-from rawr_analytics.data.player_metrics_db.wowy import WowyPlayerSeasonValueRow
+from rawr_analytics.data.metric_store.rawr import RawrPlayerSeasonValueRow
+from rawr_analytics.data.metric_store.schema import connect, initialize_player_metrics_db
+from rawr_analytics.data.metric_store.wowy import WowyPlayerSeasonValueRow
 
 
 def replace_rawr_scope_snapshot(
@@ -131,7 +131,7 @@ def clear_metric_scope_store(
     scope_key: str,
 ) -> None:
     initialize_player_metrics_db()
-    with connect(DB_PATH) as connection:
+    with connect(METRIC_STORE_DB_PATH) as connection:
         connection.execute("BEGIN")
         connection.execute(
             "DELETE FROM metric_full_span_points WHERE metric_id = ? AND scope_key = ?",
@@ -179,7 +179,7 @@ def _replace_metric_scope_snapshot(
     )
     updated_at = datetime.now(UTC).isoformat()
 
-    with connect(DB_PATH) as connection:
+    with connect(METRIC_STORE_DB_PATH) as connection:
         connection.execute("BEGIN")
         connection.execute(
             "DELETE FROM metric_full_span_points WHERE metric_id = ? AND scope_key = ?",

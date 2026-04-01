@@ -1,11 +1,11 @@
 from __future__ import annotations
 
-from rawr_analytics.data.player_metrics_db.models import (
+from rawr_analytics.data.metric_store.models import (
     MetricFullSpanPointRow,
     MetricFullSpanSeriesRow,
 )
-from rawr_analytics.data.player_metrics_db.rawr import RawrPlayerSeasonValueRow
-from rawr_analytics.data.player_metrics_db.wowy import WowyPlayerSeasonValueRow
+from rawr_analytics.data.metric_store.rawr import RawrPlayerSeasonValueRow
+from rawr_analytics.data.metric_store.wowy import WowyPlayerSeasonValueRow
 
 
 def build_rawr_full_span_rows(

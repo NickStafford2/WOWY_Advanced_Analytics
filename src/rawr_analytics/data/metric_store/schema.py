@@ -3,12 +3,11 @@ from __future__ import annotations
 import sqlite3
 from pathlib import Path
 
-from rawr_analytics.data.constants import DB_PATH
-from rawr_analytics.data.player_metrics_db.constants import LEGACY_METRIC_RENAMES
+from rawr_analytics.data._paths import METRIC_STORE_DB_PATH
 
 
 def initialize_player_metrics_db() -> None:
-    with connect(DB_PATH) as connection:
+    with connect(METRIC_STORE_DB_PATH) as connection:
         connection.executescript(
             """
             CREATE TABLE IF NOT EXISTS rawr_player_season_values (
@@ -108,7 +107,6 @@ def initialize_player_metrics_db() -> None:
             ON metric_full_span_points (metric_id, scope_key, player_id);
             """
         )
-        _migrate_legacy_metric_names(connection)
 
 
 def connect(db_path: Path) -> sqlite3.Connection:
@@ -116,59 +114,3 @@ def connect(db_path: Path) -> sqlite3.Connection:
     connection = sqlite3.connect(db_path)
     connection.row_factory = sqlite3.Row
     return connection
-
-
-def _migrate_legacy_metric_names(connection: sqlite3.Connection) -> None:
-    for old_metric, (new_metric, new_label) in LEGACY_METRIC_RENAMES.items():
-        if old_metric == new_metric:
-            continue
-        connection.execute("BEGIN")
-        connection.execute(
-            """
-            UPDATE OR REPLACE rawr_player_season_values
-            SET metric_id = ?
-            WHERE metric_id = ?
-            """,
-            (new_metric, old_metric),
-        )
-        connection.execute(
-            """
-            UPDATE OR REPLACE wowy_player_season_values
-            SET metric_id = ?
-            WHERE metric_id = ?
-            """,
-            (new_metric, old_metric),
-        )
-        connection.execute(
-            """
-            UPDATE OR REPLACE metric_store_metadata_v2
-            SET metric_id = ?
-            WHERE metric_id = ?
-            """,
-            (new_metric, old_metric),
-        )
-        connection.execute(
-            """
-            UPDATE OR REPLACE metric_scope_catalog
-            SET metric_id = ?, label = ?
-            WHERE metric_id = ?
-            """,
-            (new_metric, new_label, old_metric),
-        )
-        connection.execute(
-            """
-            UPDATE OR REPLACE metric_full_span_series
-            SET metric_id = ?
-            WHERE metric_id = ?
-            """,
-            (new_metric, old_metric),
-        )
-        connection.execute(
-            """
-            UPDATE OR REPLACE metric_full_span_points
-            SET metric_id = ?
-            WHERE metric_id = ?
-            """,
-            (new_metric, old_metric),
-        )
-        connection.commit()

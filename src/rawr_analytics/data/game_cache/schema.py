@@ -3,11 +3,11 @@ from __future__ import annotations
 import sqlite3
 from pathlib import Path
 
-from rawr_analytics.data.constants import DB_PATH
+from rawr_analytics.data._paths import NORMALIZED_CACHE_DB_PATH
 
 
 def initialize_game_cache_db() -> None:
-    with connect(DB_PATH) as connection:
+    with connect(NORMALIZED_CACHE_DB_PATH) as connection:
         _migrate_cache_schema_if_needed(connection)
         connection.executescript(
             """
@@ -126,10 +126,6 @@ def _migrate_cache_schema_if_needed(connection: sqlite3.Connection) -> None:
         and _table_has_column(connection, table_name, column_name)
         for table_name, column_name in deprecated_columns
     ):
-        _drop_cache_tables(connection)
-        return
-
-    if _table_exists(connection, "team_history"):
         _drop_cache_tables(connection)
         return
 

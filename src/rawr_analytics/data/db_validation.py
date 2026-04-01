@@ -8,25 +8,25 @@ from collections.abc import Callable
 from dataclasses import dataclass
 
 from rawr_analytics.data._validation_issue import ValidationIssue
-from rawr_analytics.data.constants import DB_PATH
+from rawr_analytics.data._paths import METRIC_STORE_DB_PATH, NORMALIZED_CACHE_DB_PATH
 from rawr_analytics.data.game_cache._validation import (
     validate_normalized_cache_loads_table,
     validate_normalized_cache_relations,
     validate_normalized_game_players_table,
     validate_normalized_games_table,
-    validate_team_history_table,
 )
 from rawr_analytics.data.game_cache.schema import initialize_game_cache_db
-from rawr_analytics.data.player_metrics_db.audit import (
+from rawr_analytics.data.metric_store.audit import (
     MetricStoreAuditMetadata,
     audit_metric_store_tables,
 )
-from rawr_analytics.data.player_metrics_db.models import (
+from rawr_analytics.data.metric_store.models import (
     MetricFullSpanPointRow,
     MetricFullSpanSeriesRow,
     MetricScopeCatalogRow,
     PlayerSeasonMetricRow,
 )
+from rawr_analytics.data.metric_store.schema import initialize_player_metrics_db
 
 
 @dataclass(frozen=True)
@@ -92,7 +92,6 @@ def audit_player_metrics_db(
     initialize_game_cache_db()
     issues: list[ValidationIssue] = []
     steps = (
-        "team history",
         "normalized games",
         "normalized game players",
         "normalized cache loads",
@@ -100,45 +99,46 @@ def audit_player_metrics_db(
         "metric player season values",
         "metric scope catalog",
         "metric full span tables",
+        "metric store relations",
     )
-    total_steps = len(steps) + 1
+    total_steps = len(steps)
     current_step = 0
 
     def report_progress(label: str) -> None:
         if progress is not None:
             progress(current_step, total_steps, label)
 
-    with sqlite3.connect(DB_PATH) as connection:
-        connection.row_factory = sqlite3.Row
+    with sqlite3.connect(NORMALIZED_CACHE_DB_PATH) as cache_connection:
+        cache_connection.row_factory = sqlite3.Row
         current_step = 1
-        report_progress("Validating team history")
-        validate_team_history_table(connection, issues)
-        current_step = 2
         report_progress("Validating normalized games")
-        validate_normalized_games_table(connection, issues)
-        current_step = 3
+        validate_normalized_games_table(cache_connection, issues)
+        current_step = 2
         report_progress("Validating normalized game players")
-        validate_normalized_game_players_table(connection, issues)
-        current_step = 4
+        validate_normalized_game_players_table(cache_connection, issues)
+        current_step = 3
         report_progress("Validating normalized cache loads")
-        validate_normalized_cache_loads_table(connection, issues)
-        current_step = 5
+        validate_normalized_cache_loads_table(cache_connection, issues)
+        current_step = 4
         report_progress("Validating normalized cache relations")
-        validate_normalized_cache_relations(connection, issues)
-        current_step = 6
+        validate_normalized_cache_relations(cache_connection, issues)
+
+    initialize_player_metrics_db()
+    with sqlite3.connect(METRIC_STORE_DB_PATH) as metric_connection:
+        metric_connection.row_factory = sqlite3.Row
+        current_step = 5
         report_progress("Validating metric player season values")
         metric_audit_state = audit_metric_store_tables(
-            connection,
+            metric_connection,
             issues,
         )
-        current_step = 7
+        current_step = 6
         report_progress("Validating metric scope catalog")
-        current_step = 8
+        current_step = 7
         report_progress("Validating metric full span tables")
-        current_step = 9
+        current_step = 8
         report_progress("Validating metric store relations")
         _validate_metric_store_relations(
-            connection=connection,
             metric_row_groups=metric_audit_state.metric_row_groups,
             metadata_rows=metric_audit_state.metadata_rows,
             catalog_rows=metric_audit_state.catalog_rows,
@@ -235,7 +235,6 @@ def _normalize_issue_message(message: str) -> str:
 
 def _validate_metric_store_relations(
     *,
-    connection: sqlite3.Connection,
     metric_row_groups: dict[tuple[str, str], list[PlayerSeasonMetricRow]],
     metadata_rows: dict[tuple[str, str], MetricStoreAuditMetadata],
     catalog_rows: dict[tuple[str, str], MetricScopeCatalogRow],
@@ -248,7 +247,7 @@ def _validate_metric_store_relations(
     metadata_scopes = set(metadata_rows)
     catalog_scopes = set(catalog_rows)
     full_span_scopes = set(full_span_groups)
-    cache_load_counts, fingerprint_by_season_type = _load_normalized_cache_state(connection)
+    cache_load_counts, fingerprint_by_season_type = _load_normalized_cache_state()
 
     for key, rows in metric_row_groups.items():
         metric, scope_key = key
@@ -401,13 +400,12 @@ def _validate_metric_store_relations(
         )
 
 
-def _load_normalized_cache_state(
-    connection: sqlite3.Connection,
-) -> tuple[dict[str, int], dict[str, str]]:
-    rows = connection.execute(
+def _load_normalized_cache_state() -> tuple[dict[str, int], dict[str, str]]:
+    with sqlite3.connect(NORMALIZED_CACHE_DB_PATH) as connection:
+        connection.row_factory = sqlite3.Row
+        rows = connection.execute(
         """
         SELECT
-            team_history.abbreviation AS team,
             load.team_id,
             load.season,
             load.season_type,
@@ -420,19 +418,15 @@ def _load_normalized_cache_state(
             load.expected_games_row_count,
             load.skipped_games_row_count
         FROM normalized_cache_loads AS load
-        JOIN team_history
-          ON team_history.team_id = load.team_id
-         AND team_history.season = load.season
         ORDER BY load.season_type, load.season, load.team_id
         """
-    ).fetchall()
+        ).fetchall()
     counts: dict[str, int] = Counter()
     digests: dict[str, hashlib._Hash] = {}
     for row in rows:
         season_type = row["season_type"]
         counts[season_type] += 1
         digest = digests.setdefault(season_type, hashlib.sha256())
-        digest.update(row["team"].encode("utf-8"))
         digest.update(str(row["team_id"]).encode("utf-8"))
         digest.update(row["season"].encode("utf-8"))
         digest.update(row["season_type"].encode("utf-8"))

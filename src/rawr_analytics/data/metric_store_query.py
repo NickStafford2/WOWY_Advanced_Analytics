@@ -8,7 +8,7 @@ from rawr_analytics.data.game_cache import (
     list_cached_team_seasons,
 )
 from rawr_analytics.data.metric_store_scope import build_scope_key, build_team_filter
-from rawr_analytics.data.player_metrics_db import (
+from rawr_analytics.data.metric_store import (
     MetricScopeCatalogRow,
     load_metric_scope_store_state,
 )

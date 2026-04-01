@@ -2,8 +2,8 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
-from rawr_analytics.data.constants import DB_PATH
-from rawr_analytics.data.player_metrics_db.schema import connect, initialize_player_metrics_db
+from rawr_analytics.data._paths import METRIC_STORE_DB_PATH
+from rawr_analytics.data.metric_store.schema import connect, initialize_player_metrics_db
 
 
 @dataclass(frozen=True)
@@ -73,7 +73,7 @@ def load_wowy_player_season_value_rows(
         query += " AND games_without >= ?"
         params.append(min_games_without)
     query += " ORDER BY season_id, value DESC, player_name ASC"
-    with connect(DB_PATH) as connection:
+    with connect(METRIC_STORE_DB_PATH) as connection:
         rows = connection.execute(query, params).fetchall()
     return [
         WowyPlayerSeasonValueRow(

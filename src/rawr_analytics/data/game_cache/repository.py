@@ -3,7 +3,7 @@ from __future__ import annotations
 from collections.abc import Sequence
 from datetime import UTC, datetime
 
-from rawr_analytics.data.constants import DB_PATH
+from rawr_analytics.data._paths import NORMALIZED_CACHE_DB_PATH
 from rawr_analytics.data.game_cache.rows import NormalizedCacheLoadRow
 from rawr_analytics.data.game_cache.schema import connect, initialize_game_cache_db
 from rawr_analytics.nba.models import NormalizedGamePlayerRecord, NormalizedGameRecord
@@ -30,7 +30,7 @@ def replace_team_season_normalized_rows(
     refreshed_at = datetime.now(UTC).isoformat()
     season_type = _season_type_value(season)
 
-    with connect(DB_PATH) as connection:
+    with connect(NORMALIZED_CACHE_DB_PATH) as connection:
         connection.execute("BEGIN")
         connection.execute(
             """
@@ -179,7 +179,7 @@ def load_normalized_games_from_db(
     query, params = _append_in_filter(query, params, column="game_id", values=game_ids or [])
     query += " ORDER BY season, game_date, team_id, game_id"
 
-    with connect(DB_PATH) as connection:
+    with connect(NORMALIZED_CACHE_DB_PATH) as connection:
         rows = connection.execute(query, params).fetchall()
 
     games = [
@@ -232,7 +232,7 @@ def _load_normalized_game_players_from_db(
     query, params = _append_in_filter(query, params, column="game_id", values=game_ids or [])
     query += " ORDER BY season, team_id, game_id, player_id"
 
-    with connect(DB_PATH) as connection:
+    with connect(NORMALIZED_CACHE_DB_PATH) as connection:
         rows = connection.execute(query, params).fetchall()
 
     players = [
@@ -266,7 +266,7 @@ def _load_cache_load_row(
     season: Season,
 ) -> NormalizedCacheLoadRow | None:
     initialize_game_cache_db()
-    with connect(DB_PATH) as connection:
+    with connect(NORMALIZED_CACHE_DB_PATH) as connection:
         row = connection.execute(
             """
             SELECT
@@ -345,7 +345,7 @@ def list_cache_load_rows(
     seasons: list[Season] | None = None,
     teams: list[Team] | None = None,
 ) -> list[NormalizedCacheLoadRow]:
-    if not DB_PATH.exists():
+    if not NORMALIZED_CACHE_DB_PATH.exists():
         return []
     initialize_game_cache_db()
     team_ids = [team.team_id for team in teams or []]
@@ -375,7 +375,7 @@ def list_cache_load_rows(
     query, params = _append_in_filter(query, params, column="season_type", values=season_types)
     query += " ORDER BY season, team_id"
 
-    with connect(DB_PATH) as connection:
+    with connect(NORMALIZED_CACHE_DB_PATH) as connection:
         rows = connection.execute(query, params).fetchall()
 
     return [

@@ -9,7 +9,7 @@ from rawr_analytics.data._validation import (
     _validate_optional_non_negative_int,
     _validate_required_text,
 )
-from rawr_analytics.data.player_metrics_db.models import (
+from rawr_analytics.data.metric_store.models import (
     MetricFullSpanPointRow,
     MetricFullSpanSeriesRow,
     MetricScopeCatalogRow,
