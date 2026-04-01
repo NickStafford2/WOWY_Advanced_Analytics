@@ -8,10 +8,9 @@ from rawr_analytics.data.game_cache import (
     list_cached_team_seasons,
 )
 from rawr_analytics.data.metric_store_scope import build_scope_key, build_team_filter
-from rawr_analytics.data.player_metrics_db.models import MetricScopeCatalogRow
-from rawr_analytics.data.player_metrics_db.queries import (
-    load_metric_scope_catalog_row,
-    load_metric_store_metadata,
+from rawr_analytics.data.player_metrics_db import (
+    MetricScopeCatalogRow,
+    load_metric_scope_store_state,
 )
 from rawr_analytics.metrics.constants import Metric
 from rawr_analytics.shared.season import Season, SeasonType
@@ -70,13 +69,11 @@ def require_current_metric_scope(
     metric: Metric,
     scope_key: str,
 ) -> MetricScopeCatalogRow:
-    catalog_row = load_metric_scope_catalog_row(metric.value, scope_key)
-    if catalog_row is None:
+    state = load_metric_scope_store_state(metric.value, scope_key)
+    if state is None:
         raise ValueError("Metric store has not been built for the requested scope")
-
-    metadata = load_metric_store_metadata(metric.value, scope_key)
-    if metadata is None:
-        raise ValueError("Metric store metadata is missing for the requested scope")
+    catalog_row = state.catalog_row
+    metadata = state.metadata
 
     cache_load_rows = [
         row

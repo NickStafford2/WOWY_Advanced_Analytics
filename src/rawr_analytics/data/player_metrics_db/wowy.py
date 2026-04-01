@@ -4,8 +4,6 @@ from dataclasses import dataclass
 
 from rawr_analytics.data.constants import DB_PATH
 from rawr_analytics.data.player_metrics_db.schema import connect, initialize_player_metrics_db
-from rawr_analytics.metrics.wowy.models import WowyPlayerSeasonRecord
-from rawr_analytics.shared.season import Season, SeasonType
 
 
 @dataclass(frozen=True)
@@ -25,45 +23,6 @@ class WowyPlayerSeasonValueRow:
     average_minutes: float | None
     total_minutes: float | None
     raw_wowy_score: float | None = None
-
-
-def build_wowy_player_season_value_rows(
-    *,
-    metric_id: str,
-    scope_key: str,
-    team_filter: str,
-    season_type: SeasonType,
-    records: list[WowyPlayerSeasonRecord],
-    values_by_player_season: dict[tuple[Season, int], float] | None = None,
-    include_raw_wowy_score: bool = False,
-) -> list[WowyPlayerSeasonValueRow]:
-    rows: list[WowyPlayerSeasonValueRow] = []
-    for record in records:
-        value = (
-            values_by_player_season[(record.season, record.player_id)]
-            if values_by_player_season is not None
-            else record.wowy_score
-        )
-        rows.append(
-            WowyPlayerSeasonValueRow(
-                metric_id=metric_id,
-                scope_key=scope_key,
-                team_filter=team_filter,
-                season_type=season_type.value,
-                season_id=record.season.id,
-                player_id=record.player_id,
-                player_name=record.player_name,
-                value=value,
-                games_with=record.games_with,
-                games_without=record.games_without,
-                avg_margin_with=record.avg_margin_with,
-                avg_margin_without=record.avg_margin_without,
-                average_minutes=record.average_minutes,
-                total_minutes=record.total_minutes,
-                raw_wowy_score=(record.wowy_score if include_raw_wowy_score else None),
-            )
-        )
-    return rows
 
 
 def load_wowy_player_season_value_rows(

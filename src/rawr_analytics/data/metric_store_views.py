@@ -4,10 +4,7 @@ from dataclasses import dataclass
 from typing import Any
 
 from rawr_analytics.data.metric_store_query import require_current_metric_scope
-from rawr_analytics.data.player_metrics_db.queries import (
-    load_metric_full_span_points_map,
-    load_metric_full_span_series_rows,
-)
+from rawr_analytics.data.player_metrics_db import load_metric_span_store_rows
 from rawr_analytics.metrics.constants import Metric
 
 __all__ = [
@@ -34,16 +31,10 @@ def load_cached_metric_span_snapshot(
     top_n: int,
 ) -> CachedMetricSpanSnapshot:
     catalog_row = require_current_metric_scope(metric=metric, scope_key=scope_key)
-    series_rows = load_metric_full_span_series_rows(
+    span_rows = load_metric_span_store_rows(
         metric=metric.value,
         scope_key=scope_key,
         top_n=top_n,
-    )
-    player_ids = [row.player_id for row in series_rows]
-    season_points = load_metric_full_span_points_map(
-        metric=metric.value,
-        scope_key=scope_key,
-        player_ids=player_ids,
     )
     return CachedMetricSpanSnapshot(
         metric=metric.value,
@@ -61,11 +52,11 @@ def load_cached_metric_span_snapshot(
                 "points": [
                     {
                         "season": season,
-                        "value": season_points.get(row.player_id, {}).get(season),
+                        "value": span_rows.points_map.get(row.player_id, {}).get(season),
                     }
                     for season in catalog_row.available_season_ids
                 ],
             }
-            for row in series_rows
+            for row in span_rows.series_rows
         ],
     )

@@ -12,8 +12,7 @@ from rawr_analytics.data.metric_store_wowy import (
     load_wowy_cached_leaderboard_snapshot,
     load_wowy_cached_player_seasons_snapshot,
 )
-from rawr_analytics.data.player_metrics_db.rawr import RawrPlayerSeasonValueRow
-from rawr_analytics.data.player_metrics_db.wowy import WowyPlayerSeasonValueRow
+from rawr_analytics.data.player_metrics_db import RawrPlayerSeasonValueRow, WowyPlayerSeasonValueRow
 from rawr_analytics.metrics.constants import Metric
 from rawr_analytics.metrics.rawr import build_rawr_custom_query
 from rawr_analytics.metrics.rawr import default_filters as _rawr_default_filters

@@ -7,22 +7,13 @@ from dataclasses import dataclass
 from rawr_analytics.data.game_cache import list_cache_load_rows, list_cached_team_seasons
 from rawr_analytics.data.game_cache.rows import NormalizedCacheLoadRow
 from rawr_analytics.data.metric_store_scope import build_scope_key, build_team_filter
-from rawr_analytics.data.player_metrics_db.queries import (
-    load_metric_scope_catalog_row,
-    load_metric_store_metadata,
-)
-from rawr_analytics.data.player_metrics_db.rawr import (
+from rawr_analytics.data.player_metrics_db import (
     RawrPlayerSeasonValueRow,
-    build_rawr_player_season_value_rows,
-)
-from rawr_analytics.data.player_metrics_db.store import (
+    WowyPlayerSeasonValueRow,
     clear_metric_scope_store,
+    load_metric_scope_store_state,
     replace_rawr_scope_snapshot,
     replace_wowy_scope_snapshot,
-)
-from rawr_analytics.data.player_metrics_db.wowy import (
-    WowyPlayerSeasonValueRow,
-    build_wowy_player_season_value_rows,
 )
 from rawr_analytics.metrics.constants import Metric, MetricSummary
 from rawr_analytics.metrics.rawr import (
@@ -144,20 +135,18 @@ def refresh_metric_store_scope(
     source_fingerprint: str,
     build_version: str,
 ) -> tuple[RefreshScopeResult, bool]:
-    metadata = load_metric_store_metadata(metric.value, scope.scope_key)
-    catalog_row = load_metric_scope_catalog_row(metric.value, scope.scope_key)
+    state = load_metric_scope_store_state(metric.value, scope.scope_key)
     if (
-        metadata is not None
-        and catalog_row is not None
-        and metadata.source_fingerprint == source_fingerprint
-        and metadata.build_version == build_version
-        and metadata.row_count > 0
+        state is not None
+        and state.metadata.source_fingerprint == source_fingerprint
+        and state.metadata.build_version == build_version
+        and state.metadata.row_count > 0
     ):
         return (
             RefreshScopeResult(
                 scope_key=scope.scope_key,
                 scope_label=scope.scope_label,
-                row_count=metadata.row_count,
+                row_count=state.metadata.row_count,
                 status="cached",
             ),
             False,
@@ -279,12 +268,22 @@ def _build_rawr_cached_rows(
         min_average_minutes=None,
         min_total_minutes=None,
     )
-    return build_rawr_player_season_value_rows(
-        scope_key=scope_key,
-        team_filter=team_filter,
-        season_type=season_type,
-        records=records,
-    )
+    return [
+        RawrPlayerSeasonValueRow(
+            metric_id="rawr",
+            scope_key=scope_key,
+            team_filter=team_filter,
+            season_type=season_type.value,
+            season_id=record.season.id,
+            player_id=record.player_id,
+            player_name=record.player_name,
+            coefficient=record.coefficient,
+            games=record.games,
+            average_minutes=record.average_minutes,
+            total_minutes=record.total_minutes,
+        )
+        for record in records
+    ]
 
 
 def _build_wowy_cached_rows(
@@ -317,15 +316,33 @@ def _build_wowy_cached_rows(
             )
             for record in records
         }
-    return build_wowy_player_season_value_rows(
-        metric_id=metric.value,
-        scope_key=scope_key,
-        team_filter=team_filter,
-        season_type=season_type,
-        records=records,
-        values_by_player_season=values_by_player_season,
-        include_raw_wowy_score=include_raw_wowy_score,
-    )
+    rows: list[WowyPlayerSeasonValueRow] = []
+    for record in records:
+        value = (
+            values_by_player_season[(record.season, record.player_id)]
+            if values_by_player_season is not None
+            else record.wowy_score
+        )
+        rows.append(
+            WowyPlayerSeasonValueRow(
+                metric_id=metric.value,
+                scope_key=scope_key,
+                team_filter=team_filter,
+                season_type=season_type.value,
+                season_id=record.season.id,
+                player_id=record.player_id,
+                player_name=record.player_name,
+                value=value,
+                games_with=record.games_with,
+                games_without=record.games_without,
+                avg_margin_with=record.avg_margin_with,
+                avg_margin_without=record.avg_margin_without,
+                average_minutes=record.average_minutes,
+                total_minutes=record.total_minutes,
+                raw_wowy_score=(record.wowy_score if include_raw_wowy_score else None),
+            )
+        )
+    return rows
 
 def _describe_metric(metric: Metric) -> MetricSummary:
     if metric == Metric.RAWR:

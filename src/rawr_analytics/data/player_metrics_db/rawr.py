@@ -4,8 +4,6 @@ from dataclasses import dataclass
 
 from rawr_analytics.data.constants import DB_PATH
 from rawr_analytics.data.player_metrics_db.schema import connect, initialize_player_metrics_db
-from rawr_analytics.metrics.rawr.models import RawrPlayerSeasonRecord
-from rawr_analytics.shared.season import SeasonType
 
 
 @dataclass(frozen=True)
@@ -21,31 +19,6 @@ class RawrPlayerSeasonValueRow:
     games: int
     average_minutes: float | None
     total_minutes: float | None
-
-
-def build_rawr_player_season_value_rows(
-    *,
-    scope_key: str,
-    team_filter: str,
-    season_type: SeasonType,
-    records: list[RawrPlayerSeasonRecord],
-) -> list[RawrPlayerSeasonValueRow]:
-    return [
-        RawrPlayerSeasonValueRow(
-            metric_id="rawr",
-            scope_key=scope_key,
-            team_filter=team_filter,
-            season_type=season_type.value,
-            season_id=record.season.id,
-            player_id=record.player_id,
-            player_name=record.player_name,
-            coefficient=record.coefficient,
-            games=record.games,
-            average_minutes=record.average_minutes,
-            total_minutes=record.total_minutes,
-        )
-        for record in records
-    ]
 
 
 def load_rawr_player_season_value_rows(
