@@ -2,19 +2,25 @@ from __future__ import annotations
 
 from typing import Any
 
+from rawr_analytics.data.metric_store_rawr import (
+    load_rawr_cached_leaderboard_snapshot,
+    load_rawr_cached_player_seasons_snapshot,
+)
 from rawr_analytics.data.metric_store_scope import build_scope_key, build_team_filter, season_ids
-from rawr_analytics.data.metric_store_views import (
-    load_cached_metric_leaderboard_snapshot,
-    load_cached_metric_player_seasons_snapshot,
-    load_cached_metric_span_snapshot,
+from rawr_analytics.data.metric_store_views import load_cached_metric_span_snapshot
+from rawr_analytics.data.metric_store_wowy import (
+    load_wowy_cached_leaderboard_snapshot,
+    load_wowy_cached_player_seasons_snapshot,
 )
 from rawr_analytics.data.player_metrics_db.rawr import RawrPlayerSeasonValueRow
 from rawr_analytics.data.player_metrics_db.wowy import WowyPlayerSeasonValueRow
 from rawr_analytics.metrics.constants import Metric
 from rawr_analytics.metrics.rawr import build_rawr_custom_query
 from rawr_analytics.metrics.rawr import default_filters as _rawr_default_filters
+from rawr_analytics.metrics.rawr import describe_metric as describe_rawr_metric
 from rawr_analytics.metrics.rawr.models import RawrCustomQueryResult, RawrCustomQueryRow
 from rawr_analytics.metrics.wowy import build_wowy_custom_query
+from rawr_analytics.metrics.wowy import describe_metric as describe_wowy_metric
 from rawr_analytics.metrics.wowy.models import WowyCustomQueryResult, WowyCustomQueryRow
 
 from .models import MetricQuery
@@ -106,20 +112,17 @@ def _build_rawr_metric_export_table(
 ) -> tuple[str, list[dict[str, Any]]]:
     scope_key = _build_scope_key(query)
     if view == "cached-leaderboard":
-        snapshot = load_cached_metric_leaderboard_snapshot(
-            metric=Metric.RAWR,
+        snapshot = load_rawr_cached_leaderboard_snapshot(
             scope_key=scope_key,
             seasons=season_ids(query.seasons),
             min_average_minutes=query.min_average_minutes,
             min_total_minutes=query.min_total_minutes,
-            min_sample_size=query.min_games,
-            min_secondary_sample_size=None,
+            min_games=query.min_games,
         )
-        rows = _require_rawr_cached_rows(snapshot.rows)
         return (
-            snapshot.metric_label,
+            _metric_label(Metric.RAWR),
             _build_rawr_ranked_table_rows(
-                rows=rows,
+                rows=snapshot.rows,
                 seasons=snapshot.season_ids,
                 top_n=None,
             ),
@@ -146,20 +149,19 @@ def _build_wowy_metric_export_table(
 ) -> tuple[str, list[dict[str, Any]]]:
     scope_key = _build_scope_key(query)
     if view == "cached-leaderboard":
-        snapshot = load_cached_metric_leaderboard_snapshot(
+        snapshot = load_wowy_cached_leaderboard_snapshot(
             metric=metric,
             scope_key=scope_key,
             seasons=season_ids(query.seasons),
             min_average_minutes=query.min_average_minutes,
             min_total_minutes=query.min_total_minutes,
-            min_sample_size=query.min_games_with,
-            min_secondary_sample_size=query.min_games_without,
+            min_games_with=query.min_games_with,
+            min_games_without=query.min_games_without,
         )
-        rows = _require_wowy_cached_rows(snapshot.rows)
         return (
-            snapshot.metric_label,
+            _metric_label(metric),
             _build_wowy_ranked_table_rows(
-                rows=rows,
+                rows=snapshot.rows,
                 seasons=snapshot.season_ids,
                 top_n=None,
             ),
@@ -183,20 +185,17 @@ def _build_rawr_player_seasons_payload(
     scope_key: str,
     query: MetricQuery,
 ) -> dict[str, Any]:
-    snapshot = load_cached_metric_player_seasons_snapshot(
-        metric=Metric.RAWR,
+    snapshot = load_rawr_cached_player_seasons_snapshot(
         scope_key=scope_key,
         seasons=season_ids(query.seasons),
         min_average_minutes=query.min_average_minutes,
         min_total_minutes=query.min_total_minutes,
-        min_sample_size=query.min_games,
-        min_secondary_sample_size=None,
+        min_games=query.min_games,
     )
-    rows = _require_rawr_cached_rows(snapshot.rows)
     return {
-        "metric": snapshot.metric,
-        "metric_label": snapshot.metric_label,
-        "rows": [_serialize_rawr_player_season_row(row) for row in rows],
+        "metric": Metric.RAWR.value,
+        "metric_label": _metric_label(Metric.RAWR),
+        "rows": [_serialize_rawr_player_season_row(row) for row in snapshot.rows],
     }
 
 
@@ -206,20 +205,19 @@ def _build_wowy_player_seasons_payload(
     scope_key: str,
     query: MetricQuery,
 ) -> dict[str, Any]:
-    snapshot = load_cached_metric_player_seasons_snapshot(
+    snapshot = load_wowy_cached_player_seasons_snapshot(
         metric=metric,
         scope_key=scope_key,
         seasons=season_ids(query.seasons),
         min_average_minutes=query.min_average_minutes,
         min_total_minutes=query.min_total_minutes,
-        min_sample_size=query.min_games_with,
-        min_secondary_sample_size=query.min_games_without,
+        min_games_with=query.min_games_with,
+        min_games_without=query.min_games_without,
     )
-    rows = _require_wowy_cached_rows(snapshot.rows)
     return {
-        "metric": snapshot.metric,
-        "metric_label": snapshot.metric_label,
-        "rows": [_serialize_wowy_player_season_row(row) for row in rows],
+        "metric": metric.value,
+        "metric_label": _metric_label(metric),
+        "rows": [_serialize_wowy_player_season_row(row) for row in snapshot.rows],
     }
 
 
@@ -228,20 +226,17 @@ def _build_rawr_cached_leaderboard_payload(
     scope_key: str,
     query: MetricQuery,
 ) -> dict[str, Any]:
-    snapshot = load_cached_metric_leaderboard_snapshot(
-        metric=Metric.RAWR,
+    snapshot = load_rawr_cached_leaderboard_snapshot(
         scope_key=scope_key,
         seasons=season_ids(query.seasons),
         min_average_minutes=query.min_average_minutes,
         min_total_minutes=query.min_total_minutes,
-        min_sample_size=query.min_games,
-        min_secondary_sample_size=None,
+        min_games=query.min_games,
     )
-    rows = _require_rawr_cached_rows(snapshot.rows)
     payload = _build_rawr_leaderboard_payload(
-        metric=snapshot.metric,
-        metric_label=snapshot.metric_label,
-        rows=rows,
+        metric=Metric.RAWR.value,
+        metric_label=_metric_label(Metric.RAWR),
+        rows=snapshot.rows,
         seasons=snapshot.season_ids,
         top_n=query.top_n,
         mode="cached",
@@ -257,20 +252,19 @@ def _build_wowy_cached_leaderboard_payload(
     scope_key: str,
     query: MetricQuery,
 ) -> dict[str, Any]:
-    snapshot = load_cached_metric_leaderboard_snapshot(
+    snapshot = load_wowy_cached_leaderboard_snapshot(
         metric=metric,
         scope_key=scope_key,
         seasons=season_ids(query.seasons),
         min_average_minutes=query.min_average_minutes,
         min_total_minutes=query.min_total_minutes,
-        min_sample_size=query.min_games_with,
-        min_secondary_sample_size=query.min_games_without,
+        min_games_with=query.min_games_with,
+        min_games_without=query.min_games_without,
     )
-    rows = _require_wowy_cached_rows(snapshot.rows)
     payload = _build_wowy_leaderboard_payload(
-        metric=snapshot.metric,
-        metric_label=snapshot.metric_label,
-        rows=rows,
+        metric=metric.value,
+        metric_label=_metric_label(metric),
+        rows=snapshot.rows,
         seasons=snapshot.season_ids,
         top_n=query.top_n,
         mode="cached",
@@ -399,6 +393,12 @@ def _build_metric_span_chart_payload(
         },
         "series": snapshot.series,
     }
+
+
+def _metric_label(metric: Metric) -> str:
+    if metric == Metric.RAWR:
+        return describe_rawr_metric().label
+    return describe_wowy_metric(metric).label
 
 
 def _build_rawr_leaderboard_payload(
@@ -590,22 +590,6 @@ def _build_series_from_table_rows(
 def _build_scope_key(query: MetricQuery) -> str:
     team_filter = build_team_filter(query.teams)
     return build_scope_key(season_type=query.season_type, team_filter=team_filter)
-
-
-def _require_rawr_cached_rows(
-    rows: list[RawrPlayerSeasonValueRow | WowyPlayerSeasonValueRow],
-) -> list[RawrPlayerSeasonValueRow]:
-    rawr_rows = [row for row in rows if isinstance(row, RawrPlayerSeasonValueRow)]
-    assert len(rawr_rows) == len(rows)
-    return rawr_rows
-
-
-def _require_wowy_cached_rows(
-    rows: list[RawrPlayerSeasonValueRow | WowyPlayerSeasonValueRow],
-) -> list[WowyPlayerSeasonValueRow]:
-    wowy_rows = [row for row in rows if isinstance(row, WowyPlayerSeasonValueRow)]
-    assert len(wowy_rows) == len(rows)
-    return wowy_rows
 
 
 def _rawr_row_value(row: RawrPlayerSeasonValueRow | RawrCustomQueryRow) -> float:

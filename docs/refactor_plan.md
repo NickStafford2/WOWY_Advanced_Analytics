@@ -26,10 +26,13 @@ Phase 2 is now complete.
 - Rewired metric-store persistence, cached-row views, and metric-store audit code to use the new metric-specific tables.
 - Added typed RAWR and WOWY custom-query result models and rewired `src/rawr_analytics/metrics/metric_query/views.py` to dispatch through them.
 - Removed the remaining shared row-normalization path from `src/rawr_analytics/metrics/metric_query/views.py` by splitting RAWR and WOWY leaderboard, export, and player-season assembly into separate typed branches.
+- Split cached leaderboard and player-season snapshot loading into `src/rawr_analytics/data/metric_store_rawr.py` and `src/rawr_analytics/data/metric_store_wowy.py`, leaving `src/rawr_analytics/data/metric_store_views.py` focused on the shared span snapshot path.
+- Removed redundant `metric` and `metric_label` fields from the new metric-specific cached snapshot contracts; the query layer now derives that metadata from the metric it already knows.
+- Moved the outer metric-store refresh loop into `src/rawr_analytics/services/metric_store.py` and changed `src/rawr_analytics/data/metric_store.py` to expose refresh planning and per-scope refresh helpers instead of owning the whole orchestration flow.
 
 ## Remaining
 
-1. Split `src/rawr_analytics/data/metric_store.py` and `src/rawr_analytics/data/metric_store_views.py` by concern so refresh policy, computation, persistence, and snapshot loading are no longer coupled behind generic store helpers.
+1. Split `src/rawr_analytics/data/metric_store.py` by concern so refresh planning, metric row building, full-span shaping, and persistence are no longer coupled behind one module.
 2. Push the remaining metric-store read/write contracts toward explicit RAWR-owned and WOWY-owned repository paths where behavior or row shape differs.
 3. Remove stale deep imports inside ingest and metric internals once the new public surfaces are stable enough to consume directly.
 4. Unify metric-store fingerprint logic so refresh-time and read-time freshness checks share one implementation.
@@ -48,6 +51,12 @@ Phase 2 is now complete.
 - `poetry run python -m py_compile src/rawr_analytics/metrics/metric_query/views.py` passed after splitting RAWR and WOWY query assembly paths.
 - `poetry run ruff check src/rawr_analytics/metrics/metric_query/views.py` passed after removing the shared row-normalization path.
 - `poetry run pyright src/rawr_analytics/metrics/metric_query/views.py` passed after adding explicit cached-row narrowing for RAWR and WOWY.
+- `poetry run python -m py_compile src/rawr_analytics/data/metric_store_rawr.py src/rawr_analytics/data/metric_store_wowy.py src/rawr_analytics/data/metric_store_views.py src/rawr_analytics/metrics/metric_query/views.py` passed.
+- `poetry run ruff check src/rawr_analytics/data/metric_store_rawr.py src/rawr_analytics/data/metric_store_wowy.py src/rawr_analytics/data/metric_store_views.py src/rawr_analytics/metrics/metric_query/views.py` passed.
+- `poetry run pyright src/rawr_analytics/data/metric_store_rawr.py src/rawr_analytics/data/metric_store_wowy.py src/rawr_analytics/data/metric_store_views.py src/rawr_analytics/metrics/metric_query/views.py` passed.
+- `poetry run python -m py_compile src/rawr_analytics/data/metric_store.py src/rawr_analytics/services/metric_store.py` passed after moving the outer refresh loop into the service layer.
+- `poetry run ruff check src/rawr_analytics/data/metric_store.py src/rawr_analytics/services/metric_store.py` passed after the refresh-orchestration split.
+- `poetry run pyright src/rawr_analytics/data/metric_store.py src/rawr_analytics/services/metric_store.py` passed after the refresh-orchestration split.
 - `poetry run python -m py_compile $(find src scripts -name '*.py' -print)` passed.
 - `poetry run ruff check` currently fails in the pre-existing `tests/` tree; the new Phase 3 query-view file passes its own Ruff check.
 - `poetry run pyright` currently fails broadly in the pre-existing `tests/` tree; the new Phase 3 query-view file passes its own Pyright check.

@@ -58,23 +58,18 @@ class RefreshScopeResult:
 
 
 @dataclass(frozen=True)
-class RefreshMetricStoreResult:
-    metric: Metric
-    scope_results: list[RefreshScopeResult]
+class MetricStoreRefreshPlan:
+    metric_label: str
+    build_version: str
+    source_fingerprint: str
     warnings: list[str]
     failure_message: str | None = None
-
-    @property
-    def ok(self) -> bool:
-        return self.failure_message is None
-
-    @property
-    def total_rows(self) -> int:
-        return sum(scope.row_count for scope in self.scope_results)
+    available_teams: list[Team] | None = None
+    scopes: list[MetricStoreRefreshScope] | None = None
 
 
 @dataclass(frozen=True)
-class _RefreshScope:
+class MetricStoreRefreshScope:
     teams: list[Team] | None
     scope_key: str
     team_filter: str
@@ -82,19 +77,19 @@ class _RefreshScope:
     available_seasons: list[Season]
 
 
-def refresh_metric_store(
+def prepare_metric_store_refresh(
     metric: Metric,
     *,
     season_type: SeasonType,
     rawr_ridge_alpha: float = DEFAULT_RAWR_RIDGE_ALPHA,
     include_team_scopes: bool = True,
-    progress: RefreshProgressFn | None = None,
-) -> RefreshMetricStoreResult:
+) -> MetricStoreRefreshPlan:
     cache_load_rows = _list_cache_load_rows_for_season_type(season_type)
     if not cache_load_rows:
-        return RefreshMetricStoreResult(
-            metric=metric,
-            scope_results=[],
+        return MetricStoreRefreshPlan(
+            metric_label=_describe_metric(metric).label,
+            build_version="",
+            source_fingerprint="",
             warnings=[],
             failure_message=(
                 "Normalized cache is empty for the requested season type. "
@@ -122,52 +117,29 @@ def refresh_metric_store(
         else []
     )
 
-    scope_results: list[RefreshScopeResult] = []
-    failure_message: str | None = None
-    for index, teams in enumerate(team_scopes):
-        scope = _build_refresh_scope(
+    scopes = [
+        _build_refresh_scope(
             teams=teams,
             season_type=season_type,
             cached_team_seasons=cached_team_seasons,
         )
-        if progress is not None:
-            progress(index, len(team_scopes), f"building {scope.scope_label}")
-
-        scope_result, should_fail_empty_rawr_scope = _refresh_metric_store_scope(
-            metric=metric,
-            metric_label=metric_info.label,
-            scope=scope,
-            season_type=season_type,
-            rawr_ridge_alpha=rawr_ridge_alpha,
-            available_teams=unique_available_teams,
-            source_fingerprint=source_fingerprint,
-            build_version=build_version,
-        )
-        scope_results.append(scope_result)
-
-        if progress is not None:
-            progress(index + 1, len(team_scopes), f"{scope_result.status} {scope.scope_label}")
-
-        if should_fail_empty_rawr_scope:
-            failure_message = (
-                "RAWR refresh produced no all-teams rows. "
-                "The normalized cache is incomplete, so the web store was not updated."
-            )
-            break
-
-    return RefreshMetricStoreResult(
-        metric=metric,
-        scope_results=scope_results,
+        for teams in team_scopes
+    ]
+    return MetricStoreRefreshPlan(
+        metric_label=metric_info.label,
+        build_version=build_version,
+        source_fingerprint=source_fingerprint,
         warnings=warnings,
-        failure_message=failure_message,
+        available_teams=unique_available_teams,
+        scopes=scopes,
     )
 
 
-def _refresh_metric_store_scope(
+def refresh_metric_store_scope(
     *,
     metric: Metric,
     metric_label: str,
-    scope: _RefreshScope,
+    scope: MetricStoreRefreshScope,
     season_type: SeasonType,
     rawr_ridge_alpha: float,
     available_teams: list[Team],
@@ -265,12 +237,12 @@ def _build_refresh_scope(
     teams: list[Team] | None,
     season_type: SeasonType,
     cached_team_seasons: list[TeamSeasonScope],
-) -> _RefreshScope:
+) -> MetricStoreRefreshScope:
     normalized_teams = normalize_teams(teams)
     normalized_team_ids = to_team_ids(normalized_teams)
     team_filter = build_team_filter(normalized_teams)
     scope_key = build_scope_key(season_type=season_type, team_filter=team_filter)
-    return _RefreshScope(
+    return MetricStoreRefreshScope(
         teams=normalized_teams,
         scope_key=scope_key,
         team_filter=team_filter,
@@ -442,7 +414,9 @@ def _build_cache_load_fingerprint(rows: list[NormalizedCacheLoadRow]) -> str:
 
 __all__ = [
     "DEFAULT_RAWR_RIDGE_ALPHA",
-    "RefreshMetricStoreResult",
+    "MetricStoreRefreshPlan",
+    "MetricStoreRefreshScope",
     "RefreshScopeResult",
-    "refresh_metric_store",
+    "prepare_metric_store_refresh",
+    "refresh_metric_store_scope",
 ]

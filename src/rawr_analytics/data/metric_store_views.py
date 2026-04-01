@@ -1,52 +1,19 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Any, cast
+from typing import Any
 
 from rawr_analytics.data.metric_store_query import require_current_metric_scope
 from rawr_analytics.data.player_metrics_db.queries import (
     load_metric_full_span_points_map,
     load_metric_full_span_series_rows,
 )
-from rawr_analytics.data.player_metrics_db.rawr import (
-    RawrPlayerSeasonValueRow,
-    load_rawr_player_season_value_rows,
-)
-from rawr_analytics.data.player_metrics_db.wowy import (
-    WowyPlayerSeasonValueRow,
-    load_wowy_player_season_value_rows,
-)
 from rawr_analytics.metrics.constants import Metric
-from rawr_analytics.shared.season import Season, SeasonType
-from rawr_analytics.shared.team import Team
-
-CachedMetricRow = RawrPlayerSeasonValueRow | WowyPlayerSeasonValueRow
 
 __all__ = [
-    "CachedMetricLeaderboardSnapshot",
-    "CachedMetricPlayerSeasonsSnapshot",
     "CachedMetricSpanSnapshot",
-    "load_cached_metric_leaderboard_snapshot",
-    "load_cached_metric_player_seasons_snapshot",
     "load_cached_metric_span_snapshot",
 ]
-
-
-@dataclass(frozen=True)
-class CachedMetricPlayerSeasonsSnapshot:
-    metric: str
-    metric_label: str
-    rows: list[CachedMetricRow]
-
-
-@dataclass(frozen=True)
-class CachedMetricLeaderboardSnapshot:
-    metric: str
-    metric_label: str
-    available_seasons: list[Season]
-    available_teams: list[Team]
-    rows: list[CachedMetricRow]
-    season_ids: list[str]
 
 
 @dataclass(frozen=True)
@@ -58,67 +25,6 @@ class CachedMetricSpanSnapshot:
     available_seasons: list[str]
     top_n: int
     series: list[dict[str, Any]]
-
-
-def load_cached_metric_player_seasons_snapshot(
-    *,
-    metric: Metric,
-    scope_key: str,
-    seasons: list[str] | None,
-    min_average_minutes: float | None,
-    min_total_minutes: float | None,
-    min_sample_size: int | None,
-    min_secondary_sample_size: int | None,
-) -> CachedMetricPlayerSeasonsSnapshot:
-    catalog_row = require_current_metric_scope(metric=metric, scope_key=scope_key)
-    rows = _load_cached_rows(
-        metric=metric,
-        scope_key=scope_key,
-        seasons=seasons,
-        min_average_minutes=min_average_minutes,
-        min_total_minutes=min_total_minutes,
-        min_sample_size=min_sample_size,
-        min_secondary_sample_size=min_secondary_sample_size,
-    )
-    return CachedMetricPlayerSeasonsSnapshot(
-        metric=metric.value,
-        metric_label=catalog_row.label,
-        rows=rows,
-    )
-
-
-def load_cached_metric_leaderboard_snapshot(
-    *,
-    metric: Metric,
-    scope_key: str,
-    seasons: list[str] | None,
-    min_average_minutes: float | None,
-    min_total_minutes: float | None,
-    min_sample_size: int | None,
-    min_secondary_sample_size: int | None,
-) -> CachedMetricLeaderboardSnapshot:
-    catalog_row = require_current_metric_scope(metric=metric, scope_key=scope_key)
-    rows = _load_cached_rows(
-        metric=metric,
-        scope_key=scope_key,
-        seasons=seasons,
-        min_average_minutes=min_average_minutes,
-        min_total_minutes=min_total_minutes,
-        min_sample_size=min_sample_size,
-        min_secondary_sample_size=min_secondary_sample_size,
-    )
-    resolved_season_type = SeasonType.parse(catalog_row.season_type)
-    return CachedMetricLeaderboardSnapshot(
-        metric=metric.value,
-        metric_label=catalog_row.label,
-        available_seasons=[
-            Season(season_id, resolved_season_type.to_nba_format())
-            for season_id in catalog_row.available_season_ids
-        ],
-        available_teams=[Team.from_id(team_id) for team_id in catalog_row.available_team_ids],
-        rows=rows,
-        season_ids=seasons or catalog_row.available_season_ids,
-    )
 
 
 def load_cached_metric_span_snapshot(
@@ -162,39 +68,4 @@ def load_cached_metric_span_snapshot(
             }
             for row in series_rows
         ],
-    )
-
-
-def _load_cached_rows(
-    *,
-    metric: Metric,
-    scope_key: str,
-    seasons: list[str] | None,
-    min_average_minutes: float | None,
-    min_total_minutes: float | None,
-    min_sample_size: int | None,
-    min_secondary_sample_size: int | None,
-) -> list[CachedMetricRow]:
-    if metric == Metric.RAWR:
-        return cast(
-            list[CachedMetricRow],
-            load_rawr_player_season_value_rows(
-                scope_key=scope_key,
-                seasons=seasons,
-                min_average_minutes=min_average_minutes,
-                min_total_minutes=min_total_minutes,
-                min_games=min_sample_size,
-            ),
-        )
-    return cast(
-        list[CachedMetricRow],
-        load_wowy_player_season_value_rows(
-            metric_id=metric.value,
-            scope_key=scope_key,
-            seasons=seasons,
-            min_average_minutes=min_average_minutes,
-            min_total_minutes=min_total_minutes,
-            min_games_with=min_sample_size,
-            min_games_without=min_secondary_sample_size,
-        ),
     )
