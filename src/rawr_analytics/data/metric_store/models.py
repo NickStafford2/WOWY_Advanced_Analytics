@@ -7,7 +7,6 @@ from dataclasses import dataclass
 class MetricStoreMetadata:
     metric_id: str
     scope_key: str
-    label: str
     build_version: str
     source_fingerprint: str
     row_count: int

@@ -23,7 +23,6 @@ from rawr_analytics.data.metric_store.wowy import WowyPlayerSeasonValueRow
 
 @dataclass(frozen=True)
 class MetricStoreAuditMetadata:
-    label: str
     build_version: str
     source_fingerprint: str
     row_count: int
@@ -78,7 +77,6 @@ def _audit_metric_player_season_values_table(
         SELECT
             metric_id,
             scope_key,
-            label,
             build_version,
             source_fingerprint,
             row_count
@@ -87,7 +85,6 @@ def _audit_metric_player_season_values_table(
     ).fetchall()
     metadata_by_key = {
         (row["metric_id"], row["scope_key"]): MetricStoreAuditMetadata(
-            label=row["label"],
             build_version=row["build_version"],
             source_fingerprint=row["source_fingerprint"],
             row_count=row["row_count"],
@@ -104,7 +101,6 @@ def _audit_metric_player_season_values_table(
         metadata_row = metadata_by_key.get(
             key,
             MetricStoreAuditMetadata(
-                label="missing-metadata",
                 build_version="missing-metadata",
                 source_fingerprint="missing-metadata",
                 row_count=-1,
@@ -113,7 +109,6 @@ def _audit_metric_player_season_values_table(
         try:
             validate_rawr_rows(
                 scope_key=key[1],
-                label=metadata_row.label,
                 build_version=metadata_row.build_version,
                 source_fingerprint=metadata_row.source_fingerprint,
                 rows=group_rows,
@@ -131,7 +126,6 @@ def _audit_metric_player_season_values_table(
         metadata_row = metadata_by_key.get(
             key,
             MetricStoreAuditMetadata(
-                label="missing-metadata",
                 build_version="missing-metadata",
                 source_fingerprint="missing-metadata",
                 row_count=-1,
@@ -141,7 +135,6 @@ def _audit_metric_player_season_values_table(
             validate_wowy_rows(
                 metric_id=key[0],
                 scope_key=key[1],
-                label=metadata_row.label,
                 build_version=metadata_row.build_version,
                 source_fingerprint=metadata_row.source_fingerprint,
                 rows=group_rows,

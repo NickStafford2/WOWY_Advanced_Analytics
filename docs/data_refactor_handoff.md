@@ -12,7 +12,7 @@ The package is not a single data layer. It is three different things:
 2. derived metric snapshot persistence
 3. metric refresh orchestration
 
-The first two are now separated better than before. The remaining weak spot is the generic metric row contract inside `data/metric_store`.
+The first two are now separated better than before. The remaining weak spot is the partly normalized scope metadata inside `data/metric_store`.
 
 ## Important Current Facts
 
@@ -56,17 +56,37 @@ Refresh orchestration now lives under:
 
 `data/metric_store` is now a persistence package again.
 
-### Weak type boundary
+### Metric-store type boundary
 
-`PlayerSeasonMetricRow` in `src/rawr_analytics/data/metric_store/models.py` is still too generic.
+The generic metric row contract has been removed.
 
-Problems:
+Current state:
 
-- it hides metric differences behind one row shape
-- it uses `details: dict[str, Any] | None`
-- it encourages generic query code instead of explicit contracts
+- `src/rawr_analytics/data/metric_store/models.py` no longer defines `PlayerSeasonMetricRow`
+- RAWR validation and audit now use `RawrPlayerSeasonValueRow`
+- WOWY validation and audit now use `WowyPlayerSeasonValueRow`
+- the old generic query path in `src/rawr_analytics/data/metric_store/queries.py` was deleted
 
-This is the next slice.
+That slice is complete.
+
+### Query-facing glue cleanup
+
+This slice is complete.
+
+- `src/rawr_analytics/data/metric_store_query.py` was deleted
+- `src/rawr_analytics/data/metric_store_views.py` was deleted
+- cache freshness checks now live in `src/rawr_analytics/metrics/metric_query/scope.py`
+- scope snapshot assembly now lives in `src/rawr_analytics/metrics/metric_query/scope.py`
+- span-chart shaping now lives in `src/rawr_analytics/metrics/metric_query/views.py`
+
+### Metadata ownership cleanup
+
+This slice is complete.
+
+- `MetricStoreMetadata` no longer includes `label`
+- `metric_store_metadata_v2` is now treated as freshness metadata only
+- `label` is owned by `metric_scope_catalog`
+- this removed a fresh-DB inconsistency where code queried and inserted a metadata `label` column that the schema did not define
 
 ## Decisions Already Made
 
@@ -103,9 +123,42 @@ This is the next slice.
 - deleted `src/rawr_analytics/data/_metric_store_refresh.py`
 - deleted `src/rawr_analytics/services/metric_store.py`
 
+### Slice 4: explicit metric row contracts
+
+- deleted `PlayerSeasonMetricRow` from `src/rawr_analytics/data/metric_store/models.py`
+- updated `src/rawr_analytics/data/metric_store/_validation.py` to validate RAWR and WOWY rows directly
+- updated `src/rawr_analytics/data/metric_store/audit.py` and `src/rawr_analytics/data/db_validation.py` to track RAWR and WOWY rows explicitly
+- deleted the unused generic metric row query path from `src/rawr_analytics/data/metric_store/queries.py`
+- kept the SQLite schema unchanged
+
+### Slice 5: delete old metric-store wrappers
+
+- deleted `src/rawr_analytics/data/metric_store_rawr.py`
+- deleted `src/rawr_analytics/data/metric_store_wowy.py`
+- updated `src/rawr_analytics/metrics/metric_query/views.py` to read directly from `rawr_analytics.data.metric_store`
+- kept the `metric_store` public API small instead of recreating wrapper glue
+
+### Slice 6: move query-facing snapshot logic out of `data`
+
+- deleted `src/rawr_analytics/data/metric_store_query.py`
+- deleted `src/rawr_analytics/data/metric_store_views.py`
+- moved cache freshness checks and scope snapshot assembly into `src/rawr_analytics/metrics/metric_query/scope.py`
+- moved span-chart payload shaping into `src/rawr_analytics/metrics/metric_query/views.py`
+- kept `src/rawr_analytics/data/metric_store/` persistence-only
+
+### Slice 7: shrink metric-store metadata
+
+- removed `label` from `src/rawr_analytics/data/metric_store/models.py::MetricStoreMetadata`
+- updated metadata reads and writes to use only freshness fields plus row count
+- updated audit and validation paths to stop expecting `label` on metadata
+- left `label` owned by `metric_scope_catalog`
+
 Verification already done:
 
 - `poetry run python -m py_compile $(find src -name '*.py' -print)` passed
+- `poetry run ruff check src/rawr_analytics/data/metric_store src/rawr_analytics/data/db_validation.py src/rawr_analytics/metrics/metric_query/views.py` passed
+- `poetry run python -m py_compile src/rawr_analytics/data/metric_store/models.py src/rawr_analytics/data/metric_store/queries.py src/rawr_analytics/data/metric_store/store.py src/rawr_analytics/data/metric_store/audit.py src/rawr_analytics/data/metric_store/_validation.py src/rawr_analytics/metrics/metric_query/scope.py src/rawr_analytics/metrics/metric_query/views.py` passed
+- `poetry run ruff check src/rawr_analytics/data/metric_store/models.py src/rawr_analytics/data/metric_store/queries.py src/rawr_analytics/data/metric_store/store.py src/rawr_analytics/data/metric_store/audit.py src/rawr_analytics/data/metric_store/_validation.py src/rawr_analytics/metrics/metric_query/scope.py src/rawr_analytics/metrics/metric_query/views.py` passed
 
 Local DB state when this handoff was written:
 
@@ -162,8 +215,7 @@ Owns:
 
 ## Delete after replacement exists
 
-- `src/rawr_analytics/data/metric_store_rawr.py`
-- `src/rawr_analytics/data/metric_store_wowy.py`
+- none from this slice; the remaining work is schema cleanup
 
 ## Delete from repo if tracked
 
@@ -176,8 +228,8 @@ Owns:
 1. Rename `player_metrics_db` to `metric_store`.
 2. Move refresh logic into `services/metric_refresh`.
 3. Replace generic metric row APIs with explicit RAWR/WOWY APIs.
-4. Rebuild the metric-store schema around scope and snapshot tables.
-5. Delete the old wrappers and remaining glue code.
+4. Delete the old wrappers and remaining glue code.
+5. Rebuild the metric-store schema around scope and snapshot tables.
 
 ## Risks To Watch
 
@@ -200,13 +252,13 @@ RAWR and WOWY should stay explicit.
 
 The best next slice is:
 
-1. replace `PlayerSeasonMetricRow` in `src/rawr_analytics/data/metric_store/models.py`
-2. keep explicit RAWR and WOWY row contracts only
-3. update `queries.py`, `audit.py`, and `db_validation.py` to use those explicit types
-4. keep the current SQLite schema unless a tiny repair is required
-5. do not start the snapshot-table schema rewrite in the same pass
+1. replace `metric_scope_catalog.available_team_ids_json` with a real scope-team table
+2. update metric-store writes and reads to use that table
+3. update audit and DB validation to check the new scope-team relation
+4. leave `available_season_ids_json` in place for now if that keeps the change small
+5. do not start the larger `snapshot_id` schema rewrite in the same pass
 
-That strengthens the type boundary without mixing together contract cleanup and schema redesign.
+That keeps the next step concrete and moves one more piece of duplicated scope metadata out of JSON without mixing in the bigger snapshot redesign.
 
 ## Suggested Commit Message
 

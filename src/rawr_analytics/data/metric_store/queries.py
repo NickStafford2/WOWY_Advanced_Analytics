@@ -23,7 +23,6 @@ def load_metric_store_metadata(
             SELECT
                 metric_id,
                 scope_key,
-                label,
                 build_version,
                 source_fingerprint,
                 row_count,
@@ -38,7 +37,6 @@ def load_metric_store_metadata(
     return MetricStoreMetadata(
         metric_id=row["metric_id"],
         scope_key=row["scope_key"],
-        label=row["label"],
         build_version=row["build_version"],
         source_fingerprint=row["source_fingerprint"],
         row_count=row["row_count"],

@@ -68,11 +68,37 @@ There are several wrapper modules that mostly restate the same logic:
 
 This makes the package look more complicated than it is.
 
+Status:
+
+- `src/rawr_analytics/data/metric_store_rawr.py` was deleted
+- `src/rawr_analytics/data/metric_store_wowy.py` was deleted
+- `src/rawr_analytics/data/metric_store_query.py` was deleted
+- `src/rawr_analytics/data/metric_store_views.py` was deleted
+- cache freshness, scope snapshot assembly, and span-chart shaping now live in `src/rawr_analytics/metrics/metric_query/`
+
 ### 5. Generic row contracts are weakening the type boundary
 
 `PlayerSeasonMetricRow` in `src/rawr_analytics/data/player_metrics_db/models.py` uses a generic shape plus `details: dict[str, Any] | None`.
 
 That is the opposite of the repo direction. RAWR and WOWY already have different native data. The data layer should expose explicit row types for each.
+
+Status:
+
+- completed
+- `PlayerSeasonMetricRow` has been deleted from `src/rawr_analytics/data/metric_store/models.py`
+- validation, audit, and DB validation now use explicit RAWR and WOWY row contracts
+
+### 6. Metadata and scope catalog still overlap
+
+The current metric-store metadata is still only partly normalized.
+
+Current state:
+
+- `label` now lives only on `metric_scope_catalog`
+- `metric_store_metadata_v2` now owns only build freshness and row count fields
+- `available_season_ids_json` and `available_team_ids_json` are still stored on `metric_scope_catalog`
+
+The next schema work should keep shrinking duplicated scope metadata before touching the larger snapshot-table redesign.
 
 ## Target Architecture
 
@@ -329,6 +355,12 @@ Success condition:
 - repeated scope metadata is removed from most value rows
 - reads join through snapshot identity instead of copying metadata everywhere
 
+Recommended first slice inside this phase:
+
+- keep `metric_store_metadata_v2` limited to freshness fields plus `row_count`
+- move scope-team membership out of `metric_scope_catalog.available_team_ids_json`
+- defer the larger `snapshot_id` rewrite until the smaller scope metadata cleanup is done
+
 ## Phase 5: Delete generic row contracts
 
 Objective:
@@ -394,10 +426,10 @@ Specific code to remove during the refactor:
 
 If continuing this refactor in code, start here:
 
-1. replace `PlayerSeasonMetricRow` in `src/rawr_analytics/data/metric_store/models.py`
-2. introduce explicit typed read paths for RAWR and WOWY
-3. update validation and audit code to consume explicit metric-specific rows
-4. keep the physical schema unchanged unless a small query repair requires it
-5. do not start the snapshot-table schema rewrite in the same pass
+1. replace `metric_scope_catalog.available_team_ids_json` with a real scope-team table
+2. update metric-store writes and reads to use that table
+3. update audit and DB validation to check the new scope-team relation
+4. leave `available_season_ids_json` in place for now if that keeps the slice small
+5. do not start the `snapshot_id` table rewrite in the same pass
 
-That slice strengthens the type boundary without mixing together contract cleanup and schema redesign.
+That slice keeps the schema cleanup incremental and continues reducing duplicated scope metadata without mixing in the bigger snapshot redesign.

@@ -3,14 +3,14 @@ from __future__ import annotations
 from typing import Any
 
 from rawr_analytics.data.metric_store import (
+    MetricScopeCatalogRow,
     RawrPlayerSeasonValueRow,
     WowyPlayerSeasonValueRow,
+    load_metric_span_store_rows,
     load_rawr_player_season_value_rows,
     load_wowy_player_season_value_rows,
 )
-from rawr_analytics.data.metric_store_query import require_current_metric_scope
 from rawr_analytics.data.metric_store_scope import build_scope_key, build_team_filter, season_ids
-from rawr_analytics.data.metric_store_views import load_cached_metric_span_snapshot
 from rawr_analytics.metrics.constants import Metric
 from rawr_analytics.metrics.rawr import build_rawr_custom_query
 from rawr_analytics.metrics.rawr import default_filters as _rawr_default_filters
@@ -23,7 +23,7 @@ from rawr_analytics.shared.season import Season, SeasonType
 from rawr_analytics.shared.team import Team
 
 from .models import MetricQuery
-from .scope import build_filters_payload
+from .scope import build_filters_payload, require_current_metric_scope
 
 MetricView = str
 
@@ -388,17 +388,27 @@ def _build_metric_span_chart_payload(
     scope_key: str,
     top_n: int,
 ) -> dict[str, Any]:
-    snapshot = load_cached_metric_span_snapshot(metric=metric, scope_key=scope_key, top_n=top_n)
+    catalog_row = require_current_metric_scope(metric=metric, scope_key=scope_key)
+    span_rows = load_metric_span_store_rows(
+        metric=metric.value,
+        scope_key=scope_key,
+        top_n=top_n,
+    )
     return {
-        "metric": snapshot.metric,
-        "metric_label": snapshot.metric_label,
+        "metric": metric.value,
+        "metric_label": catalog_row.label,
         "span": {
-            "start_season": snapshot.start_season,
-            "end_season": snapshot.end_season,
-            "available_seasons": snapshot.available_seasons,
-            "top_n": snapshot.top_n,
+            "start_season": catalog_row.full_span_start_season_id,
+            "end_season": catalog_row.full_span_end_season_id,
+            "available_seasons": catalog_row.available_season_ids,
+            "top_n": top_n,
         },
-        "series": snapshot.series,
+        "series": _build_metric_span_series(
+            catalog_row=catalog_row,
+            top_n=top_n,
+            points_map=span_rows.points_map,
+            series_rows=span_rows.series_rows,
+        ),
     }
 
 
@@ -599,7 +609,7 @@ def _build_scope_key(query: MetricQuery) -> str:
     return build_scope_key(season_type=query.season_type, team_filter=team_filter)
 
 
-def _build_available_seasons(catalog_row) -> list[Season]:
+def _build_available_seasons(catalog_row: MetricScopeCatalogRow) -> list[Season]:
     resolved_season_type = SeasonType.parse(catalog_row.season_type)
     return [
         Season(season_id, resolved_season_type.to_nba_format())
@@ -607,8 +617,33 @@ def _build_available_seasons(catalog_row) -> list[Season]:
     ]
 
 
-def _build_available_teams(catalog_row) -> list[Team]:
+def _build_available_teams(catalog_row: MetricScopeCatalogRow) -> list[Team]:
     return [Team.from_id(team_id) for team_id in catalog_row.available_team_ids]
+
+
+def _build_metric_span_series(
+    *,
+    catalog_row: MetricScopeCatalogRow,
+    series_rows,
+    points_map: dict[int, dict[str, float]],
+    top_n: int,
+) -> list[dict[str, Any]]:
+    return [
+        {
+            "player_id": row.player_id,
+            "player_name": row.player_name,
+            "span_average_value": row.span_average_value,
+            "season_count": row.season_count,
+            "points": [
+                {
+                    "season": season,
+                    "value": points_map.get(row.player_id, {}).get(season),
+                }
+                for season in catalog_row.available_season_ids
+            ],
+        }
+        for row in series_rows[:top_n]
+    ]
 
 
 def _rawr_row_value(row: RawrPlayerSeasonValueRow | RawrCustomQueryRow) -> float:

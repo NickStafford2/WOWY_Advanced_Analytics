@@ -28,14 +28,12 @@ from rawr_analytics.metrics.metric_query.validation import (
 def validate_rawr_rows(
     *,
     scope_key: str,
-    label: str,
     build_version: str,
     source_fingerprint: str,
     rows: list[RawrPlayerSeasonValueRow],
 ) -> None:
     _validate_required_text("rawr", "metric_id")
     _validate_required_text(scope_key, "scope_key")
-    _validate_required_text(label, "label")
     _validate_required_text(build_version, "build_version")
     _validate_required_text(source_fingerprint, "source_fingerprint")
 
@@ -122,14 +120,12 @@ def validate_wowy_rows(
     *,
     metric_id: str,
     scope_key: str,
-    label: str,
     build_version: str,
     source_fingerprint: str,
     rows: list[WowyPlayerSeasonValueRow],
 ) -> None:
     _validate_required_text(metric_id, "metric_id")
     _validate_required_text(scope_key, "scope_key")
-    _validate_required_text(label, "label")
     _validate_required_text(build_version, "build_version")
     _validate_required_text(source_fingerprint, "source_fingerprint")
 

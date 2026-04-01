@@ -42,7 +42,6 @@ def replace_rawr_scope_snapshot(
     updated_at = datetime.now(UTC).isoformat()
     _validate_rawr_rows(
         scope_key=scope_key,
-        label=label,
         build_version=build_version,
         source_fingerprint=source_fingerprint,
         rows=rows,
@@ -55,7 +54,6 @@ def replace_rawr_scope_snapshot(
     _replace_metric_scope_snapshot(
         metric_id="rawr",
         scope_key=scope_key,
-        label=label,
         build_version=build_version,
         source_fingerprint=source_fingerprint,
         catalog_row=_build_metric_scope_catalog_row(
@@ -92,7 +90,6 @@ def replace_wowy_scope_snapshot(
     _validate_wowy_rows(
         metric_id=metric_id,
         scope_key=scope_key,
-        label=label,
         build_version=build_version,
         source_fingerprint=source_fingerprint,
         rows=rows,
@@ -106,7 +103,6 @@ def replace_wowy_scope_snapshot(
     _replace_metric_scope_snapshot(
         metric_id=metric_id,
         scope_key=scope_key,
-        label=label,
         build_version=build_version,
         source_fingerprint=source_fingerprint,
         catalog_row=_build_metric_scope_catalog_row(
@@ -160,7 +156,6 @@ def _replace_metric_scope_snapshot(
     *,
     metric_id: str,
     scope_key: str,
-    label: str,
     build_version: str,
     source_fingerprint: str,
     catalog_row: MetricScopeCatalogRow,
@@ -207,17 +202,15 @@ def _replace_metric_scope_snapshot(
             INSERT INTO metric_store_metadata_v2 (
                 metric_id,
                 scope_key,
-                label,
                 build_version,
                 source_fingerprint,
                 row_count,
                 updated_at
-            ) VALUES (?, ?, ?, ?, ?, ?, ?)
+            ) VALUES (?, ?, ?, ?, ?, ?)
             """,
             (
                 metric_id,
                 scope_key,
-                label,
                 build_version,
                 source_fingerprint,
                 row_count,
