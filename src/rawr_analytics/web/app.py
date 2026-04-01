@@ -1,10 +1,17 @@
 from __future__ import annotations
 
 import json
-from dataclasses import asdict
+from dataclasses import fields, is_dataclass
+from enum import Enum
 from typing import Any
 
 from rawr_analytics.metrics.constants import Metric
+from rawr_analytics.metrics.metric_query import (
+    MetricOptionsPayload,
+    RawrMetricFilters,
+    TeamOption,
+    WowyMetricFilters,
+)
 from rawr_analytics.services import (
     MetricQueryRequest,
     build_metric_options_payload,
@@ -44,7 +51,7 @@ def create_app():
             view=view,
         )
         assert result.metric == metric_type
-        return jsonify(result.payload)
+        return jsonify(_serialize_json_value(result.payload))
 
     def run_json(handler):
         try:
@@ -70,7 +77,7 @@ def create_app():
     def get_metric_options(metric: str):
         return run_json(
             lambda: jsonify(
-                asdict(
+                _serialize_json_value(
                     build_metric_options_payload(
                         MetricQueryRequest(
                             metric=Metric.parse(metric),
@@ -241,3 +248,76 @@ def _parse_season_list(
     if not raw_values:
         return None
     return [Season(raw_value, season_type.value) for raw_value in raw_values]
+
+
+def _serialize_json_value(value: Any) -> Any:
+    if isinstance(value, Team):
+        return value.current.abbreviation
+    if isinstance(value, Season):
+        return value.id
+    if isinstance(value, SeasonType):
+        return value.to_nba_format()
+    if isinstance(value, Metric):
+        return value.value
+    if isinstance(value, RawrMetricFilters):
+        return _serialize_rawr_metric_filters(value)
+    if isinstance(value, WowyMetricFilters):
+        return _serialize_wowy_metric_filters(value)
+    if isinstance(value, TeamOption):
+        return {
+            "team_id": value.team.team_id,
+            "label": value.label,
+            "available_seasons": [season.id for season in value.available_seasons],
+        }
+    if isinstance(value, MetricOptionsPayload):
+        return {
+            "metric": value.metric,
+            "metric_label": value.metric_label,
+            "available_teams": [team.current.abbreviation for team in value.available_teams],
+            "team_options": [_serialize_json_value(option) for option in value.team_options],
+            "available_seasons": [season.id for season in value.available_seasons],
+            "available_teams_by_season": {
+                season_id: [team.current.abbreviation for team in teams]
+                for season_id, teams in value.available_teams_by_season.items()
+            },
+            "filters": _serialize_json_value(value.filters),
+        }
+    if is_dataclass(value):
+        return {
+            field.name: _serialize_json_value(getattr(value, field.name)) for field in fields(value)
+        }
+    if isinstance(value, dict):
+        return {key: _serialize_json_value(item) for key, item in value.items()}
+    if isinstance(value, (list, tuple, set)):
+        return [_serialize_json_value(item) for item in value]
+    if isinstance(value, Enum):
+        return value.value
+    return value
+
+
+def _serialize_rawr_metric_filters(filters: RawrMetricFilters) -> dict[str, Any]:
+    return {
+        "team": None if filters.teams is None else [team.current.abbreviation for team in filters.teams],
+        "team_id": None if filters.teams is None else [team.team_id for team in filters.teams],
+        "season": None if filters.seasons is None else [season.id for season in filters.seasons],
+        "season_type": filters.season_type.to_nba_format(),
+        "min_average_minutes": filters.min_average_minutes,
+        "min_total_minutes": filters.min_total_minutes,
+        "top_n": filters.top_n,
+        "min_games": filters.min_games,
+        "ridge_alpha": filters.ridge_alpha,
+    }
+
+
+def _serialize_wowy_metric_filters(filters: WowyMetricFilters) -> dict[str, Any]:
+    return {
+        "team": None if filters.teams is None else [team.current.abbreviation for team in filters.teams],
+        "team_id": None if filters.teams is None else [team.team_id for team in filters.teams],
+        "season": None if filters.seasons is None else [season.id for season in filters.seasons],
+        "season_type": filters.season_type.to_nba_format(),
+        "min_average_minutes": filters.min_average_minutes,
+        "min_total_minutes": filters.min_total_minutes,
+        "top_n": filters.top_n,
+        "min_games_with": filters.min_games_with,
+        "min_games_without": filters.min_games_without,
+    }

@@ -20,17 +20,30 @@ from .models import MetricQuery, build_metric_query
 
 
 @dataclass(frozen=True)
-class MetricFilters:
+class RawrMetricFilters:
     teams: list[Team] | None
     seasons: list[Season] | None
     season_type: SeasonType
     min_average_minutes: float
     min_total_minutes: float
     top_n: int
-    min_games: int | None = None
-    ridge_alpha: float | None = None
-    min_games_with: int | None = None
-    min_games_without: int | None = None
+    min_games: int
+    ridge_alpha: float
+
+
+@dataclass(frozen=True)
+class WowyMetricFilters:
+    teams: list[Team] | None
+    seasons: list[Season] | None
+    season_type: SeasonType
+    min_average_minutes: float
+    min_total_minutes: float
+    top_n: int
+    min_games_with: int
+    min_games_without: int
+
+
+type MetricFilters = RawrMetricFilters | WowyMetricFilters
 
 
 @dataclass(frozen=True)
@@ -67,7 +80,7 @@ def build_metric_options_payload(
     season_type: SeasonType,
 ) -> MetricOptionsPayload:
     query = build_metric_query(metric, teams=teams, season_type=season_type)
-    filters = build_filters_payload(query)
+    filters = build_filters_payload(metric, query)
     snapshot = load_metric_store_scope_snapshot(
         metric,
         teams=teams,
@@ -83,7 +96,43 @@ def build_metric_options_payload(
         ),
         available_seasons=snapshot.available_seasons,
         available_teams_by_season=snapshot.available_teams_by_season,
-        filters=MetricFilters(
+        filters=_build_options_filters(filters),
+    )
+
+
+def build_filters_payload(metric: Metric, query: MetricQuery) -> MetricFilters:
+    if metric == Metric.RAWR:
+        assert query.min_games is not None
+        assert query.ridge_alpha is not None
+        return RawrMetricFilters(
+            teams=query.teams,
+            seasons=query.seasons,
+            season_type=query.season_type,
+            min_average_minutes=query.min_average_minutes,
+            min_total_minutes=query.min_total_minutes,
+            top_n=query.top_n,
+            min_games=query.min_games,
+            ridge_alpha=query.ridge_alpha,
+        )
+    if metric in {Metric.WOWY, Metric.WOWY_SHRUNK}:
+        assert query.min_games_with is not None
+        assert query.min_games_without is not None
+        return WowyMetricFilters(
+            teams=query.teams,
+            seasons=query.seasons,
+            season_type=query.season_type,
+            min_average_minutes=query.min_average_minutes,
+            min_total_minutes=query.min_total_minutes,
+            top_n=query.top_n,
+            min_games_with=query.min_games_with,
+            min_games_without=query.min_games_without,
+        )
+    raise ValueError(f"Unknown metric: {metric}")
+
+
+def _build_options_filters(filters: MetricFilters) -> MetricFilters:
+    if isinstance(filters, RawrMetricFilters):
+        return RawrMetricFilters(
             teams=filters.teams,
             seasons=None,
             season_type=filters.season_type,
@@ -92,24 +141,16 @@ def build_metric_options_payload(
             top_n=filters.top_n,
             min_games=filters.min_games,
             ridge_alpha=filters.ridge_alpha,
-            min_games_with=filters.min_games_with,
-            min_games_without=filters.min_games_without,
-        ),
-    )
-
-
-def build_filters_payload(query: MetricQuery) -> MetricFilters:
-    return MetricFilters(
-        teams=query.teams,
-        seasons=query.seasons,
-        season_type=query.season_type,
-        min_average_minutes=query.min_average_minutes,
-        min_total_minutes=query.min_total_minutes,
-        top_n=query.top_n,
-        min_games=query.min_games,
-        ridge_alpha=query.ridge_alpha,
-        min_games_with=query.min_games_with,
-        min_games_without=query.min_games_without,
+        )
+    return WowyMetricFilters(
+        teams=filters.teams,
+        seasons=None,
+        season_type=filters.season_type,
+        min_average_minutes=filters.min_average_minutes,
+        min_total_minutes=filters.min_total_minutes,
+        top_n=filters.top_n,
+        min_games_with=filters.min_games_with,
+        min_games_without=filters.min_games_without,
     )
 
 

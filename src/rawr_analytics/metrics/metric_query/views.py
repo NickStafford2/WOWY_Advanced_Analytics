@@ -40,7 +40,7 @@ def build_metric_view_payload(
         payload = _build_wowy_metric_view_payload(metric=metric, view=view, query=query)
     else:
         raise ValueError(f"Unknown metric: {metric}")
-    payload["filters"] = build_filters_payload(query)
+    payload["filters"] = build_filters_payload(metric, query)
     return payload
 
 
