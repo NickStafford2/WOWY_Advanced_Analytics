@@ -41,7 +41,7 @@ IngestProgressFn = Callable[[int, int, IngestProgress], None]
 @dataclass(frozen=True)
 class RebuildRequest:
     start_year: int
-    first_year: int
+    end_year: int
     season_type: SeasonType
     metrics: list[Metric] | None = None
     teams: list[str] | None = None
@@ -87,7 +87,7 @@ def rebuild_player_metrics_db(
     ingest_result = refresh_season_range(
         IngestRefreshRequest(
             start_year=request.start_year,
-            end_year=request.first_year,
+            end_year=request.end_year,
             season_type=request.season_type.value,
             team_abbreviations=request.teams,
         ),

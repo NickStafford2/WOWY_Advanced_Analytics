@@ -106,5 +106,5 @@ class Season:
 
 
 def build_season_list(start_year: int, first_year: int, season_type_str: str) -> list[Season]:
-    assert start_year >= first_year, "Start year must be greater than or equal to first year"
+    assert start_year >= first_year, "Start year must be greater than or equal to end year"
     return [Season(str(year), season_type_str) for year in range(start_year, first_year - 1, -1)]

@@ -5,7 +5,7 @@
       "name": "Run Python Script",
       "type": "python",
       "request": "launch",
-      "program": "${workspaceFolder}/scripts/cache_season_data.py",
+      "program": "${workspaceFolder}/scripts/rebuild_player_metrics_db.py",
       "cwd": "${workspaceFolder}",
       "console": "integratedTerminal"
     }

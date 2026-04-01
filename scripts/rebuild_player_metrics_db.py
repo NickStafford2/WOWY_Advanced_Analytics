@@ -24,8 +24,8 @@ from rawr_analytics.services import (
 )
 from rawr_analytics.shared.season import SeasonType
 
-DEFAULT_START_YEAR = 2025
-DEFAULT_FIRST_YEAR = 1998
+_DEFAULT_START_YEAR = 2025
+_DEFAULT_END_YEAR = 2020
 _METRIC_PROGRESS_BARS: dict[Metric, TerminalProgressBar] = {}
 _VALIDATION_PROGRESS_BAR: TerminalProgressBar | None = None
 
@@ -40,14 +40,14 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument(
         "--start-year",
         type=int,
-        default=DEFAULT_START_YEAR,
-        help=f"Latest season start year to rebuild (default: {DEFAULT_START_YEAR})",
+        default=_DEFAULT_START_YEAR,
+        help=f"Latest season start year to rebuild (default: {_DEFAULT_START_YEAR})",
     )
     parser.add_argument(
-        "--first-year",
+        "--end-year",
         type=int,
-        default=DEFAULT_FIRST_YEAR,
-        help=f"Earliest season start year to rebuild (default: {DEFAULT_FIRST_YEAR})",
+        default=_DEFAULT_END_YEAR,
+        help=f"Earliest season start year to rebuild (default: {_DEFAULT_END_YEAR})",
     )
     parser.add_argument(
         "--season-type",
@@ -78,13 +78,13 @@ def main(argv: list[str] | None = None) -> int:
     parser = build_parser()
     args = parser.parse_args(argv)
 
-    if args.start_year < args.first_year:
-        raise ValueError("Start year must be greater than or equal to first year")
+    if args.start_year < args.end_year:
+        raise ValueError("Start year must be greater than or equal to end year")
 
     result = rebuild_player_metrics_db(
         RebuildRequest(
             start_year=args.start_year,
-            first_year=args.first_year,
+            end_year=args.end_year,
             season_type=SeasonType.parse(args.season_type),
             teams=args.teams,
             metrics=[Metric.parse(metric) for metric in args.metric] if args.metric else None,
