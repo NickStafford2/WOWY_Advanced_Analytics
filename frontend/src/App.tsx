@@ -15,19 +15,27 @@ type AppMode = 'cached' | 'custom'
 type MetricId = 'wowy' | 'wowy_shrunk' | 'rawr'
 type ThemeMode = 'light' | 'dark'
 
-type MetricFilters = {
+type BaseMetricFilters = {
   team: string[] | null
-  team_id?: number[] | null
+  team_id: number[] | null
   season?: string[] | null
   season_type: string
-  min_games_with?: number
-  min_games_without?: number
-  min_games?: number
-  ridge_alpha?: number
   min_average_minutes: number
   min_total_minutes: number
   top_n: number
 }
+
+type RawrMetricFilters = BaseMetricFilters & {
+  min_games: number
+  ridge_alpha: number
+}
+
+type WowyMetricFilters = BaseMetricFilters & {
+  min_games_with: number
+  min_games_without: number
+}
+
+type MetricFilters = RawrMetricFilters | WowyMetricFilters
 
 type LeaderboardPayload = {
   mode: AppMode
@@ -46,15 +54,25 @@ type LeaderboardPayload = {
   available_seasons?: string[]
 }
 
-type MetricOptionsPayload = {
-  metric: MetricId
+type BaseMetricOptionsPayload = {
   metric_label: string
   available_teams: string[]
   team_options: TeamOption[]
   available_seasons: string[]
   available_teams_by_season?: Record<string, string[]>
-  filters: MetricFilters
 }
+
+type RawrMetricOptionsPayload = BaseMetricOptionsPayload & {
+  metric: 'rawr'
+  filters: RawrMetricFilters
+}
+
+type WowyMetricOptionsPayload = BaseMetricOptionsPayload & {
+  metric: 'wowy' | 'wowy_shrunk'
+  filters: WowyMetricFilters
+}
+
+type MetricOptionsPayload = RawrMetricOptionsPayload | WowyMetricOptionsPayload
 
 type ErrorPayload = {
   error?: string
@@ -215,10 +233,15 @@ function App() {
               ? nextTeams
               : payload.team_options.map((teamOption) => teamOption.team_id),
           topN: current.topN || payload.filters.top_n,
-          minGames: payload.filters.min_games ?? current.minGames,
-          ridgeAlpha: payload.filters.ridge_alpha ?? current.ridgeAlpha,
-          minGamesWith: payload.filters.min_games_with ?? current.minGamesWith,
-          minGamesWithout: payload.filters.min_games_without ?? current.minGamesWithout,
+          minGames: payload.metric === 'rawr' ? payload.filters.min_games : current.minGames,
+          ridgeAlpha:
+            payload.metric === 'rawr' ? payload.filters.ridge_alpha : current.ridgeAlpha,
+          minGamesWith:
+            payload.metric === 'rawr' ? current.minGamesWith : payload.filters.min_games_with,
+          minGamesWithout:
+            payload.metric === 'rawr'
+              ? current.minGamesWithout
+              : payload.filters.min_games_without,
           minAverageMinutes: payload.filters.min_average_minutes,
           minTotalMinutes: payload.filters.min_total_minutes,
         }
@@ -240,17 +263,14 @@ function App() {
         min_average_minutes: String(effectiveFilters.min_average_minutes),
         min_total_minutes: String(effectiveFilters.min_total_minutes),
       })
-      if (effectiveFilters.min_games !== undefined) {
-        params.set('min_games', String(effectiveFilters.min_games))
-      }
-      if (effectiveFilters.ridge_alpha !== undefined) {
-        params.set('ridge_alpha', String(effectiveFilters.ridge_alpha))
-      }
-      if (effectiveFilters.min_games_with !== undefined) {
-        params.set('min_games_with', String(effectiveFilters.min_games_with))
-      }
-      if (effectiveFilters.min_games_without !== undefined) {
-        params.set('min_games_without', String(effectiveFilters.min_games_without))
+      if (nextMetric === 'rawr') {
+        const rawrFilters = effectiveFilters as RawrMetricFilters
+        params.set('min_games', String(rawrFilters.min_games))
+        params.set('ridge_alpha', String(rawrFilters.ridge_alpha))
+      } else {
+        const wowyFilters = effectiveFilters as WowyMetricFilters
+        params.set('min_games_with', String(wowyFilters.min_games_with))
+        params.set('min_games_without', String(wowyFilters.min_games_without))
       }
       if (cachedFilters.teamId !== null) {
         params.set('team_id', String(cachedFilters.teamId))
@@ -793,17 +813,14 @@ function buildExportUrl({
   })
 
   if (mode === 'cached') {
-    if (metricFilters.min_games !== undefined) {
-      params.set('min_games', String(metricFilters.min_games))
-    }
-    if (metricFilters.ridge_alpha !== undefined) {
-      params.set('ridge_alpha', String(metricFilters.ridge_alpha))
-    }
-    if (metricFilters.min_games_with !== undefined) {
-      params.set('min_games_with', String(metricFilters.min_games_with))
-    }
-    if (metricFilters.min_games_without !== undefined) {
-      params.set('min_games_without', String(metricFilters.min_games_without))
+    if (metric === 'rawr') {
+      const rawrFilters = metricFilters as RawrMetricFilters
+      params.set('min_games', String(rawrFilters.min_games))
+      params.set('ridge_alpha', String(rawrFilters.ridge_alpha))
+    } else {
+      const wowyFilters = metricFilters as WowyMetricFilters
+      params.set('min_games_with', String(wowyFilters.min_games_with))
+      params.set('min_games_without', String(wowyFilters.min_games_without))
     }
     if (cachedFilters.teamId !== null) {
       params.set('team_id', String(cachedFilters.teamId))
