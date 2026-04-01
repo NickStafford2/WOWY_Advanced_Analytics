@@ -297,12 +297,6 @@ def _delete_metric_rows(
     metric_id: str,
     scope_key: str,
 ) -> None:
-    if metric_id == "rawr":
-        connection.execute(
-            f"DELETE FROM {metric_values_table(metric_id)} WHERE metric_id = ? AND scope_key = ?",
-            (metric_id, scope_key),
-        )
-        return
     _delete_metric_value_rows(connection, metric_id=metric_id, scope_key=scope_key)
 
 
@@ -377,8 +371,6 @@ def _insert_rawr_rows(
         """
         INSERT INTO rawr_player_season_values (
             snapshot_id,
-            metric_id,
-            scope_key,
             team_filter,
             season_type,
             season_id,
@@ -388,13 +380,11 @@ def _insert_rawr_rows(
             games,
             average_minutes,
             total_minutes
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         """,
         [
             (
                 snapshot_id,
-                row.metric_id,
-                row.scope_key,
                 row.team_filter,
                 row.season_type,
                 row.season_id,

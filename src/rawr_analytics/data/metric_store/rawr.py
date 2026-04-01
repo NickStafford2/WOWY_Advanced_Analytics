@@ -32,8 +32,8 @@ def load_rawr_player_season_value_rows(
     initialize_player_metrics_db()
     query = """
         SELECT
-            rawr.metric_id,
-            rawr.scope_key,
+            snapshot.metric_id,
+            snapshot.scope_key,
             rawr.team_filter,
             rawr.season_type,
             rawr.season_id,

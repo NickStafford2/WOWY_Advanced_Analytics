@@ -22,9 +22,7 @@ def initialize_player_metrics_db() -> None:
             );
 
             CREATE TABLE IF NOT EXISTS rawr_player_season_values (
-                snapshot_id INTEGER,
-                metric_id TEXT NOT NULL,
-                scope_key TEXT NOT NULL,
+                snapshot_id INTEGER NOT NULL,
                 team_filter TEXT NOT NULL DEFAULT '',
                 season_type TEXT NOT NULL DEFAULT 'Regular Season',
                 season_id TEXT NOT NULL,
@@ -34,14 +32,8 @@ def initialize_player_metrics_db() -> None:
                 games INTEGER NOT NULL,
                 average_minutes REAL,
                 total_minutes REAL,
-                PRIMARY KEY (metric_id, scope_key, season_id, player_id)
+                PRIMARY KEY (snapshot_id, season_id, player_id)
             );
-
-            CREATE INDEX IF NOT EXISTS idx_rawr_player_season_values_metric_scope_season
-            ON rawr_player_season_values (metric_id, scope_key, season_id);
-
-            CREATE INDEX IF NOT EXISTS idx_rawr_player_season_values_metric_scope_player
-            ON rawr_player_season_values (metric_id, scope_key, player_id, season_id);
 
             CREATE INDEX IF NOT EXISTS idx_rawr_player_season_values_snapshot
             ON rawr_player_season_values (snapshot_id, season_id, player_id);

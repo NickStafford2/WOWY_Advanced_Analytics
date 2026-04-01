@@ -170,19 +170,21 @@ def _load_rawr_metric_rows(
     rows = connection.execute(
         """
         SELECT
-            metric_id,
-            scope_key,
-            team_filter,
-            season_type,
-            season_id,
-            player_id,
-            player_name,
-            coefficient,
-            games,
-            average_minutes,
-            total_minutes
-        FROM rawr_player_season_values
-        ORDER BY metric_id, scope_key, season_id, player_id
+            snapshot.metric_id,
+            snapshot.scope_key,
+            rawr.team_filter,
+            rawr.season_type,
+            rawr.season_id,
+            rawr.player_id,
+            rawr.player_name,
+            rawr.coefficient,
+            rawr.games,
+            rawr.average_minutes,
+            rawr.total_minutes
+        FROM rawr_player_season_values AS rawr
+        INNER JOIN metric_snapshot AS snapshot
+            ON snapshot.snapshot_id = rawr.snapshot_id
+        ORDER BY metric_id, scope_key, rawr.season_id, rawr.player_id
         """
     ).fetchall()
     for row in rows:
