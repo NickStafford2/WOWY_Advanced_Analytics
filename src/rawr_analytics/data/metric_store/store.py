@@ -150,11 +150,11 @@ def clear_metric_scope_store(
             "DELETE FROM metric_scope_team WHERE metric_id = ? AND scope_key = ?",
             (metric, scope_key),
         )
+        _delete_metric_rows(connection, metric_id=metric, scope_key=scope_key)
         connection.execute(
             "DELETE FROM metric_snapshot WHERE metric_id = ? AND scope_key = ?",
             (metric, scope_key),
         )
-        _delete_metric_value_rows(connection, metric_id=metric, scope_key=scope_key)
         connection.commit()
 
 
@@ -195,11 +195,11 @@ def _replace_metric_scope_snapshot(
             "DELETE FROM metric_scope_team WHERE metric_id = ? AND scope_key = ?",
             (metric_id, scope_key),
         )
+        _delete_metric_rows(connection, metric_id=metric_id, scope_key=scope_key)
         connection.execute(
             "DELETE FROM metric_snapshot WHERE metric_id = ? AND scope_key = ?",
             (metric_id, scope_key),
         )
-        _delete_metric_value_rows(connection, metric_id=metric_id, scope_key=scope_key)
         snapshot_id = _insert_metric_snapshot(
             connection,
             metric_id=metric_id,
@@ -289,6 +289,21 @@ def _delete_metric_value_rows(
         """,
         (metric_id, scope_key),
     )
+
+
+def _delete_metric_rows(
+    connection: sqlite3.Connection,
+    *,
+    metric_id: str,
+    scope_key: str,
+) -> None:
+    if metric_id == "rawr":
+        connection.execute(
+            f"DELETE FROM {metric_values_table(metric_id)} WHERE metric_id = ? AND scope_key = ?",
+            (metric_id, scope_key),
+        )
+        return
+    _delete_metric_value_rows(connection, metric_id=metric_id, scope_key=scope_key)
 
 
 def _build_metric_scope_catalog_row(
@@ -407,8 +422,6 @@ def _insert_wowy_rows(
         """
         INSERT INTO wowy_player_season_values (
             snapshot_id,
-            metric_id,
-            scope_key,
             team_filter,
             season_type,
             season_id,
@@ -422,13 +435,11 @@ def _insert_wowy_rows(
             average_minutes,
             total_minutes,
             raw_wowy_score
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         """,
         [
             (
                 snapshot_id,
-                row.metric_id,
-                row.scope_key,
                 row.team_filter,
                 row.season_type,
                 row.season_id,
