@@ -23,10 +23,10 @@ def compute_wowy(
     for index, player_id in enumerate(sorted_players, start=1):
         margins_with: list[float] = []
         margins_without: list[float] = []
-        teams_with_player = {game.team for game in games if player_id in game.players}
+        teams_with_player = {game.team.team_id for game in games if player_id in game.players}
 
         for game in games:
-            if game.team not in teams_with_player:
+            if game.team.team_id not in teams_with_player:
                 continue
             if player_id in game.players:
                 margins_with.append(game.margin)
