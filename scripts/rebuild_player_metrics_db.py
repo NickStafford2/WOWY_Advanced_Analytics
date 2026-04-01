@@ -25,7 +25,7 @@ from rawr_analytics.services import (
 from rawr_analytics.shared.season import SeasonType
 
 _DEFAULT_START_YEAR = 2025
-_DEFAULT_END_YEAR = 2020
+_DEFAULT_END_YEAR = 1998
 _METRIC_PROGRESS_BARS: dict[Metric, TerminalProgressBar] = {}
 _VALIDATION_PROGRESS_BAR: TerminalProgressBar | None = None
 
