@@ -137,14 +137,7 @@ def clear_metric_scope_store(
     initialize_player_metrics_db()
     with connect(METRIC_STORE_DB_PATH) as connection:
         connection.execute("BEGIN")
-        connection.execute(
-            "DELETE FROM metric_full_span_points WHERE metric_id = ? AND scope_key = ?",
-            (metric, scope_key),
-        )
-        connection.execute(
-            "DELETE FROM metric_full_span_series WHERE metric_id = ? AND scope_key = ?",
-            (metric, scope_key),
-        )
+        _delete_metric_full_span_rows(connection, metric_id=metric, scope_key=scope_key)
         connection.execute(
             "DELETE FROM metric_scope_catalog WHERE metric_id = ? AND scope_key = ?",
             (metric, scope_key),
@@ -155,10 +148,6 @@ def clear_metric_scope_store(
         )
         connection.execute(
             "DELETE FROM metric_scope_team WHERE metric_id = ? AND scope_key = ?",
-            (metric, scope_key),
-        )
-        connection.execute(
-            "DELETE FROM metric_store_metadata_v2 WHERE metric_id = ? AND scope_key = ?",
             (metric, scope_key),
         )
         connection.execute(
@@ -196,14 +185,7 @@ def _replace_metric_scope_snapshot(
 
     with connect(METRIC_STORE_DB_PATH) as connection:
         connection.execute("BEGIN")
-        connection.execute(
-            "DELETE FROM metric_full_span_points WHERE metric_id = ? AND scope_key = ?",
-            (metric_id, scope_key),
-        )
-        connection.execute(
-            "DELETE FROM metric_full_span_series WHERE metric_id = ? AND scope_key = ?",
-            (metric_id, scope_key),
-        )
+        _delete_metric_full_span_rows(connection, metric_id=metric_id, scope_key=scope_key)
         connection.execute(
             "DELETE FROM metric_scope_catalog WHERE metric_id = ? AND scope_key = ?",
             (metric_id, scope_key),
@@ -214,10 +196,6 @@ def _replace_metric_scope_snapshot(
         )
         connection.execute(
             "DELETE FROM metric_scope_team WHERE metric_id = ? AND scope_key = ?",
-            (metric_id, scope_key),
-        )
-        connection.execute(
-            "DELETE FROM metric_store_metadata_v2 WHERE metric_id = ? AND scope_key = ?",
             (metric_id, scope_key),
         )
         connection.execute(
@@ -264,8 +242,39 @@ def _replace_metric_scope_snapshot(
         )
         _insert_metric_scope_seasons(connection, catalog_row)
         _insert_metric_scope_teams(connection, catalog_row)
-        _insert_full_span_rows(connection, series_rows, point_rows)
+        _insert_full_span_rows(connection, snapshot_id, series_rows, point_rows)
         connection.commit()
+
+
+def _delete_metric_full_span_rows(
+    connection: sqlite3.Connection,
+    *,
+    metric_id: str,
+    scope_key: str,
+) -> None:
+    params = (metric_id, scope_key)
+    connection.execute(
+        """
+        DELETE FROM metric_full_span_points
+        WHERE snapshot_id IN (
+            SELECT snapshot_id
+            FROM metric_snapshot
+            WHERE metric_id = ? AND scope_key = ?
+        )
+        """,
+        params,
+    )
+    connection.execute(
+        """
+        DELETE FROM metric_full_span_series
+        WHERE snapshot_id IN (
+            SELECT snapshot_id
+            FROM metric_snapshot
+            WHERE metric_id = ? AND scope_key = ?
+        )
+        """,
+        params,
+    )
 
 
 def _build_metric_scope_catalog_row(
@@ -471,25 +480,24 @@ def _insert_metric_scope_seasons(connection, row: MetricScopeCatalogRow) -> None
 
 def _insert_full_span_rows(
     connection,
+    snapshot_id: int,
     series_rows: list[MetricFullSpanSeriesRow],
     point_rows: list[MetricFullSpanPointRow],
 ) -> None:
     connection.executemany(
         """
         INSERT INTO metric_full_span_series (
-            metric_id,
-            scope_key,
+            snapshot_id,
             player_id,
             player_name,
             span_average_value,
             season_count,
             rank_order
-        ) VALUES (?, ?, ?, ?, ?, ?, ?)
+        ) VALUES (?, ?, ?, ?, ?, ?)
         """,
         [
             (
-                row.metric_id,
-                row.scope_key,
+                snapshot_id,
                 row.player_id,
                 row.player_name,
                 row.span_average_value,
@@ -502,17 +510,15 @@ def _insert_full_span_rows(
     connection.executemany(
         """
         INSERT INTO metric_full_span_points (
-            metric_id,
-            scope_key,
+            snapshot_id,
             player_id,
             season_id,
             value
-        ) VALUES (?, ?, ?, ?, ?)
+        ) VALUES (?, ?, ?, ?)
         """,
         [
             (
-                row.metric_id,
-                row.scope_key,
+                snapshot_id,
                 row.player_id,
                 row.season_id,
                 row.value,

@@ -71,6 +71,7 @@ def _build_metric_full_span_rows(
     for rank_order, player_id in enumerate(ranked_player_ids, start=1):
         series_rows.append(
             MetricFullSpanSeriesRow(
+                snapshot_id=None,
                 metric_id=metric_id,
                 scope_key=scope_key,
                 player_id=player_id,
@@ -86,6 +87,7 @@ def _build_metric_full_span_rows(
                 continue
             point_rows.append(
                 MetricFullSpanPointRow(
+                    snapshot_id=None,
                     metric_id=metric_id,
                     scope_key=scope_key,
                     player_id=player_id,

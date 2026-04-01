@@ -336,27 +336,33 @@ def _audit_metric_full_span_tables(
     series_rows = connection.execute(
         """
         SELECT
-            metric_id,
-            scope_key,
-            player_id,
-            player_name,
-            span_average_value,
-            season_count,
-            rank_order
-        FROM metric_full_span_series
-        ORDER BY metric_id, scope_key, rank_order, player_id
+            series.snapshot_id,
+            snapshot.metric_id,
+            snapshot.scope_key,
+            series.player_id,
+            series.player_name,
+            series.span_average_value,
+            series.season_count,
+            series.rank_order
+        FROM metric_full_span_series AS series
+        INNER JOIN metric_snapshot AS snapshot
+            ON snapshot.snapshot_id = series.snapshot_id
+        ORDER BY snapshot.metric_id, snapshot.scope_key, series.rank_order, series.player_id
         """
     ).fetchall()
     point_rows = connection.execute(
         """
         SELECT
-            metric_id,
-            scope_key,
-            player_id,
-            season_id,
-            value
-        FROM metric_full_span_points
-        ORDER BY metric_id, scope_key, player_id, season_id
+            points.snapshot_id,
+            snapshot.metric_id,
+            snapshot.scope_key,
+            points.player_id,
+            points.season_id,
+            points.value
+        FROM metric_full_span_points AS points
+        INNER JOIN metric_snapshot AS snapshot
+            ON snapshot.snapshot_id = points.snapshot_id
+        ORDER BY snapshot.metric_id, snapshot.scope_key, points.player_id, points.season_id
         """
     ).fetchall()
 
@@ -366,6 +372,7 @@ def _audit_metric_full_span_tables(
     for row in series_rows:
         series_groups[(row["metric_id"], row["scope_key"])].append(
             MetricFullSpanSeriesRow(
+                snapshot_id=row["snapshot_id"],
                 metric_id=row["metric_id"],
                 scope_key=row["scope_key"],
                 player_id=row["player_id"],
@@ -378,6 +385,7 @@ def _audit_metric_full_span_tables(
     for row in point_rows:
         point_groups[(row["metric_id"], row["scope_key"])].append(
             MetricFullSpanPointRow(
+                snapshot_id=row["snapshot_id"],
                 metric_id=row["metric_id"],
                 scope_key=row["scope_key"],
                 player_id=row["player_id"],

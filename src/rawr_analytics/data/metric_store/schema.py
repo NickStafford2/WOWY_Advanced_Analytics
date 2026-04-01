@@ -108,30 +108,28 @@ def initialize_player_metrics_db() -> None:
             ON metric_scope_season (metric_id, scope_key);
 
             CREATE TABLE IF NOT EXISTS metric_full_span_series (
-                metric_id TEXT NOT NULL,
-                scope_key TEXT NOT NULL,
+                snapshot_id INTEGER NOT NULL,
                 player_id INTEGER NOT NULL,
                 player_name TEXT NOT NULL,
                 span_average_value REAL NOT NULL,
                 season_count INTEGER NOT NULL,
                 rank_order INTEGER NOT NULL,
-                PRIMARY KEY (metric_id, scope_key, player_id)
+                PRIMARY KEY (snapshot_id, player_id)
             );
 
-            CREATE INDEX IF NOT EXISTS idx_metric_full_span_series_metric_scope_rank
-            ON metric_full_span_series (metric_id, scope_key, rank_order);
+            CREATE INDEX IF NOT EXISTS idx_metric_full_span_series_snapshot_rank
+            ON metric_full_span_series (snapshot_id, rank_order);
 
             CREATE TABLE IF NOT EXISTS metric_full_span_points (
-                metric_id TEXT NOT NULL,
-                scope_key TEXT NOT NULL,
+                snapshot_id INTEGER NOT NULL,
                 player_id INTEGER NOT NULL,
                 season_id TEXT NOT NULL,
                 value REAL NOT NULL,
-                PRIMARY KEY (metric_id, scope_key, player_id, season_id)
+                PRIMARY KEY (snapshot_id, player_id, season_id)
             );
 
-            CREATE INDEX IF NOT EXISTS idx_metric_full_span_points_metric_scope_player
-            ON metric_full_span_points (metric_id, scope_key, player_id);
+            CREATE INDEX IF NOT EXISTS idx_metric_full_span_points_snapshot_player
+            ON metric_full_span_points (snapshot_id, player_id);
             """
         )
         _ensure_metric_snapshot_columns(connection)

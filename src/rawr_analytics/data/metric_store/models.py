@@ -30,6 +30,7 @@ class MetricScopeCatalogRow:
 
 @dataclass(frozen=True)
 class MetricFullSpanSeriesRow:
+    snapshot_id: int | None
     metric_id: str
     scope_key: str
     player_id: int
@@ -41,6 +42,7 @@ class MetricFullSpanSeriesRow:
 
 @dataclass(frozen=True)
 class MetricFullSpanPointRow:
+    snapshot_id: int | None
     metric_id: str
     scope_key: str
     player_id: int

@@ -84,7 +84,7 @@ This slice is complete.
 This slice is complete.
 
 - `MetricStoreMetadata` no longer includes `label`
-- `metric_store_metadata_v2` is now legacy cleanup only
+- `metric_store_metadata_v2` no longer has live code dependencies
 - `label` is owned by `metric_scope_catalog`
 - this removed a fresh-DB inconsistency where code queried and inserted a metadata `label` column that the schema did not define
 
@@ -100,7 +100,8 @@ Current state:
 - RAWR reads now join through `metric_snapshot`
 - WOWY writes now create a snapshot row and store `snapshot_id` on `wowy_player_season_values`
 - the main cached WOWY read path now joins through `metric_snapshot`
-- WOWY value rows and full-span rows still keep the older `(metric_id, scope_key)` shape outside that narrow snapshot path
+- full-span writes and reads now join through `metric_snapshot`
+- WOWY value rows still physically keep the older `(metric_id, scope_key)` columns even though the main cached path reads through `snapshot_id`
 - `MetricStoreMetadata` now includes optional `snapshot_id`
 - old pre-snapshot rows are intentionally treated as stale and will rebuild
 
@@ -206,6 +207,17 @@ Current state:
 - kept scope definition separate from build state
 - kept current WOWY/full-span table shapes to avoid widening the slice
 
+### Slice 12: move full-span storage onto snapshot
+
+- removed the last live code references to `metric_store_metadata_v2`
+- changed `metric_full_span_series` to store rows by `snapshot_id`
+- changed `metric_full_span_points` to store rows by `snapshot_id`
+- updated metric-store writes and clears to delete full-span rows through `metric_snapshot`
+- updated full-span reads to join through `metric_snapshot`
+- updated audit to attribute full-span rows through `metric_snapshot`
+- kept scope definition separate from build state
+- did not widen the slice into a full WOWY value-table redesign
+
 Verification already done:
 
 - `poetry run python -m py_compile $(find src -name '*.py' -print)` passed
@@ -218,6 +230,8 @@ Verification already done:
 - `poetry run ruff check src/rawr_analytics/data/metric_store/models.py src/rawr_analytics/data/metric_store/schema.py src/rawr_analytics/data/metric_store/store.py src/rawr_analytics/data/metric_store/queries.py src/rawr_analytics/data/metric_store/rawr.py src/rawr_analytics/data/metric_store/audit.py src/rawr_analytics/data/db_validation.py` passed
 - `poetry run python -m py_compile src/rawr_analytics/data/metric_store/schema.py src/rawr_analytics/data/metric_store/store.py src/rawr_analytics/data/metric_store/queries.py src/rawr_analytics/data/metric_store/wowy.py src/rawr_analytics/data/metric_store/audit.py src/rawr_analytics/data/db_validation.py src/rawr_analytics/services/metric_refresh/_refresh.py src/rawr_analytics/metrics/metric_query/views.py` passed
 - `poetry run ruff check src/rawr_analytics/data/metric_store/schema.py src/rawr_analytics/data/metric_store/store.py src/rawr_analytics/data/metric_store/queries.py src/rawr_analytics/data/metric_store/wowy.py src/rawr_analytics/data/metric_store/audit.py src/rawr_analytics/data/db_validation.py src/rawr_analytics/services/metric_refresh/_refresh.py src/rawr_analytics/metrics/metric_query/views.py` passed
+- `poetry run python -m py_compile src/rawr_analytics/data/metric_store/models.py src/rawr_analytics/data/metric_store/full_span.py src/rawr_analytics/data/metric_store/schema.py src/rawr_analytics/data/metric_store/store.py src/rawr_analytics/data/metric_store/queries.py src/rawr_analytics/data/metric_store/audit.py src/rawr_analytics/data/db_validation.py src/rawr_analytics/metrics/metric_query/views.py` passed
+- `poetry run ruff check src/rawr_analytics/data/metric_store/models.py src/rawr_analytics/data/metric_store/full_span.py src/rawr_analytics/data/metric_store/schema.py src/rawr_analytics/data/metric_store/store.py src/rawr_analytics/data/metric_store/queries.py src/rawr_analytics/data/metric_store/audit.py src/rawr_analytics/data/db_validation.py src/rawr_analytics/metrics/metric_query/views.py` passed
 
 Local DB state when this handoff was written:
 
@@ -275,7 +289,7 @@ Owns:
 
 ## Delete after replacement exists
 
-- `metric_store_metadata_v2` after WOWY and any remaining readers move to `metric_snapshot`
+- the `metric_store_metadata_v2` table definition itself, now that no code reads or clears it
 - schema-preservation helpers in `src/rawr_analytics/data/metric_store/schema.py` after the DB is rebuilt from scratch
 
 ## Delete from repo if tracked
@@ -313,13 +327,13 @@ RAWR and WOWY should stay explicit.
 
 The best next slice is:
 
-1. move WOWY write/read metadata from `metric_store_metadata_v2` to `metric_snapshot`
-2. decide whether WOWY value rows should gain `snapshot_id` in the same slice or in the slice right after
-3. move one more validation/query surface to treat `snapshot_id` as the real parent key
+1. delete the `metric_store_metadata_v2` table definition and any remaining schema-preservation code around it
+2. move one more small WOWY value-table path from `(metric_id, scope_key)` assumptions toward `snapshot_id`
+3. prefer read/query or validation cleanup over a broad table redesign
 4. keep scope definition tables separate from build-state tables
-5. do not attempt the full `metric_snapshot_season` or full-span-key redesign yet
+5. do not attempt the full WOWY value-table redesign or `metric_snapshot_season` in the same pass
 
-That keeps the next step concrete and extends the snapshot redesign without turning it into a giant rewrite.
+That keeps the next step concrete and continues the snapshot redesign without turning it into a giant rewrite.
 
 ## Suggested Commit Message
 

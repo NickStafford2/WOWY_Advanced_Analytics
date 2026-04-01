@@ -99,7 +99,8 @@ Current state:
 - RAWR now reads and writes through `snapshot_id`
 - WOWY build metadata now also lives on `metric_snapshot`
 - one cached WOWY write/read path now uses `snapshot_id`
-- `metric_store_metadata_v2` is now legacy cleanup only
+- full-span rows now also write and read through `snapshot_id`
+- `metric_store_metadata_v2` no longer has live code dependencies
 - scope-team membership now lives in `metric_scope_team`
 - scope-season membership now lives in `metric_scope_season`
 
@@ -247,7 +248,7 @@ Notes:
 - `scope_key` can remain a string if that is the simplest stable contract.
 - `team_filter` should not be stored redundantly on every value row.
 - if all query paths already know the metric, `metric_id` can be omitted from metric-specific value tables.
-- the current codebase is in a transitional state where metadata is snapshot-backed for both metrics, but several WOWY/full-span tables still keep the older `(metric_id, scope_key)` shape
+- the current codebase is in a transitional state where metadata, RAWR rows, WOWY cached rows, and full-span rows are snapshot-backed, but WOWY value rows still physically keep the older `(metric_id, scope_key)` columns
 
 ## Refactor Phases
 

@@ -110,15 +110,18 @@ def load_metric_full_span_series_rows(
     initialize_player_metrics_db()
     query = """
         SELECT
-            metric_id,
-            scope_key,
+            series.snapshot_id,
+            snapshot.metric_id,
+            snapshot.scope_key,
             player_id,
             player_name,
             span_average_value,
             season_count,
             rank_order
-        FROM metric_full_span_series
-        WHERE metric_id = ? AND scope_key = ?
+        FROM metric_full_span_series AS series
+        INNER JOIN metric_snapshot AS snapshot
+            ON snapshot.snapshot_id = series.snapshot_id
+        WHERE snapshot.metric_id = ? AND snapshot.scope_key = ?
         ORDER BY rank_order
     """
     params: list[Any] = [metric, scope_key]
@@ -129,6 +132,7 @@ def load_metric_full_span_series_rows(
         rows = connection.execute(query, params).fetchall()
     return [
         MetricFullSpanSeriesRow(
+            snapshot_id=row["snapshot_id"],
             metric_id=row["metric_id"],
             scope_key=row["scope_key"],
             player_id=row["player_id"],
@@ -153,11 +157,15 @@ def load_metric_full_span_points_map(
     placeholders = ",".join("?" for _ in player_ids)
     query = f"""
         SELECT
-            player_id,
-            season_id,
-            value
-        FROM metric_full_span_points
-        WHERE metric_id = ? AND scope_key = ? AND player_id IN ({placeholders})
+            points.player_id,
+            points.season_id,
+            points.value
+        FROM metric_full_span_points AS points
+        INNER JOIN metric_snapshot AS snapshot
+            ON snapshot.snapshot_id = points.snapshot_id
+        WHERE snapshot.metric_id = ?
+          AND snapshot.scope_key = ?
+          AND points.player_id IN ({placeholders})
     """
     params: list[Any] = [metric, scope_key, *player_ids]
     with connect(METRIC_STORE_DB_PATH) as connection:
