@@ -88,6 +88,20 @@ This slice is complete.
 - `label` is owned by `metric_scope_catalog`
 - this removed a fresh-DB inconsistency where code queried and inserted a metadata `label` column that the schema did not define
 
+### Snapshot parent table
+
+This slice is now started but not finished.
+
+Current state:
+
+- `metric_snapshot` now exists and owns `snapshot_id` plus build metadata
+- scope definition still lives separately in `metric_scope_catalog`, `metric_scope_team`, and `metric_scope_season`
+- RAWR writes now create a snapshot row and store `snapshot_id` on `rawr_player_season_values`
+- RAWR reads now join through `metric_snapshot`
+- WOWY still uses `metric_store_metadata_v2` and the old `(metric_id, scope_key)` value-table path
+- `MetricStoreMetadata` now includes optional `snapshot_id`
+- old RAWR rows without `metric_snapshot` are intentionally treated as stale and will rebuild
+
 ## Decisions Already Made
 
 - rebuilding the DB from scratch is acceptable
@@ -160,7 +174,25 @@ This slice is complete.
 - updated metric-store writes to replace scope-team rows alongside catalog rows
 - updated metric-store reads to hydrate `available_team_ids` from `metric_scope_team`
 - updated audit and DB validation to check the new scope-team relation
-- left `available_season_ids_json` in place to keep the slice small
+
+### Slice 9: replace scope season JSON with a real relation
+
+- removed `available_season_ids_json` from `metric_scope_catalog`
+- added `metric_scope_season` with primary key `(metric_id, scope_key, season_id)`
+- updated metric-store writes to replace scope-season rows alongside catalog rows
+- updated metric-store reads to hydrate `available_season_ids` from `metric_scope_season`
+- updated audit and DB validation to check the new scope-season relation
+- kept the current `(metric_id, scope_key)` value-table layout in place
+
+### Slice 10: add the first snapshot parent path
+
+- added `metric_snapshot` with `snapshot_id`, `metric_id`, `scope_key`, build metadata, and row count
+- added `snapshot_id` to `rawr_player_season_values`
+- updated RAWR writes to insert `metric_snapshot` first and then write value rows with that `snapshot_id`
+- updated RAWR reads to join through `metric_snapshot`
+- updated metadata reads so RAWR uses `metric_snapshot` and WOWY still falls back to `metric_store_metadata_v2`
+- updated audit and DB validation so RAWR build-state issues are attributed to `metric_snapshot`
+- kept WOWY value tables, full-span tables, and scope relations on the old `(metric_id, scope_key)` keys for now
 
 Verification already done:
 
@@ -170,6 +202,8 @@ Verification already done:
 - `poetry run ruff check src/rawr_analytics/data/metric_store/models.py src/rawr_analytics/data/metric_store/queries.py src/rawr_analytics/data/metric_store/store.py src/rawr_analytics/data/metric_store/audit.py src/rawr_analytics/data/metric_store/_validation.py src/rawr_analytics/metrics/metric_query/scope.py src/rawr_analytics/metrics/metric_query/views.py` passed
 - `poetry run python -m py_compile src/rawr_analytics/data/metric_store/schema.py src/rawr_analytics/data/metric_store/queries.py src/rawr_analytics/data/metric_store/store.py src/rawr_analytics/data/metric_store/audit.py src/rawr_analytics/data/db_validation.py` passed
 - `poetry run ruff check src/rawr_analytics/data/metric_store/schema.py src/rawr_analytics/data/metric_store/queries.py src/rawr_analytics/data/metric_store/store.py src/rawr_analytics/data/metric_store/audit.py src/rawr_analytics/data/db_validation.py` passed
+- `poetry run python -m py_compile src/rawr_analytics/data/metric_store/models.py src/rawr_analytics/data/metric_store/schema.py src/rawr_analytics/data/metric_store/store.py src/rawr_analytics/data/metric_store/queries.py src/rawr_analytics/data/metric_store/rawr.py src/rawr_analytics/data/metric_store/audit.py src/rawr_analytics/data/db_validation.py` passed
+- `poetry run ruff check src/rawr_analytics/data/metric_store/models.py src/rawr_analytics/data/metric_store/schema.py src/rawr_analytics/data/metric_store/store.py src/rawr_analytics/data/metric_store/queries.py src/rawr_analytics/data/metric_store/rawr.py src/rawr_analytics/data/metric_store/audit.py src/rawr_analytics/data/db_validation.py` passed
 
 Local DB state when this handoff was written:
 
@@ -226,7 +260,8 @@ Owns:
 
 ## Delete after replacement exists
 
-- none from this slice; the remaining work is schema cleanup
+- `metric_store_metadata_v2` after WOWY and any remaining readers move to `metric_snapshot`
+- schema-preservation helpers in `src/rawr_analytics/data/metric_store/schema.py` after the DB is rebuilt from scratch
 
 ## Delete from repo if tracked
 
@@ -263,13 +298,13 @@ RAWR and WOWY should stay explicit.
 
 The best next slice is:
 
-1. replace `metric_scope_catalog.available_season_ids_json` with a real scope-season table
-2. update metric-store writes and reads to use that table
-3. update audit and DB validation to check the new scope-season relation
-4. keep the current `(metric_id, scope_key)`-based value tables for now
-5. do not start the larger `snapshot_id` schema rewrite in the same pass
+1. move WOWY write/read metadata from `metric_store_metadata_v2` to `metric_snapshot`
+2. decide whether WOWY value rows should gain `snapshot_id` in the same slice or in the slice right after
+3. move one more validation/query surface to treat `snapshot_id` as the real parent key
+4. keep scope definition tables separate from build-state tables
+5. do not attempt the full `metric_snapshot_season` or full-span-key redesign yet
 
-That keeps the next step concrete and removes the last remaining JSON-backed scope membership field before the snapshot redesign.
+That keeps the next step concrete and extends the snapshot redesign without turning it into a giant rewrite.
 
 ## Suggested Commit Message
 

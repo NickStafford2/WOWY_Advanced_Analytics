@@ -20,20 +20,38 @@ def load_metric_store_metadata(
         row = connection.execute(
             """
             SELECT
+                snapshot_id,
                 metric_id,
                 scope_key,
                 build_version,
                 source_fingerprint,
                 row_count,
                 updated_at
-            FROM metric_store_metadata_v2
+            FROM metric_snapshot
             WHERE metric_id = ? AND scope_key = ?
             """,
             (metric, scope_key),
         ).fetchone()
+        if row is None and metric != "rawr":
+            row = connection.execute(
+                """
+                SELECT
+                    NULL AS snapshot_id,
+                    metric_id,
+                    scope_key,
+                    build_version,
+                    source_fingerprint,
+                    row_count,
+                    updated_at
+                FROM metric_store_metadata_v2
+                WHERE metric_id = ? AND scope_key = ?
+                """,
+                (metric, scope_key),
+            ).fetchone()
     if row is None:
         return None
     return MetricStoreMetadata(
+        snapshot_id=row["snapshot_id"],
         metric_id=row["metric_id"],
         scope_key=row["scope_key"],
         build_version=row["build_version"],
@@ -57,7 +75,6 @@ def load_metric_scope_catalog_row(
                 label,
                 team_filter,
                 season_type,
-                available_season_ids_json,
                 full_span_start_season_id,
                 full_span_end_season_id,
                 updated_at
@@ -75,6 +92,15 @@ def load_metric_scope_catalog_row(
             """,
             (metric, scope_key),
         ).fetchall()
+        season_rows = connection.execute(
+            """
+            SELECT season_id
+            FROM metric_scope_season
+            WHERE metric_id = ? AND scope_key = ?
+            ORDER BY season_id
+            """,
+            (metric, scope_key),
+        ).fetchall()
     if row is None:
         return None
     return MetricScopeCatalogRow(
@@ -83,7 +109,7 @@ def load_metric_scope_catalog_row(
         label=row["label"],
         team_filter=row["team_filter"],
         season_type=row["season_type"],
-        available_season_ids=_load_json_list(row["available_season_ids_json"]),
+        available_season_ids=[season_row["season_id"] for season_row in season_rows],
         available_team_ids=[team_row["team_id"] for team_row in team_rows],
         full_span_start_season_id=row["full_span_start_season_id"],
         full_span_end_season_id=row["full_span_end_season_id"],
@@ -156,11 +182,3 @@ def load_metric_full_span_points_map(
     for row in rows:
         points.setdefault(row["player_id"], {})[row["season_id"]] = row["value"]
     return points
-
-
-def _load_json_list(value: str) -> list[str]:
-    import json
-
-    loaded = json.loads(value)
-    assert isinstance(loaded, list), "metric store JSON column must decode to a list"
-    return loaded

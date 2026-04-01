@@ -144,6 +144,7 @@ def audit_player_metrics_db(
             wowy_row_groups=metric_audit_state.wowy_row_groups,
             metadata_rows=metric_audit_state.metadata_rows,
             catalog_rows=metric_audit_state.catalog_rows,
+            scope_season_rows=metric_audit_state.scope_season_rows,
             scope_team_rows=metric_audit_state.scope_team_rows,
             full_span_groups=metric_audit_state.full_span_groups,
             issues=issues,
@@ -242,6 +243,7 @@ def _validate_metric_store_relations(
     wowy_row_groups: dict[tuple[str, str], list[WowyPlayerSeasonValueRow]],
     metadata_rows: dict[tuple[str, str], MetricStoreAuditMetadata],
     catalog_rows: dict[tuple[str, str], MetricScopeCatalogRow],
+    scope_season_rows: dict[tuple[str, str], list[str]],
     scope_team_rows: dict[tuple[str, str], list[int]],
     full_span_groups: dict[
         tuple[str, str], tuple[list[MetricFullSpanSeriesRow], list[MetricFullSpanPointRow]]
@@ -252,6 +254,7 @@ def _validate_metric_store_relations(
     metric_scopes = set(metric_row_groups)
     metadata_scopes = set(metadata_rows)
     catalog_scopes = set(catalog_rows)
+    scope_season_scopes = set(scope_season_rows)
     scope_team_scopes = set(scope_team_rows)
     full_span_scopes = set(full_span_groups)
     cache_load_counts, fingerprint_by_season_type = _load_normalized_cache_state()
@@ -261,10 +264,17 @@ def _validate_metric_store_relations(
         seasons = sorted({row.season_id for row in rows})
         season_set = set(seasons)
         metadata_row = metadata_rows.get(key)
+        metadata_table = (
+            metadata_row.source_table
+            if metadata_row is not None
+            else "metric_snapshot"
+            if metric == "rawr"
+            else "metric_store_metadata_v2"
+        )
         if metadata_row is None:
             issues.append(
                 ValidationIssue(
-                    table="metric_store_metadata_v2",
+                    table=metadata_table,
                     key=f"metric={metric!r},scope_key={scope_key!r}",
                     message="missing metadata row for metric scope",
                 )
@@ -272,7 +282,7 @@ def _validate_metric_store_relations(
         elif metadata_row.row_count != len(rows):
             issues.append(
                 ValidationIssue(
-                    table="metric_store_metadata_v2",
+                    table=metadata_table,
                     key=f"metric={metric!r},scope_key={scope_key!r}",
                     message=(
                         "row_count does not match metric rows:"
@@ -302,6 +312,17 @@ def _validate_metric_store_relations(
             )
         if (
             catalog_row is not None
+            and scope_season_rows.get(key, []) != catalog_row.available_season_ids
+        ):
+            issues.append(
+                ValidationIssue(
+                    table="metric_scope_season",
+                    key=f"metric={metric!r},scope_key={scope_key!r}",
+                    message="scope-season rows do not match catalog available_season_ids",
+                )
+            )
+        if (
+            catalog_row is not None
             and scope_team_rows.get(key, []) != catalog_row.available_team_ids
         ):
             issues.append(
@@ -316,11 +337,20 @@ def _validate_metric_store_relations(
         metric_scopes
         | metadata_scopes
         | catalog_scopes
+        | scope_season_scopes
         | scope_team_scopes
         | full_span_scopes
     )
     for key in sorted(all_scopes):
         metric, scope_key = key
+        metadata_row = metadata_rows.get(key)
+        metadata_table = (
+            metadata_row.source_table
+            if metadata_row is not None
+            else "metric_snapshot"
+            if metric == "rawr"
+            else "metric_store_metadata_v2"
+        )
         catalog_row = catalog_rows.get(key)
         group_rows = metric_row_groups.get(key, [])
         season_type = (
@@ -335,7 +365,7 @@ def _validate_metric_store_relations(
         if cache_load_counts.get(season_type, 0) == 0:
             issues.append(
                 ValidationIssue(
-                    table="metric_store_metadata_v2",
+                    table=metadata_table,
                     key=f"metric={metric!r},scope_key={scope_key!r}",
                     message=(
                         "derived metric scope exists but normalized cache is empty for "
@@ -344,7 +374,6 @@ def _validate_metric_store_relations(
                 )
             )
             continue
-        metadata_row = metadata_rows.get(key)
         if metadata_row is None:
             continue
         current_fingerprint = fingerprint_by_season_type.get(season_type)
@@ -353,7 +382,7 @@ def _validate_metric_store_relations(
         if metadata_row.source_fingerprint != current_fingerprint:
             issues.append(
                 ValidationIssue(
-                    table="metric_store_metadata_v2",
+                    table=metadata_row.source_table,
                     key=f"metric={metric!r},scope_key={scope_key!r}",
                     message=(
                         "source_fingerprint does not match normalized cache for "
@@ -363,9 +392,10 @@ def _validate_metric_store_relations(
             )
 
     for key in sorted(metadata_scopes - metric_scopes):
+        metadata_table = metadata_rows[key].source_table
         issues.append(
             ValidationIssue(
-                table="metric_store_metadata_v2",
+                table=metadata_table,
                 key=f"metric={key[0]!r},scope_key={key[1]!r}",
                 message="metadata row has no matching metric rows",
             )
@@ -386,6 +416,15 @@ def _validate_metric_store_relations(
                 table="metric_scope_team",
                 key=f"metric={key[0]!r},scope_key={key[1]!r}",
                 message="scope-team rows have no matching catalog row",
+            )
+        )
+
+    for key in sorted(scope_season_scopes - catalog_scopes):
+        issues.append(
+            ValidationIssue(
+                table="metric_scope_season",
+                key=f"metric={key[0]!r},scope_key={key[1]!r}",
+                message="scope-season rows have no matching catalog row",
             )
         )
 

@@ -95,11 +95,13 @@ The current metric-store metadata is still only partly normalized.
 Current state:
 
 - `label` now lives only on `metric_scope_catalog`
-- `metric_store_metadata_v2` now owns only build freshness and row count fields
-- `available_season_ids_json` is still stored on `metric_scope_catalog`
+- `metric_snapshot` now exists as the parent build-state table
+- RAWR now reads and writes through `snapshot_id`
+- `metric_store_metadata_v2` still exists as legacy build metadata for WOWY paths
 - scope-team membership now lives in `metric_scope_team`
+- scope-season membership now lives in `metric_scope_season`
 
-The next schema work should keep shrinking duplicated scope metadata before touching the larger snapshot-table redesign.
+The remaining schema work should keep moving metric data off `(metric_id, scope_key)` value rows and onto `snapshot_id` without mixing scope definition back into build state.
 
 ## Target Architecture
 
@@ -243,6 +245,7 @@ Notes:
 - `scope_key` can remain a string if that is the simplest stable contract.
 - `team_filter` should not be stored redundantly on every value row.
 - if all query paths already know the metric, `metric_id` can be omitted from metric-specific value tables.
+- the current codebase is in a transitional state where RAWR uses `metric_snapshot` first and WOWY still uses `metric_store_metadata_v2`
 
 ## Refactor Phases
 
@@ -359,8 +362,8 @@ Success condition:
 Recommended first slice inside this phase:
 
 - keep `metric_store_metadata_v2` limited to freshness fields plus `row_count`
-- move scope-team membership out of `metric_scope_catalog.available_team_ids_json`
-- defer the larger `snapshot_id` rewrite until the smaller scope metadata cleanup is done
+- add a real `metric_snapshot` parent row keyed by `snapshot_id`
+- keep the larger value-table rewrite incremental instead of doing it all at once
 
 ## Phase 5: Delete generic row contracts
 
@@ -427,10 +430,10 @@ Specific code to remove during the refactor:
 
 If continuing this refactor in code, start here:
 
-1. replace `metric_scope_catalog.available_team_ids_json` with a real scope-team table
-2. update metric-store writes and reads to use that table
-3. update audit and DB validation to check the new scope-team relation
-4. leave `available_season_ids_json` in place for now if that keeps the slice small
-5. do not start the `snapshot_id` table rewrite in the same pass
+1. add a `metric_snapshot` table with `snapshot_id` plus build metadata
+2. keep scope definition in scope tables and build state in snapshot rows
+3. thread one metric-store write/read path through `snapshot_id`
+4. keep the current metric-specific value tables for now if that keeps the slice small
+5. do not try to finish the whole snapshot redesign in one pass
 
-That slice keeps the schema cleanup incremental and continues reducing duplicated scope metadata without mixing in the bigger snapshot redesign.
+That slice starts the snapshot redesign without mixing it with a full value-table rewrite.

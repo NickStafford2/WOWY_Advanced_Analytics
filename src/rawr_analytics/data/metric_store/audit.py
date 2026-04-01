@@ -22,6 +22,8 @@ from rawr_analytics.data.metric_store.wowy import WowyPlayerSeasonValueRow
 
 @dataclass(frozen=True)
 class MetricStoreAuditMetadata:
+    source_table: str
+    snapshot_id: int | None
     build_version: str
     source_fingerprint: str
     row_count: int
@@ -33,6 +35,7 @@ class MetricStoreAuditState:
     wowy_row_groups: dict[tuple[str, str], list[WowyPlayerSeasonValueRow]]
     metadata_rows: dict[tuple[str, str], MetricStoreAuditMetadata]
     catalog_rows: dict[tuple[str, str], MetricScopeCatalogRow]
+    scope_season_rows: dict[tuple[str, str], list[str]]
     scope_team_rows: dict[tuple[str, str], list[int]]
     full_span_groups: dict[
         tuple[str, str], tuple[list[MetricFullSpanSeriesRow], list[MetricFullSpanPointRow]]
@@ -47,7 +50,7 @@ def audit_metric_store_tables(
         connection,
         issues,
     )
-    catalog_rows, scope_team_rows = _audit_metric_scope_catalog_table(
+    catalog_rows, scope_season_rows, scope_team_rows = _audit_metric_scope_catalog_table(
         connection,
         issues,
     )
@@ -60,6 +63,7 @@ def audit_metric_store_tables(
         wowy_row_groups=wowy_row_groups,
         metadata_rows=metadata_rows,
         catalog_rows=catalog_rows,
+        scope_season_rows=scope_season_rows,
         scope_team_rows=scope_team_rows,
         full_span_groups=full_span_groups,
     )
@@ -73,7 +77,29 @@ def _audit_metric_player_season_values_table(
     dict[tuple[str, str], list[WowyPlayerSeasonValueRow]],
     dict[tuple[str, str], MetricStoreAuditMetadata],
 ]:
-    metadata_rows = connection.execute(
+    snapshot_rows = connection.execute(
+        """
+        SELECT
+            snapshot_id,
+            metric_id,
+            scope_key,
+            build_version,
+            source_fingerprint,
+            row_count
+        FROM metric_snapshot
+        """
+    ).fetchall()
+    metadata_by_key = {
+        (row["metric_id"], row["scope_key"]): MetricStoreAuditMetadata(
+            source_table="metric_snapshot",
+            snapshot_id=row["snapshot_id"],
+            build_version=row["build_version"],
+            source_fingerprint=row["source_fingerprint"],
+            row_count=row["row_count"],
+        )
+        for row in snapshot_rows
+    }
+    legacy_metadata_rows = connection.execute(
         """
         SELECT
             metric_id,
@@ -84,14 +110,19 @@ def _audit_metric_player_season_values_table(
         FROM metric_store_metadata_v2
         """
     ).fetchall()
-    metadata_by_key = {
-        (row["metric_id"], row["scope_key"]): MetricStoreAuditMetadata(
+    for row in legacy_metadata_rows:
+        key = (row["metric_id"], row["scope_key"])
+        if row["metric_id"] == "rawr":
+            continue
+        if key in metadata_by_key:
+            continue
+        metadata_by_key[key] = MetricStoreAuditMetadata(
+            source_table="metric_store_metadata_v2",
+            snapshot_id=None,
             build_version=row["build_version"],
             source_fingerprint=row["source_fingerprint"],
             row_count=row["row_count"],
         )
-        for row in metadata_rows
-    }
 
     rawr_groups: dict[tuple[str, str], list[RawrPlayerSeasonValueRow]] = defaultdict(list)
     wowy_groups: dict[tuple[str, str], list[WowyPlayerSeasonValueRow]] = defaultdict(list)
@@ -102,6 +133,8 @@ def _audit_metric_player_season_values_table(
         metadata_row = metadata_by_key.get(
             key,
             MetricStoreAuditMetadata(
+                source_table="metric_snapshot",
+                snapshot_id=None,
                 build_version="missing-metadata",
                 source_fingerprint="missing-metadata",
                 row_count=-1,
@@ -127,6 +160,8 @@ def _audit_metric_player_season_values_table(
         metadata_row = metadata_by_key.get(
             key,
             MetricStoreAuditMetadata(
+                source_table="metric_store_metadata_v2",
+                snapshot_id=None,
                 build_version="missing-metadata",
                 source_fingerprint="missing-metadata",
                 row_count=-1,
@@ -243,7 +278,11 @@ def _load_wowy_metric_rows(
 def _audit_metric_scope_catalog_table(
     connection: sqlite3.Connection,
     issues: list[ValidationIssue],
-) -> tuple[dict[tuple[str, str], MetricScopeCatalogRow], dict[tuple[str, str], list[int]]]:
+) -> tuple[
+    dict[tuple[str, str], MetricScopeCatalogRow],
+    dict[tuple[str, str], list[str]],
+    dict[tuple[str, str], list[int]],
+]:
     rows = connection.execute(
         """
         SELECT
@@ -252,12 +291,21 @@ def _audit_metric_scope_catalog_table(
             label,
             team_filter,
             season_type,
-            available_season_ids_json,
             full_span_start_season_id,
             full_span_end_season_id,
             updated_at
         FROM metric_scope_catalog
         ORDER BY metric_id, scope_key
+        """
+    ).fetchall()
+    season_rows = connection.execute(
+        """
+        SELECT
+            metric_id,
+            scope_key,
+            season_id
+        FROM metric_scope_season
+        ORDER BY metric_id, scope_key, season_id
         """
     ).fetchall()
     team_rows = connection.execute(
@@ -270,6 +318,9 @@ def _audit_metric_scope_catalog_table(
         ORDER BY metric_id, scope_key, team_id
         """
     ).fetchall()
+    scope_season_rows: dict[tuple[str, str], list[str]] = defaultdict(list)
+    for row in season_rows:
+        scope_season_rows[(row["metric_id"], row["scope_key"])].append(row["season_id"])
     scope_team_rows: dict[tuple[str, str], list[int]] = defaultdict(list)
     for row in team_rows:
         scope_team_rows[(row["metric_id"], row["scope_key"])].append(row["team_id"])
@@ -282,7 +333,7 @@ def _audit_metric_scope_catalog_table(
             label=row["label"],
             team_filter=row["team_filter"],
             season_type=row["season_type"],
-            available_season_ids=_load_json_list(row["available_season_ids_json"]),
+            available_season_ids=list(scope_season_rows.get(key, [])),
             available_team_ids=list(scope_team_rows.get(key, [])),
             full_span_start_season_id=row["full_span_start_season_id"],
             full_span_end_season_id=row["full_span_end_season_id"],
@@ -299,7 +350,7 @@ def _audit_metric_scope_catalog_table(
                     str(exc),
                 )
             )
-    return catalog_rows, dict(scope_team_rows)
+    return catalog_rows, dict(scope_season_rows), dict(scope_team_rows)
 
 
 def _audit_metric_full_span_tables(

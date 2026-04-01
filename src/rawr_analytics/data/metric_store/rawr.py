@@ -32,19 +32,21 @@ def load_rawr_player_season_value_rows(
     initialize_player_metrics_db()
     query = """
         SELECT
-            metric_id,
-            scope_key,
-            team_filter,
-            season_type,
-            season_id,
-            player_id,
-            player_name,
-            coefficient,
-            games,
-            average_minutes,
-            total_minutes
-        FROM rawr_player_season_values
-        WHERE scope_key = ?
+            rawr.metric_id,
+            rawr.scope_key,
+            rawr.team_filter,
+            rawr.season_type,
+            rawr.season_id,
+            rawr.player_id,
+            rawr.player_name,
+            rawr.coefficient,
+            rawr.games,
+            rawr.average_minutes,
+            rawr.total_minutes
+        FROM rawr_player_season_values AS rawr
+        INNER JOIN metric_snapshot AS snapshot
+            ON snapshot.snapshot_id = rawr.snapshot_id
+        WHERE snapshot.metric_id = 'rawr' AND snapshot.scope_key = ?
     """
     params: list[object] = [scope_key]
     if seasons:

@@ -5,6 +5,7 @@ from dataclasses import dataclass
 
 @dataclass(frozen=True)
 class MetricStoreMetadata:
+    snapshot_id: int | None
     metric_id: str
     scope_key: str
     build_version: str

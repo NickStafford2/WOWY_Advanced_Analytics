@@ -10,7 +10,19 @@ def initialize_player_metrics_db() -> None:
     with connect(METRIC_STORE_DB_PATH) as connection:
         connection.executescript(
             """
+            CREATE TABLE IF NOT EXISTS metric_snapshot (
+                snapshot_id INTEGER PRIMARY KEY,
+                metric_id TEXT NOT NULL,
+                scope_key TEXT NOT NULL,
+                build_version TEXT NOT NULL,
+                source_fingerprint TEXT NOT NULL,
+                row_count INTEGER NOT NULL,
+                updated_at TEXT NOT NULL,
+                UNIQUE (metric_id, scope_key)
+            );
+
             CREATE TABLE IF NOT EXISTS rawr_player_season_values (
+                snapshot_id INTEGER,
                 metric_id TEXT NOT NULL,
                 scope_key TEXT NOT NULL,
                 team_filter TEXT NOT NULL DEFAULT '',
@@ -30,6 +42,9 @@ def initialize_player_metrics_db() -> None:
 
             CREATE INDEX IF NOT EXISTS idx_rawr_player_season_values_metric_scope_player
             ON rawr_player_season_values (metric_id, scope_key, player_id, season_id);
+
+            CREATE INDEX IF NOT EXISTS idx_rawr_player_season_values_snapshot
+            ON rawr_player_season_values (snapshot_id, season_id, player_id);
 
             CREATE TABLE IF NOT EXISTS wowy_player_season_values (
                 metric_id TEXT NOT NULL,
@@ -72,7 +87,6 @@ def initialize_player_metrics_db() -> None:
                 label TEXT NOT NULL,
                 team_filter TEXT NOT NULL DEFAULT '',
                 season_type TEXT NOT NULL DEFAULT 'Regular Season',
-                available_season_ids_json TEXT NOT NULL DEFAULT '[]',
                 full_span_start_season_id TEXT,
                 full_span_end_season_id TEXT,
                 updated_at TEXT NOT NULL,
@@ -88,6 +102,16 @@ def initialize_player_metrics_db() -> None:
 
             CREATE INDEX IF NOT EXISTS idx_metric_scope_team_metric_scope
             ON metric_scope_team (metric_id, scope_key);
+
+            CREATE TABLE IF NOT EXISTS metric_scope_season (
+                metric_id TEXT NOT NULL,
+                scope_key TEXT NOT NULL,
+                season_id TEXT NOT NULL,
+                PRIMARY KEY (metric_id, scope_key, season_id)
+            );
+
+            CREATE INDEX IF NOT EXISTS idx_metric_scope_season_metric_scope
+            ON metric_scope_season (metric_id, scope_key);
 
             CREATE TABLE IF NOT EXISTS metric_full_span_series (
                 metric_id TEXT NOT NULL,
@@ -116,6 +140,8 @@ def initialize_player_metrics_db() -> None:
             ON metric_full_span_points (metric_id, scope_key, player_id);
             """
         )
+        _ensure_metric_snapshot_columns(connection)
+        _ensure_rawr_snapshot_column(connection)
 
 
 def connect(db_path: Path) -> sqlite3.Connection:
@@ -123,3 +149,43 @@ def connect(db_path: Path) -> sqlite3.Connection:
     connection = sqlite3.connect(db_path)
     connection.row_factory = sqlite3.Row
     return connection
+
+
+def _ensure_metric_snapshot_columns(connection: sqlite3.Connection) -> None:
+    table_names = {
+        row["name"]
+        for row in connection.execute(
+            "SELECT name FROM sqlite_master WHERE type = 'table'"
+        ).fetchall()
+    }
+    if "metric_snapshot" in table_names:
+        return
+    connection.execute(
+        """
+        CREATE TABLE metric_snapshot (
+            snapshot_id INTEGER PRIMARY KEY,
+            metric_id TEXT NOT NULL,
+            scope_key TEXT NOT NULL,
+            build_version TEXT NOT NULL,
+            source_fingerprint TEXT NOT NULL,
+            row_count INTEGER NOT NULL,
+            updated_at TEXT NOT NULL,
+            UNIQUE (metric_id, scope_key)
+        )
+        """
+    )
+
+
+def _ensure_rawr_snapshot_column(connection: sqlite3.Connection) -> None:
+    columns = {
+        row["name"]
+        for row in connection.execute("PRAGMA table_info(rawr_player_season_values)").fetchall()
+    }
+    if "snapshot_id" not in columns:
+        connection.execute("ALTER TABLE rawr_player_season_values ADD COLUMN snapshot_id INTEGER")
+    connection.execute(
+        """
+        CREATE INDEX IF NOT EXISTS idx_rawr_player_season_values_snapshot
+        ON rawr_player_season_values (snapshot_id, season_id, player_id)
+        """
+    )
