@@ -385,7 +385,10 @@ Keep this file concise. Delete stale notes instead of appending history.
 - Query aggregation now keeps RAWR rows and WOWY rows on separate typed paths instead of normalizing them through a shared dict row contract inside core query code.
 - Cached leaderboard and player-season snapshot loading now lives in metric-specific `data/metric_store_rawr.py` and `data/metric_store_wowy.py` modules instead of a shared cached-row snapshot union.
 - `services/metric_store.py` now owns the outer metric-store refresh loop; `data/metric_store.py` prepares refresh plans and refreshes one scope at a time.
-- The metric-store internals are still too coupled around full-span shaping and persistence inside `data/metric_store.py`, `data/player_metrics_db/store.py`, and `data/metric_store_views.py`.
+- Full-span metric-store row derivation now lives in `data/player_metrics_db/full_span.py`, using DB-facing `season_id` rows instead of `data/metric_store.py` building those rows inline.
+- `data/player_metrics_db/store.py` now exposes explicit `replace_rawr_scope_snapshot()` and `replace_wowy_scope_snapshot()` repository paths, so `data/metric_store.py` no longer pushes RAWR and WOWY through one generic write contract.
+- Shared full-span aggregation remains in `data/player_metrics_db/full_span.py` only because the series/point row shape is still identical across metrics.
+- The remaining metric-store cleanup is to keep pushing shared read-side contracts toward explicit metric-specific repository paths where RAWR and WOWY behavior differs.
 
 ## Completed
 
@@ -400,11 +403,12 @@ Keep this file concise. Delete stale notes instead of appending history.
 - Removed the remaining shared row-normalization path from `metrics/metric_query/views.py` by splitting RAWR and WOWY leaderboard, export, and player-season assembly into metric-specific typed branches.
 - Split cached metric snapshot loading by metric into `data/metric_store_rawr.py` and `data/metric_store_wowy.py`, and removed redundant metric metadata from those snapshot contracts.
 - Moved the outer metric-store refresh orchestration into `services/metric_store.py` and reduced `data/metric_store.py` to refresh planning and per-scope refresh work.
+- Moved full-span metric-store row derivation into `data/player_metrics_db/full_span.py` and replaced the inline `data/metric_store.py` implementation with a DB-facing helper call.
+- Added `replace_rawr_scope_snapshot()` and `replace_wowy_scope_snapshot()` in `data/player_metrics_db/store.py` so the repository layer now owns metric-specific scope snapshot writes without a fake shared player-metric row contract.
+- Deleted `data/player_metrics_db/builders.py` after rewiring metric-store refresh to build repository rows directly through `player_metrics_db.rawr` and `player_metrics_db.wowy`.
 
 ## Next Step
 
-Implement Phase 3.
-
-Split the remaining generic metric storage paths into RAWR-owned and WOWY-owned contracts.
-Continue by splitting full-span shaping and persistence out of `data/metric_store.py` so refresh planning, metric row building, and DB writes no longer live in one module.
+Continue Phase 3 by pushing the remaining metric-store read contracts toward explicit RAWR and WOWY repository paths where the behavior differs.
+Keep shared code only where the DB behavior and row shape are truly identical, such as the current full-span series/point aggregation path.
 Keep `season_id` in core and DB-facing contracts; any plain `season` field should be edge serialization only.

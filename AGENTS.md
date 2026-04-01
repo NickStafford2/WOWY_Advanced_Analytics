@@ -36,6 +36,9 @@ For every change, know that I want stronger package boundries with simpler data 
 - Do not ship long-running commands that appear silent or hung during normal execution.
 - Excluding __init__.py, do not write wrapper functions or wrapper modules that don't edit data. This is unwanted complexity.
 - Ask for special permission to override any of the above rules
+- If code is outside a subpackage, it should import only from that subpackage’s public API.
+- If something is meant to be internal, keep it out of __init__.py and preferably prefix it with _ if appropriate.
+- Inside the subpackage itself, modules may import internals directly.
 
 ## Test boundaries
 - Tests are currently completely broken. ignore them entirely

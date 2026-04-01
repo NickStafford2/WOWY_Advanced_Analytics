@@ -3,28 +3,26 @@ from __future__ import annotations
 import hashlib
 from collections.abc import Callable
 from dataclasses import dataclass
-from datetime import UTC, datetime
 
 from rawr_analytics.data.game_cache import list_cache_load_rows, list_cached_team_seasons
 from rawr_analytics.data.game_cache.rows import NormalizedCacheLoadRow
 from rawr_analytics.data.metric_store_scope import build_scope_key, build_team_filter
-from rawr_analytics.data.player_metrics_db.builders import (
-    build_rawr_player_season_metric_rows,
-    build_wowy_player_season_metric_rows,
-)
-from rawr_analytics.data.player_metrics_db.models import (
-    MetricFullSpanPointRow,
-    MetricFullSpanSeriesRow,
-    MetricScopeCatalogRow,
-    PlayerSeasonMetricRow,
-)
 from rawr_analytics.data.player_metrics_db.queries import (
     load_metric_scope_catalog_row,
     load_metric_store_metadata,
 )
+from rawr_analytics.data.player_metrics_db.rawr import (
+    RawrPlayerSeasonValueRow,
+    build_rawr_player_season_value_rows,
+)
 from rawr_analytics.data.player_metrics_db.store import (
     clear_metric_scope_store,
-    replace_metric_scope_store,
+    replace_rawr_scope_snapshot,
+    replace_wowy_scope_snapshot,
+)
+from rawr_analytics.data.player_metrics_db.wowy import (
+    WowyPlayerSeasonValueRow,
+    build_wowy_player_season_value_rows,
 )
 from rawr_analytics.metrics.constants import Metric, MetricSummary
 from rawr_analytics.metrics.rawr import (
@@ -165,44 +163,49 @@ def refresh_metric_store_scope(
             False,
         )
 
-    rows = _build_cached_rows(
-        metric=metric,
-        scope_key=scope.scope_key,
-        team_filter=scope.team_filter,
-        season_type=season_type,
-        teams=scope.teams,
-        rawr_ridge_alpha=rawr_ridge_alpha,
-    )
-    should_fail_empty_rawr_scope = metric == Metric.RAWR and scope.teams is None and not rows
-    if should_fail_empty_rawr_scope:
-        clear_metric_scope_store(
-            metric=metric.value,
+    if metric == Metric.RAWR:
+        rows = _build_rawr_cached_rows(
             scope_key=scope.scope_key,
+            team_filter=scope.team_filter,
+            season_type=season_type,
+            teams=scope.teams,
+            rawr_ridge_alpha=rawr_ridge_alpha,
         )
-        return (
-            RefreshScopeResult(
+        if scope.teams is None and not rows:
+            clear_metric_scope_store(
+                metric=metric.value,
                 scope_key=scope.scope_key,
-                scope_label=scope.scope_label,
-                row_count=0,
-                status="empty",
-            ),
-            True,
+            )
+            return (
+                RefreshScopeResult(
+                    scope_key=scope.scope_key,
+                    scope_label=scope.scope_label,
+                    row_count=0,
+                    status="empty",
+                ),
+                True,
+            )
+        replace_rawr_scope_snapshot(
+            scope_key=scope.scope_key,
+            label=metric_label,
+            team_filter=scope.team_filter,
+            season_type=season_type.to_nba_format(),
+            available_season_ids=[season.id for season in scope.available_seasons],
+            available_team_ids=[team.team_id for team in available_teams],
+            build_version=build_version,
+            source_fingerprint=source_fingerprint,
+            rows=rows,
         )
-
-    series_rows, point_rows = _build_metric_full_span_rows(
-        rows,
-        metric=metric,
-        scope_key=scope.scope_key,
-        seasons=scope.available_seasons,
-    )
-    replace_metric_scope_store(
-        metric_id=metric.value,
-        scope_key=scope.scope_key,
-        label=metric_label,
-        build_version=build_version,
-        source_fingerprint=source_fingerprint,
-        rows=rows,
-        catalog_row=MetricScopeCatalogRow(
+        row_count = len(rows)
+    else:
+        rows = _build_wowy_cached_rows(
+            metric=metric,
+            scope_key=scope.scope_key,
+            team_filter=scope.team_filter,
+            season_type=season_type,
+            teams=scope.teams,
+        )
+        replace_wowy_scope_snapshot(
             metric_id=metric.value,
             scope_key=scope.scope_key,
             label=metric_label,
@@ -210,22 +213,16 @@ def refresh_metric_store_scope(
             season_type=season_type.to_nba_format(),
             available_season_ids=[season.id for season in scope.available_seasons],
             available_team_ids=[team.team_id for team in available_teams],
-            full_span_start_season_id=(
-                scope.available_seasons[0].id if scope.available_seasons else None
-            ),
-            full_span_end_season_id=(
-                scope.available_seasons[-1].id if scope.available_seasons else None
-            ),
-            updated_at=datetime.now(UTC).isoformat(),
-        ),
-        series_rows=series_rows,
-        point_rows=point_rows,
-    )
+            build_version=build_version,
+            source_fingerprint=source_fingerprint,
+            rows=rows,
+        )
+        row_count = len(rows)
     return (
         RefreshScopeResult(
             scope_key=scope.scope_key,
             scope_label=scope.scope_label,
-            row_count=len(rows),
+            row_count=row_count,
             status="built",
         ),
         False,
@@ -262,35 +259,42 @@ def _build_refresh_scope(
     )
 
 
-def _build_cached_rows(
+def _build_rawr_cached_rows(
+    *,
+    scope_key: str,
+    team_filter: str,
+    season_type: SeasonType,
+    teams: list[Team] | None,
+    rawr_ridge_alpha: float,
+) -> list[RawrPlayerSeasonValueRow]:
+    records = prepare_rawr_player_season_records(
+        teams=teams,
+        seasons=None,
+        season_type=season_type,
+        min_games=1,
+        ridge_alpha=rawr_ridge_alpha,
+        shrinkage_mode=DEFAULT_RAWR_SHRINKAGE_MODE,
+        shrinkage_strength=DEFAULT_RAWR_SHRINKAGE_STRENGTH,
+        shrinkage_minute_scale=DEFAULT_RAWR_SHRINKAGE_MINUTE_SCALE,
+        min_average_minutes=None,
+        min_total_minutes=None,
+    )
+    return build_rawr_player_season_value_rows(
+        scope_key=scope_key,
+        team_filter=team_filter,
+        season_type=season_type,
+        records=records,
+    )
+
+
+def _build_wowy_cached_rows(
     *,
     metric: Metric,
     scope_key: str,
     team_filter: str,
     season_type: SeasonType,
     teams: list[Team] | None,
-    rawr_ridge_alpha: float,
-) -> list[PlayerSeasonMetricRow]:
-    if metric == Metric.RAWR:
-        records = prepare_rawr_player_season_records(
-            teams=teams,
-            seasons=None,
-            season_type=season_type,
-            min_games=1,
-            ridge_alpha=rawr_ridge_alpha,
-            shrinkage_mode=DEFAULT_RAWR_SHRINKAGE_MODE,
-            shrinkage_strength=DEFAULT_RAWR_SHRINKAGE_STRENGTH,
-            shrinkage_minute_scale=DEFAULT_RAWR_SHRINKAGE_MINUTE_SCALE,
-            min_average_minutes=None,
-            min_total_minutes=None,
-        )
-        return build_rawr_player_season_metric_rows(
-            scope_key=scope_key,
-            team_filter=team_filter,
-            season_type=season_type,
-            records=records,
-        )
-
+) -> list[WowyPlayerSeasonValueRow]:
     records = prepare_wowy_player_season_records(
         teams=teams,
         seasons=None,
@@ -313,7 +317,7 @@ def _build_cached_rows(
             )
             for record in records
         }
-    return build_wowy_player_season_metric_rows(
+    return build_wowy_player_season_value_rows(
         metric_id=metric.value,
         scope_key=scope_key,
         team_filter=team_filter,
@@ -322,62 +326,6 @@ def _build_cached_rows(
         values_by_player_season=values_by_player_season,
         include_raw_wowy_score=include_raw_wowy_score,
     )
-
-
-def _build_metric_full_span_rows(
-    rows: list[PlayerSeasonMetricRow],
-    *,
-    metric: Metric,
-    scope_key: str,
-    seasons: list[Season],
-) -> tuple[list[MetricFullSpanSeriesRow], list[MetricFullSpanPointRow]]:
-    totals: dict[int, float] = {}
-    counts: dict[int, int] = {}
-    names: dict[int, str] = {}
-    season_values: dict[int, dict[str, float]] = {}
-
-    for row in rows:
-        totals[row.player_id] = totals.get(row.player_id, 0.0) + row.value
-        counts[row.player_id] = counts.get(row.player_id, 0) + 1
-        names[row.player_id] = row.player_name
-        season_values.setdefault(row.player_id, {})[row.season_id] = row.value
-
-    span_length = len(seasons) or 1
-    ranked_player_ids = sorted(
-        totals,
-        key=lambda player_id: (totals[player_id], names[player_id]),
-        reverse=True,
-    )
-
-    series_rows: list[MetricFullSpanSeriesRow] = []
-    point_rows: list[MetricFullSpanPointRow] = []
-    for rank_order, player_id in enumerate(ranked_player_ids, start=1):
-        series_rows.append(
-            MetricFullSpanSeriesRow(
-                metric_id=metric.value,
-                scope_key=scope_key,
-                player_id=player_id,
-                player_name=names[player_id],
-                span_average_value=totals[player_id] / span_length,
-                season_count=counts[player_id],
-                rank_order=rank_order,
-            )
-        )
-        for season in seasons:
-            value = season_values[player_id].get(season.id)
-            if value is None:
-                continue
-            point_rows.append(
-                MetricFullSpanPointRow(
-                    metric_id=metric.value,
-                    scope_key=scope_key,
-                    player_id=player_id,
-                    season_id=season.id,
-                    value=value,
-                )
-            )
-    return series_rows, point_rows
-
 
 def _describe_metric(metric: Metric) -> MetricSummary:
     if metric == Metric.RAWR:
