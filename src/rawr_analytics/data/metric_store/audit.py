@@ -210,28 +210,32 @@ def _load_wowy_metric_rows(
     rows = connection.execute(
         """
         SELECT
-            metric_id,
-            scope_key,
-            team_filter,
-            season_type,
-            season_id,
-            player_id,
-            player_name,
-            value,
-            games_with,
-            games_without,
-            avg_margin_with,
-            avg_margin_without,
-            average_minutes,
-            total_minutes,
-            raw_wowy_score
-        FROM wowy_player_season_values
-        ORDER BY metric_id, scope_key, season_id, player_id
+            wowy.snapshot_id,
+            snapshot.metric_id,
+            snapshot.scope_key,
+            wowy.team_filter,
+            wowy.season_type,
+            wowy.season_id,
+            wowy.player_id,
+            wowy.player_name,
+            wowy.value,
+            wowy.games_with,
+            wowy.games_without,
+            wowy.avg_margin_with,
+            wowy.avg_margin_without,
+            wowy.average_minutes,
+            wowy.total_minutes,
+            wowy.raw_wowy_score
+        FROM wowy_player_season_values AS wowy
+        INNER JOIN metric_snapshot AS snapshot
+            ON snapshot.snapshot_id = wowy.snapshot_id
+        ORDER BY metric_id, scope_key, wowy.season_id, wowy.player_id
         """
     ).fetchall()
     for row in rows:
         groups[(row["metric_id"], row["scope_key"])].append(
             WowyPlayerSeasonValueRow(
+                snapshot_id=row["snapshot_id"],
                 metric_id=row["metric_id"],
                 scope_key=row["scope_key"],
                 team_filter=row["team_filter"],

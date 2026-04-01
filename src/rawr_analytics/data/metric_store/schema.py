@@ -132,9 +132,6 @@ def initialize_player_metrics_db() -> None:
             ON metric_full_span_points (snapshot_id, player_id);
             """
         )
-        _ensure_metric_snapshot_columns(connection)
-        _ensure_rawr_snapshot_column(connection)
-        _ensure_wowy_snapshot_column(connection)
 
 
 def connect(db_path: Path) -> sqlite3.Connection:
@@ -142,58 +139,3 @@ def connect(db_path: Path) -> sqlite3.Connection:
     connection = sqlite3.connect(db_path)
     connection.row_factory = sqlite3.Row
     return connection
-
-
-def _ensure_metric_snapshot_columns(connection: sqlite3.Connection) -> None:
-    table_names = {
-        row["name"]
-        for row in connection.execute(
-            "SELECT name FROM sqlite_master WHERE type = 'table'"
-        ).fetchall()
-    }
-    if "metric_snapshot" in table_names:
-        return
-    connection.execute(
-        """
-        CREATE TABLE metric_snapshot (
-            snapshot_id INTEGER PRIMARY KEY,
-            metric_id TEXT NOT NULL,
-            scope_key TEXT NOT NULL,
-            build_version TEXT NOT NULL,
-            source_fingerprint TEXT NOT NULL,
-            row_count INTEGER NOT NULL,
-            updated_at TEXT NOT NULL,
-            UNIQUE (metric_id, scope_key)
-        )
-        """
-    )
-
-
-def _ensure_rawr_snapshot_column(connection: sqlite3.Connection) -> None:
-    columns = {
-        row["name"]
-        for row in connection.execute("PRAGMA table_info(rawr_player_season_values)").fetchall()
-    }
-    if "snapshot_id" not in columns:
-        connection.execute("ALTER TABLE rawr_player_season_values ADD COLUMN snapshot_id INTEGER")
-    connection.execute(
-        """
-        CREATE INDEX IF NOT EXISTS idx_rawr_player_season_values_snapshot
-        ON rawr_player_season_values (snapshot_id, season_id, player_id)
-        """
-    )
-
-
-def _ensure_wowy_snapshot_column(connection: sqlite3.Connection) -> None:
-    columns = {
-        row["name"]
-        for row in connection.execute("PRAGMA table_info(wowy_player_season_values)").fetchall()
-    }
-    if "snapshot_id" not in columns:
-        connection.execute("ALTER TABLE wowy_player_season_values ADD COLUMN snapshot_id INTEGER")
-    connection.execute(
-        """
-        CREATE INDEX IF NOT EXISTS idx_wowy_player_season_values_snapshot
-        ON wowy_player_season_values (snapshot_id, season_id, player_id)
-        """
-    )

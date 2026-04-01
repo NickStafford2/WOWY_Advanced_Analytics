@@ -8,6 +8,7 @@ from rawr_analytics.data.metric_store.schema import connect, initialize_player_m
 
 @dataclass(frozen=True)
 class WowyPlayerSeasonValueRow:
+    snapshot_id: int | None
     metric_id: str
     scope_key: str
     team_filter: str
@@ -38,8 +39,9 @@ def load_wowy_player_season_value_rows(
     initialize_player_metrics_db()
     query = """
         SELECT
-            wowy.metric_id,
-            wowy.scope_key,
+            snapshot.snapshot_id,
+            snapshot.metric_id,
+            snapshot.scope_key,
             wowy.team_filter,
             wowy.season_type,
             wowy.season_id,
@@ -79,6 +81,7 @@ def load_wowy_player_season_value_rows(
         rows = connection.execute(query, params).fetchall()
     return [
         WowyPlayerSeasonValueRow(
+            snapshot_id=row["snapshot_id"],
             metric_id=row["metric_id"],
             scope_key=row["scope_key"],
             team_filter=row["team_filter"],

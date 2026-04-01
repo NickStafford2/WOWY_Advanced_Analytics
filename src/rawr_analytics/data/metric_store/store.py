@@ -154,10 +154,7 @@ def clear_metric_scope_store(
             "DELETE FROM metric_snapshot WHERE metric_id = ? AND scope_key = ?",
             (metric, scope_key),
         )
-        connection.execute(
-            f"DELETE FROM {metric_values_table(metric)} WHERE metric_id = ? AND scope_key = ?",
-            (metric, scope_key),
-        )
+        _delete_metric_value_rows(connection, metric_id=metric, scope_key=scope_key)
         connection.commit()
 
 
@@ -202,10 +199,7 @@ def _replace_metric_scope_snapshot(
             "DELETE FROM metric_snapshot WHERE metric_id = ? AND scope_key = ?",
             (metric_id, scope_key),
         )
-        connection.execute(
-            f"DELETE FROM {metric_values_table(metric_id)} WHERE metric_id = ? AND scope_key = ?",
-            (metric_id, scope_key),
-        )
+        _delete_metric_value_rows(connection, metric_id=metric_id, scope_key=scope_key)
         snapshot_id = _insert_metric_snapshot(
             connection,
             metric_id=metric_id,
@@ -274,6 +268,26 @@ def _delete_metric_full_span_rows(
         )
         """,
         params,
+    )
+
+
+def _delete_metric_value_rows(
+    connection: sqlite3.Connection,
+    *,
+    metric_id: str,
+    scope_key: str,
+) -> None:
+    table = metric_values_table(metric_id)
+    connection.execute(
+        f"""
+        DELETE FROM {table}
+        WHERE snapshot_id IN (
+            SELECT snapshot_id
+            FROM metric_snapshot
+            WHERE metric_id = ? AND scope_key = ?
+        )
+        """,
+        (metric_id, scope_key),
     )
 
 

@@ -85,6 +85,7 @@ This slice is complete.
 
 - `MetricStoreMetadata` no longer includes `label`
 - `metric_store_metadata_v2` no longer has live code dependencies
+- no live `metric_store_metadata_v2` table definition remains in `schema.py`
 - `label` is owned by `metric_scope_catalog`
 - this removed a fresh-DB inconsistency where code queried and inserted a metadata `label` column that the schema did not define
 
@@ -100,6 +101,7 @@ Current state:
 - RAWR reads now join through `metric_snapshot`
 - WOWY writes now create a snapshot row and store `snapshot_id` on `wowy_player_season_values`
 - the main cached WOWY read path now joins through `metric_snapshot`
+- WOWY audit rows now also carry `snapshot_id` and validate one snapshot per batch
 - full-span writes and reads now join through `metric_snapshot`
 - WOWY value rows still physically keep the older `(metric_id, scope_key)` columns even though the main cached path reads through `snapshot_id`
 - `MetricStoreMetadata` now includes optional `snapshot_id`
@@ -218,6 +220,16 @@ Current state:
 - kept scope definition separate from build state
 - did not widen the slice into a full WOWY value-table redesign
 
+### Slice 13: carry WOWY snapshot_id through read and validation paths
+
+- confirmed there was no remaining live `metric_store_metadata_v2` table definition to delete
+- added optional `snapshot_id` to `WowyPlayerSeasonValueRow`
+- updated the main WOWY row loader to return `snapshot_id`
+- updated WOWY audit loading to retain orphan-row detection while carrying `snapshot_id`
+- updated WOWY validation to require a single consistent `snapshot_id` when persisted rows provide one
+- kept scope definition separate from build state
+- did not widen the slice into a WOWY table-key redesign
+
 Verification already done:
 
 - `poetry run python -m py_compile $(find src -name '*.py' -print)` passed
@@ -289,7 +301,6 @@ Owns:
 
 ## Delete after replacement exists
 
-- the `metric_store_metadata_v2` table definition itself, now that no code reads or clears it
 - schema-preservation helpers in `src/rawr_analytics/data/metric_store/schema.py` after the DB is rebuilt from scratch
 
 ## Delete from repo if tracked
@@ -327,9 +338,9 @@ RAWR and WOWY should stay explicit.
 
 The best next slice is:
 
-1. delete the `metric_store_metadata_v2` table definition and any remaining schema-preservation code around it
+1. delete any remaining snapshot-transition schema-preservation code that only exists for pre-rebuild layouts
 2. move one more small WOWY value-table path from `(metric_id, scope_key)` assumptions toward `snapshot_id`
-3. prefer read/query or validation cleanup over a broad table redesign
+3. prefer store/query cleanup over a broad table redesign
 4. keep scope definition tables separate from build-state tables
 5. do not attempt the full WOWY value-table redesign or `metric_snapshot_season` in the same pass
 

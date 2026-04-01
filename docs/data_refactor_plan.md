@@ -99,8 +99,9 @@ Current state:
 - RAWR now reads and writes through `snapshot_id`
 - WOWY build metadata now also lives on `metric_snapshot`
 - one cached WOWY write/read path now uses `snapshot_id`
+- WOWY row loading and audit now also carry `snapshot_id`
 - full-span rows now also write and read through `snapshot_id`
-- `metric_store_metadata_v2` no longer has live code dependencies
+- `metric_store_metadata_v2` no longer has live code dependencies or a live schema definition
 - scope-team membership now lives in `metric_scope_team`
 - scope-season membership now lives in `metric_scope_season`
 

@@ -406,6 +406,7 @@ def _build_wowy_cached_rows(
         )
         rows.append(
             WowyPlayerSeasonValueRow(
+                snapshot_id=None,
                 metric_id=metric.value,
                 scope_key=scope_key,
                 team_filter=team_filter,
