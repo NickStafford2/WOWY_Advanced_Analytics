@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from rawr_analytics.nba.normalize.models import NormalizedGamePlayerRecord, NormalizedGameRecord
+from rawr_analytics.nba.models import NormalizedGamePlayerRecord, NormalizedGameRecord
 from rawr_analytics.nba.source.models import (
     SourceBoxScore,
     SourceBoxScorePlayer,

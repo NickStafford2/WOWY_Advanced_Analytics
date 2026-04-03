@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from rawr_analytics.nba.normalize.models import (
+from rawr_analytics.nba.models import (
     NormalizedGamePlayerRecord,
     NormalizedGameRecord,
     NormalizedTeamSeasonBatch,
