@@ -19,6 +19,8 @@ from rawr_analytics.nba.source.rules import (
     parse_box_score_numeric_value,
     source_player_played_in_game,
 )
+from rawr_analytics.shared.player import PlayerSummary
+from rawr_analytics.shared.scope import TeamSeasonScope
 from rawr_analytics.shared.season import Season
 from rawr_analytics.shared.team import Team
 
@@ -49,7 +51,7 @@ def parse_league_schedule_payload(
         if classify_source_schedule_row(row).should_skip:
             continue
         games.append(game)
-    return SourceLeagueSchedule(team=team, season=season, games=games)
+    return SourceLeagueSchedule(scope=TeamSeasonScope(team=team, season=season), games=games)
 
 
 def parse_box_score_payload(payload: dict, *, game_id: str) -> SourceBoxScore:
@@ -190,8 +192,10 @@ def _parse_live_player_row(
     parsed_row = SourceBoxScorePlayer(
         game_id=game_id,
         team=Team.from_id(team_id),
-        player_id=_optional_int(player_payload, "personId", row_label=_PLAYER_ROW_LABEL),
-        player_name=_build_live_player_name(player_payload),
+        player=_build_source_player(
+            player_id=_optional_int(player_payload, "personId", row_label=_PLAYER_ROW_LABEL),
+            player_name=_build_live_player_name(player_payload),
+        ),
         minutes_raw=_optional_minutes_value(
             minutes_raw,
             key="minutes",
@@ -421,8 +425,10 @@ def _parse_result_set_player_row(
     parsed_row = SourceBoxScorePlayer(
         team=Team.from_id(team_id),
         game_id=_optional_text(row, "GAME_ID") or game_id,
-        player_id=_optional_int(row, "PLAYER_ID", row_label=_PLAYER_ROW_LABEL),
-        player_name=_player_name_from_row(row),
+        player=_build_source_player(
+            player_id=_optional_int(row, "PLAYER_ID", row_label=_PLAYER_ROW_LABEL),
+            player_name=_player_name_from_row(row),
+        ),
         minutes_raw=_optional_minutes(row, "MIN", row_label=_PLAYER_ROW_LABEL),
         raw_row=row,
     )
@@ -451,9 +457,9 @@ def _validate_source_player_row(player: SourceBoxScorePlayer) -> None:
 
     if player.game_id.strip() == "":
         raise ValueError(f"Missing GAME_ID; {row_context}")
-    if player.player_id is None or player.player_id <= 0:
+    if player.player is None or player.player.player_id <= 0:
         raise ValueError(f"Missing PLAYER_ID; {row_context}")
-    if player.player_name.strip() == "":
+    if player.player.player_name.strip() == "":
         raise ValueError(f"Missing PLAYER_NAME; {row_context}")
     assert source_player_played_in_game(player), row_context
 
@@ -476,6 +482,16 @@ def _optional_mapping(value: object) -> dict[str, object]:
         return {}
     assert isinstance(value, dict), "Expected mapping payload from nba_api"
     return value
+
+
+def _build_source_player(
+    *,
+    player_id: int | None,
+    player_name: str,
+) -> PlayerSummary | None:
+    if player_id is None:
+        return None
+    return PlayerSummary(player_id=player_id, player_name=player_name)
 
 
 def _row_context(row_label: str, row: dict[str, object]) -> str:

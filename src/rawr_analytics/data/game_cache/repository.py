@@ -7,6 +7,7 @@ from rawr_analytics.data._paths import NORMALIZED_CACHE_DB_PATH
 from rawr_analytics.data.game_cache.rows import NormalizedCacheLoadRow
 from rawr_analytics.data.game_cache.schema import connect, initialize_game_cache_db
 from rawr_analytics.nba.models import NormalizedGamePlayerRecord, NormalizedGameRecord
+from rawr_analytics.shared.player import PlayerSummary
 from rawr_analytics.shared.scope import TeamSeasonScope
 from rawr_analytics.shared.season import Season
 from rawr_analytics.shared.team import Team
@@ -94,8 +95,8 @@ def replace_team_season_normalized_rows(
                     season.id,
                     season_type,
                     player.team.team_id,
-                    player.player_id,
-                    player.player_name,
+                    player.player.player_id,
+                    player.player.player_name,
                     int(player.appeared),
                     player.minutes,
                 )
@@ -238,8 +239,10 @@ def _load_normalized_game_players_from_db(
     players = [
         NormalizedGamePlayerRecord(
             game_id=row["game_id"],
-            player_id=row["player_id"],
-            player_name=row["player_name"],
+            player=PlayerSummary(
+                player_id=row["player_id"],
+                player_name=row["player_name"],
+            ),
             appeared=bool(row["appeared"]),
             minutes=row["minutes"],
             team=Team.from_id(row["team_id"]),

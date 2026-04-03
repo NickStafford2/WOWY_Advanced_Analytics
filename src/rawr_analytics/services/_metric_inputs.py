@@ -208,7 +208,7 @@ def _filter_rawr_scope(games, game_players, teams, seasons):
 
 
 def _build_player_names(game_players: list[NormalizedGamePlayerRecord]) -> dict[int, str]:
-    return {player.player_id: player.player_name for player in game_players}
+    return {player.player.player_id: player.player.player_name for player in game_players}
 
 
 def _derive_wowy_games_by_season(
@@ -219,7 +219,7 @@ def _derive_wowy_games_by_season(
     for player in game_players:
         if not player.appeared:
             continue
-        players_by_game_team[(player.game_id, player.team.team_id)].add(player.player_id)
+        players_by_game_team[(player.game_id, player.team.team_id)].add(player.player.player_id)
 
     games_by_season: dict[Season, list[WowyGame]] = defaultdict(list)
     for game in games:
@@ -252,7 +252,7 @@ def _build_wowy_player_season_minute_stats(
         if season is None or not player_has_positive_minutes(player):
             continue
         assert player.minutes is not None
-        key = (season, player.player_id)
+        key = (season, player.player.player_id)
         totals[key] = totals.get(key, 0.0) + player.minutes
         counts[key] = counts.get(key, 0) + 1
     return {key: (totals[key] / counts[key], totals[key]) for key in totals}

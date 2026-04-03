@@ -171,9 +171,10 @@ def source_player_played_in_game(row: SourceBoxScorePlayer) -> bool:
 
 
 def _is_skip_player_row(row: SourceBoxScorePlayer) -> bool:
-    if row.player_id not in {None, 0}:
+    if row.player is not None and row.player.player_id not in {0}:
         return False
-    return row.player_name.strip() == "" and row.minutes_raw in {
+    player_name = "" if row.player is None else row.player.player_name.strip()
+    return player_name == "" and row.minutes_raw in {
         None,
         "",
         0,
@@ -184,9 +185,9 @@ def _is_skip_player_row(row: SourceBoxScorePlayer) -> bool:
 
 
 def _is_player_did_not_play_placeholder(row: SourceBoxScorePlayer) -> bool:
-    if row.player_id is None or row.player_id <= 0:
+    if row.player is None or row.player.player_id <= 0:
         return False
-    if row.player_name.strip() != "":
+    if row.player.player_name.strip() != "":
         return False
     return not source_player_played_in_game(row)
 

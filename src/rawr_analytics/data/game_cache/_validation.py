@@ -21,6 +21,8 @@ from rawr_analytics.nba.normalize import (
     validate_normalized_game_record,
     validate_normalized_team_season_batch,
 )
+from rawr_analytics.shared.player import PlayerSummary
+from rawr_analytics.shared.scope import TeamSeasonScope
 from rawr_analytics.shared.season import Season
 from rawr_analytics.shared.team import Team
 
@@ -230,7 +232,7 @@ def validate_normalized_cache_relations(
                     "normalized_game_players",
                     (
                         f"game_id={player.game_id!r},team_id={player.team.team_id!r},"
-                        f"player_id={player.player_id!r}"
+                        f"player_id={player.player.player_id!r}"
                     ),
                     "player row has no matching normalized_games row",
                 )
@@ -241,7 +243,7 @@ def validate_normalized_cache_relations(
                     "normalized_game_players",
                     (
                         f"game_id={player.game_id!r},team_id={player.team.team_id!r},"
-                        f"player_id={player.player_id!r}"
+                        f"player_id={player.player.player_id!r}"
                     ),
                     "player row season or season_type does not match normalized_games row",
                 )
@@ -257,8 +259,10 @@ def validate_normalized_cache_relations(
         team_id, season_id, season_type = scope
         try:
             batch = NormalizedTeamSeasonBatch(
-                team=Team.from_id(team_id),
-                season=Season(season_id, season_type),
+                scope=TeamSeasonScope(
+                    team=Team.from_id(team_id),
+                    season=Season(season_id, season_type),
+                ),
                 games=games_by_scope.get(scope, []),
                 game_players=players_by_scope.get(scope, []),
             )
@@ -456,8 +460,10 @@ def _build_normalized_game_player_record(
     return (
         NormalizedGamePlayerRecord(
             game_id=row["game_id"],
-            player_id=row["player_id"],
-            player_name=row["player_name"],
+            player=PlayerSummary(
+                player_id=row["player_id"],
+                player_name=row["player_name"],
+            ),
             appeared=bool(row["appeared"]),
             minutes=row["minutes"],
             team=team,

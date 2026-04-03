@@ -21,6 +21,7 @@ from rawr_analytics.nba.source import (
     parse_league_schedule_payload,
 )
 from rawr_analytics.shared.common import LogFn
+from rawr_analytics.shared.scope import TeamSeasonScope
 from rawr_analytics.shared.season import Season, build_season_list
 from rawr_analytics.shared.team import Team
 
@@ -82,8 +83,7 @@ class IngestResult:
 
     def to_batch(self) -> NormalizedTeamSeasonBatch:
         return NormalizedTeamSeasonBatch(
-            team=self.request.team,
-            season=self.request.season,
+            scope=TeamSeasonScope(team=self.request.team, season=self.request.season),
             games=self.games,
             game_players=self.game_players,
         )

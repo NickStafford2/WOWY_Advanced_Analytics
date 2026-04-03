@@ -2,7 +2,8 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
-from rawr_analytics.shared.season import Season
+from rawr_analytics.shared.player import PlayerSummary
+from rawr_analytics.shared.scope import TeamSeasonScope
 from rawr_analytics.shared.team import Team
 
 
@@ -17,8 +18,7 @@ class SourceLeagueGame:
 
 @dataclass(frozen=True)
 class SourceLeagueSchedule:
-    team: Team
-    season: Season
+    scope: TeamSeasonScope
     games: list[SourceLeagueGame]
 
 
@@ -26,8 +26,7 @@ class SourceLeagueSchedule:
 class SourceBoxScorePlayer:
     game_id: str
     team: Team
-    player_id: int | None
-    player_name: str
+    player: PlayerSummary | None
     minutes_raw: str | int | None
     raw_row: dict[str, object]  # todo: see what sort of object this can be
 

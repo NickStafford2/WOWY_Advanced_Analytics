@@ -2,6 +2,8 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
+from rawr_analytics.shared.player import PlayerSummary
+from rawr_analytics.shared.scope import TeamSeasonScope
 from rawr_analytics.shared.season import Season
 from rawr_analytics.shared.team import Team
 
@@ -21,8 +23,7 @@ class NormalizedGameRecord:
 @dataclass(frozen=True)
 class NormalizedGamePlayerRecord:
     game_id: str
-    player_id: int
-    player_name: str
+    player: PlayerSummary
     appeared: bool
     minutes: float | None
     team: Team
@@ -30,7 +31,6 @@ class NormalizedGamePlayerRecord:
 
 @dataclass(frozen=True)
 class NormalizedTeamSeasonBatch:
-    team: Team
-    season: Season
+    scope: TeamSeasonScope
     games: list[NormalizedGameRecord]
     game_players: list[NormalizedGamePlayerRecord]

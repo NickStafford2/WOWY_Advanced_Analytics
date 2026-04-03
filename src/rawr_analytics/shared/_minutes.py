@@ -17,8 +17,10 @@ def _build_player_minute_stats(
     for player in game_players:
         if not player_has_positive_minutes(player):
             continue
-        totals[player.player_id] = totals.get(player.player_id, 0.0) + player.minutes
-        counts[player.player_id] = counts.get(player.player_id, 0) + 1
+        assert player.minutes is not None
+        player_id = player.player.player_id
+        totals[player_id] = totals.get(player_id, 0.0) + player.minutes
+        counts[player_id] = counts.get(player_id, 0) + 1
 
     return {
         player_id: (totals[player_id] / counts[player_id], totals[player_id])

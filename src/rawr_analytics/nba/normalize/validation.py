@@ -10,6 +10,7 @@ from rawr_analytics.nba.normalize.models import (
     NormalizedGameRecord,
     NormalizedTeamSeasonBatch,
 )
+from rawr_analytics.shared.scope import TeamSeasonScope
 from rawr_analytics.shared.season import Season
 from rawr_analytics.shared.team import Team
 
@@ -24,8 +25,8 @@ def validate_normalized_team_season_batch(batch: NormalizedTeamSeasonBatch) -> N
     for game in batch.games:
         validate_normalized_game_record(
             game,
-            expected_team=batch.team,
-            expected_season=batch.season,
+            expected_team=batch.scope.team,
+            expected_season=batch.scope.season,
         )
         game_key = (game.game_id, game.team.team_id)
         if game_key in game_keys:
@@ -34,8 +35,8 @@ def validate_normalized_team_season_batch(batch: NormalizedTeamSeasonBatch) -> N
 
     player_keys: set[tuple[str, int, int]] = set()
     for player in batch.game_players:
-        validate_normalized_game_player_record(player, expected_team=batch.team)
-        player_key = (player.game_id, player.team.team_id, player.player_id)
+        validate_normalized_game_player_record(player, expected_team=batch.scope.team)
+        player_key = (player.game_id, player.team.team_id, player.player.player_id)
         if player_key in player_keys:
             raise ValueError(f"Duplicate canonical player row for {player_key!r}")
         player_keys.add(player_key)
@@ -75,8 +76,7 @@ def validate_normalized_cache_batch(
     game_players: list[NormalizedGamePlayerRecord],
 ) -> None:
     batch = NormalizedTeamSeasonBatch(
-        team=team,
-        season=season,
+        scope=TeamSeasonScope(team=team, season=season),
         games=games,
         game_players=game_players,
     )
@@ -128,7 +128,9 @@ def validate_normalized_game_player_record(
     expected_team: Team,
 ) -> None:
     player_ref = (
-        f"game {player.game_id!r} player_id={player.player_id!r} player_name={player.player_name!r}"
+        "game "
+        f"{player.game_id!r} player_id={player.player.player_id!r} "
+        f"player_name={player.player.player_name!r}"
     )
     if not player.game_id.strip():
         raise ValueError("Canonical player game_id must not be empty")
@@ -137,9 +139,9 @@ def validate_normalized_game_player_record(
             f"Canonical player row for game {player.game_id!r} has team_id "
             f"{player.team.team_id!r}; expected {expected_team.team_id!r}"
         )
-    if player.player_id <= 0:
+    if player.player.player_id <= 0:
         raise ValueError(f"Canonical player row for {player_ref} has invalid player_id")
-    if not player.player_name.strip():
+    if not player.player.player_name.strip():
         raise ValueError(f"Canonical player row for {player_ref} must have a player name")
 
     minutes = player.minutes
@@ -159,12 +161,12 @@ def validate_normalized_game_player_record(
     # if player.appeared:
     #     if minutes is None or minutes <= 0.0:
     #         raise ValueError(
-    #             f"Appeared player {player.player_id!r} in game {player.game_id!r} "
+    #             f"Appeared player {player.player.player_id!r} in game {player.game_id!r} "
     #             "must have positive minutes"
     #         )
     # elif minutes not in {None, 0.0}:
     #     raise ValueError(
-    #         f"Did-not-appear player {player.player_id!r} in game {player.game_id!r} "
+    #         f"Did-not-appear player {player.player.player_id!r} in game {player.game_id!r} "
     #         "must have zero or null minutes"
     #     )
 

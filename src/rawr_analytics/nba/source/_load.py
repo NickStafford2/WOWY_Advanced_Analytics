@@ -25,12 +25,12 @@ def load_player_names_from_cache(
         game_id = cache_path.stem.split("_", maxsplit=1)[0]
         parsed_box_score = parse_box_score_payload(payload, game_id=game_id)
         for player in parsed_box_score.players:
-            if player.player_id is None:
+            if player.player is None:
                 continue
-            player_name = player.player_name.strip()
+            player_name = player.player.player_name.strip()
             if player_name == "":
                 continue
-            player_names[player.player_id] = player_name
+            player_names[player.player.player_id] = player_name
     return player_names
 
 

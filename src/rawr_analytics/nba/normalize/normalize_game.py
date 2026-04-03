@@ -15,6 +15,7 @@ from rawr_analytics.nba.source.rules import (
     parse_minutes_to_float,
     source_player_played_in_game,
 )
+from rawr_analytics.shared.player import PlayerSummary
 from rawr_analytics.shared.season import Season
 from rawr_analytics.shared.team import Team
 
@@ -104,14 +105,15 @@ def _normalize_players(
         if classification.should_skip:
             continue
 
-        player_id = row.player_id
-        if player_id is None or player_id <= 0:
+        player = row.player
+        if player is None or player.player_id <= 0:
             raise ValueError(
                 "Invalid box score player row with missing PLAYER_ID; "
                 f"nba_api_box_score_player_row={format_source_row(row.raw_row)}"
             )
         minutes = parse_minutes_to_float(row.minutes_raw)
-        if row.player_name.strip() == "":
+        player_name = player.player_name.strip()
+        if player_name == "":
             raise ValueError(
                 "Invalid box score player row with blank PLAYER_NAME; "
                 f"nba_api_box_score_player_row={format_source_row(row.raw_row)}"
@@ -121,13 +123,14 @@ def _normalize_players(
                 "Invalid box score player row with unparseable MIN value; "
                 f"nba_api_box_score_player_row={format_source_row(row.raw_row)}"
             )
-        player_name = row.player_name.strip()
         assert source_player_played_in_game(row)
         players.append(
             NormalizedGamePlayerRecord(
                 game_id=game_id,
-                player_id=player_id,
-                player_name=player_name,
+                player=PlayerSummary(
+                    player_id=player.player_id,
+                    player_name=player_name,
+                ),
                 appeared=True,
                 minutes=minutes,
                 team=team,
