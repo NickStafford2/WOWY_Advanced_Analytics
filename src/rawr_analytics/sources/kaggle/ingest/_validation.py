@@ -69,11 +69,11 @@ def _validate_normalized_game_record(
 ) -> None:
     if not game.game_id.strip():
         raise ValueError("Canonical game_id must not be empty")
-    if not Season.are_same(game.season, expected_season):
+    if game.season != expected_season:
         raise ValueError(
             f"Canonical game {game.game_id!r} season {game.season!r}; expected {expected_season!r}"
         )
-    if not Team.are_same(game.team, expected_team):
+    if game.team != expected_team:
         raise ValueError(
             f"Canonical game {game.game_id!r} is not the same as {game.team!r}; "
             f"expected {expected_team!r}"

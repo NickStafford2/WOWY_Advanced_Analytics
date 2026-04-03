@@ -100,17 +100,6 @@ class Season:
         end_year = (start_year + 1) % 100
         return f"{start_year}-{end_year:02d}"
 
-    @staticmethod
-    def are_same(
-        left: Season,
-        right: Season,
-    ) -> bool:
-        return (
-            left.start_year == right.start_year
-            and left.season_type.value == right.season_type.value
-            and left.id == right.id
-        )
-
 
 def build_season_list(start_year: int, first_year: int, season_type_str: str) -> list[Season]:
     assert start_year >= first_year, "Start year must be greater than or equal to end year"

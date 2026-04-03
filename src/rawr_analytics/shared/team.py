@@ -106,13 +106,6 @@ class Team:
     def current(self) -> TeamSeason:
         return self.seasons[max(self.seasons)]
 
-    @staticmethod
-    def are_same(
-        left: Team,
-        right: Team,
-    ) -> bool:
-        return left.team_id == right.team_id
-
     def validate(self):
         if self.team_id is None or self.team_id <= 0:
             raise ValueError(f"team {self} must have a positive team_id: {self.team_id}")

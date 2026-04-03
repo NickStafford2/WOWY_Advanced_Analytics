@@ -135,9 +135,7 @@ def _resolve_game_teams(
     schedule_game: SourceLeagueGame,
     box_score: SourceBoxScore,
 ) -> tuple[SourceBoxScoreTeam, SourceBoxScoreTeam]:
-    matched_teams = [
-        team for team in box_score.teams if Team.are_same(team.team, schedule_game.team)
-    ]
+    matched_teams = [team for team in box_score.teams if team.team == schedule_game.team]
 
     if not matched_teams:
         raise ValueError(
