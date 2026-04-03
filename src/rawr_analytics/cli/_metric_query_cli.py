@@ -6,7 +6,9 @@ from typing import Any
 
 from rawr_analytics.cli._progress_bar import print_status_box
 from rawr_analytics.metrics.constants import Metric
-from rawr_analytics.services import MetricQueryRequest, build_metric_query_export
+from rawr_analytics.metrics.rawr import build_rawr_query
+from rawr_analytics.metrics.wowy import build_wowy_query
+from rawr_analytics.services import build_rawr_query_export, build_wowy_query_export
 from rawr_analytics.shared.scope import format_scope
 from rawr_analytics.shared.season import Season, SeasonType
 from rawr_analytics.shared.team import Team
@@ -40,38 +42,52 @@ def run_metric_query_cli(
     title: str,
     details: Sequence[str],
 ) -> int:
-    request = _build_metric_query_request(args, metric=metric)
     print_status_box(title, [f"Scope: {format_scope(args.team, args.season)}", *details])
     print(f"[1/2] building {metric.value} custom query")
-    result = build_metric_query_export(request, view="custom-query")
+    if metric == Metric.RAWR:
+        result = build_rawr_query_export(_build_rawr_query(args), view="custom-query")
+    else:
+        result = build_wowy_query_export(metric, _build_wowy_query(args), view="custom-query")
     print(f"[2/2] built {len(result.rows)} leaderboard rows")
     print(_render_metric_query_table(result.metric_label, result.rows))
     return 0
 
 
-def _build_metric_query_request(
-    args: argparse.Namespace,
-    *,
-    metric: Metric,
-) -> MetricQueryRequest:
+def _build_rawr_query(args: argparse.Namespace):
     season_type = (
         args.season_type
         if isinstance(args.season_type, SeasonType)
         else SeasonType.parse(args.season_type)
     )
     seasons = _parse_seasons(args.season, season_type=season_type)
-    return MetricQueryRequest(
-        metric=metric,
+    return build_rawr_query(
         season_type=season_type,
         teams=_parse_teams(args.team),
         seasons=seasons,
         top_n=args.top_n,
         min_average_minutes=args.min_average_minutes,
         min_total_minutes=args.min_total_minutes,
-        min_games=(args.min_games if metric == Metric.RAWR else None),
-        ridge_alpha=(args.ridge_alpha if metric == Metric.RAWR else None),
-        min_games_with=(args.min_games_with if metric != Metric.RAWR else None),
-        min_games_without=(args.min_games_without if metric != Metric.RAWR else None),
+        min_games=args.min_games,
+        ridge_alpha=args.ridge_alpha,
+    )
+
+
+def _build_wowy_query(args: argparse.Namespace):
+    season_type = (
+        args.season_type
+        if isinstance(args.season_type, SeasonType)
+        else SeasonType.parse(args.season_type)
+    )
+    seasons = _parse_seasons(args.season, season_type=season_type)
+    return build_wowy_query(
+        season_type=season_type,
+        teams=_parse_teams(args.team),
+        seasons=seasons,
+        top_n=args.top_n,
+        min_average_minutes=args.min_average_minutes,
+        min_total_minutes=args.min_total_minutes,
+        min_games_with=args.min_games_with,
+        min_games_without=args.min_games_without,
     )
 
 

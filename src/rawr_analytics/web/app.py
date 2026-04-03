@@ -4,11 +4,15 @@ import json
 from typing import Any
 
 from rawr_analytics.metrics.constants import Metric
+from rawr_analytics.metrics.rawr import RawrQuery, build_rawr_query
+from rawr_analytics.metrics.wowy import WowyQuery, build_wowy_query
 from rawr_analytics.services import (
-    MetricQueryRequest,
-    build_metric_options_payload,
-    build_metric_query_export,
-    build_metric_query_view,
+    build_rawr_options_payload,
+    build_rawr_query_export,
+    build_rawr_query_view,
+    build_wowy_options_payload,
+    build_wowy_query_export,
+    build_wowy_query_view,
     serialize_service_value,
 )
 from rawr_analytics.shared.season import Season, SeasonType
@@ -20,10 +24,9 @@ def create_app():
 
     app = Flask(__name__)
 
-    def parse_metric_query(metric: str):
+    def parse_rawr_query() -> RawrQuery:
         season_type = SeasonType.parse(request.args.get("season_type", "Regular Season"))
-        return MetricQueryRequest(
-            metric=Metric.parse(metric),
+        return build_rawr_query(
             season_type=season_type,
             teams=_parse_team_list(request.args.getlist("team_id")),
             seasons=_parse_season_list(request.args.getlist("season"), season_type=season_type),
@@ -36,24 +39,43 @@ def create_app():
             ),
             min_games=_parse_optional_int(request.args.get("min_games", None)),
             ridge_alpha=_parse_optional_float(request.args.get("ridge_alpha", None)),
-            min_games_with=_parse_optional_int(request.args.get("min_games_with", None)),
-            min_games_without=_parse_optional_int(
-                request.args.get("min_games_without", None)
-            ),
         )
 
-    def parse_metric_options_query(metric: str):
-        return MetricQueryRequest(
-            metric=Metric.parse(metric),
+    def parse_wowy_query() -> WowyQuery:
+        season_type = SeasonType.parse(request.args.get("season_type", "Regular Season"))
+        return build_wowy_query(
+            season_type=season_type,
+            teams=_parse_team_list(request.args.getlist("team_id")),
+            seasons=_parse_season_list(request.args.getlist("season"), season_type=season_type),
+            top_n=_parse_optional_int(request.args.get("top_n", None)),
+            min_average_minutes=_parse_optional_float(
+                request.args.get("min_average_minutes", None)
+            ),
+            min_total_minutes=_parse_optional_float(
+                request.args.get("min_total_minutes", None)
+            ),
+            min_games_with=_parse_optional_int(request.args.get("min_games_with", None)),
+            min_games_without=_parse_optional_int(request.args.get("min_games_without", None)),
+        )
+
+    def parse_rawr_options_query() -> RawrQuery:
+        return build_rawr_query(
+            season_type=SeasonType.parse(request.args.get("season_type", "Regular Season")),
+            teams=_parse_team_list(request.args.getlist("team_id")),
+        )
+
+    def parse_wowy_options_query() -> WowyQuery:
+        return build_wowy_query(
             season_type=SeasonType.parse(request.args.get("season_type", "Regular Season")),
             teams=_parse_team_list(request.args.getlist("team_id")),
         )
 
     def json_metric_response(metric: str, view: str):
-        result = build_metric_query_view(
-            parse_metric_query(metric),
-            view=view,
-        )
+        parsed_metric = Metric.parse(metric)
+        if parsed_metric == Metric.RAWR:
+            result = build_rawr_query_view(parse_rawr_query(), view=view)
+        else:
+            result = build_wowy_query_view(parsed_metric, parse_wowy_query(), view=view)
         return jsonify(serialize_service_value(result.payload))
 
     def run_json(handler):
@@ -63,10 +85,11 @@ def create_app():
             return jsonify({"error": str(exc)}), 400
 
     def csv_metric_response(metric: str, view: str):
-        result = build_metric_query_export(
-            parse_metric_query(metric),
-            view=view,
-        )
+        parsed_metric = Metric.parse(metric)
+        if parsed_metric == Metric.RAWR:
+            result = build_rawr_query_export(parse_rawr_query(), view=view)
+        else:
+            result = build_wowy_query_export(parsed_metric, parse_wowy_query(), view=view)
         filename = f"{metric}-all-players.csv"
         return Response(
             _render_leaderboard_csv(metric_label=result.metric_label, table_rows=result.rows),
@@ -76,11 +99,15 @@ def create_app():
 
     @app.get("/api/metrics/<metric>/options")
     def get_metric_options(metric: str):
+        parsed_metric = Metric.parse(metric)
         return run_json(
             lambda: jsonify(
                 serialize_service_value(
-                    build_metric_options_payload(
-                        parse_metric_options_query(metric)
+                    build_rawr_options_payload(parse_rawr_options_query())
+                    if parsed_metric == Metric.RAWR
+                    else build_wowy_options_payload(
+                        parsed_metric,
+                        parse_wowy_options_query(),
                     )
                 )
             )
