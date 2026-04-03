@@ -1,103 +1,34 @@
 from __future__ import annotations
 
 import argparse
-from collections.abc import Sequence
 from typing import Any
 
-from rawr_analytics.cli._progress_bar import print_status_box
-from rawr_analytics.metrics.constants import Metric
-from rawr_analytics.metrics.rawr import build_rawr_query
-from rawr_analytics.metrics.wowy import build_wowy_query
-from rawr_analytics.services import build_rawr_query_export, build_wowy_query_export
-from rawr_analytics.shared.scope import format_scope
 from rawr_analytics.shared.season import Season, SeasonType
 from rawr_analytics.shared.team import Team
 
 
-def build_metric_query_parser(
-    *,
-    description: str,
-    include_rawr_options: bool,
-) -> argparse.ArgumentParser:
-    parser = argparse.ArgumentParser(description=description)
+def add_metric_query_common_arguments(parser: argparse.ArgumentParser) -> None:
     parser.add_argument("--team", action="append", default=None)
     parser.add_argument("--season", action="append", default=None)
     parser.add_argument("--season-type", default="Regular Season")
-    if include_rawr_options:
-        parser.add_argument("--min-games", type=int, default=35)
-        parser.add_argument("--ridge-alpha", type=float, default=10.0)
-    else:
-        parser.add_argument("--min-games-with", type=int, default=15)
-        parser.add_argument("--min-games-without", type=int, default=2)
     parser.add_argument("--top-n", type=int, default=40)
     parser.add_argument("--min-average-minutes", type=float, default=30)
     parser.add_argument("--min-total-minutes", type=float, default=600)
-    return parser
 
 
-def run_metric_query_cli(
-    args: argparse.Namespace,
-    *,
-    metric: Metric,
-    title: str,
-    details: Sequence[str],
-) -> int:
-    print_status_box(title, [f"Scope: {format_scope(args.team, args.season)}", *details])
-    print(f"[1/2] building {metric.value} custom query")
-    if metric == Metric.RAWR:
-        result = build_rawr_query_export(_build_rawr_query(args), view="custom-query")
-    else:
-        result = build_wowy_query_export(metric, _build_wowy_query(args), view="custom-query")
-    print(f"[2/2] built {len(result.rows)} leaderboard rows")
-    print(_render_metric_query_table(result.metric_label, result.rows))
-    return 0
-
-
-def _build_rawr_query(args: argparse.Namespace):
-    season_type = (
-        args.season_type
-        if isinstance(args.season_type, SeasonType)
-        else SeasonType.parse(args.season_type)
-    )
-    seasons = _parse_seasons(args.season, season_type=season_type)
-    return build_rawr_query(
-        season_type=season_type,
-        teams=_parse_teams(args.team),
-        seasons=seasons,
-        top_n=args.top_n,
-        min_average_minutes=args.min_average_minutes,
-        min_total_minutes=args.min_total_minutes,
-        min_games=args.min_games,
-        ridge_alpha=args.ridge_alpha,
-    )
-
-
-def _build_wowy_query(args: argparse.Namespace):
-    season_type = (
-        args.season_type
-        if isinstance(args.season_type, SeasonType)
-        else SeasonType.parse(args.season_type)
-    )
-    seasons = _parse_seasons(args.season, season_type=season_type)
-    return build_wowy_query(
-        season_type=season_type,
-        teams=_parse_teams(args.team),
-        seasons=seasons,
-        top_n=args.top_n,
-        min_average_minutes=args.min_average_minutes,
-        min_total_minutes=args.min_total_minutes,
-        min_games_with=args.min_games_with,
-        min_games_without=args.min_games_without,
-    )
-
-
-def _parse_teams(raw_values: list[str] | None) -> list[Team] | None:
+def parse_metric_query_teams(raw_values: list[str] | None) -> list[Team] | None:
     if not raw_values:
         return None
     return [Team.from_abbreviation(raw_value) for raw_value in raw_values]
 
 
-def _parse_seasons(
+def parse_metric_query_season_type(raw_value: SeasonType | str) -> SeasonType:
+    if isinstance(raw_value, SeasonType):
+        return raw_value
+    return SeasonType.parse(raw_value)
+
+
+def parse_metric_query_seasons(
     raw_values: list[str] | None,
     *,
     season_type: SeasonType,
@@ -107,7 +38,7 @@ def _parse_seasons(
     return [Season(raw_value, season_type.value) for raw_value in raw_values]
 
 
-def _render_metric_query_table(
+def render_metric_query_table(
     metric_label: str,
     rows: list[dict[str, Any]],
 ) -> str:
@@ -185,3 +116,12 @@ def _format_cell(value: Any, *, metric_label: str, column: str) -> str:
             return f"{value:.3f}"
         return f"{value:.1f}"
     return str(value)
+
+
+__all__ = [
+    "add_metric_query_common_arguments",
+    "parse_metric_query_season_type",
+    "parse_metric_query_seasons",
+    "parse_metric_query_teams",
+    "render_metric_query_table",
+]
