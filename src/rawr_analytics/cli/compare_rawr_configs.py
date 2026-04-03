@@ -6,7 +6,7 @@ from pathlib import Path
 
 from rawr_analytics.nba.source.cache import DEFAULT_SOURCE_DATA_DIR
 from rawr_analytics.progress import TerminalProgressBar, print_status_box
-from rawr_analytics.services.compare_rawr_configs import (
+from rawr_analytics.services import (
     CompareRawrConfigsProgress,
     CompareRawrConfigsRequest,
     ComparisonResult,
@@ -163,7 +163,7 @@ def main(argv: list[str] | None = None) -> int:
     return 0
 
 
-def run(argv: list[str] | None = None) -> int:
+def _run(argv: list[str] | None = None) -> int:
     try:
         return main(argv)
     except KeyboardInterrupt:
@@ -269,4 +269,4 @@ def _format_text(value: str | None) -> str:
 
 
 if __name__ == "__main__":
-    raise SystemExit(run())
+    raise SystemExit(_run())

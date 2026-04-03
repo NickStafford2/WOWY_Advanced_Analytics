@@ -15,6 +15,7 @@ dependencies = [
 [project.scripts]
 wowy = "rawr_analytics.cli.wowy:main"
 rawr = "rawr_analytics.cli.rawr:main"
+compare-rawr-configs = "rawr_analytics.cli.compare_rawr_configs:main"
 web = "rawr_analytics.cli.run_web:main"
 refresh-web-store = "rawr_analytics.cli.refresh_cli:main"
 audit-db = "rawr_analytics.data.db_validation_cli:main"
