@@ -15,6 +15,7 @@ from rawr_analytics.metrics.rawr.inputs import validate_filters, validate_reques
 from rawr_analytics.metrics.rawr.models import (
     RawrCustomQueryResult,
     RawrPlayerSeasonValue,
+    RawrValue,
 )
 from rawr_analytics.metrics.rawr.query import RawrQuery, build_rawr_query
 from rawr_analytics.metrics.rawr.query_views import (
@@ -36,6 +37,7 @@ __all__ = [
     "RawrPlayerSeasonValue",
     "RawrQuery",
     "RawrQueryFilters",
+    "RawrValue",
     "build_cached_leaderboard_payload",
     "build_custom_leaderboard_payload",
     "build_export_table",

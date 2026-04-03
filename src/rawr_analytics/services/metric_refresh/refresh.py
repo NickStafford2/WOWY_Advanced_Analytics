@@ -24,12 +24,14 @@ from rawr_analytics.metrics.rawr import (
     DEFAULT_RAWR_SHRINKAGE_MODE,
     DEFAULT_RAWR_SHRINKAGE_STRENGTH,
     RawrPlayerSeasonValue,
+    RawrValue,
     prepare_rawr_player_season_records,
 )
 from rawr_analytics.metrics.rawr import describe_metric as describe_rawr_metric
 from rawr_analytics.metrics.wowy import (
     DEFAULT_WOWY_SHRINKAGE_PRIOR_GAMES,
     WowyPlayerSeasonValue,
+    WowyPlayerValue,
     compute_wowy_shrinkage_score,
     prepare_wowy_player_season_records,
 )
@@ -419,12 +421,12 @@ def _build_rawr_cached_rows(
             season_type=season_type.value,
             value=RawrPlayerSeasonValue(
                 season_id=record.season.id,
-                player_id=record.player_id,
-                player_name=record.player_name,
-                coefficient=record.coefficient,
-                games=record.games,
-                average_minutes=record.average_minutes,
-                total_minutes=record.total_minutes,
+                player=record.player,
+                minutes=record.minutes,
+                result=RawrValue(
+                    games=record.result.games,
+                    coefficient=record.result.coefficient,
+                ),
             ),
         )
         for record in records
@@ -456,10 +458,10 @@ def _build_wowy_cached_rows(
     if metric == Metric.WOWY_SHRUNK:
         include_raw_wowy_score = True
         values_by_player_season = {
-            (record.season, record.player_id): compute_wowy_shrinkage_score(
-                games_with=record.games_with,
-                games_without=record.games_without,
-                wowy_score=record.wowy_score,
+            (record.season, record.player.player_id): compute_wowy_shrinkage_score(
+                games_with=record.result.games_with,
+                games_without=record.result.games_without,
+                wowy_score=record.result.value,
                 prior_games=DEFAULT_WOWY_SHRINKAGE_PRIOR_GAMES,
             )
             for record in records
@@ -467,9 +469,9 @@ def _build_wowy_cached_rows(
     rows: list[WowyPlayerSeasonValueRow] = []
     for record in records:
         value = (
-            values_by_player_season[(record.season, record.player_id)]
+            values_by_player_season[(record.season, record.player.player_id)]
             if values_by_player_season is not None
-            else record.wowy_score
+            else record.result.value
         )
         rows.append(
             WowyPlayerSeasonValueRow(
@@ -480,17 +482,19 @@ def _build_wowy_cached_rows(
                 season_type=season_type.value,
                 value=WowyPlayerSeasonValue(
                     season_id=record.season.id,
-                    player_id=record.player_id,
-                    player_name=record.player_name,
-                    value=value,
-                    games_with=record.games_with,
-                    games_without=record.games_without,
-                    avg_margin_with=record.avg_margin_with,
-                    avg_margin_without=record.avg_margin_without,
-                    average_minutes=record.average_minutes,
-                    total_minutes=record.total_minutes,
-                    raw_wowy_score=(
-                        record.wowy_score if include_raw_wowy_score else None
+                    player=record.player,
+                    minutes=record.minutes,
+                    result=WowyPlayerValue(
+                        games_with=record.result.games_with,
+                        games_without=record.result.games_without,
+                        avg_margin_with=record.result.avg_margin_with,
+                        avg_margin_without=record.result.avg_margin_without,
+                        value=value,
+                        raw_value=(
+                            record.result.value
+                            if include_raw_wowy_score
+                            else None
+                        ),
                     ),
                 ),
             )

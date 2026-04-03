@@ -44,7 +44,8 @@ def compute_wowy(
             games_without=len(margins_without),
             avg_margin_with=avg_with,
             avg_margin_without=avg_without,
-            wowy_score=wowy_score,
+            value=wowy_score,
+            raw_value=wowy_score,
         )
         if progress is not None:
             progress(index, total_players, f"player={player_id}")
@@ -64,7 +65,7 @@ def filter_results(
             continue
         if value.games_without < min_games_without:
             continue
-        if value.wowy_score is None:
+        if value.value is None:
             continue
         filtered[player_id] = value
     return filtered

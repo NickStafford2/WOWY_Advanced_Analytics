@@ -18,8 +18,9 @@ from rawr_analytics.data.metric_store.models import (
 )
 from rawr_analytics.data.metric_store.rawr import RawrPlayerSeasonValueRow
 from rawr_analytics.data.metric_store.wowy import WowyPlayerSeasonValueRow
-from rawr_analytics.metrics.rawr import RawrPlayerSeasonValue
-from rawr_analytics.metrics.wowy import WowyPlayerSeasonValue
+from rawr_analytics.metrics.rawr import RawrPlayerSeasonValue, RawrValue
+from rawr_analytics.metrics.wowy import WowyPlayerSeasonValue, WowyPlayerValue
+from rawr_analytics.shared.player import PlayerMinutes, PlayerSummary
 
 
 @dataclass(frozen=True)
@@ -200,12 +201,18 @@ def _load_rawr_metric_rows(
                 season_type=row["season_type"],
                 value=RawrPlayerSeasonValue(
                     season_id=row["season_id"],
-                    player_id=row["player_id"],
-                    player_name=row["player_name"],
-                    coefficient=row["coefficient"],
-                    games=row["games"],
-                    average_minutes=row["average_minutes"],
-                    total_minutes=row["total_minutes"],
+                    player=PlayerSummary(
+                        player_id=row["player_id"],
+                        player_name=row["player_name"],
+                    ),
+                    minutes=PlayerMinutes(
+                        average_minutes=row["average_minutes"],
+                        total_minutes=row["total_minutes"],
+                    ),
+                    result=RawrValue(
+                        games=row["games"],
+                        coefficient=row["coefficient"],
+                    ),
                 ),
             )
         )
@@ -250,16 +257,22 @@ def _load_wowy_metric_rows(
                 season_type=row["season_type"],
                 value=WowyPlayerSeasonValue(
                     season_id=row["season_id"],
-                    player_id=row["player_id"],
-                    player_name=row["player_name"],
-                    value=row["value"],
-                    games_with=row["games_with"],
-                    games_without=row["games_without"],
-                    avg_margin_with=row["avg_margin_with"],
-                    avg_margin_without=row["avg_margin_without"],
-                    average_minutes=row["average_minutes"],
-                    total_minutes=row["total_minutes"],
-                    raw_wowy_score=row["raw_wowy_score"],
+                    player=PlayerSummary(
+                        player_id=row["player_id"],
+                        player_name=row["player_name"],
+                    ),
+                    minutes=PlayerMinutes(
+                        average_minutes=row["average_minutes"],
+                        total_minutes=row["total_minutes"],
+                    ),
+                    result=WowyPlayerValue(
+                        games_with=row["games_with"],
+                        games_without=row["games_without"],
+                        avg_margin_with=row["avg_margin_with"],
+                        avg_margin_without=row["avg_margin_without"],
+                        value=row["value"],
+                        raw_value=row["raw_wowy_score"],
+                    ),
                 ),
             )
         )

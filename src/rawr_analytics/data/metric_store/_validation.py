@@ -40,7 +40,7 @@ def validate_rawr_rows(
     snapshot_id_seen = False
 
     for row in rows:
-        player_id = row.value.player_id
+        player_id = row.value.player.player_id
         if row.metric_id != "rawr":
             raise ValueError(
                 f"Metric row for player {player_id!r} has metric_id {row.metric_id!r}; "
@@ -75,7 +75,8 @@ def validate_rawr_rows(
         if canonical_season_id != row.value.season_id:
             raise ValueError(
                 "Metric row for player "
-                f"{row.value.player_id!r} uses non-canonical season_id {row.value.season_id!r}"
+                f"{row.value.player.player_id!r} uses non-canonical season_id "
+                f"{row.value.season_id!r}"
             )
 
         if expected_team_filter is None:
@@ -99,38 +100,38 @@ def validate_rawr_rows(
         elif row.snapshot_id != expected_snapshot_id:
             raise ValueError("Metric rows in the same batch must use one snapshot_id")
 
-        if row.value.player_id <= 0:
-            raise ValueError(f"Metric row has invalid player_id {row.value.player_id!r}")
+        if row.value.player.player_id <= 0:
+            raise ValueError(f"Metric row has invalid player_id {row.value.player.player_id!r}")
         _validate_required_text(
-            row.value.player_name,
-            f"player_name for player {row.value.player_id}",
+            row.value.player.player_name,
+            f"player_name for player {row.value.player.player_id}",
         )
-        if not math.isfinite(row.value.coefficient):
+        if not math.isfinite(row.value.result.coefficient):
             raise ValueError(
-                f"Metric row for player {row.value.player_id!r} has non-finite value"
+                f"Metric row for player {row.value.player.player_id!r} has non-finite value"
             )
         _validate_optional_non_negative_int(
-            row.value.games,
-            f"games for player {row.value.player_id}",
+            row.value.result.games,
+            f"games for player {row.value.player.player_id}",
         )
         _validate_optional_non_negative_float(
-            row.value.average_minutes,
-            f"average_minutes for player {row.value.player_id}",
+            row.value.minutes.average_minutes,
+            f"average_minutes for player {row.value.player.player_id}",
         )
         _validate_optional_non_negative_float(
-            row.value.total_minutes,
-            f"total_minutes for player {row.value.player_id}",
+            row.value.minutes.total_minutes,
+            f"total_minutes for player {row.value.player.player_id}",
         )
         if (
-            row.value.average_minutes is not None
-            and row.value.total_minutes is not None
-            and row.value.total_minutes + 1e-9 < row.value.average_minutes
+            row.value.minutes.average_minutes is not None
+            and row.value.minutes.total_minutes is not None
+            and row.value.minutes.total_minutes + 1e-9 < row.value.minutes.average_minutes
         ):
             raise ValueError(
-                f"Metric row for player {row.value.player_id!r} has total_minutes "
+                f"Metric row for player {row.value.player.player_id!r} has total_minutes "
                 "smaller than average_minutes"
             )
-        row_key = (row.value.season_id, row.value.player_id)
+        row_key = (row.value.season_id, row.value.player.player_id)
         if row_key in row_keys:
             raise ValueError(f"Duplicate metric row for {row_key!r}")
         row_keys.add(row_key)
@@ -156,7 +157,7 @@ def validate_wowy_rows(
     snapshot_id_seen = False
 
     for row in rows:
-        player_id = row.value.player_id
+        player_id = row.value.player.player_id
         if row.metric_id != metric_id:
             raise ValueError(
                 f"Metric row for player {player_id!r} has metric_id {row.metric_id!r}; "
@@ -215,41 +216,45 @@ def validate_wowy_rows(
 
         if player_id <= 0:
             raise ValueError(f"Metric row has invalid player_id {player_id!r}")
-        _validate_required_text(row.value.player_name, f"player_name for player {player_id}")
-        if not math.isfinite(row.value.value):
+        _validate_required_text(row.value.player.player_name, f"player_name for player {player_id}")
+        if row.value.result.value is None or not math.isfinite(row.value.result.value):
             raise ValueError(f"Metric row for player {player_id!r} has non-finite value")
         _validate_optional_non_negative_int(
-            row.value.games_with,
+            row.value.result.games_with,
             f"games_with for player {player_id}",
         )
         _validate_optional_non_negative_int(
-            row.value.games_without,
+            row.value.result.games_without,
             f"games_without for player {player_id}",
         )
-        if not math.isfinite(row.value.avg_margin_with):
+        if row.value.result.avg_margin_with is None or not math.isfinite(
+            row.value.result.avg_margin_with
+        ):
             raise ValueError(
                 f"Metric row for player {player_id!r} has non-finite avg_margin_with"
             )
-        if not math.isfinite(row.value.avg_margin_without):
+        if row.value.result.avg_margin_without is None or not math.isfinite(
+            row.value.result.avg_margin_without
+        ):
             raise ValueError(
                 f"Metric row for player {player_id!r} has non-finite avg_margin_without"
             )
-        if row.value.raw_wowy_score is not None and not math.isfinite(row.value.raw_wowy_score):
+        if row.value.result.raw_value is not None and not math.isfinite(row.value.result.raw_value):
             raise ValueError(
                 f"Metric row for player {player_id!r} has non-finite raw_wowy_score"
             )
         _validate_optional_non_negative_float(
-            row.value.average_minutes,
+            row.value.minutes.average_minutes,
             f"average_minutes for player {player_id}",
         )
         _validate_optional_non_negative_float(
-            row.value.total_minutes,
+            row.value.minutes.total_minutes,
             f"total_minutes for player {player_id}",
         )
         if (
-            row.value.average_minutes is not None
-            and row.value.total_minutes is not None
-            and row.value.total_minutes + 1e-9 < row.value.average_minutes
+            row.value.minutes.average_minutes is not None
+            and row.value.minutes.total_minutes is not None
+            and row.value.minutes.total_minutes + 1e-9 < row.value.minutes.average_minutes
         ):
             raise ValueError(
                 f"Metric row for player {player_id!r} has total_minutes "

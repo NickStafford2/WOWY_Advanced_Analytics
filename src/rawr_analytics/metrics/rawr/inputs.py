@@ -47,7 +47,7 @@ def validate_request(request: RawrRequest) -> None:
 
 
 def _validate_season_input(season_input: RawrSeasonInput) -> None:
-    player_keys = {(player.season, player.player_id) for player in season_input.players}
+    player_keys = {(player.season, player.player.player_id) for player in season_input.players}
     if len(player_keys) != len(season_input.players):
         raise ValueError(f"RAWR season {season_input.season!r} has duplicate player contexts")
     for observation in season_input.observations:
@@ -70,9 +70,11 @@ def passes_minute_filters(
     min_total_minutes: float | None,
 ) -> bool:
     if min_average_minutes is not None and (
-        player.average_minutes is None or player.average_minutes < min_average_minutes
+        player.minutes.average_minutes is None
+        or player.minutes.average_minutes < min_average_minutes
     ):
         return False
     return min_total_minutes is None or (
-        player.total_minutes is not None and player.total_minutes >= min_total_minutes
+        player.minutes.total_minutes is not None
+        and player.minutes.total_minutes >= min_total_minutes
     )

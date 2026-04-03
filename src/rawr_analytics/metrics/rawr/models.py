@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
+from rawr_analytics.shared.player import PlayerMinutes, PlayerSummary
 from rawr_analytics.shared.season import Season
 from rawr_analytics.shared.team import Team
 
@@ -20,10 +21,8 @@ class RawrObservation:
 @dataclass(frozen=True)
 class RawrPlayerContext:
     season: Season
-    player_id: int
-    player_name: str
-    average_minutes: float | None
-    total_minutes: float | None
+    player: PlayerSummary
+    minutes: PlayerMinutes
 
 
 @dataclass(frozen=True)
@@ -31,6 +30,12 @@ class RawrSeasonInput:
     season: Season
     observations: list[RawrObservation]
     players: list[RawrPlayerContext]
+
+
+@dataclass(frozen=True)
+class RawrValue:
+    games: int
+    coefficient: float
 
 
 @dataclass(frozen=True)
@@ -48,34 +53,24 @@ class RawrRequest:
 @dataclass(frozen=True)
 class RawrPlayerEstimate:
     season: Season
-    player_id: int
-    player_name: str
-    games: int
-    average_minutes: float | None
-    total_minutes: float | None
-    coefficient: float
+    player: PlayerSummary
+    result: RawrValue
 
 
 @dataclass(frozen=True)
 class RawrPlayerSeasonRecord:
     season: Season
-    player_id: int
-    player_name: str
-    games: int
-    average_minutes: float | None
-    total_minutes: float | None
-    coefficient: float
+    player: PlayerSummary
+    minutes: PlayerMinutes
+    result: RawrValue
 
 
 @dataclass(frozen=True)
 class RawrPlayerSeasonValue:
     season_id: str
-    player_id: int
-    player_name: str
-    coefficient: float
-    games: int
-    average_minutes: float | None
-    total_minutes: float | None
+    player: PlayerSummary
+    minutes: PlayerMinutes
+    result: RawrValue
 
 
 @dataclass(frozen=True)

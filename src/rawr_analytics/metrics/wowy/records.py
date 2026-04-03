@@ -18,7 +18,7 @@ def _build_season_records(
     *,
     request: WowyRequest,
 ) -> list[WowyPlayerSeasonRecord]:
-    player_contexts = {player.player_id: player for player in season_input.players}
+    player_contexts = {player.player.player_id: player for player in season_input.players}
     results = compute_wowy(season_input.games)
     filtered_results = filter_results(
         results,
@@ -29,7 +29,7 @@ def _build_season_records(
     records: list[WowyPlayerSeasonRecord] = []
     ranked_results = sorted(
         filtered_results.items(),
-        key=lambda item: item[1].wowy_score if item[1].wowy_score is not None else float("-inf"),
+        key=lambda item: item[1].value if item[1].value is not None else float("-inf"),
         reverse=True,
     )
     for player_id, value in ranked_results:
@@ -42,19 +42,13 @@ def _build_season_records(
             continue
         assert value.avg_margin_with is not None
         assert value.avg_margin_without is not None
-        assert value.wowy_score is not None
+        assert value.value is not None
         records.append(
             WowyPlayerSeasonRecord(
                 season=season_input.season,
-                player_id=player.player_id,
-                player_name=player.player_name,
-                games_with=value.games_with,
-                games_without=value.games_without,
-                avg_margin_with=value.avg_margin_with,
-                avg_margin_without=value.avg_margin_without,
-                wowy_score=value.wowy_score,
-                average_minutes=player.average_minutes,
-                total_minutes=player.total_minutes,
+                player=player.player,
+                minutes=player.minutes,
+                result=value,
             )
         )
     return records

@@ -21,6 +21,7 @@ from rawr_analytics.metrics.wowy.models import (
     WowyPlayerContext,
     WowyPlayerSeasonRecord,
     WowyPlayerSeasonValue,
+    WowyPlayerValue,
     WowyRequest,
     WowySeasonInput,
 )
@@ -43,6 +44,7 @@ __all__ = [
     "WowyPlayerContext",
     "WowyPlayerSeasonRecord",
     "WowyPlayerSeasonValue",
+    "WowyPlayerValue",
     "WowyQuery",
     "WowyQueryFilters",
     "WowyRequest",

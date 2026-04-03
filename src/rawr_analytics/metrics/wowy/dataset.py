@@ -10,6 +10,7 @@ from rawr_analytics.metrics.wowy.models import (
     WowyCustomQueryResult,
     WowyPlayerSeasonRecord,
     WowyPlayerSeasonValue,
+    WowyPlayerValue,
     WowyRequest,
     WowySeasonInput,
 )
@@ -65,33 +66,34 @@ def _build_wowy_query_row(
     if metric == Metric.WOWY:
         return WowyPlayerSeasonValue(
             season_id=record.season.id,
-            player_id=record.player_id,
-            player_name=record.player_name,
-            value=record.wowy_score,
-            games_with=record.games_with,
-            games_without=record.games_without,
-            avg_margin_with=record.avg_margin_with,
-            avg_margin_without=record.avg_margin_without,
-            average_minutes=record.average_minutes,
-            total_minutes=record.total_minutes,
+            player=record.player,
+            minutes=record.minutes,
+            result=WowyPlayerValue(
+                games_with=record.result.games_with,
+                games_without=record.result.games_without,
+                avg_margin_with=record.result.avg_margin_with,
+                avg_margin_without=record.result.avg_margin_without,
+                value=record.result.value,
+                raw_value=None,
+            ),
         )
     if metric == Metric.WOWY_SHRUNK:
         return WowyPlayerSeasonValue(
             season_id=record.season.id,
-            player_id=record.player_id,
-            player_name=record.player_name,
-            value=compute_wowy_shrinkage_score(
-                games_with=record.games_with,
-                games_without=record.games_without,
-                wowy_score=record.wowy_score,
-                prior_games=DEFAULT_WOWY_SHRINKAGE_PRIOR_GAMES,
+            player=record.player,
+            minutes=record.minutes,
+            result=WowyPlayerValue(
+                games_with=record.result.games_with,
+                games_without=record.result.games_without,
+                avg_margin_with=record.result.avg_margin_with,
+                avg_margin_without=record.result.avg_margin_without,
+                value=compute_wowy_shrinkage_score(
+                    games_with=record.result.games_with,
+                    games_without=record.result.games_without,
+                    wowy_score=record.result.value,
+                    prior_games=DEFAULT_WOWY_SHRINKAGE_PRIOR_GAMES,
+                ),
+                raw_value=record.result.raw_value,
             ),
-            games_with=record.games_with,
-            games_without=record.games_without,
-            avg_margin_with=record.avg_margin_with,
-            avg_margin_without=record.avg_margin_without,
-            average_minutes=record.average_minutes,
-            total_minutes=record.total_minutes,
-            raw_wowy_score=record.wowy_score,
         )
     raise ValueError(f"Unknown WOWY metric: {metric}")

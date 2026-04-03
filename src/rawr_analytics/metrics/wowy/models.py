@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
+from rawr_analytics.shared.player import PlayerMinutes, PlayerSummary
 from rawr_analytics.shared.season import Season
 from rawr_analytics.shared.team import Team
 
@@ -16,10 +17,8 @@ class WowyGame:
 
 @dataclass(frozen=True)
 class WowyPlayerContext:
-    player_id: int
-    player_name: str
-    average_minutes: float | None
-    total_minutes: float | None
+    player: PlayerSummary
+    minutes: PlayerMinutes
 
 
 @dataclass(frozen=True)
@@ -44,36 +43,24 @@ class WowyPlayerValue:
     games_without: int
     avg_margin_with: float | None
     avg_margin_without: float | None
-    wowy_score: float | None
+    value: float | None
+    raw_value: float | None = None
 
 
 @dataclass(frozen=True)
 class WowyPlayerSeasonRecord:
     season: Season
-    player_id: int
-    player_name: str
-    games_with: int
-    games_without: int
-    avg_margin_with: float
-    avg_margin_without: float
-    wowy_score: float
-    average_minutes: float | None
-    total_minutes: float | None
+    player: PlayerSummary
+    minutes: PlayerMinutes
+    result: WowyPlayerValue
 
 
 @dataclass(frozen=True)
 class WowyPlayerSeasonValue:
     season_id: str
-    player_id: int
-    player_name: str
-    value: float
-    games_with: int
-    games_without: int
-    avg_margin_with: float
-    avg_margin_without: float
-    average_minutes: float | None
-    total_minutes: float | None
-    raw_wowy_score: float | None = None
+    player: PlayerSummary
+    minutes: PlayerMinutes
+    result: WowyPlayerValue
 
 
 @dataclass(frozen=True)

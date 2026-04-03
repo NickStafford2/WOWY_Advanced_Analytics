@@ -23,6 +23,7 @@ from rawr_analytics.metrics.wowy.models import (
 )
 from rawr_analytics.nba import player_has_positive_minutes
 from rawr_analytics.nba.models import NormalizedGamePlayerRecord, NormalizedGameRecord
+from rawr_analytics.shared.player import PlayerMinutes, PlayerSummary
 from rawr_analytics.shared.scope import TeamSeasonScope
 from rawr_analytics.shared.season import Season, SeasonType
 from rawr_analytics.shared.team import Team
@@ -94,10 +95,14 @@ def load_wowy_season_inputs(
                 games=games_by_season[season],
                 players=[
                     WowyPlayerContext(
-                        player_id=player_id,
-                        player_name=player_names.get(player_id, str(player_id)),
-                        average_minutes=minute_stats.get((season, player_id), (None, None))[0],
-                        total_minutes=minute_stats.get((season, player_id), (None, None))[1],
+                        player=PlayerSummary(
+                            player_id=player_id,
+                            player_name=player_names.get(player_id, str(player_id)),
+                        ),
+                        minutes=PlayerMinutes(
+                            average_minutes=minute_stats.get((season, player_id), (None, None))[0],
+                            total_minutes=minute_stats.get((season, player_id), (None, None))[1],
+                        ),
                     )
                     for player_id in player_ids
                 ],
@@ -168,10 +173,14 @@ def _load_rawr_season_input(
         players=[
             RawrPlayerContext(
                 season=season,
-                player_id=player_id,
-                player_name=player_names.get(player_id, str(player_id)),
-                average_minutes=player_minute_stats.get((season, player_id), (None, None))[0],
-                total_minutes=player_minute_stats.get((season, player_id), (None, None))[1],
+                player=PlayerSummary(
+                    player_id=player_id,
+                    player_name=player_names.get(player_id, str(player_id)),
+                ),
+                minutes=PlayerMinutes(
+                    average_minutes=player_minute_stats.get((season, player_id), (None, None))[0],
+                    total_minutes=player_minute_stats.get((season, player_id), (None, None))[1],
+                ),
             )
             for player_id in player_ids
         ],

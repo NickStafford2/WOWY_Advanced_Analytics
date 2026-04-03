@@ -232,14 +232,22 @@ def _aggregate_wowy_training_records(
 ) -> dict[int, _AggregatedPlayerValue]:
     grouped: dict[int, list[WowyPlayerSeasonRecord]] = {}
     for record in records:
-        grouped.setdefault(record.player_id, []).append(record)
+        grouped.setdefault(record.player.player_id, []).append(record)
     return {
         player_id: _AggregatedPlayerValue(
             player_id=player_id,
-            player_name=player_records[0].player_name,
+            player_name=player_records[0].player.player_name,
             value=_aggregate_values(
-                [record.wowy_score for record in player_records],
-                [record.season for record in player_records],
+                [
+                    record.result.value
+                    for record in player_records
+                    if record.result.value is not None
+                ],
+                [
+                    record.season
+                    for record in player_records
+                    if record.result.value is not None
+                ],
                 aggregation,
             ),
             season_count=len(player_records),
@@ -254,13 +262,13 @@ def _aggregate_rawr_training_records(
 ) -> dict[int, _AggregatedPlayerValue]:
     grouped: dict[int, list[RawrPlayerSeasonRecord]] = {}
     for record in records:
-        grouped.setdefault(record.player_id, []).append(record)
+        grouped.setdefault(record.player.player_id, []).append(record)
     return {
         player_id: _AggregatedPlayerValue(
             player_id=player_id,
-            player_name=player_records[0].player_name,
+            player_name=player_records[0].player.player_name,
             value=_aggregate_values(
-                [record.coefficient for record in player_records],
+                [record.result.coefficient for record in player_records],
                 [record.season for record in player_records],
                 aggregation,
             ),
@@ -291,15 +299,17 @@ def _aggregate_values(
 def _build_holdout_targets(
     records: list[WowyPlayerSeasonRecord],
 ) -> dict[int, _AggregatedPlayerValue]:
-    return {
-        record.player_id: _AggregatedPlayerValue(
-            player_id=record.player_id,
-            player_name=record.player_name,
-            value=record.wowy_score,
+    targets: dict[int, _AggregatedPlayerValue] = {}
+    for record in records:
+        if record.result.value is None:
+            continue
+        targets[record.player.player_id] = _AggregatedPlayerValue(
+            player_id=record.player.player_id,
+            player_name=record.player.player_name,
+            value=record.result.value,
             season_count=1,
         )
-        for record in records
-    }
+    return targets
 
 
 def _build_comparison_result(

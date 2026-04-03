@@ -4,7 +4,8 @@ from dataclasses import dataclass
 
 from rawr_analytics.data._paths import METRIC_STORE_DB_PATH
 from rawr_analytics.data.metric_store.schema import connect, initialize_player_metrics_db
-from rawr_analytics.metrics.rawr import RawrPlayerSeasonValue
+from rawr_analytics.metrics.rawr import RawrPlayerSeasonValue, RawrValue
+from rawr_analytics.shared.player import PlayerMinutes, PlayerSummary
 
 
 @dataclass(frozen=True)
@@ -70,12 +71,18 @@ def load_rawr_player_season_value_rows(
             season_type=row["season_type"],
             value=RawrPlayerSeasonValue(
                 season_id=row["season_id"],
-                player_id=row["player_id"],
-                player_name=row["player_name"],
-                coefficient=row["coefficient"],
-                games=row["games"],
-                average_minutes=row["average_minutes"],
-                total_minutes=row["total_minutes"],
+                player=PlayerSummary(
+                    player_id=row["player_id"],
+                    player_name=row["player_name"],
+                ),
+                minutes=PlayerMinutes(
+                    average_minutes=row["average_minutes"],
+                    total_minutes=row["total_minutes"],
+                ),
+                result=RawrValue(
+                    games=row["games"],
+                    coefficient=row["coefficient"],
+                ),
             ),
         )
         for row in rows

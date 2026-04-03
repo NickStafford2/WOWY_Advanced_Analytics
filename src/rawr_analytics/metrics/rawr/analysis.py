@@ -14,9 +14,11 @@ from rawr_analytics.metrics.rawr.models import (
     RawrObservation,
     RawrPlayerEstimate,
     RawrResult,
+    RawrValue,
     RidgeTuningResult,
     RidgeTuningSummary,
 )
+from rawr_analytics.shared.player import PlayerSummary
 from rawr_analytics.shared.season import Season
 from rawr_analytics.shared.team import Team
 
@@ -71,12 +73,14 @@ def fit_player_rawr(
     estimates = [
         RawrPlayerEstimate(
             season=season,
-            player_id=player_id,
-            player_name=player_names.get(player_id, str(player_id)),
-            games=games_by_player_season[(season, player_id)],
-            average_minutes=None,
-            total_minutes=None,
-            coefficient=model.coefficients[index + 2],
+            player=PlayerSummary(
+                player_id=player_id,
+                player_name=player_names.get(player_id, str(player_id)),
+            ),
+            result=RawrValue(
+                games=games_by_player_season[(season, player_id)],
+                coefficient=model.coefficients[index + 2],
+            ),
         )
         for index, (season, player_id) in enumerate(included_player_keys)
     ]

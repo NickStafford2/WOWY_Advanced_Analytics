@@ -66,12 +66,9 @@ def build_rawr_custom_query(
         rows=[
             RawrPlayerSeasonValue(
                 season_id=record.season.id,
-                player_id=record.player_id,
-                player_name=record.player_name,
-                coefficient=record.coefficient,
-                games=record.games,
-                average_minutes=record.average_minutes,
-                total_minutes=record.total_minutes,
+                player=record.player,
+                minutes=record.minutes,
+                result=record.result,
             )
             for record in records
         ],

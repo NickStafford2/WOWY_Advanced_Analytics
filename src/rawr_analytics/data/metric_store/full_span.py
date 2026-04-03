@@ -20,10 +20,10 @@ def build_rawr_full_span_rows(
         season_ids=season_ids,
         player_season_values=[
             (
-                row.value.player_id,
-                row.value.player_name,
+                row.value.player.player_id,
+                row.value.player.player_name,
                 row.value.season_id,
-                row.value.coefficient,
+                row.value.result.coefficient,
             )
             for row in rows
         ],
@@ -37,19 +37,23 @@ def build_wowy_full_span_rows(
     scope_key: str,
     season_ids: list[str],
 ) -> tuple[list[MetricFullSpanSeriesRow], list[MetricFullSpanPointRow]]:
+    player_season_values: list[tuple[int, str, str, float]] = []
+    for row in rows:
+        if row.value.result.value is None:
+            continue
+        player_season_values.append(
+            (
+                row.value.player.player_id,
+                row.value.player.player_name,
+                row.value.season_id,
+                row.value.result.value,
+            )
+        )
     return _build_metric_full_span_rows(
         metric_id=metric_id,
         scope_key=scope_key,
         season_ids=season_ids,
-        player_season_values=[
-            (
-                row.value.player_id,
-                row.value.player_name,
-                row.value.season_id,
-                row.value.value,
-            )
-            for row in rows
-        ],
+        player_season_values=player_season_values,
     )
 
 

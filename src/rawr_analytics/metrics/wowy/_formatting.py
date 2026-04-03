@@ -12,15 +12,18 @@ def format_results_table(
     if not ranked:
         return "WOWY results (Version 1)\nNo players matched the current filters."
 
-    name_width = max(len("player"), *(len(record.player_name) for record in ranked))
-    player_id_width = max(len("player_id"), *(len(str(record.player_id)) for record in ranked))
+    name_width = max(len("player"), *(len(record.player.player_name) for record in ranked))
+    player_id_width = max(
+        len("player_id"),
+        *(len(str(record.player.player_id)) for record in ranked),
+    )
     avg_minutes_width = max(
         len("avg_min"),
-        *(len(_format_minutes_value(record.average_minutes)) for record in ranked),
+        *(len(_format_minutes_value(record.minutes.average_minutes)) for record in ranked),
     )
     total_minutes_width = max(
         len("tot_min"),
-        *(len(_format_minutes_value(record.total_minutes)) for record in ranked),
+        *(len(_format_minutes_value(record.minutes.total_minutes)) for record in ranked),
     )
 
     lines = [
@@ -35,15 +38,15 @@ def format_results_table(
     ]
     for record in ranked:
         lines.append(
-            f"{record.player_name:<{name_width}} "
-            f"{record.player_id:<{player_id_width}} "
-            f"{_format_minutes_value(record.average_minutes):>{avg_minutes_width}} "
-            f"{_format_minutes_value(record.total_minutes):>{total_minutes_width}} "
-            f"{record.games_with:>6} "
-            f"{record.games_without:>8} "
-            f"{record.avg_margin_with:>12.2f} "
-            f"{record.avg_margin_without:>14.2f} "
-            f"{record.wowy_score:>10.2f}"
+            f"{record.player.player_name:<{name_width}} "
+            f"{record.player.player_id:<{player_id_width}} "
+            f"{_format_minutes_value(record.minutes.average_minutes):>{avg_minutes_width}} "
+            f"{_format_minutes_value(record.minutes.total_minutes):>{total_minutes_width}} "
+            f"{record.result.games_with:>6} "
+            f"{record.result.games_without:>8} "
+            f"{record.result.avg_margin_with:>12.2f} "
+            f"{record.result.avg_margin_without:>14.2f} "
+            f"{record.result.value:>10.2f}"
         )
     return "\n".join(lines)
 

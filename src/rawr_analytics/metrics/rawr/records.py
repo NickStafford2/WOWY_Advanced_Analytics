@@ -15,7 +15,11 @@ def build_player_season_records(request: RawrRequest) -> list[RawrPlayerSeasonRe
     for season_input in sorted(request.season_inputs, key=lambda item: item.season.id):
         records.extend(_build_season_records(season_input, request=request))
     records.sort(
-        key=lambda record: (record.season.id, record.coefficient, record.player_name),
+        key=lambda record: (
+            record.season.id,
+            record.result.coefficient,
+            record.player.player_name,
+        ),
         reverse=True,
     )
     return records
@@ -26,10 +30,12 @@ def _build_season_records(
     *,
     request: RawrRequest,
 ) -> list[RawrPlayerSeasonRecord]:
-    player_contexts = {player.player_id: player for player in season_input.players}
+    player_contexts = {player.player.player_id: player for player in season_input.players}
     result = fit_player_rawr(
         season_input.observations,
-        player_names={player.player_id: player.player_name for player in season_input.players},
+        player_names={
+            player.player.player_id: player.player.player_name for player in season_input.players
+        },
         season=season_input.season,
         min_games=request.min_games,
         ridge_alpha=request.ridge_alpha,
@@ -40,7 +46,7 @@ def _build_season_records(
 
     records: list[RawrPlayerSeasonRecord] = []
     for estimate in result.estimates:
-        player = player_contexts[estimate.player_id]
+        player = player_contexts[estimate.player.player_id]
         if not passes_minute_filters(
             player,
             min_average_minutes=request.min_average_minutes,
@@ -50,12 +56,9 @@ def _build_season_records(
         records.append(
             RawrPlayerSeasonRecord(
                 season=season_input.season,
-                player_id=estimate.player_id,
-                player_name=estimate.player_name,
-                games=estimate.games,
-                average_minutes=player.average_minutes,
-                total_minutes=player.total_minutes,
-                coefficient=estimate.coefficient,
+                player=estimate.player,
+                minutes=player.minutes,
+                result=estimate.result,
             )
         )
     return records

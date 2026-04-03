@@ -129,18 +129,18 @@ def _serialize_player_season_row(
 ) -> dict[str, Any]:
     return {
         "season_id": row.season_id,
-        "player_id": row.player_id,
-        "player_name": row.player_name,
-        "value": row.value,
-        "sample_size": row.games_with,
-        "secondary_sample_size": row.games_without,
-        "games_with": row.games_with,
-        "games_without": row.games_without,
-        "avg_margin_with": row.avg_margin_with,
-        "avg_margin_without": row.avg_margin_without,
-        "average_minutes": row.average_minutes,
-        "total_minutes": row.total_minutes,
-        "raw_wowy_score": row.raw_wowy_score,
+        "player_id": row.player.player_id,
+        "player_name": row.player.player_name,
+        "value": row.result.value,
+        "sample_size": row.result.games_with,
+        "secondary_sample_size": row.result.games_without,
+        "games_with": row.result.games_with,
+        "games_without": row.result.games_without,
+        "avg_margin_with": row.result.avg_margin_with,
+        "avg_margin_without": row.result.avg_margin_without,
+        "average_minutes": row.minutes.average_minutes,
+        "total_minutes": row.minutes.total_minutes,
+        "raw_wowy_score": row.result.raw_value,
     }
 
 
@@ -172,22 +172,25 @@ def _build_ranked_table_rows(
 ) -> list[dict[str, Any]]:
     rows_by_player: dict[int, list[WowyPlayerSeasonValue]] = {}
     for row in rows:
-        rows_by_player.setdefault(row.player_id, []).append(row)
+        rows_by_player.setdefault(row.player.player_id, []).append(row)
 
     ordered_seasons = sorted(dict.fromkeys(seasons))
     full_span_length = len(ordered_seasons) or 1
     ranked_rows: list[dict[str, Any]] = []
     for player_id, player_rows in rows_by_player.items():
-        total_minutes = sum((row.total_minutes or 0.0) for row in player_rows)
-        games_with = sum(row.games_with for row in player_rows)
-        games_without = sum(row.games_without for row in player_rows)
+        total_minutes = sum((row.minutes.total_minutes or 0.0) for row in player_rows)
+        games_with = sum(row.result.games_with for row in player_rows)
+        games_without = sum(row.result.games_without for row in player_rows)
         average_minutes = total_minutes / games_with if games_with > 0 else None
         ranked_rows.append(
             {
                 "rank": 0,
                 "player_id": player_id,
-                "player_name": player_rows[0].player_name,
-                "span_average_value": sum(row.value for row in player_rows) / full_span_length,
+                "player_name": player_rows[0].player.player_name,
+                "span_average_value": sum(
+                    row.result.value for row in player_rows if row.result.value is not None
+                )
+                / full_span_length,
                 "average_minutes": average_minutes,
                 "total_minutes": total_minutes,
                 "games_with": games_with,
@@ -207,7 +210,11 @@ def _build_ranked_table_rows(
                     {
                         "season": season_id,
                         "value": next(
-                            (row.value for row in player_rows if row.season_id == season_id),
+                            (
+                                row.result.value
+                                for row in player_rows
+                                if row.season_id == season_id
+                            ),
                             None,
                         ),
                     }
@@ -262,8 +269,19 @@ def _weighted_average_rows(
     weighted_total = 0.0
     weight_total = 0
     for row in rows:
-        value = getattr(row, value_key)
-        weight = getattr(row, weight_key)
+        if value_key == "avg_margin_with":
+            value = row.result.avg_margin_with
+        elif value_key == "avg_margin_without":
+            value = row.result.avg_margin_without
+        else:
+            raise ValueError(f"Unsupported WOWY weighted value key: {value_key}")
+
+        if weight_key == "games_with":
+            weight = row.result.games_with
+        elif weight_key == "games_without":
+            weight = row.result.games_without
+        else:
+            raise ValueError(f"Unsupported WOWY weighted weight key: {weight_key}")
         if value is None or weight <= 0:
             continue
         weighted_total += value * weight
