@@ -2,6 +2,8 @@
 
 from rawr_analytics.cli.cache_season_data import main as cache_season_data_main
 from rawr_analytics.cli.cache_season_data import run as cache_season_data_run
+from rawr_analytics.cli.rawr import main as rawr_main
+from rawr_analytics.cli.rawr import run as rawr_run
 from rawr_analytics.cli.rebuild_player_metrics_db import (
     build_parser as build_rebuild_player_metrics_db_parser,
 )
@@ -13,13 +15,19 @@ from rawr_analytics.cli.rebuild_player_metrics_db import (
 )
 from rawr_analytics.cli.run_web import main as run_web_main
 from rawr_analytics.cli.run_web import run as run_web_run
+from rawr_analytics.cli.wowy import main as wowy_main
+from rawr_analytics.cli.wowy import run as wowy_run
 
 __all__ = [
     "build_rebuild_player_metrics_db_parser",
     "cache_season_data_main",
     "cache_season_data_run",
+    "rawr_main",
+    "rawr_run",
     "rebuild_player_metrics_db_main",
     "rebuild_player_metrics_db_run",
     "run_web_main",
     "run_web_run",
+    "wowy_main",
+    "wowy_run",
 ]

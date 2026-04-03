@@ -13,8 +13,8 @@ dependencies = [
 ]
 
 [project.scripts]
-wowy = "rawr_analytics.metrics.wowy.cli:main"
-rawr = "rawr_analytics.metrics.rawr.cli:main"
+wowy = "rawr_analytics.cli.wowy:main"
+rawr = "rawr_analytics.cli.rawr:main"
 web = "rawr_analytics.cli.run_web:main"
 refresh-web-store = "rawr_analytics.cli.refresh_cli:main"
 audit-db = "rawr_analytics.data.db_validation_cli:main"
