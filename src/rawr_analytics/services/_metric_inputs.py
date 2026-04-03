@@ -3,8 +3,8 @@ from __future__ import annotations
 from collections import defaultdict
 from dataclasses import dataclass
 
-from rawr_analytics.basketball import player_has_positive_minutes
-from rawr_analytics.basketball.models import NormalizedGamePlayerRecord, NormalizedGameRecord
+from rawr_analytics.game_data import player_has_positive_minutes
+from rawr_analytics.game_data.models import NormalizedGamePlayerRecord, NormalizedGameRecord
 from rawr_analytics.data.game_cache import (
     list_cache_load_rows,
     load_normalized_scope_records_from_db,
