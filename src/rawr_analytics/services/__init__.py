@@ -1,4 +1,5 @@
-"""Stable application service boundary for outer layers."""
+"""Stable application service boundary for outer layers. I want most of these removed and a
+small interface. used by web as well as the cli."""
 
 from rawr_analytics.services.ingest import (
     IngestProgress,

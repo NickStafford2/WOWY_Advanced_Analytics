@@ -13,7 +13,7 @@ from rawr_analytics.services import (
     parse_rebuild_request,
     rebuild_player_metrics_db,
 )
-from scripts._render import (
+from rawr_analytics.services._render import (
     render_failure_summary,
     render_progress_line,
     render_team_complete_line,
