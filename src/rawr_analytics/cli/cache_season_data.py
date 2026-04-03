@@ -3,6 +3,7 @@ from __future__ import annotations
 import argparse
 import sys
 
+from rawr_analytics.cli._failure_logging import append_failure_log_entry
 from rawr_analytics.cli._ingest_terminal import (
     render_failure_summary,
     render_ingest_event,
@@ -79,6 +80,7 @@ def main(argv: list[str] | None = None) -> int:
             team_abbreviations=args.teams,
         ),
         event_fn=render_ingest_event,
+        failure_log_fn=append_failure_log_entry,
     )
     _render_failure_summary_for_result(result)
     return result.exit_status

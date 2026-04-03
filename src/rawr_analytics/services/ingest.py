@@ -26,6 +26,7 @@ from rawr_analytics.shared.team import Team
 
 _TeamProgressFn = Callable[["IngestProgress"], None]
 IngestEventFn = Callable[["IngestEvent"], None]
+FailureLogFn = Callable[["IngestFailureLogEntry"], None]
 _TeamSeasonFailureError = FetchError | PartialTeamSeasonError | ValueError
 
 
@@ -105,6 +106,15 @@ class SeasonRangeFailure:
     def scope(self) -> str:
         return self.request.label
 
+    def to_log_entry(self) -> IngestFailureLogEntry:
+        return IngestFailureLogEntry(
+            scope=self.scope,
+            team=self.request.team,
+            season=self.request.season,
+            failure_kind=self.failure_kind,
+            error=self.error,
+        )
+
 
 @dataclass(frozen=True)
 class IngestTeamFailedEvent:
@@ -153,6 +163,15 @@ class IngestRefreshRequest:
     team_abbreviations: list[str] | None = None
 
 
+@dataclass(frozen=True)
+class IngestFailureLogEntry:
+    scope: str
+    team: Team
+    season: Season
+    failure_kind: str
+    error: _TeamSeasonFailureError
+
+
 def refresh_team_season(
     request: IngestRequest,
     *,
@@ -173,6 +192,7 @@ def refresh_season_range(
     *,
     log_fn: LogFn | None = None,
     event_fn: IngestEventFn | None = None,
+    failure_log_fn: FailureLogFn | None = None,
 ) -> SeasonRangeResult:
     seasons = _build_seasons(request=request)
     season_total = len(seasons)
@@ -232,6 +252,7 @@ def refresh_season_range(
                 continue
 
             failures.append(failure)
+            _append_failure_log(failure_log_fn, failure)
             _emit_event(
                 event_fn,
                 IngestTeamFailedEvent(
@@ -392,8 +413,7 @@ def _ingest_team_season(
             failed_game_details=failures,
             failure_reason_counts=dict(sorted(failure_reason_counts.items())),
             failure_reason_examples={
-                reason: examples[:]
-                for reason, examples in sorted(failure_reason_examples.items())
+                reason: examples[:] for reason, examples in sorted(failure_reason_examples.items())
             },
         )
 
@@ -480,9 +500,20 @@ def _emit_event(event_fn: IngestEventFn | None, event: IngestEvent) -> None:
     event_fn(event)
 
 
+def _append_failure_log(
+    failure_log_fn: FailureLogFn | None,
+    failure: SeasonRangeFailure,
+) -> None:
+    if failure_log_fn is None:
+        return
+    failure_log_fn(failure.to_log_entry())
+
+
 __all__ = [
+    "FailureLogFn",
     "IngestEvent",
     "IngestEventFn",
+    "IngestFailureLogEntry",
     "IngestProgress",
     "IngestRefreshRequest",
     "IngestRequest",

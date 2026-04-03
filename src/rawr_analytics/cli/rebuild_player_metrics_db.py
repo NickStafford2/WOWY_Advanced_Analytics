@@ -4,6 +4,7 @@ import argparse
 import sys
 from collections.abc import Sequence
 
+from rawr_analytics.cli._failure_logging import append_failure_log_entry
 from rawr_analytics.cli._ingest_terminal import (
     render_failure_summary,
 )
@@ -79,6 +80,7 @@ def main(argv: list[str] | None = None) -> int:
             keep_existing_db=args.keep_existing_db,
         ),
         event_fn=render_rebuild_event,
+        failure_log_fn=append_failure_log_entry,
     )
     if result.deleted_existing_db:
         print("Deleted existing database before rebuild.")

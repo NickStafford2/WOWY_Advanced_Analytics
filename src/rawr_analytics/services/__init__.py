@@ -1,7 +1,9 @@
 """Public application service interface for CLI and web adapters."""
 
 from rawr_analytics.services.ingest import (
+    FailureLogFn,
     IngestEvent,
+    IngestFailureLogEntry,
     IngestProgress,
     IngestRefreshRequest,
     IngestResult,
@@ -39,7 +41,9 @@ from rawr_analytics.services.rebuild import (
 __all__ = [
     "DEFAULT_RAWR_RIDGE_ALPHA",
     "DEFAULT_WEB_METRIC_IDS",
+    "FailureLogFn",
     "IngestEvent",
+    "IngestFailureLogEntry",
     "IngestProgress",
     "IngestRefreshRequest",
     "IngestResult",

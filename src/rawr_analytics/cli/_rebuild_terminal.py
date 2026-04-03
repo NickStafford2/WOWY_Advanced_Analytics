@@ -10,7 +10,6 @@ from rawr_analytics.cli._ingest_terminal import (
     render_team_partial_failed_line,
     render_team_validation_failed_line,
 )
-from rawr_analytics.nba import append_ingest_failure_log
 from rawr_analytics.progress import TerminalProgressBar
 from rawr_analytics.services import (
     IngestSeasonStartedEvent,
@@ -54,13 +53,6 @@ def render_rebuild_event(event: RebuildEvent) -> None:
 
 
 def render_rebuild_team_failure(event: RebuildTeamFailureEvent) -> None:
-    append_ingest_failure_log(
-        team=event.team,
-        season=event.season,
-        failure_kind=event.failure_kind,
-        error=event.error,
-    )
-
     if event.failure_kind == "fetch_error":
         render_team_fetch_failed_line(
             team_index=event.team_index,

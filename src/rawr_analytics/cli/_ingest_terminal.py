@@ -3,7 +3,7 @@ from __future__ import annotations
 import json
 import sys
 
-from rawr_analytics.nba import FetchError, PartialTeamSeasonError, append_ingest_failure_log
+from rawr_analytics.nba import FetchError, PartialTeamSeasonError
 from rawr_analytics.nba.errors import GameNormalizationFailure
 from rawr_analytics.services import (
     IngestEvent,
@@ -53,13 +53,6 @@ def render_ingest_failure(
     team = request.team
     season = request.season
     error = failure.error
-
-    append_ingest_failure_log(
-        team=team,
-        season=season,
-        failure_kind=failure.failure_kind,
-        error=error,
-    )
 
     if failure.failure_kind == "fetch_error":
         assert isinstance(error, FetchError)
@@ -119,6 +112,7 @@ def render_ingest_event(event: IngestEvent) -> None:
         return
     if isinstance(event, IngestTeamFailedEvent):
         render_ingest_failure(event.team_index, event.team_total, event.failure)
+        return
 
 
 def _render_season_started(event: IngestSeasonStartedEvent) -> None:

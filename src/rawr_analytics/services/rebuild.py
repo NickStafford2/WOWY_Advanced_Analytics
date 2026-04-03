@@ -13,7 +13,9 @@ from rawr_analytics.metrics.constants import Metric
 from rawr_analytics.nba import FetchError, PartialTeamSeasonError
 from rawr_analytics.nba.errors import GameNormalizationFailure
 from rawr_analytics.services.ingest import (
+    FailureLogFn,
     IngestEvent,
+    IngestFailureLogEntry,
     IngestRefreshRequest,
     IngestSeasonStartedEvent,
     IngestTeamCompletedEvent,
@@ -137,6 +139,7 @@ def rebuild_player_metrics_db(
     request: RebuildRequest,
     *,
     event_fn: RebuildEventFn | None = None,
+    failure_log_fn: FailureLogFn | None = None,
 ) -> RebuildResult:
     deleted_existing_db = prepare_rebuild_storage(
         keep_existing_db=request.keep_existing_db
@@ -154,6 +157,7 @@ def rebuild_player_metrics_db(
             if event_fn is None
             else lambda event: _forward_rebuild_ingest_event(event_fn, event)
         ),
+        failure_log_fn=failure_log_fn,
     )
     if ingest_result.failures:
         return RebuildResult(
@@ -308,6 +312,7 @@ def _build_rebuild_team_failure_event(
 
 
 __all__ = [
+    "IngestFailureLogEntry",
     "RebuildEvent",
     "RebuildEventFn",
     "RebuildMetricRefreshProgressEvent",
