@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-from collections.abc import Callable
 from dataclasses import dataclass, fields, is_dataclass
 from enum import Enum
 from typing import Any
@@ -29,8 +28,6 @@ from rawr_analytics.shared.season import Season, SeasonType
 from rawr_analytics.shared.team import Team
 
 MetricView = str
-GetArgFn = Callable[[str, str | None], str | None]
-GetListFn = Callable[[str], list[str]]
 
 
 @dataclass(frozen=True)
@@ -63,41 +60,6 @@ class MetricExportResult:
     query: MetricQuery
     metric_label: str
     rows: list[dict[str, Any]]
-
-
-def build_metric_query_request(
-    *,
-    metric: str,
-    get_arg: GetArgFn,
-    get_list: GetListFn,
-) -> MetricQueryRequest:
-    parsed_season_type = SeasonType.parse(get_arg("season_type", "Regular Season"))
-    return MetricQueryRequest(
-        metric=Metric.parse(metric),
-        season_type=parsed_season_type,
-        teams=_parse_team_list(get_list("team_id")),
-        seasons=_parse_season_list(get_list("season"), season_type=parsed_season_type),
-        top_n=_parse_optional_int(get_arg("top_n", None)),
-        min_average_minutes=_parse_optional_float(get_arg("min_average_minutes", None)),
-        min_total_minutes=_parse_optional_float(get_arg("min_total_minutes", None)),
-        min_games=_parse_optional_int(get_arg("min_games", None)),
-        ridge_alpha=_parse_optional_float(get_arg("ridge_alpha", None)),
-        min_games_with=_parse_optional_int(get_arg("min_games_with", None)),
-        min_games_without=_parse_optional_int(get_arg("min_games_without", None)),
-    )
-
-
-def build_metric_options_request(
-    *,
-    metric: str,
-    get_arg: GetArgFn,
-    get_list: GetListFn,
-) -> MetricQueryRequest:
-    return MetricQueryRequest(
-        metric=Metric.parse(metric),
-        season_type=SeasonType.parse(get_arg("season_type", "Regular Season")),
-        teams=_parse_team_list(get_list("team_id")),
-    )
 
 
 def serialize_service_value(value: Any) -> Any:
@@ -288,9 +250,7 @@ __all__ = [
     "MetricQueryRequest",
     "MetricViewResult",
     "build_metric_options_payload",
-    "build_metric_options_request",
     "build_metric_query_export",
-    "build_metric_query_request",
     "build_metric_query_view",
     "serialize_service_value",
 ]

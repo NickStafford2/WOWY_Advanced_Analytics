@@ -7,7 +7,7 @@ from rawr_analytics.cli._ingest_terminal import (
     render_failure_summary,
     render_ingest_event,
 )
-from rawr_analytics.services.ingest import (
+from rawr_analytics.services import (
     IngestRefreshRequest,
     SeasonRangeResult,
     refresh_season_range,

@@ -12,12 +12,10 @@ from rawr_analytics.cli._ingest_terminal import (
 )
 from rawr_analytics.nba import append_ingest_failure_log
 from rawr_analytics.progress import TerminalProgressBar
-from rawr_analytics.services.ingest import (
+from rawr_analytics.services import (
     IngestSeasonStartedEvent,
     IngestTeamCompletedEvent,
     IngestTeamProgressEvent,
-)
-from rawr_analytics.services.rebuild import (
     RebuildEvent,
     RebuildMetricRefreshProgressEvent,
     RebuildTeamFailureEvent,

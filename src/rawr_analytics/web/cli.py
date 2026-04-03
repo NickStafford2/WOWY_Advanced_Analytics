@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import argparse
 
-from rawr_analytics.services.metric_refresh import (
+from rawr_analytics.services import (
     DEFAULT_RAWR_RIDGE_ALPHA,
     DEFAULT_WEB_METRIC_IDS,
     MetricStoreRefreshProgressEvent,

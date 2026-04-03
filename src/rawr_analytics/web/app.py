@@ -3,14 +3,16 @@ from __future__ import annotations
 import json
 from typing import Any
 
-from rawr_analytics.services.metric_query import (
+from rawr_analytics.metrics.constants import Metric
+from rawr_analytics.services import (
+    MetricQueryRequest,
     build_metric_options_payload,
-    build_metric_options_request,
     build_metric_query_export,
-    build_metric_query_request,
     build_metric_query_view,
     serialize_service_value,
 )
+from rawr_analytics.shared.season import Season, SeasonType
+from rawr_analytics.shared.team import Team
 
 
 def create_app():
@@ -19,10 +21,32 @@ def create_app():
     app = Flask(__name__)
 
     def parse_metric_query(metric: str):
-        return build_metric_query_request(
-            metric=metric,
-            get_arg=request.args.get,
-            get_list=request.args.getlist,
+        season_type = SeasonType.parse(request.args.get("season_type", "Regular Season"))
+        return MetricQueryRequest(
+            metric=Metric.parse(metric),
+            season_type=season_type,
+            teams=_parse_team_list(request.args.getlist("team_id")),
+            seasons=_parse_season_list(request.args.getlist("season"), season_type=season_type),
+            top_n=_parse_optional_int(request.args.get("top_n", None)),
+            min_average_minutes=_parse_optional_float(
+                request.args.get("min_average_minutes", None)
+            ),
+            min_total_minutes=_parse_optional_float(
+                request.args.get("min_total_minutes", None)
+            ),
+            min_games=_parse_optional_int(request.args.get("min_games", None)),
+            ridge_alpha=_parse_optional_float(request.args.get("ridge_alpha", None)),
+            min_games_with=_parse_optional_int(request.args.get("min_games_with", None)),
+            min_games_without=_parse_optional_int(
+                request.args.get("min_games_without", None)
+            ),
+        )
+
+    def parse_metric_options_query(metric: str):
+        return MetricQueryRequest(
+            metric=Metric.parse(metric),
+            season_type=SeasonType.parse(request.args.get("season_type", "Regular Season")),
+            teams=_parse_team_list(request.args.getlist("team_id")),
         )
 
     def json_metric_response(metric: str, view: str):
@@ -56,11 +80,7 @@ def create_app():
             lambda: jsonify(
                 serialize_service_value(
                     build_metric_options_payload(
-                        build_metric_options_request(
-                            metric=metric,
-                            get_arg=request.args.get,
-                            get_list=request.args.getlist,
-                        )
+                        parse_metric_options_query(metric)
                     )
                 )
             )
@@ -186,3 +206,40 @@ def _format_csv_value(value: Any) -> str:
     if value is None:
         return "—"
     return str(value)
+
+
+def _parse_optional_int(raw_value: str | None) -> int | None:
+    return None if raw_value is None else int(raw_value)
+
+
+def _parse_optional_float(raw_value: str | None) -> float | None:
+    return None if raw_value is None else float(raw_value)
+
+
+def _parse_positive_int_list(raw_values: list[str]) -> list[int] | None:
+    if not raw_values:
+        return None
+    parsed_values: list[int] = []
+    for raw_value in raw_values:
+        value = int(raw_value)
+        if value <= 0:
+            raise ValueError("team_id values must be positive integers")
+        parsed_values.append(value)
+    return parsed_values
+
+
+def _parse_team_list(raw_values: list[str]) -> list[Team] | None:
+    team_ids = _parse_positive_int_list(raw_values)
+    if team_ids is None:
+        return None
+    return [Team.from_id(team_id) for team_id in team_ids]
+
+
+def _parse_season_list(
+    raw_values: list[str],
+    *,
+    season_type: SeasonType,
+) -> list[Season] | None:
+    if not raw_values:
+        return None
+    return [Season(raw_value, season_type.value) for raw_value in raw_values]

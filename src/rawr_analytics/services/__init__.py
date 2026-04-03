@@ -1,16 +1,22 @@
-"""Public application service interface for CLI and web adapters.
+"""Public application service interface for CLI and web adapters."""
 
-This module re-exports the service workflows and shared constants that outer
-layers use. More specific request/result/event types remain defined in their
-own modules.
-"""
-
-from rawr_analytics.services.ingest import refresh_season_range
+from rawr_analytics.services.ingest import (
+    IngestEvent,
+    IngestProgress,
+    IngestRefreshRequest,
+    IngestResult,
+    IngestSeasonStartedEvent,
+    IngestTeamCompletedEvent,
+    IngestTeamFailedEvent,
+    IngestTeamProgressEvent,
+    SeasonRangeFailure,
+    SeasonRangeResult,
+    refresh_season_range,
+)
 from rawr_analytics.services.metric_query import (
+    MetricQueryRequest,
     build_metric_options_payload,
-    build_metric_options_request,
     build_metric_query_export,
-    build_metric_query_request,
     build_metric_query_view,
     serialize_service_value,
 )
@@ -21,6 +27,10 @@ from rawr_analytics.services.metric_refresh import (
     refresh_metric_store,
 )
 from rawr_analytics.services.rebuild import (
+    RebuildEvent,
+    RebuildMetricRefreshProgressEvent,
+    RebuildTeamFailureEvent,
+    RebuildValidationProgressEvent,
     build_rebuild_request,
     format_rebuild_validation_summary,
     rebuild_player_metrics_db,
@@ -29,10 +39,23 @@ from rawr_analytics.services.rebuild import (
 __all__ = [
     "DEFAULT_RAWR_RIDGE_ALPHA",
     "DEFAULT_WEB_METRIC_IDS",
+    "IngestEvent",
+    "IngestProgress",
+    "IngestRefreshRequest",
+    "IngestResult",
+    "IngestSeasonStartedEvent",
+    "IngestTeamCompletedEvent",
+    "IngestTeamFailedEvent",
+    "IngestTeamProgressEvent",
+    "MetricQueryRequest",
+    "RebuildEvent",
+    "RebuildMetricRefreshProgressEvent",
+    "RebuildTeamFailureEvent",
+    "RebuildValidationProgressEvent",
+    "SeasonRangeFailure",
+    "SeasonRangeResult",
     "build_metric_options_payload",
-    "build_metric_options_request",
     "build_metric_query_export",
-    "build_metric_query_request",
     "build_metric_query_view",
     "build_metric_store_refresh_request",
     "build_rebuild_request",

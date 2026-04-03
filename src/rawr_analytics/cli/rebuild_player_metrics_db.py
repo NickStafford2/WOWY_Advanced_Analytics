@@ -10,8 +10,8 @@ from rawr_analytics.cli._ingest_terminal import (
 from rawr_analytics.cli._rebuild_terminal import (
     render_rebuild_event,
 )
-from rawr_analytics.services.ingest import SeasonRangeFailure
-from rawr_analytics.services.rebuild import (
+from rawr_analytics.services import (
+    SeasonRangeFailure,
     build_rebuild_request,
     format_rebuild_validation_summary,
     rebuild_player_metrics_db,

@@ -5,7 +5,7 @@ import sys
 
 from rawr_analytics.nba import FetchError, PartialTeamSeasonError, append_ingest_failure_log
 from rawr_analytics.nba.errors import GameNormalizationFailure
-from rawr_analytics.services.ingest import (
+from rawr_analytics.services import (
     IngestEvent,
     IngestProgress,
     IngestResult,
