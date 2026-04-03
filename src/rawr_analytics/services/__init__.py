@@ -3,7 +3,6 @@
 from rawr_analytics.services.compare_rawr_configs import (
     CompareRawrConfigsEventFn,
     CompareRawrConfigsProgress,
-    CompareRawrConfigsRequest,
     ComparisonResult,
     compare_rawr_configs,
 )
@@ -51,7 +50,6 @@ __all__ = [
     "DEFAULT_WEB_METRIC_IDS",
     "CompareRawrConfigsEventFn",
     "CompareRawrConfigsProgress",
-    "CompareRawrConfigsRequest",
     "ComparisonResult",
     "FailureLogFn",
     "IngestEvent",

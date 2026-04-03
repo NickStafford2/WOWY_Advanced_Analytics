@@ -6,7 +6,6 @@ import sys
 from rawr_analytics.cli._progress_bar import TerminalProgressBar, print_status_box
 from rawr_analytics.services import (
     CompareRawrConfigsProgress,
-    CompareRawrConfigsRequest,
     ComparisonResult,
     compare_rawr_configs,
 )
@@ -113,23 +112,12 @@ def main(argv: list[str] | None = None) -> int:
     parser = _build_parser()
     args = parser.parse_args(argv)
     season_type = SeasonType.parse(args.season_type)
-    request = CompareRawrConfigsRequest(
-        train_seasons=[Season(season, season_type.value) for season in args.train_season],
-        holdout_season=Season(args.holdout_season, season_type.value),
-        season_type=season_type,
-        aggregation=args.aggregation,
-        teams=_parse_teams(args.team, season=Season(args.holdout_season, season_type.value)),
-        rawr_ridge_values=_parse_float_grid(args.rawr_ridge_grid),
-        shrinkage_modes=args.shrinkage_mode,
-        shrinkage_strength_values=_parse_float_grid(args.shrinkage_strength_grid),
-        shrinkage_minute_scale_values=_parse_float_grid(args.shrinkage_minute_scale_grid),
-        rawr_min_games=args.rawr_min_games,
-        holdout_min_games_with=args.holdout_min_games_with,
-        holdout_min_games_without=args.holdout_min_games_without,
-        min_average_minutes=args.min_average_minutes,
-        min_total_minutes=args.min_total_minutes,
-        top_n=args.top_n,
-    )
+    train_seasons = [Season(season, season_type.value) for season in args.train_season]
+    holdout_season = Season(args.holdout_season, season_type.value)
+    teams = _parse_teams(args.team, season=holdout_season)
+    rawr_ridge_values = _parse_float_grid(args.rawr_ridge_grid)
+    shrinkage_strength_values = _parse_float_grid(args.shrinkage_strength_grid)
+    shrinkage_minute_scale_values = _parse_float_grid(args.shrinkage_minute_scale_grid)
 
     print_status_box(
         "RAWR Tuning",
@@ -145,12 +133,39 @@ def main(argv: list[str] | None = None) -> int:
         ],
     )
     progress_bar = TerminalProgressBar("RAWR tune", total=1)
+    def _handle_progress(event: CompareRawrConfigsProgress) -> None:
+        _update_progress(progress_bar, event)
+
     results = compare_rawr_configs(
-        request,
-        event_fn=lambda event: _update_progress(progress_bar, event),
+        train_seasons=train_seasons,
+        holdout_season=holdout_season,
+        season_type=season_type,
+        aggregation=args.aggregation,
+        teams=teams,
+        rawr_ridge_values=rawr_ridge_values,
+        shrinkage_modes=args.shrinkage_mode,
+        shrinkage_strength_values=shrinkage_strength_values,
+        shrinkage_minute_scale_values=shrinkage_minute_scale_values,
+        rawr_min_games=args.rawr_min_games,
+        holdout_min_games_with=args.holdout_min_games_with,
+        holdout_min_games_without=args.holdout_min_games_without,
+        min_average_minutes=args.min_average_minutes,
+        min_total_minutes=args.min_total_minutes,
+        top_n=args.top_n,
+        event_fn=_handle_progress,
     )
     progress_bar.finish(detail="done")
-    print(build_compare_rawr_configs_summary(request, results))
+    print(
+        build_compare_rawr_configs_summary(
+            train_seasons=train_seasons,
+            holdout_season=holdout_season,
+            season_type=season_type,
+            aggregation=args.aggregation,
+            teams=teams,
+            top_n=args.top_n,
+            results=results,
+        )
+    )
     print(build_compare_rawr_configs_table(results))
     return 0
 
@@ -189,22 +204,26 @@ def _parse_teams(raw_values: list[str] | None, *, season: Season) -> list[Team] 
 
 
 def build_compare_rawr_configs_summary(
-    request: CompareRawrConfigsRequest,
+    *,
+    train_seasons: list[Season],
+    holdout_season: Season,
+    season_type: SeasonType,
+    aggregation: str,
+    teams: list[Team] | None,
+    top_n: int,
     results: list[ComparisonResult],
 ) -> str:
-    train_label = ",".join(season.id for season in request.train_seasons)
+    train_label = ",".join(season.id for season in train_seasons)
     team_label = "all-teams"
-    if request.teams:
-        team_label = ",".join(
-            team.abbreviation(season=request.holdout_season) for team in request.teams
-        )
+    if teams:
+        team_label = ",".join(team.abbreviation(season=holdout_season) for team in teams)
     best = results[0] if results else None
     lines = [
         (
-            f"train_seasons={train_label} holdout_season={request.holdout_season.id} "
-            f"aggregation={request.aggregation} top_n={request.top_n}"
+            f"train_seasons={train_label} holdout_season={holdout_season.id} "
+            f"aggregation={aggregation} top_n={top_n}"
         ),
-        f"team_filter={team_label} season_type={request.season_type.to_nba_format()}",
+        f"team_filter={team_label} season_type={season_type.to_nba_format()}",
     ]
     if best is not None:
         best_suffix = ""

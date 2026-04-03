@@ -42,25 +42,6 @@ class ComparisonResult:
 
 
 @dataclass(frozen=True)
-class CompareRawrConfigsRequest:
-    train_seasons: list[Season]
-    holdout_season: Season
-    season_type: SeasonType
-    aggregation: str = "mean"
-    teams: list[Team] | None = None
-    rawr_ridge_values: list[float] | None = None
-    shrinkage_modes: list[str] | None = None
-    shrinkage_strength_values: list[float] | None = None
-    shrinkage_minute_scale_values: list[float] | None = None
-    rawr_min_games: int = 35
-    holdout_min_games_with: int = 15
-    holdout_min_games_without: int = 2
-    min_average_minutes: float = 30.0
-    min_total_minutes: float = 600.0
-    top_n: int = 20
-
-
-@dataclass(frozen=True)
 class CompareRawrConfigsProgress:
     current: int
     total: int
@@ -71,47 +52,73 @@ CompareRawrConfigsEventFn = Callable[[CompareRawrConfigsProgress], None]
 
 
 def compare_rawr_configs(
-    request: CompareRawrConfigsRequest,
     *,
+    train_seasons: list[Season],
+    holdout_season: Season,
+    season_type: SeasonType,
+    aggregation: str = "mean",
+    teams: list[Team] | None = None,
+    rawr_ridge_values: list[float] | None = None,
+    shrinkage_modes: list[str] | None = None,
+    shrinkage_strength_values: list[float] | None = None,
+    shrinkage_minute_scale_values: list[float] | None = None,
+    rawr_min_games: int = 35,
+    holdout_min_games_with: int = 15,
+    holdout_min_games_without: int = 2,
+    min_average_minutes: float = 30.0,
+    min_total_minutes: float = 600.0,
+    top_n: int = 20,
     event_fn: CompareRawrConfigsEventFn | None = None,
 ) -> list[ComparisonResult]:
-    _validate_request(request)
+    _validate_request(
+        train_seasons=train_seasons,
+        holdout_season=holdout_season,
+        rawr_ridge_values=rawr_ridge_values,
+        shrinkage_strength_values=shrinkage_strength_values,
+        shrinkage_minute_scale_values=shrinkage_minute_scale_values,
+        top_n=top_n,
+    )
 
-    total_steps = _count_evaluation_steps(request)
+    total_steps = _count_evaluation_steps(
+        rawr_ridge_values=rawr_ridge_values,
+        shrinkage_modes=shrinkage_modes,
+        shrinkage_strength_values=shrinkage_strength_values,
+        shrinkage_minute_scale_values=shrinkage_minute_scale_values,
+    )
     completed_steps = 0
 
     holdout_season_inputs = load_wowy_season_inputs(
-        teams=request.teams,
-        seasons=[request.holdout_season],
-        season_type=request.season_type,
+        teams=teams,
+        seasons=[holdout_season],
+        season_type=season_type,
     )
     holdout_records = prepare_wowy_player_season_records(
         season_inputs=holdout_season_inputs,
-        min_games_with=request.holdout_min_games_with,
-        min_games_without=request.holdout_min_games_without,
-        min_average_minutes=request.min_average_minutes,
-        min_total_minutes=request.min_total_minutes,
+        min_games_with=holdout_min_games_with,
+        min_games_without=holdout_min_games_without,
+        min_average_minutes=min_average_minutes,
+        min_total_minutes=min_total_minutes,
     )
     completed_steps += 1
     _emit_progress(
         event_fn,
         current=completed_steps,
         total=total_steps,
-        detail=f"holdout {request.holdout_season}",
+        detail=f"holdout {holdout_season}",
     )
     holdout_targets = _build_holdout_targets(holdout_records)
 
     training_wowy_season_inputs = load_wowy_season_inputs(
-        teams=request.teams,
-        seasons=request.train_seasons,
-        season_type=request.season_type,
+        teams=teams,
+        seasons=train_seasons,
+        season_type=season_type,
     )
     training_wowy_records = prepare_wowy_player_season_records(
         season_inputs=training_wowy_season_inputs,
-        min_games_with=request.holdout_min_games_with,
-        min_games_without=request.holdout_min_games_without,
-        min_average_minutes=request.min_average_minutes,
-        min_total_minutes=request.min_total_minutes,
+        min_games_with=holdout_min_games_with,
+        min_games_without=holdout_min_games_without,
+        min_average_minutes=min_average_minutes,
+        min_total_minutes=min_total_minutes,
     )
     completed_steps += 1
     _emit_progress(
@@ -125,10 +132,10 @@ def compare_rawr_configs(
             model="wowy-baseline",
             training_scores=_aggregate_wowy_training_records(
                 training_wowy_records,
-                aggregation=request.aggregation,
+                aggregation=aggregation,
             ),
             holdout_targets=holdout_targets,
-            top_n=request.top_n,
+            top_n=top_n,
         )
     ]
     completed_steps += 1
@@ -140,33 +147,33 @@ def compare_rawr_configs(
     )
 
     for ridge_alpha, shrinkage_mode, shrinkage_strength in product(
-        request.rawr_ridge_values or [],
-        request.shrinkage_modes or _DEFAULT_SHRINKAGE_MODES,
-        request.shrinkage_strength_values or [],
+        rawr_ridge_values or [],
+        shrinkage_modes or _DEFAULT_SHRINKAGE_MODES,
+        shrinkage_strength_values or [],
     ):
         minute_scales = (
-            request.shrinkage_minute_scale_values or []
+            shrinkage_minute_scale_values or []
             if shrinkage_mode == "minutes"
-            else [(request.shrinkage_minute_scale_values or [48.0])[0]]
+            else [(shrinkage_minute_scale_values or [48.0])[0]]
         )
         for minute_scale in minute_scales:
             detail = f"alpha={ridge_alpha:.2f} mode={shrinkage_mode}"
             if shrinkage_mode == "minutes":
                 detail += f" min_scale={minute_scale:.1f}"
             rawr_season_inputs = load_rawr_season_inputs(
-                teams=request.teams,
-                seasons=request.train_seasons,
-                season_type=request.season_type,
+                teams=teams,
+                seasons=train_seasons,
+                season_type=season_type,
             )
             rawr_records = prepare_rawr_player_season_records(
                 season_inputs=rawr_season_inputs,
-                min_games=request.rawr_min_games,
+                min_games=rawr_min_games,
                 ridge_alpha=ridge_alpha,
                 shrinkage_mode=shrinkage_mode,
                 shrinkage_strength=shrinkage_strength,
                 shrinkage_minute_scale=minute_scale,
-                min_average_minutes=request.min_average_minutes,
-                min_total_minutes=request.min_total_minutes,
+                min_average_minutes=min_average_minutes,
+                min_total_minutes=min_total_minutes,
             )
             completed_steps += 1
             _emit_progress(
@@ -180,10 +187,10 @@ def compare_rawr_configs(
                     model="rawr",
                     training_scores=_aggregate_rawr_training_records(
                         rawr_records,
-                        aggregation=request.aggregation,
+                        aggregation=aggregation,
                     ),
                     holdout_targets=holdout_targets,
-                    top_n=request.top_n,
+                    top_n=top_n,
                     ridge_alpha=ridge_alpha,
                     shrinkage_mode=shrinkage_mode,
                     shrinkage_strength=shrinkage_strength,
@@ -203,14 +210,22 @@ def compare_rawr_configs(
     )
 
 
-def _validate_request(request: CompareRawrConfigsRequest) -> None:
-    assert request.rawr_ridge_values is not None
-    assert request.shrinkage_strength_values is not None
-    assert request.shrinkage_minute_scale_values is not None
-    if request.top_n <= 0:
+def _validate_request(
+    *,
+    train_seasons: list[Season],
+    holdout_season: Season,
+    rawr_ridge_values: list[float] | None,
+    shrinkage_strength_values: list[float] | None,
+    shrinkage_minute_scale_values: list[float] | None,
+    top_n: int,
+) -> None:
+    assert rawr_ridge_values is not None
+    assert shrinkage_strength_values is not None
+    assert shrinkage_minute_scale_values is not None
+    if top_n <= 0:
         raise ValueError("top_n must be positive")
-    train_season_ids = {season.id for season in request.train_seasons}
-    if request.holdout_season.id in train_season_ids:
+    train_season_ids = {season.id for season in train_seasons}
+    if holdout_season.id in train_season_ids:
         raise ValueError("holdout season must not be included in training seasons")
 
 
@@ -402,15 +417,21 @@ def _top_n_overlap(
     return len(set(ranked_train) & set(ranked_holdout))
 
 
-def _count_evaluation_steps(request: CompareRawrConfigsRequest) -> int:
+def _count_evaluation_steps(
+    *,
+    rawr_ridge_values: list[float] | None,
+    shrinkage_modes: list[str] | None,
+    shrinkage_strength_values: list[float] | None,
+    shrinkage_minute_scale_values: list[float] | None,
+) -> int:
     rawr_configs = 0
     for _, shrinkage_mode, _ in product(
-        request.rawr_ridge_values or [],
-        request.shrinkage_modes or _DEFAULT_SHRINKAGE_MODES,
-        request.shrinkage_strength_values or [],
+        rawr_ridge_values or [],
+        shrinkage_modes or _DEFAULT_SHRINKAGE_MODES,
+        shrinkage_strength_values or [],
     ):
         if shrinkage_mode == "minutes":
-            rawr_configs += len(request.shrinkage_minute_scale_values or [])
+            rawr_configs += len(shrinkage_minute_scale_values or [])
             continue
         rawr_configs += 1
     return 3 + rawr_configs
@@ -419,7 +440,6 @@ def _count_evaluation_steps(request: CompareRawrConfigsRequest) -> int:
 __all__ = [
     "CompareRawrConfigsEventFn",
     "CompareRawrConfigsProgress",
-    "CompareRawrConfigsRequest",
     "ComparisonResult",
     "compare_rawr_configs",
 ]
