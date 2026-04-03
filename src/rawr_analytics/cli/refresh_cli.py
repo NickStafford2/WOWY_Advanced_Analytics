@@ -7,7 +7,6 @@ from rawr_analytics.services import (
     DEFAULT_RAWR_RIDGE_ALPHA,
     DEFAULT_WEB_METRIC_IDS,
     MetricStoreRefreshProgressEvent,
-    build_metric_store_refresh_request,
     refresh_metric_store,
 )
 
@@ -57,12 +56,10 @@ def main(argv: list[str] | None = None) -> int:
     for metric in metrics:
         progress_bar = TerminalProgressBar(f"Refresh {metric}", total=1)
         result = refresh_metric_store(
-            build_metric_store_refresh_request(
-                metric=metric,
-                season_type=args.season_type,
-                rawr_ridge_alpha=args.rawr_ridge_alpha,
-                include_team_scopes=False,
-            ),
+            metric=metric,
+            season_type=args.season_type,
+            rawr_ridge_alpha=args.rawr_ridge_alpha,
+            include_team_scopes=False,
             event_fn=lambda event, progress_bar=progress_bar: _update_progress(
                 progress_bar,
                 event,

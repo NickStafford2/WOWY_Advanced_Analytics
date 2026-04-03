@@ -9,7 +9,6 @@ from rawr_analytics.cli._ingest_terminal import (
     render_ingest_event,
 )
 from rawr_analytics.services import (
-    IngestRefreshRequest,
     SeasonRangeResult,
     refresh_season_range,
 )
@@ -72,13 +71,11 @@ def main(argv: list[str] | None = None) -> int:
     parser = _build_parser()
     args = parser.parse_args(argv)
     result = refresh_season_range(
-        IngestRefreshRequest(
-            season_str=args.season,
-            start_year=args.start_year or _DEFAULT_START_YEAR,
-            end_year=args.end_year or _DEFAULT_END_YEAR,
-            season_type=args.season_type or _DEFAULT_SEASON_TYPE,
-            team_abbreviations=args.teams,
-        ),
+        season_str=args.season,
+        start_year=args.start_year or _DEFAULT_START_YEAR,
+        end_year=args.end_year or _DEFAULT_END_YEAR,
+        season_type=args.season_type or _DEFAULT_SEASON_TYPE,
+        team_abbreviations=args.teams,
         event_fn=render_ingest_event,
         failure_log_fn=append_failure_log_entry,
     )

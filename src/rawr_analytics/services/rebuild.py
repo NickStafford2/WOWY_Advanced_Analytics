@@ -16,7 +16,6 @@ from rawr_analytics.services.ingest import (
     FailureLogFn,
     IngestEvent,
     IngestFailureLogEntry,
-    IngestRefreshRequest,
     IngestSeasonStartedEvent,
     IngestTeamCompletedEvent,
     IngestTeamFailedEvent,
@@ -27,7 +26,6 @@ from rawr_analytics.services.ingest import (
 )
 from rawr_analytics.services.metric_refresh import (
     DEFAULT_RAWR_RIDGE_ALPHA,
-    MetricStoreRefreshRequest,
     RefreshMetricStoreResult,
     refresh_metric_store,
 )
@@ -38,7 +36,7 @@ RebuildEventFn = Callable[["RebuildEvent"], None]
 
 
 @dataclass(frozen=True)
-class RebuildRequest:
+class _RebuildRequest:
     start_year: int
     end_year: int
     season_type: SeasonType
@@ -48,7 +46,7 @@ class RebuildRequest:
     rawr_ridge_alpha: float = DEFAULT_RAWR_RIDGE_ALPHA
 
 
-def build_rebuild_request(
+def _build_rebuild_request(
     *,
     start_year: int,
     end_year: int,
@@ -56,10 +54,10 @@ def build_rebuild_request(
     teams: list[str] | None,
     metrics: list[str] | None,
     keep_existing_db: bool,
-) -> RebuildRequest:
+) -> _RebuildRequest:
     if start_year < end_year:
         raise ValueError("Start year must be greater than or equal to end year")
-    return RebuildRequest(
+    return _RebuildRequest(
         start_year=start_year,
         end_year=end_year,
         season_type=SeasonType.parse(season_type),
@@ -136,22 +134,33 @@ def format_rebuild_validation_summary(
 
 
 def rebuild_player_metrics_db(
-    request: RebuildRequest,
     *,
+    start_year: int,
+    end_year: int,
+    season_type: str,
+    teams: list[str] | None,
+    metrics: list[str] | None,
+    keep_existing_db: bool,
     event_fn: RebuildEventFn | None = None,
     failure_log_fn: FailureLogFn | None = None,
 ) -> RebuildResult:
+    request = _build_rebuild_request(
+        start_year=start_year,
+        end_year=end_year,
+        season_type=season_type,
+        teams=teams,
+        metrics=metrics,
+        keep_existing_db=keep_existing_db,
+    )
     deleted_existing_db = prepare_rebuild_storage(
         keep_existing_db=request.keep_existing_db
     )
 
     ingest_result = refresh_season_range(
-        IngestRefreshRequest(
-            start_year=request.start_year,
-            end_year=request.end_year,
-            season_type=request.season_type.value,
-            team_abbreviations=request.teams,
-        ),
+        start_year=request.start_year,
+        end_year=request.end_year,
+        season_type=request.season_type.value,
+        team_abbreviations=request.teams,
         event_fn=(
             None
             if event_fn is None
@@ -171,12 +180,10 @@ def rebuild_player_metrics_db(
     metric_results: list[RefreshMetricStoreResult] = []
     for metric in request.metrics or [Metric.WOWY, Metric.WOWY_SHRUNK, Metric.RAWR]:
         result = refresh_metric_store(
-            MetricStoreRefreshRequest(
-                metric=metric,
-                season_type=request.season_type,
-                rawr_ridge_alpha=request.rawr_ridge_alpha,
-                include_team_scopes=False,
-            ),
+            metric=metric,
+            season_type=request.season_type,
+            rawr_ridge_alpha=request.rawr_ridge_alpha,
+            include_team_scopes=False,
             event_fn=(
                 None
                 if event_fn is None
@@ -316,11 +323,9 @@ __all__ = [
     "RebuildEvent",
     "RebuildEventFn",
     "RebuildMetricRefreshProgressEvent",
-    "RebuildRequest",
     "RebuildResult",
     "RebuildTeamFailureEvent",
     "RebuildValidationProgressEvent",
-    "build_rebuild_request",
     "format_rebuild_validation_summary",
     "rebuild_player_metrics_db",
 ]

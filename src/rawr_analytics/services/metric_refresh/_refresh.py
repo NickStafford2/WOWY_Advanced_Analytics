@@ -64,26 +64,11 @@ class MetricStoreRefreshProgressEvent:
 
 
 @dataclass(frozen=True)
-class MetricStoreRefreshRequest:
+class _MetricStoreRefreshRequest:
     metric: Metric
     season_type: SeasonType
     rawr_ridge_alpha: float = DEFAULT_RAWR_RIDGE_ALPHA
     include_team_scopes: bool = True
-
-
-def build_metric_store_refresh_request(
-    *,
-    metric: str,
-    season_type: str,
-    rawr_ridge_alpha: float = DEFAULT_RAWR_RIDGE_ALPHA,
-    include_team_scopes: bool = True,
-) -> MetricStoreRefreshRequest:
-    return MetricStoreRefreshRequest(
-        metric=Metric.parse(metric),
-        season_type=SeasonType.parse(season_type),
-        rawr_ridge_alpha=rawr_ridge_alpha,
-        include_team_scopes=include_team_scopes,
-    )
 
 
 @dataclass(frozen=True)
@@ -122,10 +107,21 @@ class _MetricStoreRefreshScope:
 
 
 def refresh_metric_store(
-    request: MetricStoreRefreshRequest,
     *,
+    metric: Metric | str,
+    season_type: SeasonType | str,
+    rawr_ridge_alpha: float = DEFAULT_RAWR_RIDGE_ALPHA,
+    include_team_scopes: bool = True,
     event_fn: MetricStoreRefreshEventFn | None = None,
 ) -> RefreshMetricStoreResult:
+    request = _MetricStoreRefreshRequest(
+        metric=Metric.parse(metric) if isinstance(metric, str) else metric,
+        season_type=SeasonType.parse(season_type)
+        if isinstance(season_type, str)
+        else season_type,
+        rawr_ridge_alpha=rawr_ridge_alpha,
+        include_team_scopes=include_team_scopes,
+    )
     plan = _prepare_metric_store_refresh(
         request.metric,
         season_type=request.season_type,

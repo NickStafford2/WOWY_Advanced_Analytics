@@ -3,9 +3,7 @@ from rawr_analytics.services.metric_refresh._refresh import (
     DEFAULT_WEB_METRIC_IDS,
     MetricStoreRefreshEventFn,
     MetricStoreRefreshProgressEvent,
-    MetricStoreRefreshRequest,
     RefreshMetricStoreResult,
-    build_metric_store_refresh_request,
     refresh_metric_store,
 )
 
@@ -14,8 +12,6 @@ __all__ = [
     "DEFAULT_WEB_METRIC_IDS",
     "MetricStoreRefreshEventFn",
     "MetricStoreRefreshProgressEvent",
-    "MetricStoreRefreshRequest",
     "RefreshMetricStoreResult",
-    "build_metric_store_refresh_request",
     "refresh_metric_store",
 ]

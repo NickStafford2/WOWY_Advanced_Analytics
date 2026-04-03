@@ -156,7 +156,7 @@ class SeasonRangeResult:
 
 
 @dataclass(frozen=True)
-class IngestRefreshRequest:
+class _IngestRefreshRequest:
     start_year: int
     end_year: int
     season_type: str
@@ -189,12 +189,23 @@ def refresh_team_season(
 
 
 def refresh_season_range(
-    request: IngestRefreshRequest,
     *,
+    start_year: int,
+    end_year: int,
+    season_type: str,
+    season_str: str | None = None,
+    team_abbreviations: list[str] | None = None,
     log_fn: LogFn | None = None,
     event_fn: IngestEventFn | None = None,
     failure_log_fn: FailureLogFn | None = None,
 ) -> SeasonRangeResult:
+    request = _IngestRefreshRequest(
+        start_year=start_year,
+        end_year=end_year,
+        season_type=season_type,
+        season_str=season_str,
+        team_abbreviations=team_abbreviations,
+    )
     seasons = _build_seasons(request=request)
     season_total = len(seasons)
     attempted_team_seasons = 0
@@ -271,7 +282,7 @@ def refresh_season_range(
     )
 
 
-def _build_seasons(*, request: IngestRefreshRequest) -> list[Season]:
+def _build_seasons(*, request: _IngestRefreshRequest) -> list[Season]:
     if request.season_str is not None:
         return [Season(request.season_str, request.season_type)]
     return build_season_list(
@@ -541,7 +552,6 @@ __all__ = [
     "IngestEventFn",
     "IngestFailureLogEntry",
     "IngestProgress",
-    "IngestRefreshRequest",
     "IngestRequest",
     "IngestResult",
     "IngestSeasonStartedEvent",
