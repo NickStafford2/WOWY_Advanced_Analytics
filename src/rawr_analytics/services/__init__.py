@@ -1,12 +1,6 @@
 """Public application service interface for CLI and web adapters."""
 
-from rawr_analytics.services.compare_rawr_configs import (
-    CompareRawrConfigsEventFn,
-    CompareRawrConfigsProgress,
-    ComparisonResult,
-    compare_rawr_configs,
-)
-from rawr_analytics.services.ingest import (
+from rawr_analytics.ingest import (
     FailureLogFn,
     IngestEvent,
     IngestFailureLogEntry,
@@ -19,6 +13,13 @@ from rawr_analytics.services.ingest import (
     SeasonRangeFailure,
     SeasonRangeResult,
     refresh_season_range,
+)
+
+from rawr_analytics.services.compare_rawr_configs import (
+    CompareRawrConfigsEventFn,
+    CompareRawrConfigsProgress,
+    ComparisonResult,
+    compare_rawr_configs,
 )
 from rawr_analytics.services.metric_refresh import (
     DEFAULT_RAWR_RIDGE_ALPHA,

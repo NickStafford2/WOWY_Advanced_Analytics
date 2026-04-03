@@ -9,8 +9,7 @@ from rawr_analytics.data import (
     render_rebuild_validation_summary,
     validate_rebuild_storage,
 )
-from rawr_analytics.metrics.constants import Metric
-from rawr_analytics.services.ingest import (
+from rawr_analytics.ingest import (
     FailureLogFn,
     IngestEvent,
     IngestFailureLogEntry,
@@ -22,6 +21,7 @@ from rawr_analytics.services.ingest import (
     SeasonRangeResult,
     refresh_season_range,
 )
+from rawr_analytics.metrics.constants import Metric
 from rawr_analytics.services.metric_refresh import (
     DEFAULT_RAWR_RIDGE_ALPHA,
     MetricStoreRefreshProgressEvent,
