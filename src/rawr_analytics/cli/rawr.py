@@ -47,9 +47,9 @@ def main(argv: list[str] | None = None) -> int:
         ],
     )
     print("[1/2] building rawr custom query")
-    result = build_rawr_query_export(query, view="custom-query")
-    print(f"[2/2] built {len(result.rows)} leaderboard rows")
-    print(render_metric_query_table(result.metric_label, result.rows))
+    metric_label, rows = build_rawr_query_export(query, view="custom-query")
+    print(f"[2/2] built {len(rows)} leaderboard rows")
+    print(render_metric_query_table(metric_label, rows))
     return 0
 
 

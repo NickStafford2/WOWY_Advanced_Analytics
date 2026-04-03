@@ -48,9 +48,9 @@ def main(argv: list[str] | None = None) -> int:
         ],
     )
     print(f"[1/2] building {Metric.WOWY.value} custom query")
-    result = build_wowy_query_export(Metric.WOWY, query, view="custom-query")
-    print(f"[2/2] built {len(result.rows)} leaderboard rows")
-    print(render_metric_query_table(result.metric_label, result.rows))
+    metric_label, rows = build_wowy_query_export(Metric.WOWY, query, view="custom-query")
+    print(f"[2/2] built {len(rows)} leaderboard rows")
+    print(render_metric_query_table(metric_label, rows))
     return 0
 
 

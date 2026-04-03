@@ -13,7 +13,6 @@ from rawr_analytics.services import (
     build_wowy_options_payload,
     build_wowy_query_export,
     build_wowy_query_view,
-    serialize_service_value,
 )
 from rawr_analytics.shared.season import Season, SeasonType
 from rawr_analytics.shared.team import Team
@@ -78,10 +77,10 @@ def create_app():
 
     def _json_metric_response(parsed_metric: Metric, view: str):
         if parsed_metric == Metric.RAWR:
-            result = build_rawr_query_view(_parse_rawr_query(), view=view)
+            payload = build_rawr_query_view(_parse_rawr_query(), view=view)
         else:
-            result = build_wowy_query_view(parsed_metric, _parse_wowy_query(), view=view)
-        return jsonify(serialize_service_value(result.payload))
+            payload = build_wowy_query_view(parsed_metric, _parse_wowy_query(), view=view)
+        return jsonify(payload)
 
     def run_json(handler):
         try:
@@ -91,12 +90,16 @@ def create_app():
 
     def _csv_metric_response(parsed_metric: Metric, view: str):
         if parsed_metric == Metric.RAWR:
-            result = build_rawr_query_export(_parse_rawr_query(), view=view)
+            metric_label, rows = build_rawr_query_export(_parse_rawr_query(), view=view)
         else:
-            result = build_wowy_query_export(parsed_metric, _parse_wowy_query(), view=view)
+            metric_label, rows = build_wowy_query_export(
+                parsed_metric,
+                _parse_wowy_query(),
+                view=view,
+            )
         filename = f"{parsed_metric.value}-all-players.csv"
         return Response(
-            _render_leaderboard_csv(metric_label=result.metric_label, table_rows=result.rows),
+            _render_leaderboard_csv(metric_label=metric_label, table_rows=rows),
             mimetype="text/csv",
             headers={"Content-Disposition": f'attachment; filename="{filename}"'},
         )
@@ -106,13 +109,11 @@ def create_app():
         parsed_metric = _parse_metric(metric)
         return run_json(
             lambda: jsonify(
-                serialize_service_value(
-                    build_rawr_options_payload(_parse_rawr_options_query())
-                    if parsed_metric == Metric.RAWR
-                    else build_wowy_options_payload(
-                        parsed_metric,
-                        _parse_wowy_options_query(),
-                    )
+                build_rawr_options_payload(_parse_rawr_options_query())
+                if parsed_metric == Metric.RAWR
+                else build_wowy_options_payload(
+                    parsed_metric,
+                    _parse_wowy_options_query(),
                 )
             )
         )

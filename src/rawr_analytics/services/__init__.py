@@ -29,7 +29,6 @@ from rawr_analytics.services.metric_query import (
     build_wowy_options_payload,
     build_wowy_query_export,
     build_wowy_query_view,
-    serialize_service_value,
 )
 from rawr_analytics.services.metric_refresh import (
     DEFAULT_RAWR_RIDGE_ALPHA,
@@ -85,5 +84,4 @@ __all__ = [
     "rebuild_player_metrics_db",
     "refresh_metric_store",
     "refresh_season_range",
-    "serialize_service_value",
 ]
