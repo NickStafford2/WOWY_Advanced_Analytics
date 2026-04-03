@@ -17,7 +17,7 @@ _DEFAULT_SHRINKAGE_MODES = ("uniform", "game-count", "minutes")
 
 
 @dataclass(frozen=True)
-class AggregatedPlayerValue:
+class _AggregatedPlayerValue:
     player_id: int
     player_name: str
     value: float
@@ -278,12 +278,12 @@ def _emit_progress(
 def _aggregate_wowy_training_records(
     records: list[WowyPlayerSeasonRecord],
     aggregation: str,
-) -> dict[int, AggregatedPlayerValue]:
+) -> dict[int, _AggregatedPlayerValue]:
     grouped: dict[int, list[WowyPlayerSeasonRecord]] = {}
     for record in records:
         grouped.setdefault(record.player_id, []).append(record)
     return {
-        player_id: AggregatedPlayerValue(
+        player_id: _AggregatedPlayerValue(
             player_id=player_id,
             player_name=player_records[0].player_name,
             value=_aggregate_values(
@@ -300,12 +300,12 @@ def _aggregate_wowy_training_records(
 def _aggregate_rawr_training_records(
     records: list[RawrPlayerSeasonRecord],
     aggregation: str,
-) -> dict[int, AggregatedPlayerValue]:
+) -> dict[int, _AggregatedPlayerValue]:
     grouped: dict[int, list[RawrPlayerSeasonRecord]] = {}
     for record in records:
         grouped.setdefault(record.player_id, []).append(record)
     return {
-        player_id: AggregatedPlayerValue(
+        player_id: _AggregatedPlayerValue(
             player_id=player_id,
             player_name=player_records[0].player_name,
             value=_aggregate_values(
@@ -339,9 +339,9 @@ def _aggregate_values(
 
 def _build_holdout_targets(
     records: list[WowyPlayerSeasonRecord],
-) -> dict[int, AggregatedPlayerValue]:
+) -> dict[int, _AggregatedPlayerValue]:
     return {
-        record.player_id: AggregatedPlayerValue(
+        record.player_id: _AggregatedPlayerValue(
             player_id=record.player_id,
             player_name=record.player_name,
             value=record.wowy_score,
@@ -354,8 +354,8 @@ def _build_holdout_targets(
 def _build_comparison_result(
     *,
     model: str,
-    training_scores: dict[int, AggregatedPlayerValue],
-    holdout_targets: dict[int, AggregatedPlayerValue],
+    training_scores: dict[int, _AggregatedPlayerValue],
+    holdout_targets: dict[int, _AggregatedPlayerValue],
     top_n: int,
     ridge_alpha: float | None = None,
     shrinkage_mode: str | None = None,
@@ -412,8 +412,8 @@ def _rank_values(values: list[float]) -> list[float]:
 
 
 def _top_n_overlap(
-    training_scores: dict[int, AggregatedPlayerValue],
-    holdout_targets: dict[int, AggregatedPlayerValue],
+    training_scores: dict[int, _AggregatedPlayerValue],
+    holdout_targets: dict[int, _AggregatedPlayerValue],
     *,
     top_n: int,
 ) -> int:
@@ -464,8 +464,9 @@ def _format_float(value: float | None, *, decimals: int) -> str:
 def _format_text(value: str | None) -> str:
     return value if value is not None else "-"
 
+
 __all__ = [
-    "AggregatedPlayerValue",
+    "_AggregatedPlayerValue",
     "CompareRawrConfigsEventFn",
     "CompareRawrConfigsProgress",
     "CompareRawrConfigsRequest",
