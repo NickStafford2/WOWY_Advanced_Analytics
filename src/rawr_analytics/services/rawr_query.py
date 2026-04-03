@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import Callable
+from collections.abc import Callable
 from typing import cast
 
 from rawr_analytics.data.metric_store import (
@@ -141,16 +141,16 @@ def _build_rawr_view_payload(
             dict[str, JSONValue],
             build_cached_leaderboard_payload(
                 metric_label=catalog.metric_label,
-                available_seasons=catalog.available_seasons,
-                available_teams=catalog.available_teams,
+                available_seasons=catalog.availability.seasons,
+                available_teams=catalog.availability.teams,
                 rows=values,
                 seasons=selected_seasons(query.seasons, catalog),
                 top_n=query.top_n,
             ),
         )
-        payload["available_seasons"] = [season.id for season in catalog.available_seasons]
+        payload["available_seasons"] = [season.id for season in catalog.availability.seasons]
         payload["available_teams"] = [
-            team.current.abbreviation for team in catalog.available_teams
+            team.current.abbreviation for team in catalog.availability.teams
         ]
         return payload
 
@@ -235,9 +235,7 @@ def _build_rawr_filters_payload(query: RawrQuery) -> RawrQueryFilters:
 def _serialize_rawr_filters(filters: RawrQueryFilters) -> dict[str, JSONValue]:
     return {
         "team": (
-            None
-            if filters.teams is None
-            else [team.current.abbreviation for team in filters.teams]
+            None if filters.teams is None else [team.current.abbreviation for team in filters.teams]
         ),
         "team_id": None if filters.teams is None else [team.team_id for team in filters.teams],
         "season": None if filters.seasons is None else [season.id for season in filters.seasons],

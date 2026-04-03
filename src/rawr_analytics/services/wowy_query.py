@@ -154,16 +154,16 @@ def _build_wowy_view_payload(
             build_cached_leaderboard_payload(
                 metric,
                 metric_label=catalog.metric_label,
-                available_seasons=catalog.available_seasons,
-                available_teams=catalog.available_teams,
+                available_seasons=catalog.availability.seasons,
+                available_teams=catalog.availability.teams,
                 rows=values,
                 seasons=selected_seasons(query.seasons, catalog),
                 top_n=query.top_n,
             ),
         )
-        payload["available_seasons"] = [season.id for season in catalog.available_seasons]
+        payload["available_seasons"] = [season.id for season in catalog.availability.seasons]
         payload["available_teams"] = [
-            team.current.abbreviation for team in catalog.available_teams
+            team.current.abbreviation for team in catalog.availability.teams
         ]
         return payload
 
@@ -251,9 +251,7 @@ def _build_wowy_filters_payload(query: WowyQuery) -> WowyQueryFilters:
 def _serialize_wowy_filters(filters: WowyQueryFilters) -> dict[str, JSONValue]:
     return {
         "team": (
-            None
-            if filters.teams is None
-            else [team.current.abbreviation for team in filters.teams]
+            None if filters.teams is None else [team.current.abbreviation for team in filters.teams]
         ),
         "team_id": None if filters.teams is None else [team.team_id for team in filters.teams],
         "season": None if filters.seasons is None else [season.id for season in filters.seasons],
