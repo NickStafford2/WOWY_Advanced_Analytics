@@ -1,11 +1,11 @@
 {
-  "version": "0.0.2",
+  "version": "0.0.3",
   "configurations": [
     {
       "name": "Run Python Script",
       "type": "python",
       "request": "launch",
-      "program": "${workspaceFolder}/scripts/rebuild_player_metrics_db.py",
+      "program": "${workspaceFolder}/src/rawr_analytics/cli/rawr.py",
       "cwd": "${workspaceFolder}",
       "console": "integratedTerminal"
     }

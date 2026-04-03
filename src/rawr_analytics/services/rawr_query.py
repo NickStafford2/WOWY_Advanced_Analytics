@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from typing import Callable
 from typing import cast
 
 from rawr_analytics.data.metric_store import (
@@ -31,9 +32,11 @@ from rawr_analytics.services._metric_scope import (
     selected_seasons,
 )
 from rawr_analytics.shared.player import PlayerMinutes, PlayerSummary
+from rawr_analytics.shared.season import Season
 
 type JSONScalar = None | bool | int | float | str
 type JSONValue = JSONScalar | list[JSONValue] | dict[str, JSONValue]
+type RawrProgressFn = Callable[[int, int, Season], None]
 
 MetricView = str
 MetricQueryExport = tuple[str, list[dict[str, JSONValue]]]
@@ -66,6 +69,7 @@ def build_rawr_query_export(
     query: RawrQuery,
     *,
     view: MetricView,
+    progress_fn: RawrProgressFn | None = None,
 ) -> MetricQueryExport:
     scope_key = build_metric_scope_key(query)
 
@@ -88,7 +92,7 @@ def build_rawr_query_export(
         )
 
     if view == "custom-query":
-        result = _build_rawr_custom_query_result(query)
+        result = _build_rawr_custom_query_result(query, progress_fn=progress_fn)
         return cast(
             MetricQueryExport,
             build_export_table(
@@ -172,11 +176,16 @@ def _build_rawr_view_payload(
     raise ValueError(f"Unknown metric view: {view}")
 
 
-def _build_rawr_custom_query_result(query: RawrQuery) -> RawrCustomQueryResult:
+def _build_rawr_custom_query_result(
+    query: RawrQuery,
+    *,
+    progress_fn: RawrProgressFn | None = None,
+) -> RawrCustomQueryResult:
     season_inputs = load_rawr_season_inputs(
         teams=query.teams,
         seasons=query.seasons,
         season_type=query.season_type,
+        progress_fn=progress_fn,
     )
     return build_rawr_custom_query(
         season_inputs=season_inputs,

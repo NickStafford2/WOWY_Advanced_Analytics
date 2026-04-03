@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from collections import defaultdict
 from dataclasses import dataclass
+from typing import Callable
 
 from rawr_analytics.data.game_cache import (
     list_cache_load_rows,
@@ -10,8 +11,8 @@ from rawr_analytics.data.game_cache import (
 from rawr_analytics.data.game_cache.rows import NormalizedGamePlayerRow, NormalizedGameRow
 from rawr_analytics.data.scope_resolver import resolve_team_seasons
 from rawr_analytics.metrics.rawr._observations import (
-    _build_rawr_observations,
-    _build_rawr_player_season_minute_stats,
+    build_rawr_observations,
+    build_rawr_player_season_minute_stats,
 )
 from rawr_analytics.metrics.rawr.models import (
     RawrPlayerContext,
@@ -28,6 +29,8 @@ from rawr_analytics.shared.scope import TeamSeasonScope
 from rawr_analytics.shared.season import Season, SeasonType
 from rawr_analytics.shared.team import Team
 
+type RawrSeasonProgressFn = Callable[[int, int, Season], None]
+
 
 @dataclass
 class _SeasonCacheSummary:
@@ -42,8 +45,11 @@ def load_rawr_season_inputs(
     teams: list[Team] | None,
     seasons: list[Season] | None,
     season_type: SeasonType,
+    progress_fn: RawrSeasonProgressFn | None = None,
 ) -> list[RawrSeasonInput]:
     requested_team_seasons = resolve_team_seasons(teams, seasons, season_type=season_type)
+    if not requested_team_seasons:
+        raise ValueError("No cached data matched the requested RAWR scope")
     teams_by_season: dict[Season, list[Team]] = defaultdict(list)
     for scope in requested_team_seasons:
         teams_by_season[scope.season].append(scope.team)
@@ -55,8 +61,14 @@ def load_rawr_season_inputs(
             season_type=season_type,
         )
     )
+    if not complete_seasons:
+        raise ValueError("No complete cached seasons matched the requested RAWR scope")
     season_inputs: list[RawrSeasonInput] = []
-    for season in sorted(teams_by_season, key=lambda item: item.id):
+    sorted_seasons = sorted(teams_by_season, key=lambda item: item.id)
+    total_seasons = len(sorted_seasons)
+    for season_index, season in enumerate(sorted_seasons, start=1):
+        if progress_fn is not None:
+            progress_fn(season_index, total_seasons, season)
         if season.id not in complete_seasons:
             continue
         season_input = _load_rawr_season_input(
@@ -167,8 +179,11 @@ def _load_rawr_season_input(
         teams=[scope.team for scope in requested_team_seasons],
         seasons=[season],
     )
-    player_minute_stats = _build_rawr_player_season_minute_stats(games, game_players)
-    observations, player_names = _build_rawr_observations(games, game_players)
+    games, game_players = _exclude_rawr_games_without_positive_minutes(games, game_players)
+    player_minute_stats = build_rawr_player_season_minute_stats(games, game_players)
+    observations, player_names = build_rawr_observations(games, game_players)
+    if not observations:
+        return None
     player_ids = sorted(
         {player_id for observation in observations for player_id in observation.player_weights}
     )
@@ -209,6 +224,28 @@ def _filter_rawr_scope(games, game_players, teams, seasons):
     filtered_game_players = [
         player for player in game_players if player.game_id in selected_game_ids
     ]
+    return filtered_games, filtered_game_players
+
+
+def _exclude_rawr_games_without_positive_minutes(
+    games: list[NormalizedGameRecord],
+    game_players: list[NormalizedGamePlayerRecord],
+) -> tuple[list[NormalizedGameRecord], list[NormalizedGamePlayerRecord]]:
+    positive_minutes_by_game_team: dict[tuple[str, int], bool] = {}
+    for player in game_players:
+        if not player.has_positive_minutes():
+            continue
+        positive_minutes_by_game_team[(player.game_id, player.team.team_id)] = True
+
+    valid_game_ids: set[str] = set()
+    for game in games:
+        if not positive_minutes_by_game_team.get((game.game_id, game.team.team_id), False):
+            continue
+        if not positive_minutes_by_game_team.get((game.game_id, game.opponent_team.team_id), False):
+            continue
+        valid_game_ids.add(game.game_id)
+    filtered_games = [game for game in games if game.game_id in valid_game_ids]
+    filtered_game_players = [player for player in game_players if player.game_id in valid_game_ids]
     return filtered_games, filtered_game_players
 
 

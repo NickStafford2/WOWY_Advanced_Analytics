@@ -133,6 +133,7 @@ def main(argv: list[str] | None = None) -> int:
         ],
     )
     progress_bar = TerminalProgressBar("RAWR tune", total=1)
+
     def _handle_progress(event: CompareRawrConfigsProgress) -> None:
         _update_progress(progress_bar, event)
 

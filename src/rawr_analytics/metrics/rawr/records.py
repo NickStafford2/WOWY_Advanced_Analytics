@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from rawr_analytics.metrics.rawr._observations import count_player_season_games
 from rawr_analytics.metrics.rawr.analysis import fit_player_rawr
 from rawr_analytics.metrics.rawr.inputs import passes_minute_filters, validate_request
 from rawr_analytics.metrics.rawr.models import (
@@ -30,6 +31,16 @@ def _build_season_records(
     *,
     request: RawrRequest,
 ) -> list[RawrPlayerSeasonRecord]:
+    games_by_player = count_player_season_games(
+        season_input.observations,
+        season=season_input.season,
+    )
+    eligible_players = [
+        player_key for player_key, games in games_by_player.items() if games >= request.min_games
+    ]
+    if not eligible_players:
+        return []
+
     player_contexts = {player.player.player_id: player for player in season_input.players}
     result = fit_player_rawr(
         season_input.observations,

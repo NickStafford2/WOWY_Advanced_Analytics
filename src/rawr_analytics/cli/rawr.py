@@ -10,9 +10,10 @@ from rawr_analytics.cli._metric_query_cli import (
     parse_metric_query_teams,
     render_metric_query_table,
 )
-from rawr_analytics.cli._progress_bar import print_status_box
+from rawr_analytics.cli._progress_bar import TerminalProgressBar, print_status_box
 from rawr_analytics.metrics.rawr import build_rawr_query
 from rawr_analytics.services.rawr_query import build_rawr_query_export
+from rawr_analytics.shared.season import Season
 from rawr_analytics.shared.scope import format_scope
 
 
@@ -46,16 +47,55 @@ def main(argv: list[str] | None = None) -> int:
             "Output is a terminal leaderboard built from the shared service export rows.",
         ],
     )
-    print("[1/2] building rawr custom query")
-    metric_label, rows = build_rawr_query_export(query, view="custom-query")
-    print(f"[2/2] built {len(rows)} leaderboard rows")
+    total_seasons = len(query.seasons or [])
+    load_bar = TerminalProgressBar("Season load", total=max(1, total_seasons))
+    print("[1/3] loading season inputs", flush=True)
+    progress_fn = _build_progress_updater(load_bar)
+    metric_label, rows = build_rawr_query_export(
+        query,
+        view="custom-query",
+        progress_fn=progress_fn,
+    )
+    load_bar.finish(detail="season inputs ready")
+    print("[2/3] computed rawr rankings", flush=True)
+    print(f"[3/3] rendering {len(rows)} leaderboard rows", flush=True)
     print(render_metric_query_table(metric_label, rows))
     return 0
 
 
-def run(argv: list[str] | None = None) -> int:
+def _update_rawr_progress(
+    progress_bar: TerminalProgressBar,
+    *,
+    current: int,
+    total: int,
+    season: Season,
+) -> None:
+    if progress_bar.total != max(1, total):
+        progress_bar.total = max(1, total)
+    progress_bar.update(current, detail=season.id)
+
+
+def _build_progress_updater(
+    progress_bar: TerminalProgressBar,
+):
+    def update(current: int, total: int, season: Season) -> None:
+        _update_rawr_progress(
+            progress_bar,
+            current=current,
+            total=total,
+            season=season,
+        )
+
+    return update
+
+
+def _run(argv: list[str] | None = None) -> int:
     try:
         return main(argv)
+    except ValueError as exc:
+        sys.stderr.write(f"{exc}\n")
+        sys.stderr.flush()
+        return 1
     except KeyboardInterrupt:
         sys.stderr.write("\nInterrupted. Shutting down cleanly.\n")
         sys.stderr.flush()
@@ -63,4 +103,4 @@ def run(argv: list[str] | None = None) -> int:
 
 
 if __name__ == "__main__":
-    raise SystemExit(run())
+    raise SystemExit(_run())

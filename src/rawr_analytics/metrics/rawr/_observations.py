@@ -2,8 +2,8 @@ from __future__ import annotations
 
 from collections import defaultdict
 
-from rawr_analytics.shared.game import NormalizedGamePlayerRecord, NormalizedGameRecord
 from rawr_analytics.metrics.rawr.models import RawrObservation
+from rawr_analytics.shared.game import NormalizedGamePlayerRecord, NormalizedGameRecord
 from rawr_analytics.shared.season import Season
 
 _LINEUP_WEIGHT_SUM = 5.0
@@ -28,7 +28,7 @@ def _count_player_games(observations: list[RawrObservation]) -> dict[int, int]:
     return dict(games_by_player)
 
 
-def _count_player_season_games(
+def count_player_season_games(
     observations: list[RawrObservation],
     *,
     season: Season,
@@ -40,7 +40,7 @@ def _count_player_season_games(
     return dict(games_by_player_season)
 
 
-def _count_player_season_minutes(
+def count_player_season_minutes(
     observations: list[RawrObservation],
     *,
     season: Season,
@@ -55,7 +55,7 @@ def _count_player_season_minutes(
     return minutes_by_player_season
 
 
-def _build_rawr_observations(
+def build_rawr_observations(
     games: list[NormalizedGameRecord],
     game_players: list[NormalizedGamePlayerRecord],
 ) -> tuple[list[RawrObservation], dict[int, str]]:
@@ -122,7 +122,7 @@ def _build_rawr_observations(
     return observations, player_names
 
 
-def _build_rawr_player_season_minute_stats(
+def build_rawr_player_season_minute_stats(
     games: list[NormalizedGameRecord],
     game_players: list[NormalizedGamePlayerRecord],
 ) -> dict[tuple[Season, int], tuple[float, float]]:
@@ -135,7 +135,7 @@ def _build_rawr_player_season_minute_stats(
         if season is None or not player.has_positive_minutes():
             continue
         assert player.minutes is not None
-        key = (season, player.player_id)
+        key = (season, player.player.player_id)
         totals[key] = totals.get(key, 0.0) + player.minutes
         counts[key] = counts.get(key, 0) + 1
 

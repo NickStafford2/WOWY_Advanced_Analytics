@@ -6,8 +6,8 @@ from statistics import mean
 import numpy as np
 
 from rawr_analytics.metrics.rawr._observations import (
-    _count_player_season_games,
-    _count_player_season_minutes,
+    count_player_season_games,
+    count_player_season_minutes,
 )
 from rawr_analytics.metrics.rawr.models import (
     RawrModel,
@@ -50,7 +50,7 @@ def fit_player_rawr(
     if not observations:
         raise ValueError("At least one RAWR observation is required")
 
-    games_by_player_season = _count_player_season_games(observations, season=season)
+    games_by_player_season = count_player_season_games(observations, season=season)
     included_player_keys = sorted(
         player_key for player_key, games in games_by_player_season.items() if games >= min_games
     )
@@ -273,7 +273,7 @@ def _tune_ridge_alpha(
 
     training = ordered_observations[:-validation_count]
     validation = ordered_observations[-validation_count:]
-    training_player_counts = _count_player_season_games(training, season=season)
+    training_player_counts = count_player_season_games(training, season=season)
     included_player_keys = sorted(
         player_key
         for player_key, games in training_player_counts.items()
@@ -353,14 +353,14 @@ def _build_player_penalties(
         return dict.fromkeys(player_keys, ridge_alpha)
 
     if shrinkage_mode == "game-count":
-        games_by_player_season = _count_player_season_games(observations, season=season)
+        games_by_player_season = count_player_season_games(observations, season=season)
         penalties: dict[tuple[Season, int], float] = {}
         for player_key in player_keys:
             games = games_by_player_season[player_key]
             penalties[player_key] = ridge_alpha / (games**shrinkage_strength)
         return penalties
 
-    minutes_by_player_season = _count_player_season_minutes(observations, season=season)
+    minutes_by_player_season = count_player_season_minutes(observations, season=season)
     penalties: dict[tuple[Season, int], float] = {}
     for player_key in player_keys:
         if player_key not in minutes_by_player_season:
