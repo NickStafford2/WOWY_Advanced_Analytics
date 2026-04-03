@@ -2,27 +2,16 @@ from __future__ import annotations
 
 from collections.abc import Sequence
 from dataclasses import dataclass
-from typing import Any, Protocol
+from typing import Any
 
+from rawr_analytics.data.metric_store import WowyPlayerSeasonValueRow
 from rawr_analytics.metrics.constants import Metric
 from rawr_analytics.metrics.wowy.defaults import describe_metric
 from rawr_analytics.metrics.wowy.models import WowyCustomQueryResult, WowyCustomQueryRow
 from rawr_analytics.shared.season import Season, SeasonType
 from rawr_analytics.shared.team import Team
 
-
-class _WowyRow(Protocol):
-    season_id: str
-    player_id: int
-    player_name: str
-    value: float
-    games_with: int
-    games_without: int
-    avg_margin_with: float | None
-    avg_margin_without: float | None
-    average_minutes: float | None
-    total_minutes: float | None
-    raw_wowy_score: float | None
+type WowyQueryRow = WowyPlayerSeasonValueRow | WowyCustomQueryRow
 
 
 @dataclass(frozen=True)
@@ -77,7 +66,7 @@ def build_options_filters_payload(filters: WowyQueryFilters) -> WowyQueryFilters
 
 def build_player_seasons_payload(
     metric: Metric,
-    rows: Sequence[_WowyRow],
+    rows: Sequence[WowyPlayerSeasonValueRow],
 ) -> dict[str, Any]:
     return {
         "metric": metric.value,
@@ -92,7 +81,7 @@ def build_cached_leaderboard_payload(
     metric_label: str,
     available_seasons: list[Season],
     available_teams: list[Team],
-    rows: Sequence[_WowyRow],
+    rows: Sequence[WowyPlayerSeasonValueRow],
     seasons: list[str],
     top_n: int,
 ) -> dict[str, Any]:
@@ -128,7 +117,7 @@ def build_custom_leaderboard_payload(
 def build_export_table(
     metric: Metric,
     *,
-    rows: Sequence[_WowyRow] | Sequence[WowyCustomQueryRow],
+    rows: Sequence[WowyQueryRow],
     seasons: list[str],
     metric_label: str | None = None,
 ) -> tuple[str, list[dict[str, Any]]]:
@@ -139,7 +128,7 @@ def build_export_table(
 
 
 def _serialize_player_season_row(
-    row: _WowyRow,
+    row: WowyPlayerSeasonValueRow,
 ) -> dict[str, Any]:
     return {
         "season_id": row.season_id,
@@ -162,7 +151,7 @@ def _build_leaderboard_payload(
     *,
     metric: str,
     metric_label: str,
-    rows: Sequence[_WowyRow] | Sequence[WowyCustomQueryRow],
+    rows: Sequence[WowyQueryRow],
     seasons: list[str],
     top_n: int,
     mode: str,
@@ -180,11 +169,11 @@ def _build_leaderboard_payload(
 
 def _build_ranked_table_rows(
     *,
-    rows: Sequence[_WowyRow] | Sequence[WowyCustomQueryRow],
+    rows: Sequence[WowyQueryRow],
     seasons: list[str],
     top_n: int | None,
 ) -> list[dict[str, Any]]:
-    rows_by_player: dict[int, list[_WowyRow | WowyCustomQueryRow]] = {}
+    rows_by_player: dict[int, list[WowyQueryRow]] = {}
     for row in rows:
         rows_by_player.setdefault(row.player_id, []).append(row)
 
@@ -268,7 +257,7 @@ def _build_series_from_table_rows(
 
 
 def _weighted_average_rows(
-    rows: Sequence[_WowyRow] | Sequence[WowyCustomQueryRow],
+    rows: Sequence[WowyQueryRow],
     *,
     value_key: str,
     weight_key: str,

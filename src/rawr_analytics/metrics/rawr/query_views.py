@@ -2,22 +2,15 @@ from __future__ import annotations
 
 from collections.abc import Sequence
 from dataclasses import dataclass
-from typing import Any, Protocol
+from typing import Any
 
+from rawr_analytics.data.metric_store import RawrPlayerSeasonValueRow
 from rawr_analytics.metrics.rawr.defaults import describe_metric
 from rawr_analytics.metrics.rawr.models import RawrCustomQueryResult, RawrCustomQueryRow
 from rawr_analytics.shared.season import Season, SeasonType
 from rawr_analytics.shared.team import Team
 
-
-class _RawrRow(Protocol):
-    season_id: str
-    player_id: int
-    player_name: str
-    coefficient: float
-    games: int
-    average_minutes: float | None
-    total_minutes: float | None
+type RawrQueryRow = RawrPlayerSeasonValueRow | RawrCustomQueryRow
 
 
 @dataclass(frozen=True)
@@ -71,7 +64,7 @@ def build_options_filters_payload(filters: RawrQueryFilters) -> RawrQueryFilters
 
 
 def build_player_seasons_payload(
-    rows: Sequence[_RawrRow],
+    rows: Sequence[RawrPlayerSeasonValueRow],
 ) -> dict[str, Any]:
     return {
         "metric": "rawr",
@@ -85,7 +78,7 @@ def build_cached_leaderboard_payload(
     metric_label: str,
     available_seasons: list[Season],
     available_teams: list[Team],
-    rows: Sequence[_RawrRow],
+    rows: Sequence[RawrPlayerSeasonValueRow],
     seasons: list[str],
     top_n: int,
 ) -> dict[str, Any]:
@@ -119,7 +112,7 @@ def build_custom_leaderboard_payload(
 
 def build_export_table(
     *,
-    rows: Sequence[_RawrRow] | Sequence[RawrCustomQueryRow],
+    rows: Sequence[RawrQueryRow],
     seasons: list[str],
     metric_label: str | None = None,
 ) -> tuple[str, list[dict[str, Any]]]:
@@ -130,7 +123,7 @@ def build_export_table(
 
 
 def _serialize_player_season_row(
-    row: _RawrRow,
+    row: RawrPlayerSeasonValueRow,
 ) -> dict[str, Any]:
     return {
         "season_id": row.season_id,
@@ -149,7 +142,7 @@ def _build_leaderboard_payload(
     *,
     metric: str,
     metric_label: str,
-    rows: Sequence[_RawrRow] | Sequence[RawrCustomQueryRow],
+    rows: Sequence[RawrQueryRow],
     seasons: list[str],
     top_n: int,
     mode: str,
@@ -167,11 +160,11 @@ def _build_leaderboard_payload(
 
 def _build_ranked_table_rows(
     *,
-    rows: Sequence[_RawrRow] | Sequence[RawrCustomQueryRow],
+    rows: Sequence[RawrQueryRow],
     seasons: list[str],
     top_n: int | None,
 ) -> list[dict[str, Any]]:
-    rows_by_player: dict[int, list[_RawrRow | RawrCustomQueryRow]] = {}
+    rows_by_player: dict[int, list[RawrQueryRow]] = {}
     for row in rows:
         rows_by_player.setdefault(row.player_id, []).append(row)
 

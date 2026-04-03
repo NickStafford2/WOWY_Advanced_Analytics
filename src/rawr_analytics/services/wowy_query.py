@@ -1,12 +1,13 @@
 from __future__ import annotations
 
-from collections.abc import Sequence
-from typing import Any, cast
+from typing import cast
 
 from rawr_analytics.data.metric_store import load_wowy_player_season_value_rows
 from rawr_analytics.metrics.constants import Metric
 from rawr_analytics.metrics.wowy import (
+    WowyCustomQueryResult,
     WowyQuery,
+    WowyQueryFilters,
     build_cached_leaderboard_payload,
     build_custom_leaderboard_payload,
     build_export_table,
@@ -25,21 +26,27 @@ from rawr_analytics.services._metric_scope import (
     selected_seasons,
 )
 
+type JSONScalar = None | bool | int | float | str
+type JSONValue = JSONScalar | list[JSONValue] | dict[str, JSONValue]
+
 MetricView = str
-MetricQueryExport = tuple[str, list[dict[str, Any]]]
+MetricQueryExport = tuple[str, list[dict[str, JSONValue]]]
 
 
 def build_wowy_options_payload(
     metric: Metric,
     query: WowyQuery,
-) -> dict[str, Any]:
+) -> dict[str, JSONValue]:
     _require_wowy_metric(metric)
     filters = build_options_filters_payload(_build_wowy_filters_payload(query))
-    return build_metric_options_payload(
-        metric=metric,
-        teams=query.teams,
-        season_type=query.season_type,
-        filters=_serialize_wowy_filters(filters),
+    return cast(
+        dict[str, JSONValue],
+        build_metric_options_payload(
+            metric=metric,
+            teams=query.teams,
+            season_type=query.season_type,
+            filters=_serialize_wowy_filters(filters),
+        ),
     )
 
 
@@ -48,7 +55,7 @@ def build_wowy_query_view(
     query: WowyQuery,
     *,
     view: MetricView,
-) -> dict[str, Any]:
+) -> dict[str, JSONValue]:
     _require_wowy_metric(metric)
     payload = _build_wowy_view_payload(metric, view=view, query=query)
     payload["filters"] = _serialize_wowy_filters(_build_wowy_filters_payload(query))
@@ -74,19 +81,25 @@ def build_wowy_query_export(
             min_games_with=query.min_games_with,
             min_games_without=query.min_games_without,
         )
-        return build_export_table(
-            metric,
-            rows=cast(Sequence[Any], rows),
-            seasons=selected_seasons(query.seasons, catalog),
+        return cast(
+            MetricQueryExport,
+            build_export_table(
+                metric,
+                rows=rows,
+                seasons=selected_seasons(query.seasons, catalog),
+            ),
         )
 
     if view == "custom-query":
         result = _build_wowy_custom_query_result(metric, query)
-        return build_export_table(
-            metric,
-            rows=result.rows,
-            seasons=sorted({row.season_id for row in result.rows}),
-            metric_label=result.metric_label,
+        return cast(
+            MetricQueryExport,
+            build_export_table(
+                metric,
+                rows=result.rows,
+                seasons=sorted({row.season_id for row in result.rows}),
+                metric_label=result.metric_label,
+            ),
         )
 
     raise ValueError(f"Metric view {view!r} does not support CSV export")
@@ -97,7 +110,7 @@ def _build_wowy_view_payload(
     *,
     view: MetricView,
     query: WowyQuery,
-) -> dict[str, Any]:
+) -> dict[str, JSONValue]:
     scope_key = build_metric_scope_key(query)
 
     if view == "player-seasons":
@@ -111,7 +124,7 @@ def _build_wowy_view_payload(
             min_games_with=query.min_games_with,
             min_games_without=query.min_games_without,
         )
-        return build_player_seasons_payload(metric, cast(Sequence[Any], rows))
+        return cast(dict[str, JSONValue], build_player_seasons_payload(metric, rows))
 
     if view == "cached-leaderboard":
         catalog = require_current_metric_scope(metric=metric, scope_key=scope_key)
@@ -124,14 +137,17 @@ def _build_wowy_view_payload(
             min_games_with=query.min_games_with,
             min_games_without=query.min_games_without,
         )
-        payload = build_cached_leaderboard_payload(
-            metric,
-            metric_label=catalog.metric_label,
-            available_seasons=catalog.available_seasons,
-            available_teams=catalog.available_teams,
-            rows=cast(Sequence[Any], rows),
-            seasons=selected_seasons(query.seasons, catalog),
-            top_n=query.top_n,
+        payload = cast(
+            dict[str, JSONValue],
+            build_cached_leaderboard_payload(
+                metric,
+                metric_label=catalog.metric_label,
+                available_seasons=catalog.available_seasons,
+                available_teams=catalog.available_teams,
+                rows=rows,
+                seasons=selected_seasons(query.seasons, catalog),
+                top_n=query.top_n,
+            ),
         )
         payload["available_seasons"] = [season.id for season in catalog.available_seasons]
         payload["available_teams"] = [
@@ -141,21 +157,30 @@ def _build_wowy_view_payload(
 
     if view == "span-chart":
         catalog = require_current_metric_scope(metric=metric, scope_key=scope_key)
-        return build_metric_span_chart_payload(
-            metric=metric,
-            catalog=catalog,
-            scope_key=scope_key,
-            top_n=query.top_n,
+        return cast(
+            dict[str, JSONValue],
+            build_metric_span_chart_payload(
+                metric=metric,
+                catalog=catalog,
+                scope_key=scope_key,
+                top_n=query.top_n,
+            ),
         )
 
     if view == "custom-query":
         result = _build_wowy_custom_query_result(metric, query)
-        return build_custom_leaderboard_payload(metric, result, top_n=query.top_n)
+        return cast(
+            dict[str, JSONValue],
+            build_custom_leaderboard_payload(metric, result, top_n=query.top_n),
+        )
 
     raise ValueError(f"Unknown metric view: {view}")
 
 
-def _build_wowy_custom_query_result(metric: Metric, query: WowyQuery):
+def _build_wowy_custom_query_result(
+    metric: Metric,
+    query: WowyQuery,
+) -> WowyCustomQueryResult:
     season_inputs = load_wowy_season_inputs(
         teams=query.teams,
         seasons=query.seasons,
@@ -171,7 +196,7 @@ def _build_wowy_custom_query_result(metric: Metric, query: WowyQuery):
     )
 
 
-def _build_wowy_filters_payload(query: WowyQuery):
+def _build_wowy_filters_payload(query: WowyQuery) -> WowyQueryFilters:
     return build_query_filters_payload(
         teams=query.teams,
         seasons=query.seasons,
@@ -184,7 +209,7 @@ def _build_wowy_filters_payload(query: WowyQuery):
     )
 
 
-def _serialize_wowy_filters(filters: Any) -> dict[str, Any]:
+def _serialize_wowy_filters(filters: WowyQueryFilters) -> dict[str, JSONValue]:
     return {
         "team": (
             None

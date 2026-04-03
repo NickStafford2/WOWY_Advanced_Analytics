@@ -1,12 +1,13 @@
 from __future__ import annotations
 
-from collections.abc import Sequence
-from typing import Any, cast
+from typing import cast
 
 from rawr_analytics.data.metric_store import load_rawr_player_season_value_rows
 from rawr_analytics.metrics.constants import Metric
 from rawr_analytics.metrics.rawr import (
+    RawrCustomQueryResult,
     RawrQuery,
+    RawrQueryFilters,
     build_cached_leaderboard_payload,
     build_custom_leaderboard_payload,
     build_export_table,
@@ -25,17 +26,23 @@ from rawr_analytics.services._metric_scope import (
     selected_seasons,
 )
 
+type JSONScalar = None | bool | int | float | str
+type JSONValue = JSONScalar | list[JSONValue] | dict[str, JSONValue]
+
 MetricView = str
-MetricQueryExport = tuple[str, list[dict[str, Any]]]
+MetricQueryExport = tuple[str, list[dict[str, JSONValue]]]
 
 
-def build_rawr_options_payload(query: RawrQuery) -> dict[str, Any]:
+def build_rawr_options_payload(query: RawrQuery) -> dict[str, JSONValue]:
     filters = build_options_filters_payload(_build_rawr_filters_payload(query))
-    return build_metric_options_payload(
-        metric=Metric.RAWR,
-        teams=query.teams,
-        season_type=query.season_type,
-        filters=_serialize_rawr_filters(filters),
+    return cast(
+        dict[str, JSONValue],
+        build_metric_options_payload(
+            metric=Metric.RAWR,
+            teams=query.teams,
+            season_type=query.season_type,
+            filters=_serialize_rawr_filters(filters),
+        ),
     )
 
 
@@ -43,7 +50,7 @@ def build_rawr_query_view(
     query: RawrQuery,
     *,
     view: MetricView,
-) -> dict[str, Any]:
+) -> dict[str, JSONValue]:
     payload = _build_rawr_view_payload(view=view, query=query)
     payload["filters"] = _serialize_rawr_filters(_build_rawr_filters_payload(query))
     return payload
@@ -65,17 +72,23 @@ def build_rawr_query_export(
             min_total_minutes=query.min_total_minutes,
             min_games=query.min_games,
         )
-        return build_export_table(
-            rows=cast(Sequence[Any], rows),
-            seasons=selected_seasons(query.seasons, catalog),
+        return cast(
+            MetricQueryExport,
+            build_export_table(
+                rows=rows,
+                seasons=selected_seasons(query.seasons, catalog),
+            ),
         )
 
     if view == "custom-query":
         result = _build_rawr_custom_query_result(query)
-        return build_export_table(
-            rows=result.rows,
-            seasons=sorted({row.season_id for row in result.rows}),
-            metric_label=result.metric_label,
+        return cast(
+            MetricQueryExport,
+            build_export_table(
+                rows=result.rows,
+                seasons=sorted({row.season_id for row in result.rows}),
+                metric_label=result.metric_label,
+            ),
         )
 
     raise ValueError(f"Metric view {view!r} does not support CSV export")
@@ -85,7 +98,7 @@ def _build_rawr_view_payload(
     *,
     view: MetricView,
     query: RawrQuery,
-) -> dict[str, Any]:
+) -> dict[str, JSONValue]:
     scope_key = build_metric_scope_key(query)
 
     if view == "player-seasons":
@@ -97,7 +110,7 @@ def _build_rawr_view_payload(
             min_total_minutes=query.min_total_minutes,
             min_games=query.min_games,
         )
-        return build_player_seasons_payload(cast(Sequence[Any], rows))
+        return cast(dict[str, JSONValue], build_player_seasons_payload(rows))
 
     if view == "cached-leaderboard":
         catalog = require_current_metric_scope(metric=Metric.RAWR, scope_key=scope_key)
@@ -108,13 +121,16 @@ def _build_rawr_view_payload(
             min_total_minutes=query.min_total_minutes,
             min_games=query.min_games,
         )
-        payload = build_cached_leaderboard_payload(
-            metric_label=catalog.metric_label,
-            available_seasons=catalog.available_seasons,
-            available_teams=catalog.available_teams,
-            rows=cast(Sequence[Any], rows),
-            seasons=selected_seasons(query.seasons, catalog),
-            top_n=query.top_n,
+        payload = cast(
+            dict[str, JSONValue],
+            build_cached_leaderboard_payload(
+                metric_label=catalog.metric_label,
+                available_seasons=catalog.available_seasons,
+                available_teams=catalog.available_teams,
+                rows=rows,
+                seasons=selected_seasons(query.seasons, catalog),
+                top_n=query.top_n,
+            ),
         )
         payload["available_seasons"] = [season.id for season in catalog.available_seasons]
         payload["available_teams"] = [
@@ -124,21 +140,27 @@ def _build_rawr_view_payload(
 
     if view == "span-chart":
         catalog = require_current_metric_scope(metric=Metric.RAWR, scope_key=scope_key)
-        return build_metric_span_chart_payload(
-            metric=Metric.RAWR,
-            catalog=catalog,
-            scope_key=scope_key,
-            top_n=query.top_n,
+        return cast(
+            dict[str, JSONValue],
+            build_metric_span_chart_payload(
+                metric=Metric.RAWR,
+                catalog=catalog,
+                scope_key=scope_key,
+                top_n=query.top_n,
+            ),
         )
 
     if view == "custom-query":
         result = _build_rawr_custom_query_result(query)
-        return build_custom_leaderboard_payload(result, top_n=query.top_n)
+        return cast(
+            dict[str, JSONValue],
+            build_custom_leaderboard_payload(result, top_n=query.top_n),
+        )
 
     raise ValueError(f"Unknown metric view: {view}")
 
 
-def _build_rawr_custom_query_result(query: RawrQuery):
+def _build_rawr_custom_query_result(query: RawrQuery) -> RawrCustomQueryResult:
     season_inputs = load_rawr_season_inputs(
         teams=query.teams,
         seasons=query.seasons,
@@ -153,7 +175,7 @@ def _build_rawr_custom_query_result(query: RawrQuery):
     )
 
 
-def _build_rawr_filters_payload(query: RawrQuery):
+def _build_rawr_filters_payload(query: RawrQuery) -> RawrQueryFilters:
     return build_query_filters_payload(
         teams=query.teams,
         seasons=query.seasons,
@@ -166,7 +188,7 @@ def _build_rawr_filters_payload(query: RawrQuery):
     )
 
 
-def _serialize_rawr_filters(filters: Any) -> dict[str, Any]:
+def _serialize_rawr_filters(filters: RawrQueryFilters) -> dict[str, JSONValue]:
     return {
         "team": (
             None
