@@ -3,6 +3,8 @@ from __future__ import annotations
 from collections import defaultdict
 from dataclasses import dataclass
 
+from rawr_analytics.basketball import player_has_positive_minutes
+from rawr_analytics.basketball.models import NormalizedGamePlayerRecord, NormalizedGameRecord
 from rawr_analytics.data.game_cache import (
     list_cache_load_rows,
     load_normalized_scope_records_from_db,
@@ -22,8 +24,6 @@ from rawr_analytics.metrics.wowy.models import (
     WowyPlayerContext,
     WowySeasonInput,
 )
-from rawr_analytics.basketball import player_has_positive_minutes
-from rawr_analytics.basketball.models import NormalizedGamePlayerRecord, NormalizedGameRecord
 from rawr_analytics.shared.player import PlayerMinutes, PlayerSummary
 from rawr_analytics.shared.scope import TeamSeasonScope
 from rawr_analytics.shared.season import Season, SeasonType
