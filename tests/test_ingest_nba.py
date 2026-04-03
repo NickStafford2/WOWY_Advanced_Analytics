@@ -4,7 +4,7 @@ from pathlib import Path
 
 import pytest
 
-from rawr_analytics.basketball.errors import PartialTeamSeasonError
+from rawr_analytics.services._ingest_errors import PartialTeamSeasonError
 from rawr_analytics.basketball.normalize.normalize_game import normalize_source_league_game
 from rawr_analytics.sources.nba_api.dedupe import dedupe_schedule_games
 from rawr_analytics.sources.nba_api.models import (

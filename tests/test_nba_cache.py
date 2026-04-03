@@ -13,7 +13,7 @@ from rawr_analytics.data.game_cache.repository import (
     replace_team_season_normalized_rows,
 )
 from rawr_analytics.data.scope_resolver import resolve_team_seasons
-from rawr_analytics.basketball.errors import BoxScoreFetchError, LeagueGamesFetchError
+from rawr_analytics.services._ingest_errors import BoxScoreFetchError, LeagueGamesFetchError
 from rawr_analytics.basketball.models import NormalizedGamePlayerRecord, NormalizedGameRecord
 from rawr_analytics.sources.nba_api.cache import (
     BOX_SCORE_REQUEST_TIMEOUT_SECONDS,

@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from rawr_analytics.basketball.build_models import TeamSeasonRunSummary
-from rawr_analytics.basketball.errors import (
+from rawr_analytics.services._ingest_errors import (
     BoxScoreFetchError,
     GameNormalizationFailure,
     PartialTeamSeasonError,
