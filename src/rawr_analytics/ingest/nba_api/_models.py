@@ -14,21 +14,16 @@ from rawr_analytics.shared.season import Season
 from rawr_analytics.shared.team import Team
 
 _TeamSeasonFailureError = FetchError | PartialTeamSeasonError | ValueError
-IngestSourceKind = str
 
 
 @dataclass(frozen=True)
 class IngestRequest:
     team: Team
     season: Season
-    source_kind: IngestSourceKind = "nba_api"
 
     @property
     def label(self) -> str:
-        return (
-            f"{self.team.abbreviation(season=self.season)} "
-            f"{self.season} source={self.source_kind}"
-        )
+        return f"{self.team.abbreviation(season=self.season)} {self.season}"
 
 
 @dataclass(frozen=True)
@@ -38,7 +33,6 @@ class IngestSummary:
     fetched_box_scores: int
     cached_box_scores: int
     league_games_source: str
-    source_kind: IngestSourceKind
 
 
 _TeamProgressFn = Callable[[IngestProgress], None]
@@ -158,7 +152,6 @@ __all__ = [
     "IngestRequest",
     "IngestResult",
     "IngestSeasonStartedEvent",
-    "IngestSourceKind",
     "IngestSummary",
     "IngestTeamCompletedEvent",
     "IngestTeamFailedEvent",

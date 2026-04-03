@@ -73,7 +73,6 @@ def main(argv: list[str] | None = None) -> int:
         end_year=args.end_year or _DEFAULT_END_YEAR,
         season_type=args.season_type or _DEFAULT_SEASON_TYPE,
         team_abbreviations=args.teams,
-        source_kind="nba_api",
         event_fn=render_ingest_event,
         failure_log_fn=append_failure_log_entry,
     )
