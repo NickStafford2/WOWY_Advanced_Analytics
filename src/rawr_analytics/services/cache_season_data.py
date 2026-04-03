@@ -3,19 +3,11 @@ from __future__ import annotations
 import argparse
 import sys
 
-from rawr_analytics.nba import (
-    FetchError,
-    PartialTeamSeasonError,
-    append_ingest_failure_log,
-)
-from rawr_analytics.services._render import (
+from rawr_analytics.cli._ingest_terminal import (
     render_failure_summary,
-    render_partial_failure_details,
+    render_ingest_failure,
     render_progress_line,
     render_team_complete_line,
-    render_team_fetch_failed_line,
-    render_team_partial_failed_line,
-    render_team_validation_failed_line,
 )
 from rawr_analytics.services.ingest import (
     IngestRefreshRequest,
@@ -82,62 +74,7 @@ def _render_team_completed(team_index: int, team_total: int, result: IngestResul
 
 
 def _render_team_failed(team_index: int, team_total: int, failure: SeasonRangeFailure) -> None:
-    request = failure.request
-    team = request.team
-    season = request.season
-    error = failure.error
-
-    append_ingest_failure_log(
-        team=team,
-        season=season,
-        failure_kind=failure.failure_kind,
-        error=error,
-    )
-
-    if failure.failure_kind == "fetch_error":
-        assert isinstance(error, FetchError)
-        render_team_fetch_failed_line(
-            team_index=team_index,
-            team_total=team_total,
-            team_label=team.abbreviation(season=season),
-            season_label=str(season),
-            error_type=error.last_error_type,
-        )
-        sys.stdout.write("\n")
-        sys.stderr.write(f"Fetch failed for {request.label}: {error}\n")
-        sys.stderr.flush()
-        return
-
-    if failure.failure_kind == "partial_scope_error":
-        assert isinstance(error, PartialTeamSeasonError)
-        render_team_partial_failed_line(
-            team_index=team_index,
-            team_total=team_total,
-            team_label=team.abbreviation(season=season),
-            season_label=str(season),
-            failed_games=error.failed_games,
-            total_games=error.total_games,
-        )
-        sys.stdout.write("\n")
-        sys.stderr.write(
-            f"Incomplete cache for {request.label}: "
-            f"{error.failed_games}/{error.total_games} games failed normalization\n"
-        )
-        sys.stderr.write(f"{render_partial_failure_details(error)}\n")
-        sys.stderr.flush()
-        return
-
-    reason = str(error)
-    render_team_validation_failed_line(
-        team_index=team_index,
-        team_total=team_total,
-        team_label=team.abbreviation(season=season),
-        season_label=str(season),
-        reason=reason,
-    )
-    sys.stdout.write("\n")
-    sys.stderr.write(f"Validation failed for {request.label}: {reason}\n")
-    sys.stderr.flush()
+    render_ingest_failure(team_index, team_total, failure)
 
 
 def _render_failure_summary_for_result(result: SeasonRangeResult) -> None:

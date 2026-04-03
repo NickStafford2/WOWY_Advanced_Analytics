@@ -4,7 +4,16 @@ import argparse
 import sys
 from collections.abc import Sequence
 
-from rawr_analytics.progress import TerminalProgressBar
+from rawr_analytics.cli._ingest_terminal import (
+    render_failure_summary,
+    render_progress_line,
+    render_team_complete_line,
+)
+from rawr_analytics.cli._rebuild_terminal import (
+    render_metric_progress as _render_metric_progress_bar,
+    render_rebuild_team_failure,
+    render_validation_progress as _render_validation_progress_bar,
+)
 from rawr_analytics.services import (
     IngestResult,
     RebuildTeamFailureEvent,
@@ -13,19 +22,9 @@ from rawr_analytics.services import (
     parse_rebuild_request,
     rebuild_player_metrics_db,
 )
-from rawr_analytics.services._render import (
-    render_failure_summary,
-    render_progress_line,
-    render_team_complete_line,
-    render_team_fetch_failed_line,
-    render_team_partial_failed_line,
-    render_team_validation_failed_line,
-)
 
 _DEFAULT_START_YEAR = 2025
 _DEFAULT_END_YEAR = 1998
-_METRIC_PROGRESS_BARS: dict[str, TerminalProgressBar] = {}
-_VALIDATION_PROGRESS_BAR: TerminalProgressBar | None = None
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -133,45 +132,7 @@ def _render_team_completed(team_index: int, team_total: int, result: IngestResul
 
 
 def _render_team_failed(event: RebuildTeamFailureEvent) -> None:
-    if event.failure_kind == "fetch_error":
-        render_team_fetch_failed_line(
-            team_index=event.team_index,
-            team_total=event.team_total,
-            team_label=event.team_label,
-            season_label=event.season_label,
-            error_type=event.fetch_error_type or "unknown",
-        )
-        sys.stdout.write("\n")
-        sys.stderr.write(f"{event.stderr_message}\n")
-        sys.stderr.flush()
-        return
-
-    if event.failure_kind == "partial_scope_error":
-        render_team_partial_failed_line(
-            team_index=event.team_index,
-            team_total=event.team_total,
-            team_label=event.team_label,
-            season_label=event.season_label,
-            failed_games=event.failed_games or 0,
-            total_games=event.total_games or 0,
-        )
-        sys.stdout.write("\n")
-        sys.stderr.write(f"{event.stderr_message}\n")
-        if event.stderr_details is not None:
-            sys.stderr.write(f"{event.stderr_details}\n")
-        sys.stderr.flush()
-        return
-
-    render_team_validation_failed_line(
-        team_index=event.team_index,
-        team_total=event.team_total,
-        team_label=event.team_label,
-        season_label=event.season_label,
-        reason=event.reason,
-    )
-    sys.stdout.write("\n")
-    sys.stderr.write(f"{event.stderr_message}\n")
-    sys.stderr.flush()
+    render_rebuild_team_failure(event)
 
 
 def _render_failure_summary(failures: Sequence[SeasonRangeFailure]) -> None:
@@ -187,30 +148,11 @@ def _render_failure_summary(failures: Sequence[SeasonRangeFailure]) -> None:
 
 
 def _render_metric_progress(metric: str, current: int, total: int, detail: str) -> None:
-    progress_bar = _METRIC_PROGRESS_BARS.get(metric)
-    if progress_bar is None:
-        progress_bar = TerminalProgressBar(f"Refresh {metric}", total=max(total, 1))
-        _METRIC_PROGRESS_BARS[metric] = progress_bar
-    progress_bar.total = max(total, 1)
-    progress_bar.update(current, detail=detail)
-    if current >= total:
-        progress_bar.finish(detail="done")
-        del _METRIC_PROGRESS_BARS[metric]
+    _render_metric_progress_bar(metric, current, total, detail)
 
 
 def _render_validation_progress(current: int, total: int, label: str) -> None:
-    global _VALIDATION_PROGRESS_BAR
-    if _VALIDATION_PROGRESS_BAR is None:
-        _VALIDATION_PROGRESS_BAR = TerminalProgressBar(
-            "Validate rebuilt database",
-            total=max(total, 1),
-        )
-    progress_bar = _VALIDATION_PROGRESS_BAR
-    progress_bar.total = max(total, 1)
-    progress_bar.update(current, detail=label)
-    if current >= total:
-        progress_bar.finish(detail="done")
-        _VALIDATION_PROGRESS_BAR = None
+    _render_validation_progress_bar(current, total, label)
 
 
 def run(argv: list[str] | None = None) -> int:

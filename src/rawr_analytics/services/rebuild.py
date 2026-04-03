@@ -1,6 +1,4 @@
 from __future__ import annotations
-
-import json
 from collections.abc import Callable
 from dataclasses import dataclass
 
@@ -11,7 +9,7 @@ from rawr_analytics.data import (
     validate_rebuild_storage,
 )
 from rawr_analytics.metrics.constants import Metric
-from rawr_analytics.nba import FetchError, PartialTeamSeasonError, append_ingest_failure_log
+from rawr_analytics.nba import FetchError, PartialTeamSeasonError
 from rawr_analytics.nba.errors import GameNormalizationFailure
 from rawr_analytics.services.ingest import (
     IngestProgress,
@@ -27,7 +25,8 @@ from rawr_analytics.services.metric_refresh import (
     RefreshMetricStoreResult,
     refresh_metric_store,
 )
-from rawr_analytics.shared.season import SeasonType
+from rawr_analytics.shared.season import Season, SeasonType
+from rawr_analytics.shared.team import Team
 
 ValidationProgressFn = Callable[[int, int, str], None]
 MetricRefreshProgressFn = Callable[[str, int, int, str], None]
@@ -66,15 +65,19 @@ class RebuildTeamFailureEvent:
     team_index: int
     team_total: int
     scope: str
+    team: Team
+    season: Season
     team_label: str
     season_label: str
     failure_kind: str
+    error: FetchError | PartialTeamSeasonError | ValueError
     fetch_error_type: str | None
     failed_games: int | None
     total_games: int | None
     reason: str
-    stderr_message: str
-    stderr_details: str | None
+    failed_game_details: list[GameNormalizationFailure] | None = None
+    failure_reason_counts: dict[str, int] | None = None
+    failure_reason_examples: dict[str, list[str]] | None = None
 
 
 def parse_rebuild_request(
@@ -210,12 +213,6 @@ def _build_rebuild_team_failure_event(
     team = request.team
     season = request.season
     error = failure.error
-    append_ingest_failure_log(
-        team=team,
-        season=season,
-        failure_kind=failure.failure_kind,
-        error=error,
-    )
     team_label = team.abbreviation(season=season)
     season_label = str(season)
 
@@ -225,15 +222,16 @@ def _build_rebuild_team_failure_event(
             team_index=team_index,
             team_total=team_total,
             scope=failure.scope,
+            team=team,
+            season=season,
             team_label=team_label,
             season_label=season_label,
             failure_kind=failure.failure_kind,
+            error=error,
             fetch_error_type=error.last_error_type,
             failed_games=None,
             total_games=None,
             reason=str(error),
-            stderr_message=f"Fetch failed for {request.label}: {error}",
-            stderr_details=None,
         )
 
     if failure.failure_kind == "partial_scope_error":
@@ -242,89 +240,39 @@ def _build_rebuild_team_failure_event(
             team_index=team_index,
             team_total=team_total,
             scope=failure.scope,
+            team=team,
+            season=season,
             team_label=team_label,
             season_label=season_label,
             failure_kind=failure.failure_kind,
+            error=error,
             fetch_error_type=None,
             failed_games=error.failed_games,
             total_games=error.total_games,
             reason=str(error),
-            stderr_message=(
-                f"Incomplete cache for {request.label}: "
-                f"{error.failed_games}/{error.total_games} games failed normalization"
-            ),
-            stderr_details=_render_partial_failure_details(error),
+            failed_game_details=list(error.failed_game_details),
+            failure_reason_counts=dict(sorted(error.failure_reason_counts.items())),
+            failure_reason_examples={
+                reason: examples[:]
+                for reason, examples in sorted(error.failure_reason_examples.items())
+            },
         )
 
     return RebuildTeamFailureEvent(
         team_index=team_index,
         team_total=team_total,
         scope=failure.scope,
+        team=team,
+        season=season,
         team_label=team_label,
         season_label=season_label,
         failure_kind=failure.failure_kind,
+        error=error,
         fetch_error_type=None,
         failed_games=None,
         total_games=None,
         reason=str(error),
-        stderr_message=f"Validation failed for {request.label}: {error}",
-        stderr_details=None,
     )
-
-
-def _render_partial_failure_details(error: PartialTeamSeasonError) -> str:
-    lines = ["Failure reasons:"]
-    details_by_game_id = {failure.game_id: failure for failure in error.failed_game_details}
-    ranked_reasons = sorted(
-        error.failure_reason_counts.items(),
-        key=lambda item: (-item[1], item[0]),
-    )
-    for reason, count in ranked_reasons:
-        example_game_ids = error.failure_reason_examples.get(reason, [])[:3]
-        lines.append(f"  - {count} games: {reason}")
-        for game_id in example_game_ids:
-            failure = details_by_game_id.get(game_id)
-            if failure is None:
-                lines.append(f"    {game_id}: details unavailable")
-                continue
-            lines.append(
-                f"    {game_id}: {_summarize_game_failure_detail(failure)}"
-            )
-    return "\n".join(lines)
-
-
-def _summarize_game_failure_detail(failure: GameNormalizationFailure) -> str:
-    message = failure.message
-    if "; nba_api_" not in message:
-        return message
-
-    summary, raw_payload = message.split("; nba_api_", maxsplit=1)
-    raw_json = raw_payload.split("=", maxsplit=1)[-1].strip()
-    try:
-        payload = json.loads(raw_json)
-    except json.JSONDecodeError:
-        return summary
-
-    parts: list[str] = []
-    player_name = str(payload.get("PLAYER_NAME", "")).strip()
-    if player_name:
-        parts.append(f"player={player_name!r}")
-    min_value = payload.get("MIN")
-    if min_value is not None or "MIN" in payload:
-        parts.append(f"min={min_value!r}")
-    comment = str(payload.get("COMMENT", "")).strip()
-    if comment:
-        parts.append(f"comment={comment!r}")
-
-    for key in ("TEAM_ABBREVIATION", "TEAM_ID"):
-        value = payload.get(key)
-        if value is not None and value != "":
-            parts.append(f"{key.lower()}={value!r}")
-            break
-
-    if not parts:
-        return summary
-    return f"{summary} ({', '.join(parts)})"
 
 
 __all__ = [

@@ -3,8 +3,9 @@ from __future__ import annotations
 import json
 import sys
 
-from rawr_analytics.nba.errors import GameNormalizationFailure, PartialTeamSeasonError
-from rawr_analytics.services import IngestProgress
+from rawr_analytics.nba import FetchError, PartialTeamSeasonError, append_ingest_failure_log
+from rawr_analytics.nba.errors import GameNormalizationFailure
+from rawr_analytics.services.ingest import IngestProgress, IngestResult, SeasonRangeFailure
 
 _LAST_STATUS_LINE_LENGTH = 0
 
@@ -14,17 +15,6 @@ def filtered_log(message: str) -> None:
         return
     sys.stderr.write(f"{message}\n")
     sys.stderr.flush()
-
-
-def record_failure(
-    failure_counts: dict[str, int],
-    failed_scopes: list[str],
-    *,
-    failure_kind: str,
-    scope: str,
-) -> None:
-    failure_counts[failure_kind] = failure_counts.get(failure_kind, 0) + 1
-    failed_scopes.append(scope)
 
 
 def render_failure_summary(
@@ -45,15 +35,93 @@ def render_failure_summary(
     sys.stderr.flush()
 
 
+def render_ingest_failure(
+    team_index: int,
+    team_total: int,
+    failure: SeasonRangeFailure,
+) -> None:
+    request = failure.request
+    team = request.team
+    season = request.season
+    error = failure.error
+
+    append_ingest_failure_log(
+        team=team,
+        season=season,
+        failure_kind=failure.failure_kind,
+        error=error,
+    )
+
+    if failure.failure_kind == "fetch_error":
+        assert isinstance(error, FetchError)
+        render_team_fetch_failed_line(
+            team_index=team_index,
+            team_total=team_total,
+            team_label=team.abbreviation(season=season),
+            season_label=str(season),
+            error_type=error.last_error_type,
+        )
+        sys.stdout.write("\n")
+        sys.stderr.write(f"Fetch failed for {request.label}: {error}\n")
+        sys.stderr.flush()
+        return
+
+    if failure.failure_kind == "partial_scope_error":
+        assert isinstance(error, PartialTeamSeasonError)
+        render_team_partial_failed_line(
+            team_index=team_index,
+            team_total=team_total,
+            team_label=team.abbreviation(season=season),
+            season_label=str(season),
+            failed_games=error.failed_games,
+            total_games=error.total_games,
+        )
+        sys.stdout.write("\n")
+        sys.stderr.write(
+            f"Incomplete cache for {request.label}: "
+            f"{error.failed_games}/{error.total_games} games failed normalization\n"
+        )
+        sys.stderr.write(f"{render_partial_failure_details(error)}\n")
+        sys.stderr.flush()
+        return
+
+    render_team_validation_failed_line(
+        team_index=team_index,
+        team_total=team_total,
+        team_label=team.abbreviation(season=season),
+        season_label=str(season),
+        reason=str(error),
+    )
+    sys.stdout.write("\n")
+    sys.stderr.write(f"Validation failed for {request.label}: {error}\n")
+    sys.stderr.flush()
+
+
 def render_partial_failure_details(error: PartialTeamSeasonError) -> str:
+    return format_partial_failure_details(
+        failed_game_details=list(error.failed_game_details),
+        failure_reason_counts=dict(error.failure_reason_counts),
+        failure_reason_examples={
+            reason: examples[:]
+            for reason, examples in error.failure_reason_examples.items()
+        },
+    )
+
+
+def format_partial_failure_details(
+    *,
+    failed_game_details: list[GameNormalizationFailure],
+    failure_reason_counts: dict[str, int],
+    failure_reason_examples: dict[str, list[str]],
+) -> str:
     lines = ["Failure reasons:"]
-    details_by_game_id = {failure.game_id: failure for failure in error.failed_game_details}
+    details_by_game_id = {failure.game_id: failure for failure in failed_game_details}
     ranked_reasons = sorted(
-        error.failure_reason_counts.items(),
+        failure_reason_counts.items(),
         key=lambda item: (-item[1], item[0]),
     )
     for reason, count in ranked_reasons:
-        example_game_ids = error.failure_reason_examples.get(reason, [])[:3]
+        example_game_ids = failure_reason_examples.get(reason, [])[:3]
         lines.append(f"  - {count} games: {reason}")
         for game_id in example_game_ids:
             failure = details_by_game_id.get(game_id)
@@ -83,7 +151,7 @@ def render_progress_line(team_index: int, team_total: int, progress: IngestProgr
 def render_team_complete_line(
     team_index: int,
     team_total: int,
-    result,
+    result: IngestResult,
 ) -> None:
     request = result.request
     summary = result.summary
