@@ -68,7 +68,7 @@ class RawrPlayerSeasonRecord:
 
 
 @dataclass(frozen=True)
-class RawrCustomQueryRow:
+class RawrPlayerSeasonValue:
     season_id: str
     player_id: int
     player_name: str
@@ -82,7 +82,7 @@ class RawrCustomQueryRow:
 class RawrCustomQueryResult:
     metric: str
     metric_label: str
-    rows: list[RawrCustomQueryRow]
+    rows: list[RawrPlayerSeasonValue]
 
 
 @dataclass(frozen=True)

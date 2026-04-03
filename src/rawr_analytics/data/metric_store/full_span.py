@@ -19,7 +19,13 @@ def build_rawr_full_span_rows(
         scope_key=scope_key,
         season_ids=season_ids,
         player_season_values=[
-            (row.player_id, row.player_name, row.season_id, row.coefficient) for row in rows
+            (
+                row.value.player_id,
+                row.value.player_name,
+                row.value.season_id,
+                row.value.coefficient,
+            )
+            for row in rows
         ],
     )
 
@@ -36,7 +42,13 @@ def build_wowy_full_span_rows(
         scope_key=scope_key,
         season_ids=season_ids,
         player_season_values=[
-            (row.player_id, row.player_name, row.season_id, row.value) for row in rows
+            (
+                row.value.player_id,
+                row.value.player_name,
+                row.value.season_id,
+                row.value.value,
+            )
+            for row in rows
         ],
     )
 

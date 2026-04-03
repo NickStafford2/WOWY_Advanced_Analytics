@@ -12,7 +12,10 @@ from rawr_analytics.metrics.rawr.defaults import (
     describe_metric,
 )
 from rawr_analytics.metrics.rawr.inputs import validate_filters, validate_request
-from rawr_analytics.metrics.rawr.models import RawrCustomQueryResult, RawrCustomQueryRow
+from rawr_analytics.metrics.rawr.models import (
+    RawrCustomQueryResult,
+    RawrPlayerSeasonValue,
+)
 from rawr_analytics.metrics.rawr.query import RawrQuery, build_rawr_query
 from rawr_analytics.metrics.rawr.query_views import (
     RawrQueryFilters,
@@ -30,7 +33,7 @@ __all__ = [
     "DEFAULT_RAWR_SHRINKAGE_MODE",
     "DEFAULT_RAWR_SHRINKAGE_STRENGTH",
     "RawrCustomQueryResult",
-    "RawrCustomQueryRow",
+    "RawrPlayerSeasonValue",
     "RawrQuery",
     "RawrQueryFilters",
     "build_cached_leaderboard_payload",

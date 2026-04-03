@@ -4,6 +4,7 @@ from dataclasses import dataclass
 
 from rawr_analytics.data._paths import METRIC_STORE_DB_PATH
 from rawr_analytics.data.metric_store.schema import connect, initialize_player_metrics_db
+from rawr_analytics.metrics.rawr import RawrPlayerSeasonValue
 
 
 @dataclass(frozen=True)
@@ -13,13 +14,7 @@ class RawrPlayerSeasonValueRow:
     scope_key: str
     team_filter: str
     season_type: str
-    season_id: str
-    player_id: int
-    player_name: str
-    coefficient: float
-    games: int
-    average_minutes: float | None
-    total_minutes: float | None
+    value: RawrPlayerSeasonValue
 
 
 def load_rawr_player_season_value_rows(
@@ -73,13 +68,15 @@ def load_rawr_player_season_value_rows(
             scope_key=row["scope_key"],
             team_filter=row["team_filter"],
             season_type=row["season_type"],
-            season_id=row["season_id"],
-            player_id=row["player_id"],
-            player_name=row["player_name"],
-            coefficient=row["coefficient"],
-            games=row["games"],
-            average_minutes=row["average_minutes"],
-            total_minutes=row["total_minutes"],
+            value=RawrPlayerSeasonValue(
+                season_id=row["season_id"],
+                player_id=row["player_id"],
+                player_name=row["player_name"],
+                coefficient=row["coefficient"],
+                games=row["games"],
+                average_minutes=row["average_minutes"],
+                total_minutes=row["total_minutes"],
+            ),
         )
         for row in rows
     ]

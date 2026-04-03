@@ -65,7 +65,7 @@ def build_rawr_query_export(
 
     if view == "cached-leaderboard":
         catalog = require_current_metric_scope(metric=Metric.RAWR, scope_key=scope_key)
-        rows = load_rawr_player_season_value_rows(
+        store_rows = load_rawr_player_season_value_rows(
             scope_key=scope_key,
             seasons=season_ids(query.seasons),
             min_average_minutes=query.min_average_minutes,
@@ -75,7 +75,7 @@ def build_rawr_query_export(
         return cast(
             MetricQueryExport,
             build_export_table(
-                rows=rows,
+                rows=[row.value for row in store_rows],
                 seasons=selected_seasons(query.seasons, catalog),
             ),
         )
@@ -103,18 +103,21 @@ def _build_rawr_view_payload(
 
     if view == "player-seasons":
         require_current_metric_scope(metric=Metric.RAWR, scope_key=scope_key)
-        rows = load_rawr_player_season_value_rows(
+        store_rows = load_rawr_player_season_value_rows(
             scope_key=scope_key,
             seasons=season_ids(query.seasons),
             min_average_minutes=query.min_average_minutes,
             min_total_minutes=query.min_total_minutes,
             min_games=query.min_games,
         )
-        return cast(dict[str, JSONValue], build_player_seasons_payload(rows))
+        return cast(
+            dict[str, JSONValue],
+            build_player_seasons_payload([row.value for row in store_rows]),
+        )
 
     if view == "cached-leaderboard":
         catalog = require_current_metric_scope(metric=Metric.RAWR, scope_key=scope_key)
-        rows = load_rawr_player_season_value_rows(
+        store_rows = load_rawr_player_season_value_rows(
             scope_key=scope_key,
             seasons=season_ids(query.seasons),
             min_average_minutes=query.min_average_minutes,
@@ -127,7 +130,7 @@ def _build_rawr_view_payload(
                 metric_label=catalog.metric_label,
                 available_seasons=catalog.available_seasons,
                 available_teams=catalog.available_teams,
-                rows=rows,
+                rows=[row.value for row in store_rows],
                 seasons=selected_seasons(query.seasons, catalog),
                 top_n=query.top_n,
             ),

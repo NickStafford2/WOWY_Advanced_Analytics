@@ -9,7 +9,6 @@ from rawr_analytics.data._validation import (
     _validate_optional_non_negative_int,
     _validate_required_text,
 )
-from rawr_analytics.data.metric_store_scope import validate_metric_scope
 from rawr_analytics.data.metric_store.models import (
     MetricFullSpanPointRow,
     MetricFullSpanSeriesRow,
@@ -17,6 +16,7 @@ from rawr_analytics.data.metric_store.models import (
 )
 from rawr_analytics.data.metric_store.rawr import RawrPlayerSeasonValueRow
 from rawr_analytics.data.metric_store.wowy import WowyPlayerSeasonValueRow
+from rawr_analytics.data.metric_store_scope import validate_metric_scope
 from rawr_analytics.shared.season import Season, SeasonType
 from rawr_analytics.shared.team import canonicalize_metric_team_filter
 
@@ -40,27 +40,28 @@ def validate_rawr_rows(
     snapshot_id_seen = False
 
     for row in rows:
+        player_id = row.value.player_id
         if row.metric_id != "rawr":
             raise ValueError(
-                f"Metric row for player {row.player_id!r} has metric_id {row.metric_id!r}; "
+                f"Metric row for player {player_id!r} has metric_id {row.metric_id!r}; "
                 "expected 'rawr'"
             )
         if row.scope_key != scope_key:
             raise ValueError(
-                f"Metric row for player {row.player_id!r} has scope_key "
+                f"Metric row for player {player_id!r} has scope_key "
                 f"{row.scope_key!r}; expected {scope_key!r}"
             )
 
         canonical_season_type = SeasonType.parse(row.season_type).value
         if row.season_type != canonical_season_type:
             raise ValueError(
-                f"Metric row for player {row.player_id!r} uses non-canonical "
+                f"Metric row for player {player_id!r} uses non-canonical "
                 f"season_type {row.season_type!r}"
             )
         canonical_team_filter = canonicalize_metric_team_filter(row.team_filter)
         if row.team_filter != canonical_team_filter:
             raise ValueError(
-                f"Metric row for player {row.player_id!r} uses non-canonical "
+                f"Metric row for player {player_id!r} uses non-canonical "
                 f"team_filter {row.team_filter!r}"
             )
         validate_metric_scope(
@@ -69,12 +70,12 @@ def validate_rawr_rows(
             season_type=canonical_season_type,
         )
         canonical_season_id = Season(
-            row.season_id, SeasonType.REGULAR.value
+            row.value.season_id, SeasonType.REGULAR.value
         ).id  # todo. this may be wrong. why regular as parameter?
-        if canonical_season_id != row.season_id:
+        if canonical_season_id != row.value.season_id:
             raise ValueError(
                 "Metric row for player "
-                f"{row.player_id!r} uses non-canonical season_id {row.season_id!r}"
+                f"{row.value.player_id!r} uses non-canonical season_id {row.value.season_id!r}"
             )
 
         if expected_team_filter is None:
@@ -89,7 +90,7 @@ def validate_rawr_rows(
 
         if row.snapshot_id is not None and row.snapshot_id <= 0:
             raise ValueError(
-                f"Metric row for player {row.player_id!r} has invalid snapshot_id "
+                f"Metric row for player {player_id!r} has invalid snapshot_id "
                 f"{row.snapshot_id!r}"
             )
         if not snapshot_id_seen:
@@ -98,30 +99,38 @@ def validate_rawr_rows(
         elif row.snapshot_id != expected_snapshot_id:
             raise ValueError("Metric rows in the same batch must use one snapshot_id")
 
-        if row.player_id <= 0:
-            raise ValueError(f"Metric row has invalid player_id {row.player_id!r}")
-        _validate_required_text(row.player_name, f"player_name for player {row.player_id}")
-        if not math.isfinite(row.coefficient):
-            raise ValueError(f"Metric row for player {row.player_id!r} has non-finite value")
-        _validate_optional_non_negative_int(row.games, f"games for player {row.player_id}")
-        _validate_optional_non_negative_float(
-            row.average_minutes,
-            f"average_minutes for player {row.player_id}",
+        if row.value.player_id <= 0:
+            raise ValueError(f"Metric row has invalid player_id {row.value.player_id!r}")
+        _validate_required_text(
+            row.value.player_name,
+            f"player_name for player {row.value.player_id}",
+        )
+        if not math.isfinite(row.value.coefficient):
+            raise ValueError(
+                f"Metric row for player {row.value.player_id!r} has non-finite value"
+            )
+        _validate_optional_non_negative_int(
+            row.value.games,
+            f"games for player {row.value.player_id}",
         )
         _validate_optional_non_negative_float(
-            row.total_minutes,
-            f"total_minutes for player {row.player_id}",
+            row.value.average_minutes,
+            f"average_minutes for player {row.value.player_id}",
+        )
+        _validate_optional_non_negative_float(
+            row.value.total_minutes,
+            f"total_minutes for player {row.value.player_id}",
         )
         if (
-            row.average_minutes is not None
-            and row.total_minutes is not None
-            and row.total_minutes + 1e-9 < row.average_minutes
+            row.value.average_minutes is not None
+            and row.value.total_minutes is not None
+            and row.value.total_minutes + 1e-9 < row.value.average_minutes
         ):
             raise ValueError(
-                f"Metric row for player {row.player_id!r} has total_minutes "
+                f"Metric row for player {row.value.player_id!r} has total_minutes "
                 "smaller than average_minutes"
             )
-        row_key = (row.season_id, row.player_id)
+        row_key = (row.value.season_id, row.value.player_id)
         if row_key in row_keys:
             raise ValueError(f"Duplicate metric row for {row_key!r}")
         row_keys.add(row_key)
@@ -147,27 +156,28 @@ def validate_wowy_rows(
     snapshot_id_seen = False
 
     for row in rows:
+        player_id = row.value.player_id
         if row.metric_id != metric_id:
             raise ValueError(
-                f"Metric row for player {row.player_id!r} has metric_id {row.metric_id!r}; "
+                f"Metric row for player {player_id!r} has metric_id {row.metric_id!r}; "
                 f"expected {metric_id!r}"
             )
         if row.scope_key != scope_key:
             raise ValueError(
-                f"Metric row for player {row.player_id!r} has scope_key "
+                f"Metric row for player {player_id!r} has scope_key "
                 f"{row.scope_key!r}; expected {scope_key!r}"
             )
 
         canonical_season_type = SeasonType.parse(row.season_type).value
         if row.season_type != canonical_season_type:
             raise ValueError(
-                f"Metric row for player {row.player_id!r} uses non-canonical "
+                f"Metric row for player {player_id!r} uses non-canonical "
                 f"season_type {row.season_type!r}"
             )
         canonical_team_filter = canonicalize_metric_team_filter(row.team_filter)
         if row.team_filter != canonical_team_filter:
             raise ValueError(
-                f"Metric row for player {row.player_id!r} uses non-canonical "
+                f"Metric row for player {player_id!r} uses non-canonical "
                 f"team_filter {row.team_filter!r}"
             )
         validate_metric_scope(
@@ -175,11 +185,11 @@ def validate_wowy_rows(
             team_filter=canonical_team_filter,
             season_type=canonical_season_type,
         )
-        canonical_season_id = Season(row.season_id, SeasonType.REGULAR.value).id
-        if canonical_season_id != row.season_id:
+        canonical_season_id = Season(row.value.season_id, SeasonType.REGULAR.value).id
+        if canonical_season_id != row.value.season_id:
             raise ValueError(
                 "Metric row for player "
-                f"{row.player_id!r} uses non-canonical season_id {row.season_id!r}"
+                f"{player_id!r} uses non-canonical season_id {row.value.season_id!r}"
             )
 
         if expected_team_filter is None:
@@ -194,7 +204,7 @@ def validate_wowy_rows(
 
         if row.snapshot_id is not None and row.snapshot_id <= 0:
             raise ValueError(
-                f"Metric row for player {row.player_id!r} has invalid snapshot_id "
+                f"Metric row for player {player_id!r} has invalid snapshot_id "
                 f"{row.snapshot_id!r}"
             )
         if not snapshot_id_seen:
@@ -203,50 +213,50 @@ def validate_wowy_rows(
         elif row.snapshot_id != expected_snapshot_id:
             raise ValueError("Metric rows in the same batch must use one snapshot_id")
 
-        if row.player_id <= 0:
-            raise ValueError(f"Metric row has invalid player_id {row.player_id!r}")
-        _validate_required_text(row.player_name, f"player_name for player {row.player_id}")
-        if not math.isfinite(row.value):
-            raise ValueError(f"Metric row for player {row.player_id!r} has non-finite value")
+        if player_id <= 0:
+            raise ValueError(f"Metric row has invalid player_id {player_id!r}")
+        _validate_required_text(row.value.player_name, f"player_name for player {player_id}")
+        if not math.isfinite(row.value.value):
+            raise ValueError(f"Metric row for player {player_id!r} has non-finite value")
         _validate_optional_non_negative_int(
-            row.games_with,
-            f"games_with for player {row.player_id}",
+            row.value.games_with,
+            f"games_with for player {player_id}",
         )
         _validate_optional_non_negative_int(
-            row.games_without,
-            f"games_without for player {row.player_id}",
+            row.value.games_without,
+            f"games_without for player {player_id}",
         )
-        if not math.isfinite(row.avg_margin_with):
+        if not math.isfinite(row.value.avg_margin_with):
             raise ValueError(
-                f"Metric row for player {row.player_id!r} has non-finite avg_margin_with"
+                f"Metric row for player {player_id!r} has non-finite avg_margin_with"
             )
-        if not math.isfinite(row.avg_margin_without):
+        if not math.isfinite(row.value.avg_margin_without):
             raise ValueError(
-                f"Metric row for player {row.player_id!r} has non-finite avg_margin_without"
+                f"Metric row for player {player_id!r} has non-finite avg_margin_without"
             )
-        if row.raw_wowy_score is not None and not math.isfinite(row.raw_wowy_score):
+        if row.value.raw_wowy_score is not None and not math.isfinite(row.value.raw_wowy_score):
             raise ValueError(
-                f"Metric row for player {row.player_id!r} has non-finite raw_wowy_score"
+                f"Metric row for player {player_id!r} has non-finite raw_wowy_score"
             )
         _validate_optional_non_negative_float(
-            row.average_minutes,
-            f"average_minutes for player {row.player_id}",
+            row.value.average_minutes,
+            f"average_minutes for player {player_id}",
         )
         _validate_optional_non_negative_float(
-            row.total_minutes,
-            f"total_minutes for player {row.player_id}",
+            row.value.total_minutes,
+            f"total_minutes for player {player_id}",
         )
         if (
-            row.average_minutes is not None
-            and row.total_minutes is not None
-            and row.total_minutes + 1e-9 < row.average_minutes
+            row.value.average_minutes is not None
+            and row.value.total_minutes is not None
+            and row.value.total_minutes + 1e-9 < row.value.average_minutes
         ):
             raise ValueError(
-                f"Metric row for player {row.player_id!r} has total_minutes "
+                f"Metric row for player {player_id!r} has total_minutes "
                 "smaller than average_minutes"
             )
 
-        row_key = (row.season_id, row.player_id)
+        row_key = (row.value.season_id, player_id)
         if row_key in row_keys:
             raise ValueError(f"Duplicate metric row for {row_key!r}")
         row_keys.add(row_key)

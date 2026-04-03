@@ -8,8 +8,8 @@ from rawr_analytics.metrics.wowy.analysis import (
 from rawr_analytics.metrics.wowy.defaults import describe_metric
 from rawr_analytics.metrics.wowy.models import (
     WowyCustomQueryResult,
-    WowyCustomQueryRow,
     WowyPlayerSeasonRecord,
+    WowyPlayerSeasonValue,
     WowyRequest,
     WowySeasonInput,
 )
@@ -61,9 +61,9 @@ def build_wowy_custom_query(
 def _build_wowy_query_row(
     metric: Metric,
     record: WowyPlayerSeasonRecord,
-) -> WowyCustomQueryRow:
+) -> WowyPlayerSeasonValue:
     if metric == Metric.WOWY:
-        return WowyCustomQueryRow(
+        return WowyPlayerSeasonValue(
             season_id=record.season.id,
             player_id=record.player_id,
             player_name=record.player_name,
@@ -76,7 +76,7 @@ def _build_wowy_query_row(
             total_minutes=record.total_minutes,
         )
     if metric == Metric.WOWY_SHRUNK:
-        return WowyCustomQueryRow(
+        return WowyPlayerSeasonValue(
             season_id=record.season.id,
             player_id=record.player_id,
             player_name=record.player_name,

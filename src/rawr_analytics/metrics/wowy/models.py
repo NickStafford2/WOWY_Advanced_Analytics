@@ -62,7 +62,7 @@ class WowyPlayerSeasonRecord:
 
 
 @dataclass(frozen=True)
-class WowyCustomQueryRow:
+class WowyPlayerSeasonValue:
     season_id: str
     player_id: int
     player_name: str
@@ -80,4 +80,4 @@ class WowyCustomQueryRow:
 class WowyCustomQueryResult:
     metric: str
     metric_label: str
-    rows: list[WowyCustomQueryRow]
+    rows: list[WowyPlayerSeasonValue]

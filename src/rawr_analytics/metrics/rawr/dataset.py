@@ -9,8 +9,8 @@ from rawr_analytics.metrics.rawr.defaults import (
 )
 from rawr_analytics.metrics.rawr.models import (
     RawrCustomQueryResult,
-    RawrCustomQueryRow,
     RawrPlayerSeasonRecord,
+    RawrPlayerSeasonValue,
     RawrRequest,
     RawrSeasonInput,
 )
@@ -64,7 +64,7 @@ def build_rawr_custom_query(
         metric=Metric.RAWR.value,
         metric_label=describe_metric().label,
         rows=[
-            RawrCustomQueryRow(
+            RawrPlayerSeasonValue(
                 season_id=record.season.id,
                 player_id=record.player_id,
                 player_name=record.player_name,

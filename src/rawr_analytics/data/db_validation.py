@@ -261,7 +261,7 @@ def _validate_metric_store_relations(
 
     for key, rows in metric_row_groups.items():
         metric, scope_key = key
-        seasons = sorted({row.season_id for row in rows})
+        seasons = sorted({row.value.season_id for row in rows})
         season_set = set(seasons)
         metadata_row = metadata_rows.get(key)
         metadata_table = (
