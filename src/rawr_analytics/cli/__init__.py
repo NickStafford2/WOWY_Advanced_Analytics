@@ -1,7 +1,6 @@
 """Public CLI interface for command entrypoints."""
 
-from rawr_analytics.cli.cache_season_data import main as cache_season_data_main
-from rawr_analytics.cli.cache_season_data import run as cache_season_data_run
+from rawr_analytics.cli.ingest import main as ingest_main
 from rawr_analytics.cli.rawr import main as rawr_main
 from rawr_analytics.cli.rawr import run as rawr_run
 from rawr_analytics.cli.rebuild_player_metrics_db import (
@@ -20,8 +19,7 @@ from rawr_analytics.cli.wowy import run as wowy_run
 
 __all__ = [
     "build_rebuild_player_metrics_db_parser",
-    "cache_season_data_main",
-    "cache_season_data_run",
+    "ingest_main",
     "rawr_main",
     "rawr_run",
     "rebuild_player_metrics_db_main",

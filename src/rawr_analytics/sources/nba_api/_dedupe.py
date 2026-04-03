@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from rawr_analytics.sources.nba_api.models import SourceLeagueGame
+from rawr_analytics.sources.nba_api._models import SourceLeagueGame
 from rawr_analytics.sources.nba_api.rules import format_source_row
 
 

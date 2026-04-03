@@ -80,7 +80,7 @@ def main(argv: list[str] | None = None) -> int:
     return result.exit_status
 
 
-def run(argv: list[str] | None = None) -> int:
+def _run(argv: list[str] | None = None) -> int:
     try:
         return main(argv)
     except KeyboardInterrupt:
@@ -90,4 +90,4 @@ def run(argv: list[str] | None = None) -> int:
 
 
 if __name__ == "__main__":
-    raise SystemExit(run())
+    raise SystemExit(_run())
