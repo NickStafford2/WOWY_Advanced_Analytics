@@ -5,8 +5,11 @@ from dataclasses import dataclass
 
 from rawr_analytics.data.game_cache import replace_team_season_normalized_rows
 from rawr_analytics.data.game_cache.rows import NormalizedGamePlayerRow, NormalizedGameRow
-from rawr_analytics.basketball import FetchError, PartialTeamSeasonError
-from rawr_analytics.basketball.errors import GameNormalizationFailure
+from rawr_analytics.services._ingest_errors import (
+    FetchError,
+    GameNormalizationFailure,
+    PartialTeamSeasonError,
+)
 from rawr_analytics.basketball.normalize import (
     NormalizedGamePlayerRecord,
     NormalizedGameRecord,

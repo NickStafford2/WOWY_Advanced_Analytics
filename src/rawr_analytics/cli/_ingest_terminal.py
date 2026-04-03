@@ -3,8 +3,11 @@ from __future__ import annotations
 import json
 import sys
 
-from rawr_analytics.basketball import FetchError, PartialTeamSeasonError
-from rawr_analytics.basketball.errors import GameNormalizationFailure
+from rawr_analytics.services._ingest_errors import (
+    FetchError,
+    GameNormalizationFailure,
+    PartialTeamSeasonError,
+)
 from rawr_analytics.services import (
     IngestEvent,
     IngestProgress,

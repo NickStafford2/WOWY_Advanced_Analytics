@@ -1,6 +1,9 @@
 from __future__ import annotations
 
 from rawr_analytics.basketball.models import NormalizedGamePlayerRecord, NormalizedGameRecord
+from rawr_analytics.shared.player import PlayerSummary
+from rawr_analytics.shared.season import Season
+from rawr_analytics.shared.team import Team
 from rawr_analytics.sources.nba_api.models import (
     SourceBoxScore,
     SourceBoxScorePlayer,
@@ -15,9 +18,6 @@ from rawr_analytics.sources.nba_api.rules import (
     parse_minutes_to_float,
     source_player_played_in_game,
 )
-from rawr_analytics.shared.player import PlayerSummary
-from rawr_analytics.shared.season import Season
-from rawr_analytics.shared.team import Team
 
 
 def normalize_source_league_game(
