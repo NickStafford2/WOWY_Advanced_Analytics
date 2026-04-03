@@ -8,3 +8,17 @@ Examples:
 - loading canonical rows from the database
 - writing derived metric results to the database
 """
+
+from rawr_analytics.data.rebuild import (
+    DatabaseValidationSummary,
+    ValidationProgressFn,
+    prepare_rebuild_storage,
+    validate_rebuild_storage,
+)
+
+__all__ = [
+    "DatabaseValidationSummary",
+    "ValidationProgressFn",
+    "prepare_rebuild_storage",
+    "validate_rebuild_storage",
+]

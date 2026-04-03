@@ -3,15 +3,10 @@ from __future__ import annotations
 from collections.abc import Callable
 from dataclasses import dataclass
 
-from rawr_analytics.data._paths import (
-    LEGACY_MIXED_DATA_DB_PATH,
-    METRIC_STORE_DB_PATH,
-    NORMALIZED_CACHE_DB_PATH,
-)
-from rawr_analytics.data.db_validation import (
+from rawr_analytics.data import (
     DatabaseValidationSummary,
-    audit_player_metrics_db,
-    summarize_validation_report,
+    prepare_rebuild_storage,
+    validate_rebuild_storage,
 )
 from rawr_analytics.metrics.constants import Metric
 from rawr_analytics.services.ingest import (
@@ -72,17 +67,9 @@ def rebuild_player_metrics_db(
     metric_progress_fn: MetricRefreshProgressFn | None = None,
     validation_progress_fn: ValidationProgressFn | None = None,
 ) -> RebuildResult:
-    deleted_existing_db = False
-    if not request.keep_existing_db:
-        for db_path in (
-            NORMALIZED_CACHE_DB_PATH,
-            METRIC_STORE_DB_PATH,
-            LEGACY_MIXED_DATA_DB_PATH,
-        ):
-            if db_path.exists():
-                db_path.unlink()
-                deleted_existing_db = True
-    NORMALIZED_CACHE_DB_PATH.parent.mkdir(parents=True, exist_ok=True)
+    deleted_existing_db = prepare_rebuild_storage(
+        keep_existing_db=request.keep_existing_db
+    )
 
     ingest_result = refresh_season_range(
         IngestRefreshRequest(
@@ -135,8 +122,7 @@ def rebuild_player_metrics_db(
                 failure_message=result.failure_message,
             )
 
-    validation_report = audit_player_metrics_db(progress=validation_progress_fn)
-    validation_summary = summarize_validation_report(validation_report)
+    validation_summary = validate_rebuild_storage(progress=validation_progress_fn)
     failure_message = None if validation_summary.ok else "Database validation failed after rebuild."
     return RebuildResult(
         ingest_result=ingest_result,
