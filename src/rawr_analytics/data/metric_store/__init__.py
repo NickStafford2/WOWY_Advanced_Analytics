@@ -6,7 +6,6 @@ from dataclasses import dataclass
 
 from rawr_analytics.data.metric_store.models import (
     MetricFullSpanSeries,
-    MetricFullSpanSeriesRow,
     MetricScopeCatalog,
     MetricScopeCatalogRow,
     MetricSnapshotState,
@@ -77,7 +76,10 @@ def load_metric_span_store_rows(
     return MetricSpanStoreRows(
         series=[
             MetricFullSpanSeries(
-                player=_build_player_summary(row),
+                player=PlayerSummary(
+                    player_id=row.player_id,
+                    player_name=row.player_name,
+                ),
                 span_average_value=row.span_average_value,
                 season_count=row.season_count,
                 rank_order=row.rank_order,
@@ -85,13 +87,6 @@ def load_metric_span_store_rows(
             )
             for row in series_rows
         ],
-    )
-
-
-def _build_player_summary(row: MetricFullSpanSeriesRow) -> PlayerSummary:
-    return PlayerSummary(
-        player_id=row.player_id,
-        player_name=row.player_name,
     )
 
 
