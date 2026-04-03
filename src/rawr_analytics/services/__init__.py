@@ -1,11 +1,16 @@
 """Stable application service boundary for outer layers."""
 
 from rawr_analytics.services.ingest import (
+    IngestProgress,
+    IngestProgressFn,
     IngestRefreshRequest,
+    IngestRequest,
     IngestResult,
+    IngestSummary,
     SeasonRangeFailure,
     SeasonRangeResult,
     refresh_season_range,
+    refresh_team_season,
 )
 from rawr_analytics.services.metric_query import (
     MetricExportResult,
@@ -30,8 +35,12 @@ from rawr_analytics.services.rebuild import RebuildRequest, RebuildResult, rebui
 __all__ = [
     "DEFAULT_RAWR_RIDGE_ALPHA",
     "DEFAULT_WEB_METRIC_IDS",
+    "IngestProgress",
+    "IngestProgressFn",
     "IngestRefreshRequest",
+    "IngestRequest",
     "IngestResult",
+    "IngestSummary",
     "MetricExportResult",
     "MetricQueryRequest",
     "MetricStoreRefreshRequest",
@@ -49,5 +58,6 @@ __all__ = [
     "rebuild_player_metrics_db",
     "refresh_metric_store",
     "refresh_season_range",
+    "refresh_team_season",
     "serialize_service_value",
 ]

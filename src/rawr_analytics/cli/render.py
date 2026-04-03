@@ -4,9 +4,9 @@ import json
 import sys
 
 from rawr_analytics.nba.errors import GameNormalizationFailure, PartialTeamSeasonError
+from rawr_analytics.services import IngestProgress
 from rawr_analytics.shared.season import Season
 from rawr_analytics.shared.team import Team
-from rawr_analytics.workflows.nba_ingest import IngestProgress
 
 _LAST_STATUS_LINE_LENGTH = 0
 
