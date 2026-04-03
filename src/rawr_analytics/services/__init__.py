@@ -5,8 +5,6 @@ from rawr_analytics.services.compare_rawr_configs import (
     CompareRawrConfigsProgress,
     CompareRawrConfigsRequest,
     ComparisonResult,
-    build_compare_rawr_configs_summary,
-    build_compare_rawr_configs_table,
     compare_rawr_configs,
 )
 from rawr_analytics.services.ingest import (

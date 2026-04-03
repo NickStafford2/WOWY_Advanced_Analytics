@@ -9,8 +9,7 @@ from rawr_analytics.progress import TerminalProgressBar, print_status_box
 from rawr_analytics.services.compare_rawr_configs import (
     CompareRawrConfigsProgress,
     CompareRawrConfigsRequest,
-    build_compare_rawr_configs_summary,
-    build_compare_rawr_configs_table,
+    ComparisonResult,
     compare_rawr_configs,
 )
 from rawr_analytics.shared.season import Season, SeasonType
@@ -195,6 +194,78 @@ def _parse_teams(raw_values: list[str] | None, *, season: Season) -> list[Team] 
     if raw_values is None:
         return None
     return [Team.from_abbreviation(raw_value, season=season) for raw_value in raw_values]
+
+
+def build_compare_rawr_configs_summary(
+    request: CompareRawrConfigsRequest,
+    results: list[ComparisonResult],
+) -> str:
+    train_label = ",".join(season.id for season in request.train_seasons)
+    team_label = "all-teams"
+    if request.teams:
+        team_label = ",".join(
+            team.abbreviation(season=request.holdout_season) for team in request.teams
+        )
+    best = results[0] if results else None
+    lines = [
+        (
+            f"train_seasons={train_label} holdout_season={request.holdout_season.id} "
+            f"aggregation={request.aggregation} top_n={request.top_n}"
+        ),
+        f"team_filter={team_label} season_type={request.season_type.to_nba_format()}",
+    ]
+    if best is not None:
+        best_suffix = ""
+        if best.model != "wowy-baseline":
+            minute_scale = (
+                f"{best.shrinkage_minute_scale}" if best.shrinkage_minute_scale is not None else "-"
+            )
+            best_suffix = (
+                f"(alpha={best.ridge_alpha:.2f},mode={best.shrinkage_mode},"
+                f"strength={best.shrinkage_strength:.2f},"
+                f"minute_scale={minute_scale})"
+            )
+        lines.append(f"best_by_spearman={best.model}" + best_suffix)
+    return "\n".join(lines)
+
+
+def build_compare_rawr_configs_table(results: list[ComparisonResult]) -> str:
+    if not results:
+        return "No comparison rows were generated."
+
+    lines = [
+        "RAWR tuning comparison",
+        "-" * 96,
+        (
+            f"{'model':<14} {'alpha':>7} {'mode':<10} {'strength':>9} "
+            f"{'min_scale':>10} {'players':>7} {'pearson':>9} "
+            f"{'spearman':>9} {'top_n':>7}"
+        ),
+        "-" * 96,
+    ]
+    for result in results:
+        lines.append(
+            f"{result.model:<14} "
+            f"{_format_float(result.ridge_alpha, decimals=2):>7} "
+            f"{_format_text(result.shrinkage_mode):<10} "
+            f"{_format_float(result.shrinkage_strength, decimals=2):>9} "
+            f"{_format_float(result.shrinkage_minute_scale, decimals=1):>10} "
+            f"{result.players:>7} "
+            f"{_format_float(result.pearson, decimals=3):>9} "
+            f"{_format_float(result.spearman, decimals=3):>9} "
+            f"{result.top_n_overlap:>7}"
+        )
+    return "\n".join(lines)
+
+
+def _format_float(value: float | None, *, decimals: int) -> str:
+    if value is None:
+        return "-"
+    return f"{value:.{decimals}f}"
+
+
+def _format_text(value: str | None) -> str:
+    return value if value is not None else "-"
 
 
 if __name__ == "__main__":
