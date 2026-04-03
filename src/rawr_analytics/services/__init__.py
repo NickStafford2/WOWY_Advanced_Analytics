@@ -1,6 +1,7 @@
 """Public application service interface for outer layers."""
 
 from rawr_analytics.services.ingest import (
+    IngestEvent,
     IngestResult,
     SeasonRangeFailure,
 )
@@ -13,9 +14,11 @@ from rawr_analytics.services.metric_query import (
 from rawr_analytics.services.metric_refresh import (
     DEFAULT_RAWR_RIDGE_ALPHA,
     DEFAULT_WEB_METRIC_IDS,
+    MetricStoreRefreshProgressEvent,
     refresh_metric_store,
 )
 from rawr_analytics.services.rebuild import (
+    RebuildEvent,
     RebuildTeamFailureEvent,
     format_rebuild_validation_summary,
     rebuild_player_metrics_db,
@@ -24,7 +27,10 @@ from rawr_analytics.services.rebuild import (
 __all__ = [
     "DEFAULT_RAWR_RIDGE_ALPHA",
     "DEFAULT_WEB_METRIC_IDS",
+    "IngestEvent",
     "IngestResult",
+    "MetricStoreRefreshProgressEvent",
+    "RebuildEvent",
     "RebuildTeamFailureEvent",
     "SeasonRangeFailure",
     "build_metric_options_payload",

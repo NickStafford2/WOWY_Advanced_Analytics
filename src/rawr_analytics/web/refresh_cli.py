@@ -6,6 +6,7 @@ from rawr_analytics.progress import TerminalProgressBar, print_status_box
 from rawr_analytics.services.metric_refresh import (
     DEFAULT_RAWR_RIDGE_ALPHA,
     DEFAULT_WEB_METRIC_IDS,
+    MetricStoreRefreshProgressEvent,
     refresh_metric_store,
 )
 from rawr_analytics.web._requests import build_metric_store_refresh_request
@@ -62,11 +63,9 @@ def main(argv: list[str] | None = None) -> int:
                 rawr_ridge_alpha=args.rawr_ridge_alpha,
                 include_team_scopes=False,
             ),
-            progress=lambda current, total, detail, progress_bar=progress_bar: _update_progress(
+            event_fn=lambda event, progress_bar=progress_bar: _update_progress(
                 progress_bar,
-                current=current,
-                total=total,
-                detail=detail,
+                event,
             ),
         )
         progress_bar.finish(detail="done")
@@ -80,13 +79,10 @@ def main(argv: list[str] | None = None) -> int:
 
 def _update_progress(
     progress_bar: TerminalProgressBar,
-    *,
-    current: int,
-    total: int,
-    detail: str,
+    event: MetricStoreRefreshProgressEvent,
 ) -> None:
-    progress_bar.total = max(total, 1)
-    progress_bar.update(current, detail=detail)
+    progress_bar.total = max(event.total, 1)
+    progress_bar.update(event.current, detail=event.detail)
 
 
 if __name__ == "__main__":

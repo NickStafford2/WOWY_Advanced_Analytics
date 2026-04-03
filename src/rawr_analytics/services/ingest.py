@@ -24,12 +24,9 @@ from rawr_analytics.shared.common import LogFn
 from rawr_analytics.shared.season import Season, build_season_list
 from rawr_analytics.shared.team import Team
 
-IngestProgressFn = Callable[["IngestProgress"], None]
+_TeamProgressFn = Callable[["IngestProgress"], None]
+IngestEventFn = Callable[["IngestEvent"], None]
 _TeamSeasonFailureError = FetchError | PartialTeamSeasonError | ValueError
-_SeasonStartedFn = Callable[[int, int, Season], None]
-_TeamCompletedFn = Callable[[int, int, "IngestResult"], None]
-_TeamFailedFn = Callable[[int, int, "SeasonRangeFailure"], None]
-_ProgressFn = Callable[[int, int, "IngestProgress"], None]
 
 
 @dataclass(frozen=True)
@@ -62,6 +59,20 @@ class IngestProgress:
 
 
 @dataclass(frozen=True)
+class IngestSeasonStartedEvent:
+    season_index: int
+    season_total: int
+    season: Season
+
+
+@dataclass(frozen=True)
+class IngestTeamProgressEvent:
+    team_index: int
+    team_total: int
+    progress: IngestProgress
+
+
+@dataclass(frozen=True)
 class IngestResult:
     request: IngestRequest
     games: list[NormalizedGameRecord]
@@ -78,6 +89,13 @@ class IngestResult:
 
 
 @dataclass(frozen=True)
+class IngestTeamCompletedEvent:
+    team_index: int
+    team_total: int
+    result: IngestResult
+
+
+@dataclass(frozen=True)
 class SeasonRangeFailure:
     request: IngestRequest
     failure_kind: str
@@ -86,6 +104,21 @@ class SeasonRangeFailure:
     @property
     def scope(self) -> str:
         return self.request.label
+
+
+@dataclass(frozen=True)
+class IngestTeamFailedEvent:
+    team_index: int
+    team_total: int
+    failure: SeasonRangeFailure
+
+
+IngestEvent = (
+    IngestSeasonStartedEvent
+    | IngestTeamProgressEvent
+    | IngestTeamCompletedEvent
+    | IngestTeamFailedEvent
+)
 
 
 @dataclass(frozen=True)
@@ -124,7 +157,7 @@ def refresh_team_season(
     request: IngestRequest,
     *,
     log: LogFn | None = print,
-    progress: IngestProgressFn | None = None,
+    progress: _TeamProgressFn | None = None,
 ) -> IngestResult:
     result = _ingest_team_season(
         request,
@@ -139,10 +172,7 @@ def refresh_season_range(
     request: IngestRefreshRequest,
     *,
     log_fn: LogFn | None = None,
-    progress_fn: _ProgressFn | None = None,
-    season_started_fn: _SeasonStartedFn | None = None,
-    team_completed_fn: _TeamCompletedFn | None = None,
-    team_failed_fn: _TeamFailedFn | None = None,
+    event_fn: IngestEventFn | None = None,
 ) -> SeasonRangeResult:
     seasons = _build_seasons(request=request)
     season_total = len(seasons)
@@ -151,8 +181,14 @@ def refresh_season_range(
     failures: list[SeasonRangeFailure] = []
 
     for season_index, season in enumerate(seasons, start=1):
-        if season_started_fn is not None:
-            season_started_fn(season_index, season_total, season)
+        _emit_event(
+            event_fn,
+            IngestSeasonStartedEvent(
+                season_index=season_index,
+                season_total=season_total,
+                season=season,
+            ),
+        )
 
         teams = _resolve_teams(team_abbreviations=request.team_abbreviations, season=season)
         team_total = len(teams)
@@ -163,7 +199,7 @@ def refresh_season_range(
                 result = refresh_team_season(
                     team_request,
                     log=log_fn,
-                    progress=_build_progress_fn(progress_fn, team_index, team_total),
+                    progress=_build_progress_fn(event_fn, team_index, team_total),
                 )
             except FetchError as exc:
                 failure = SeasonRangeFailure(
@@ -185,13 +221,25 @@ def refresh_season_range(
                 )
             else:
                 completed_team_seasons += 1
-                if team_completed_fn is not None:
-                    team_completed_fn(team_index, team_total, result)
+                _emit_event(
+                    event_fn,
+                    IngestTeamCompletedEvent(
+                        team_index=team_index,
+                        team_total=team_total,
+                        result=result,
+                    ),
+                )
                 continue
 
             failures.append(failure)
-            if team_failed_fn is not None:
-                team_failed_fn(team_index, team_total, failure)
+            _emit_event(
+                event_fn,
+                IngestTeamFailedEvent(
+                    team_index=team_index,
+                    team_total=team_total,
+                    failure=failure,
+                ),
+            )
 
     return SeasonRangeResult(
         seasons=seasons,
@@ -221,15 +269,22 @@ def _resolve_teams(*, team_abbreviations: list[str] | None, season: Season) -> l
 
 
 def _build_progress_fn(
-    progress_fn: _ProgressFn | None,
+    event_fn: IngestEventFn | None,
     team_index: int,
     team_total: int,
-) -> IngestProgressFn | None:
-    if progress_fn is None:
+) -> _TeamProgressFn | None:
+    if event_fn is None:
         return None
 
     def _progress(progress: IngestProgress) -> None:
-        progress_fn(team_index, team_total, progress)
+        _emit_event(
+            event_fn,
+            IngestTeamProgressEvent(
+                team_index=team_index,
+                team_total=team_total,
+                progress=progress,
+            ),
+        )
 
     return _progress
 
@@ -256,7 +311,7 @@ def _ingest_team_season(
     request: IngestRequest,
     *,
     log_fn: LogFn | None,
-    progress_fn: IngestProgressFn | None,
+    progress_fn: _TeamProgressFn | None,
 ) -> IngestResult:
     schedule_games, league_games_source = _get_schedule(request, log_fn)
     total_games = len(schedule_games)
@@ -397,7 +452,7 @@ def _record_failure(
 
 
 def _emit_progress(
-    progress: IngestProgressFn | None,
+    progress: _TeamProgressFn | None,
     *,
     request: IngestRequest,
     current: int,
@@ -419,13 +474,24 @@ def _emit_progress(
     )
 
 
+def _emit_event(event_fn: IngestEventFn | None, event: IngestEvent) -> None:
+    if event_fn is None:
+        return
+    event_fn(event)
+
+
 __all__ = [
+    "IngestEvent",
+    "IngestEventFn",
     "IngestProgress",
-    "IngestProgressFn",
     "IngestRefreshRequest",
     "IngestRequest",
     "IngestResult",
+    "IngestSeasonStartedEvent",
     "IngestSummary",
+    "IngestTeamCompletedEvent",
+    "IngestTeamFailedEvent",
+    "IngestTeamProgressEvent",
     "SeasonRangeFailure",
     "SeasonRangeResult",
     "refresh_season_range",

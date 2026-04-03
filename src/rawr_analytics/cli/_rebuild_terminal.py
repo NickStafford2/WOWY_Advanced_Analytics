@@ -2,19 +2,57 @@ from __future__ import annotations
 
 import sys
 
-from rawr_analytics.nba import append_ingest_failure_log
-from rawr_analytics.progress import TerminalProgressBar
-from rawr_analytics.services.rebuild import RebuildTeamFailureEvent
-
 from rawr_analytics.cli._ingest_terminal import (
     format_partial_failure_details,
+    render_progress_line,
+    render_team_complete_line,
     render_team_fetch_failed_line,
     render_team_partial_failed_line,
     render_team_validation_failed_line,
 )
+from rawr_analytics.nba import append_ingest_failure_log
+from rawr_analytics.progress import TerminalProgressBar
+from rawr_analytics.services.ingest import (
+    IngestSeasonStartedEvent,
+    IngestTeamCompletedEvent,
+    IngestTeamProgressEvent,
+)
+from rawr_analytics.services.rebuild import (
+    RebuildEvent,
+    RebuildMetricRefreshProgressEvent,
+    RebuildTeamFailureEvent,
+    RebuildValidationProgressEvent,
+)
 
 _METRIC_PROGRESS_BARS: dict[str, TerminalProgressBar] = {}
 _VALIDATION_PROGRESS_BAR: TerminalProgressBar | None = None
+
+
+def render_rebuild_event(event: RebuildEvent) -> None:
+    if isinstance(event, IngestSeasonStartedEvent):
+        if event.season_total > 1:
+            print(f"[{event.season_index}/{event.season_total}] caching {event.season}")
+        return
+    if isinstance(event, IngestTeamProgressEvent):
+        render_progress_line(event.team_index, event.team_total, event.progress)
+        return
+    if isinstance(event, IngestTeamCompletedEvent):
+        render_team_complete_line(event.team_index, event.team_total, event.result)
+        sys.stdout.write("\n")
+        return
+    if isinstance(event, RebuildTeamFailureEvent):
+        render_rebuild_team_failure(event)
+        return
+    if isinstance(event, RebuildMetricRefreshProgressEvent):
+        render_metric_progress(
+            event.metric,
+            event.current,
+            event.total,
+            event.detail,
+        )
+        return
+    if isinstance(event, RebuildValidationProgressEvent):
+        render_validation_progress(event.current, event.total, event.label)
 
 
 def render_rebuild_team_failure(event: RebuildTeamFailureEvent) -> None:

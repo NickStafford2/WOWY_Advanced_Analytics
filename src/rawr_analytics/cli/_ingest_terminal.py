@@ -5,7 +5,16 @@ import sys
 
 from rawr_analytics.nba import FetchError, PartialTeamSeasonError, append_ingest_failure_log
 from rawr_analytics.nba.errors import GameNormalizationFailure
-from rawr_analytics.services.ingest import IngestProgress, IngestResult, SeasonRangeFailure
+from rawr_analytics.services.ingest import (
+    IngestEvent,
+    IngestProgress,
+    IngestResult,
+    IngestSeasonStartedEvent,
+    IngestTeamCompletedEvent,
+    IngestTeamFailedEvent,
+    IngestTeamProgressEvent,
+    SeasonRangeFailure,
+)
 
 _LAST_STATUS_LINE_LENGTH = 0
 
@@ -95,6 +104,26 @@ def render_ingest_failure(
     sys.stdout.write("\n")
     sys.stderr.write(f"Validation failed for {request.label}: {error}\n")
     sys.stderr.flush()
+
+
+def render_ingest_event(event: IngestEvent) -> None:
+    if isinstance(event, IngestSeasonStartedEvent):
+        _render_season_started(event)
+        return
+    if isinstance(event, IngestTeamProgressEvent):
+        render_progress_line(event.team_index, event.team_total, event.progress)
+        return
+    if isinstance(event, IngestTeamCompletedEvent):
+        render_team_complete_line(event.team_index, event.team_total, event.result)
+        sys.stdout.write("\n")
+        return
+    if isinstance(event, IngestTeamFailedEvent):
+        render_ingest_failure(event.team_index, event.team_total, event.failure)
+
+
+def _render_season_started(event: IngestSeasonStartedEvent) -> None:
+    if event.season_total > 1:
+        print(f"[{event.season_index}/{event.season_total}] caching {event.season}")
 
 
 def render_partial_failure_details(error: PartialTeamSeasonError) -> str:

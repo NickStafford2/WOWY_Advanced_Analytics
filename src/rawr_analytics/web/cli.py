@@ -5,6 +5,7 @@ import argparse
 from rawr_analytics.services.metric_refresh import (
     DEFAULT_RAWR_RIDGE_ALPHA,
     DEFAULT_WEB_METRIC_IDS,
+    MetricStoreRefreshProgressEvent,
     refresh_metric_store,
 )
 from rawr_analytics.web._requests import build_metric_store_refresh_request
@@ -70,7 +71,8 @@ def main(argv: list[str] | None = None) -> int:
                     season_type=args.season_type,
                     rawr_ridge_alpha=args.rawr_ridge_alpha,
                     include_team_scopes=False,
-                )
+                ),
+                event_fn=lambda event, metric=metric: _print_refresh_progress(metric, event),
             )
             if not result.ok:
                 print(result.failure_message)
@@ -78,3 +80,9 @@ def main(argv: list[str] | None = None) -> int:
     app = create_app()
     app.run(host=args.host, port=args.port, debug=args.debug)
     return 0
+
+
+def _print_refresh_progress(metric: str, event: MetricStoreRefreshProgressEvent) -> None:
+    if event.total <= 0:
+        return
+    print(f"[{metric}] {event.current}/{event.total} {event.detail}")

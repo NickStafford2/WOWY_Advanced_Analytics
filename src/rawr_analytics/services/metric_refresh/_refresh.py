@@ -37,7 +37,7 @@ from rawr_analytics.shared.scope import TeamSeasonScope
 from rawr_analytics.shared.season import Season, SeasonType
 from rawr_analytics.shared.team import Team, normalize_teams, to_team_ids
 
-RefreshProgressFn = Callable[[int, int, str], None]
+MetricStoreRefreshEventFn = Callable[["MetricStoreRefreshProgressEvent"], None]
 DEFAULT_RAWR_RIDGE_ALPHA = 10.0
 DEFAULT_WEB_METRIC_IDS = ("wowy", "wowy-shrunk", "rawr")
 
@@ -48,6 +48,13 @@ class RefreshScopeResult:
     scope_label: str
     row_count: int
     status: str
+
+
+@dataclass(frozen=True)
+class MetricStoreRefreshProgressEvent:
+    current: int
+    total: int
+    detail: str
 
 
 @dataclass(frozen=True)
@@ -97,7 +104,7 @@ class _MetricStoreRefreshScope:
 def refresh_metric_store(
     request: MetricStoreRefreshRequest,
     *,
-    progress: RefreshProgressFn | None = None,
+    event_fn: MetricStoreRefreshEventFn | None = None,
 ) -> RefreshMetricStoreResult:
     plan = _prepare_metric_store_refresh(
         request.metric,
@@ -118,8 +125,12 @@ def refresh_metric_store(
     available_teams = plan.available_teams or []
     failure_message: str | None = None
     for index, scope in enumerate(scopes):
-        if progress is not None:
-            progress(index, len(scopes), f"building {scope.scope_label}")
+        _emit_progress(
+            event_fn,
+            current=index,
+            total=len(scopes),
+            detail=f"building {scope.scope_label}",
+        )
 
         scope_result, should_fail_empty_rawr_scope = _refresh_metric_store_scope(
             metric=request.metric,
@@ -133,8 +144,12 @@ def refresh_metric_store(
         )
         scope_results.append(scope_result)
 
-        if progress is not None:
-            progress(index + 1, len(scopes), f"{scope_result.status} {scope.scope_label}")
+        _emit_progress(
+            event_fn,
+            current=index + 1,
+            total=len(scopes),
+            detail=f"{scope_result.status} {scope.scope_label}",
+        )
 
         if should_fail_empty_rawr_scope:
             failure_message = (
@@ -148,6 +163,24 @@ def refresh_metric_store(
         scope_results=scope_results,
         warnings=plan.warnings,
         failure_message=failure_message,
+    )
+
+
+def _emit_progress(
+    event_fn: MetricStoreRefreshEventFn | None,
+    *,
+    current: int,
+    total: int,
+    detail: str,
+) -> None:
+    if event_fn is None:
+        return
+    event_fn(
+        MetricStoreRefreshProgressEvent(
+            current=current,
+            total=total,
+            detail=detail,
+        )
     )
 
 

@@ -1,6 +1,8 @@
 from rawr_analytics.services.metric_refresh._refresh import (
     DEFAULT_RAWR_RIDGE_ALPHA,
     DEFAULT_WEB_METRIC_IDS,
+    MetricStoreRefreshEventFn,
+    MetricStoreRefreshProgressEvent,
     MetricStoreRefreshRequest,
     RefreshMetricStoreResult,
     refresh_metric_store,
@@ -9,6 +11,8 @@ from rawr_analytics.services.metric_refresh._refresh import (
 __all__ = [
     "DEFAULT_RAWR_RIDGE_ALPHA",
     "DEFAULT_WEB_METRIC_IDS",
+    "MetricStoreRefreshEventFn",
+    "MetricStoreRefreshProgressEvent",
     "MetricStoreRefreshRequest",
     "RefreshMetricStoreResult",
     "refresh_metric_store",

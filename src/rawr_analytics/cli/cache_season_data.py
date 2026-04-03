@@ -5,18 +5,13 @@ import sys
 
 from rawr_analytics.cli._ingest_terminal import (
     render_failure_summary,
-    render_ingest_failure,
-    render_progress_line,
-    render_team_complete_line,
+    render_ingest_event,
 )
 from rawr_analytics.services.ingest import (
     IngestRefreshRequest,
-    IngestResult,
-    SeasonRangeFailure,
     SeasonRangeResult,
     refresh_season_range,
 )
-from rawr_analytics.shared import Season
 
 _DEFAULT_START_YEAR = 2000
 _DEFAULT_END_YEAR = 1946
@@ -63,20 +58,6 @@ def _build_parser() -> argparse.ArgumentParser:
     return parser
 
 
-def _render_season_started(season_index: int, season_count: int, season: Season) -> None:
-    if season_count > 1:
-        print(f"[{season_index}/{season_count}] caching {season}")
-
-
-def _render_team_completed(team_index: int, team_total: int, result: IngestResult) -> None:
-    render_team_complete_line(team_index, team_total, result)
-    sys.stdout.write("\n")
-
-
-def _render_team_failed(team_index: int, team_total: int, failure: SeasonRangeFailure) -> None:
-    render_ingest_failure(team_index, team_total, failure)
-
-
 def _render_failure_summary_for_result(result: SeasonRangeResult) -> None:
     if not result.failures:
         return
@@ -97,10 +78,7 @@ def main(argv: list[str] | None = None) -> int:
             season_type=args.season_type or _DEFAULT_SEASON_TYPE,
             team_abbreviations=args.teams,
         ),
-        progress_fn=render_progress_line,
-        season_started_fn=_render_season_started,
-        team_completed_fn=_render_team_completed,
-        team_failed_fn=_render_team_failed,
+        event_fn=render_ingest_event,
     )
     _render_failure_summary_for_result(result)
     return result.exit_status

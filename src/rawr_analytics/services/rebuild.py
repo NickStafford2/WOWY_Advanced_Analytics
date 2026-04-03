@@ -1,4 +1,5 @@
 from __future__ import annotations
+
 from collections.abc import Callable
 from dataclasses import dataclass
 
@@ -12,9 +13,12 @@ from rawr_analytics.metrics.constants import Metric
 from rawr_analytics.nba import FetchError, PartialTeamSeasonError
 from rawr_analytics.nba.errors import GameNormalizationFailure
 from rawr_analytics.services.ingest import (
-    IngestProgress,
+    IngestEvent,
     IngestRefreshRequest,
-    IngestResult,
+    IngestSeasonStartedEvent,
+    IngestTeamCompletedEvent,
+    IngestTeamFailedEvent,
+    IngestTeamProgressEvent,
     SeasonRangeFailure,
     SeasonRangeResult,
     refresh_season_range,
@@ -28,12 +32,7 @@ from rawr_analytics.services.metric_refresh import (
 from rawr_analytics.shared.season import Season, SeasonType
 from rawr_analytics.shared.team import Team
 
-ValidationProgressFn = Callable[[int, int, str], None]
-MetricRefreshProgressFn = Callable[[str, int, int, str], None]
-SeasonStartedFn = Callable[[int, int, str], None]
-TeamCompletedFn = Callable[[int, int, IngestResult], None]
-TeamFailedFn = Callable[["RebuildTeamFailureEvent"], None]
-IngestProgressFn = Callable[[int, int, IngestProgress], None]
+RebuildEventFn = Callable[["RebuildEvent"], None]
 
 
 @dataclass(frozen=True)
@@ -80,6 +79,31 @@ class RebuildTeamFailureEvent:
     failure_reason_examples: dict[str, list[str]] | None = None
 
 
+@dataclass(frozen=True)
+class RebuildMetricRefreshProgressEvent:
+    metric: str
+    current: int
+    total: int
+    detail: str
+
+
+@dataclass(frozen=True)
+class RebuildValidationProgressEvent:
+    current: int
+    total: int
+    label: str
+
+
+RebuildEvent = (
+    IngestSeasonStartedEvent
+    | IngestTeamProgressEvent
+    | IngestTeamCompletedEvent
+    | RebuildTeamFailureEvent
+    | RebuildMetricRefreshProgressEvent
+    | RebuildValidationProgressEvent
+)
+
+
 def format_rebuild_validation_summary(
     summary: DatabaseValidationSummary,
     *,
@@ -91,12 +115,7 @@ def format_rebuild_validation_summary(
 def rebuild_player_metrics_db(
     request: RebuildRequest,
     *,
-    ingest_progress_fn: IngestProgressFn | None = None,
-    season_started_fn: SeasonStartedFn | None = None,
-    team_completed_fn: TeamCompletedFn | None = None,
-    team_failed_fn: TeamFailedFn | None = None,
-    metric_progress_fn: MetricRefreshProgressFn | None = None,
-    validation_progress_fn: ValidationProgressFn | None = None,
+    event_fn: RebuildEventFn | None = None,
 ) -> RebuildResult:
     deleted_existing_db = prepare_rebuild_storage(
         keep_existing_db=request.keep_existing_db
@@ -109,27 +128,10 @@ def rebuild_player_metrics_db(
             season_type=request.season_type.value,
             team_abbreviations=request.teams,
         ),
-        progress_fn=ingest_progress_fn,
-        season_started_fn=(
+        event_fn=(
             None
-            if season_started_fn is None
-            else lambda season_index, season_total, season: season_started_fn(
-                season_index,
-                season_total,
-                str(season),
-            )
-        ),
-        team_completed_fn=team_completed_fn,
-        team_failed_fn=(
-            None
-            if team_failed_fn is None
-            else lambda team_index, team_total, failure: team_failed_fn(
-                _build_rebuild_team_failure_event(
-                    team_index=team_index,
-                    team_total=team_total,
-                    failure=failure,
-                )
-            )
+            if event_fn is None
+            else lambda event: _forward_rebuild_ingest_event(event_fn, event)
         ),
     )
     if ingest_result.failures:
@@ -150,14 +152,16 @@ def rebuild_player_metrics_db(
                 rawr_ridge_alpha=request.rawr_ridge_alpha,
                 include_team_scopes=False,
             ),
-            progress=(
+            event_fn=(
                 None
-                if metric_progress_fn is None
-                else lambda current, total, detail, metric=metric: metric_progress_fn(
-                    metric.value,
-                    current,
-                    total,
-                    detail,
+                if event_fn is None
+                else lambda event, metric=metric: event_fn(
+                    RebuildMetricRefreshProgressEvent(
+                        metric=metric.value,
+                        current=event.current,
+                        total=event.total,
+                        detail=event.detail,
+                    )
                 )
             ),
         )
@@ -171,7 +175,19 @@ def rebuild_player_metrics_db(
                 failure_message=result.failure_message,
             )
 
-    validation_summary = validate_rebuild_storage(progress=validation_progress_fn)
+    validation_summary = validate_rebuild_storage(
+        progress=(
+            None
+            if event_fn is None
+            else lambda current, total, label: event_fn(
+                RebuildValidationProgressEvent(
+                    current=current,
+                    total=total,
+                    label=label,
+                )
+            )
+        )
+    )
     failure_message = None if validation_summary.ok else "Database validation failed after rebuild."
     return RebuildResult(
         ingest_result=ingest_result,
@@ -180,6 +196,22 @@ def rebuild_player_metrics_db(
         deleted_existing_db=deleted_existing_db,
         failure_message=failure_message,
     )
+
+
+def _forward_rebuild_ingest_event(
+    event_fn: RebuildEventFn,
+    event: IngestEvent,
+) -> None:
+    if isinstance(event, IngestTeamFailedEvent):
+        event_fn(
+            _build_rebuild_team_failure_event(
+                team_index=event.team_index,
+                team_total=event.team_total,
+                failure=event.failure,
+            )
+        )
+        return
+    event_fn(event)
 
 
 def _build_rebuild_team_failure_event(
@@ -255,9 +287,13 @@ def _build_rebuild_team_failure_event(
 
 
 __all__ = [
+    "RebuildEvent",
+    "RebuildEventFn",
+    "RebuildMetricRefreshProgressEvent",
     "RebuildRequest",
     "RebuildResult",
     "RebuildTeamFailureEvent",
+    "RebuildValidationProgressEvent",
     "format_rebuild_validation_summary",
     "rebuild_player_metrics_db",
 ]
