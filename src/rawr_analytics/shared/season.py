@@ -14,16 +14,11 @@ class SeasonType(Enum):
 
     @staticmethod
     def parse(value: str) -> SeasonType:
-        season_type = value.strip().lower()
-        if season_type in ["playoffs", "playoff", "post season", "post", "postseason"]:
-            return SeasonType.PLAYOFFS
-        if season_type in ["regular season", "regular", "reg season", "reg. season"]:
-            return SeasonType.REGULAR
-        if season_type in ["pre", "preseason", "pre season"]:
-            return SeasonType.PRESEASON
-        raise AssertionError(
-            f"Invalid season type {value!r}. Expected 'Regular Season', 'Playoffs', or 'Preseason'."
-        )
+        normalized = value.strip().lower()
+        result = _ALIAS_MAP.get(normalized)
+        if result is None:
+            raise ValueError(f"Invalid season type {value!r}")
+        return result
 
     def to_nba_format(self) -> str:
         if self == SeasonType.REGULAR:
@@ -42,6 +37,22 @@ class SeasonType(Enum):
         if self == SeasonType.PRESEASON:
             return "preseason"
         raise AssertionError(f"Unsupported season type: {self!r}")
+
+
+_ALIAS_MAP: dict[str, SeasonType] = {
+    "playoffs": SeasonType.PLAYOFFS,
+    "playoff": SeasonType.PLAYOFFS,
+    "post season": SeasonType.PLAYOFFS,
+    "postseason": SeasonType.PLAYOFFS,
+    "post": SeasonType.PLAYOFFS,
+    "regular season": SeasonType.REGULAR,
+    "regular": SeasonType.REGULAR,
+    "reg season": SeasonType.REGULAR,
+    "reg. season": SeasonType.REGULAR,
+    "preseason": SeasonType.PRESEASON,
+    "pre season": SeasonType.PRESEASON,
+    "pre": SeasonType.PRESEASON,
+}
 
 
 @dataclass(frozen=True)

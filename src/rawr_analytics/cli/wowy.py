@@ -3,6 +3,7 @@ from __future__ import annotations
 import argparse
 import sys
 
+from rawr_analytics.cli._common import format_scope
 from rawr_analytics.cli._metric_query_cli import (
     add_metric_query_common_arguments,
     parse_metric_query_season_type,
@@ -14,7 +15,6 @@ from rawr_analytics.cli._progress_bar import print_status_box
 from rawr_analytics.metrics.constants import Metric
 from rawr_analytics.metrics.wowy import build_wowy_query
 from rawr_analytics.services.wowy_query import build_wowy_query_export
-from rawr_analytics.shared.scope import format_scope
 
 
 def _build_parser() -> argparse.ArgumentParser:
