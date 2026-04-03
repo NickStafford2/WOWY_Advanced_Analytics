@@ -9,25 +9,23 @@ from dataclasses import dataclass
 
 from rawr_analytics.data._paths import METRIC_STORE_DB_PATH, NORMALIZED_CACHE_DB_PATH
 from rawr_analytics.data._validation_issue import ValidationIssue
-from rawr_analytics.data.game_cache._validation import (
+from rawr_analytics.data.game_cache import (
+    initialize_game_cache_db,
     validate_normalized_cache_loads_table,
     validate_normalized_cache_relations,
     validate_normalized_game_players_table,
     validate_normalized_games_table,
 )
-from rawr_analytics.data.game_cache.schema import initialize_game_cache_db
-from rawr_analytics.data.metric_store.audit import (
-    MetricStoreAuditMetadata,
-    audit_metric_store_tables,
-)
-from rawr_analytics.data.metric_store.models import (
+from rawr_analytics.data.metric_store import (
     MetricFullSpanPointRow,
     MetricFullSpanSeriesRow,
     MetricScopeCatalogRow,
+    MetricStoreAuditMetadata,
+    RawrPlayerSeasonValueRow,
+    WowyPlayerSeasonValueRow,
+    audit_metric_store_tables,
+    initialize_player_metrics_db,
 )
-from rawr_analytics.data.metric_store.rawr import RawrPlayerSeasonValueRow
-from rawr_analytics.data.metric_store.schema import initialize_player_metrics_db
-from rawr_analytics.data.metric_store.wowy import WowyPlayerSeasonValueRow
 
 
 @dataclass(frozen=True)

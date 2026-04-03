@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from rawr_analytics.data.game_cache.repository import list_cached_team_seasons
+from rawr_analytics.data.game_cache import list_cached_team_seasons
 from rawr_analytics.shared.scope import TeamSeasonScope
 from rawr_analytics.shared.season import Season, SeasonType
 from rawr_analytics.shared.team import Team

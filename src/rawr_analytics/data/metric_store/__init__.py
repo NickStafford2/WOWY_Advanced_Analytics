@@ -4,17 +4,23 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
-from rawr_analytics.data.metric_store.models import (
-    MetricFullSpanSeries,
-    MetricScopeCatalog,
-    MetricScopeCatalogRow,
-    MetricSnapshotState,
-)
-from rawr_analytics.data.metric_store.queries import (
+from rawr_analytics.data.metric_store._queries import (
     load_metric_full_span_points_map,
     load_metric_full_span_series_rows,
     load_metric_scope_catalog_row,
     load_metric_snapshot_state,
+)
+from rawr_analytics.data.metric_store.audit import (
+    MetricStoreAuditMetadata,
+    audit_metric_store_tables,
+)
+from rawr_analytics.data.metric_store.models import (
+    MetricFullSpanPointRow,
+    MetricFullSpanSeries,
+    MetricFullSpanSeriesRow,
+    MetricScopeCatalog,
+    MetricScopeCatalogRow,
+    MetricSnapshotState,
 )
 from rawr_analytics.data.metric_store.rawr import (
     RawrPlayerSeasonValueRow,
@@ -91,12 +97,17 @@ def load_metric_span_store_rows(
 
 
 __all__ = [
+    "MetricFullSpanPointRow",
+    "MetricFullSpanSeries",
+    "MetricFullSpanSeriesRow",
     "MetricScopeCatalog",
     "MetricScopeCatalogRow",
     "MetricScopeStoreState",
     "MetricSpanStoreRows",
+    "MetricStoreAuditMetadata",
     "RawrPlayerSeasonValueRow",
     "WowyPlayerSeasonValueRow",
+    "audit_metric_store_tables",
     "clear_metric_scope_store",
     "initialize_player_metrics_db",
     "load_metric_scope_store_state",

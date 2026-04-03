@@ -151,7 +151,7 @@ def replace_team_season_normalized_rows(
         connection.commit()
 
 
-def load_normalized_games_from_db(
+def _load_normalized_games_from_db(
     *,
     teams: list[Team] | None = None,
     seasons: list[Season] | None = None,
@@ -326,7 +326,7 @@ def load_normalized_scope_records_from_db(
     seasons = [
         seasons_by_key[key] for key in sorted(seasons_by_key, key=lambda item: (item[0], item[1]))
     ]
-    games = load_normalized_games_from_db(teams=teams, seasons=seasons)
+    games = _load_normalized_games_from_db(teams=teams, seasons=seasons)
     game_players = _load_normalized_game_players_from_db(teams=teams, seasons=seasons)
     filtered_games, filtered_players = _filter_records_to_team_seasons(
         games=games,

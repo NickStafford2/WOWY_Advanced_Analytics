@@ -3,7 +3,7 @@ from __future__ import annotations
 from collections import defaultdict
 from dataclasses import dataclass
 
-from rawr_analytics.data.game_cache.repository import (
+from rawr_analytics.data.game_cache import (
     list_cache_load_rows,
     load_normalized_scope_records_from_db,
 )
