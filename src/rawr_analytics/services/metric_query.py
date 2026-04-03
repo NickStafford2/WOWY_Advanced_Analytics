@@ -17,10 +17,11 @@ from rawr_analytics.data.metric_store import (
 )
 from rawr_analytics.data.metric_store_scope import build_scope_key, build_team_filter
 from rawr_analytics.metrics.constants import Metric
-from rawr_analytics.metrics.metric_query import MetricQuery, build_metric_query
 from rawr_analytics.metrics.rawr import (
+    RawrQuery,
     RawrQueryFilters,
     build_rawr_custom_query,
+    build_rawr_query,
 )
 from rawr_analytics.metrics.rawr import (
     build_cached_leaderboard_payload as _build_rawr_cached_leaderboard_payload,
@@ -40,10 +41,11 @@ from rawr_analytics.metrics.rawr import (
 from rawr_analytics.metrics.rawr import (
     build_query_filters_payload as _build_rawr_query_filters_payload,
 )
-from rawr_analytics.metrics.rawr import default_filters as _rawr_default_filters
 from rawr_analytics.metrics.wowy import (
+    WowyQuery,
     WowyQueryFilters,
     build_wowy_custom_query,
+    build_wowy_query,
 )
 from rawr_analytics.metrics.wowy import (
     build_cached_leaderboard_payload as _build_wowy_cached_leaderboard_payload,
@@ -71,6 +73,7 @@ from rawr_analytics.shared.season import Season, SeasonType
 from rawr_analytics.shared.team import Team
 
 MetricView = str
+MetricQuery = RawrQuery | WowyQuery
 
 
 class _MetricSpanSeriesRow(Protocol):
@@ -238,19 +241,29 @@ def build_metric_query_export(
 
 
 def _build_query(request: MetricQueryRequest) -> MetricQuery:
-    return build_metric_query(
-        request.metric,
-        teams=request.teams,
-        seasons=request.seasons,
-        season_type=request.season_type,
-        top_n=request.top_n,
-        min_average_minutes=request.min_average_minutes,
-        min_total_minutes=request.min_total_minutes,
-        min_games=request.min_games,
-        ridge_alpha=request.ridge_alpha,
-        min_games_with=request.min_games_with,
-        min_games_without=request.min_games_without,
-    )
+    if request.metric == Metric.RAWR:
+        return build_rawr_query(
+            teams=request.teams,
+            seasons=request.seasons,
+            season_type=request.season_type,
+            top_n=request.top_n,
+            min_average_minutes=request.min_average_minutes,
+            min_total_minutes=request.min_total_minutes,
+            min_games=request.min_games,
+            ridge_alpha=request.ridge_alpha,
+        )
+    if request.metric in {Metric.WOWY, Metric.WOWY_SHRUNK}:
+        return build_wowy_query(
+            teams=request.teams,
+            seasons=request.seasons,
+            season_type=request.season_type,
+            top_n=request.top_n,
+            min_average_minutes=request.min_average_minutes,
+            min_total_minutes=request.min_total_minutes,
+            min_games_with=request.min_games_with,
+            min_games_without=request.min_games_without,
+        )
+    raise ValueError(f"Unknown metric: {request.metric}")
 
 
 def _build_filters_payload(
@@ -258,6 +271,7 @@ def _build_filters_payload(
     query: MetricQuery,
 ) -> RawrQueryFilters | WowyQueryFilters:
     if metric == Metric.RAWR:
+        assert isinstance(query, RawrQuery)
         return _build_rawr_query_filters_payload(
             teams=query.teams,
             seasons=query.seasons,
@@ -269,6 +283,7 @@ def _build_filters_payload(
             ridge_alpha=query.ridge_alpha,
         )
     if metric in {Metric.WOWY, Metric.WOWY_SHRUNK}:
+        assert isinstance(query, WowyQuery)
         return _build_wowy_query_filters_payload(
             teams=query.teams,
             seasons=query.seasons,
@@ -334,6 +349,7 @@ def _build_view_payload(
 
     if view == "player-seasons":
         if metric == Metric.RAWR:
+            assert isinstance(query, RawrQuery)
             _require_current_metric_scope(metric=metric, scope_key=scope_key)
             rows = load_rawr_player_season_value_rows(
                 scope_key=scope_key,
@@ -343,6 +359,7 @@ def _build_view_payload(
                 min_games=query.min_games,
             )
         elif metric in {Metric.WOWY, Metric.WOWY_SHRUNK}:
+            assert isinstance(query, WowyQuery)
             _require_current_metric_scope(metric=metric, scope_key=scope_key)
             rows = load_wowy_player_season_value_rows(
                 metric_id=metric.value,
@@ -365,6 +382,7 @@ def _build_view_payload(
             season.id for season in catalog.available_seasons
         ]
         if metric == Metric.RAWR:
+            assert isinstance(query, RawrQuery)
             rows = load_rawr_player_season_value_rows(
                 scope_key=scope_key,
                 seasons=_season_ids(query.seasons),
@@ -373,6 +391,7 @@ def _build_view_payload(
                 min_games=query.min_games,
             )
         elif metric in {Metric.WOWY, Metric.WOWY_SHRUNK}:
+            assert isinstance(query, WowyQuery)
             rows = load_wowy_player_season_value_rows(
                 metric_id=metric.value,
                 scope_key=scope_key,
@@ -487,6 +506,7 @@ def _build_custom_query_result(
     query: MetricQuery,
 ):
     if metric == Metric.RAWR:
+        assert isinstance(query, RawrQuery)
         season_inputs = load_rawr_season_inputs(
             teams=query.teams,
             seasons=query.seasons,
@@ -494,12 +514,13 @@ def _build_custom_query_result(
         )
         return build_rawr_custom_query(
             season_inputs=season_inputs,
-            min_games=int(query.min_games or 0),
-            ridge_alpha=float(query.ridge_alpha or _rawr_default_filters()["ridge_alpha"]),
+            min_games=query.min_games,
+            ridge_alpha=query.ridge_alpha,
             min_average_minutes=query.min_average_minutes,
             min_total_minutes=query.min_total_minutes,
         )
     if metric in {Metric.WOWY, Metric.WOWY_SHRUNK}:
+        assert isinstance(query, WowyQuery)
         season_inputs = load_wowy_season_inputs(
             teams=query.teams,
             seasons=query.seasons,
@@ -508,8 +529,8 @@ def _build_custom_query_result(
         return build_wowy_custom_query(
             metric,
             season_inputs=season_inputs,
-            min_games_with=int(query.min_games_with or 0),
-            min_games_without=int(query.min_games_without or 0),
+            min_games_with=query.min_games_with,
+            min_games_without=query.min_games_without,
             min_average_minutes=query.min_average_minutes,
             min_total_minutes=query.min_total_minutes,
         )

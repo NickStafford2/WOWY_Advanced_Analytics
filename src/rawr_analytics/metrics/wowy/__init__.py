@@ -24,6 +24,7 @@ from rawr_analytics.metrics.wowy.models import (
     WowyRequest,
     WowySeasonInput,
 )
+from rawr_analytics.metrics.wowy.query import WowyQuery, build_wowy_query
 from rawr_analytics.metrics.wowy.query_views import (
     WowyQueryFilters,
     build_cached_leaderboard_payload,
@@ -42,6 +43,7 @@ __all__ = [
     "WowyGame",
     "WowyPlayerContext",
     "WowyPlayerSeasonRecord",
+    "WowyQuery",
     "WowyQueryFilters",
     "WowyRequest",
     "WowySeasonInput",
@@ -53,6 +55,7 @@ __all__ = [
     "build_player_seasons_payload",
     "build_query_filters_payload",
     "build_wowy_custom_query",
+    "build_wowy_query",
     "compute_wowy_shrinkage_score",
     "default_filters",
     "describe_metric",
