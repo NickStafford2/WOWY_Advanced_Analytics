@@ -155,21 +155,6 @@ def validate_normalized_game_player_record(
                 f"Canonical player row for {player_ref} has implausible minutes {minutes!r}"
             )
 
-    # Not sure how to fix it, players can have stats in under a minute. should check if
-    # have either stats or minutes.
-    #
-    # if player.appeared:
-    #     if minutes is None or minutes <= 0.0:
-    #         raise ValueError(
-    #             f"Appeared player {player.player.player_id!r} in game {player.game_id!r} "
-    #             "must have positive minutes"
-    #         )
-    # elif minutes not in {None, 0.0}:
-    #     raise ValueError(
-    #         f"Did-not-appear player {player.player.player_id!r} in game {player.game_id!r} "
-    #         "must have zero or null minutes"
-    #     )
-
 
 __all__ = [
     "validate_normalized_cache_batch",
