@@ -190,7 +190,7 @@ def _load_normalized_games_from_db(
         NormalizedGameRow(
             game_id=row["game_id"],
             game_date=row["game_date"],
-            season=Season(row["season"], row["season_type"]),
+            season=Season.parse(row["season"], row["season_type"]),
             team=Team.from_id(row["team_id"]),
             opponent_team=Team.from_id(row["opponent_team_id"]),
             is_home=bool(row["is_home"]),
@@ -297,7 +297,7 @@ def _load_cache_load_row(
         return None
     return NormalizedCacheLoadRow(
         team=Team.from_id(row["team_id"]),
-        season=Season(row["season"], row["season_type"]),
+        season=Season.parse(row["season"], row["season_type"]),
         source_path=row["source_path"],
         source_snapshot=row["source_snapshot"],
         source_kind=row["source_kind"],
@@ -315,7 +315,6 @@ def load_normalized_scope_records_from_db(
 ) -> tuple[list[NormalizedGameRow], list[NormalizedGamePlayerRow]]:
     for scope in team_seasons:
         _require_cached_team_season_scope(scope=scope)
-
     teams_by_id: dict[int, Team] = {}
     seasons_by_key: dict[tuple[str, str], Season] = {}
     for scope in team_seasons:
@@ -387,7 +386,7 @@ def list_cache_load_rows(
     return [
         NormalizedCacheLoadRow(
             team=Team.from_id(row["team_id"]),
-            season=Season(row["season"], row["season_type"]),
+            season=Season.parse(row["season"], row["season_type"]),
             source_path=row["source_path"],
             source_snapshot=row["source_snapshot"],
             source_kind=row["source_kind"],

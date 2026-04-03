@@ -69,7 +69,7 @@ def validate_rawr_rows(
             team_filter=canonical_team_filter,
             season_type=canonical_season_type,
         )
-        canonical_season_id = Season(row.season_id, SeasonType.REGULAR.value).id
+        canonical_season_id = Season.parse(row.season_id, SeasonType.REGULAR.value).id
         if canonical_season_id != row.season_id:
             raise ValueError(
                 "Metric row for player "
@@ -89,8 +89,7 @@ def validate_rawr_rows(
 
         if row.snapshot_id is not None and row.snapshot_id <= 0:
             raise ValueError(
-                f"Metric row for player {player_id!r} has invalid snapshot_id "
-                f"{row.snapshot_id!r}"
+                f"Metric row for player {player_id!r} has invalid snapshot_id {row.snapshot_id!r}"
             )
         if not snapshot_id_seen:
             expected_snapshot_id = row.snapshot_id
@@ -182,7 +181,7 @@ def validate_wowy_rows(
             team_filter=canonical_team_filter,
             season_type=canonical_season_type,
         )
-        canonical_season_id = Season(row.season_id, SeasonType.REGULAR.value).id
+        canonical_season_id = Season.parse(row.season_id, SeasonType.REGULAR.value).id
         if canonical_season_id != row.season_id:
             raise ValueError(
                 "Metric row for player "
@@ -201,8 +200,7 @@ def validate_wowy_rows(
 
         if row.snapshot_id is not None and row.snapshot_id <= 0:
             raise ValueError(
-                f"Metric row for player {player_id!r} has invalid snapshot_id "
-                f"{row.snapshot_id!r}"
+                f"Metric row for player {player_id!r} has invalid snapshot_id {row.snapshot_id!r}"
             )
         if not snapshot_id_seen:
             expected_snapshot_id = row.snapshot_id
@@ -224,17 +222,13 @@ def validate_wowy_rows(
             f"games_without for player {player_id}",
         )
         if row.avg_margin_with is None or not math.isfinite(row.avg_margin_with):
-            raise ValueError(
-                f"Metric row for player {player_id!r} has non-finite avg_margin_with"
-            )
+            raise ValueError(f"Metric row for player {player_id!r} has non-finite avg_margin_with")
         if row.avg_margin_without is None or not math.isfinite(row.avg_margin_without):
             raise ValueError(
                 f"Metric row for player {player_id!r} has non-finite avg_margin_without"
             )
         if row.raw_wowy_score is not None and not math.isfinite(row.raw_wowy_score):
-            raise ValueError(
-                f"Metric row for player {player_id!r} has non-finite raw_wowy_score"
-            )
+            raise ValueError(f"Metric row for player {player_id!r} has non-finite raw_wowy_score")
         _validate_optional_non_negative_float(
             row.average_minutes,
             f"average_minutes for player {player_id}",
@@ -292,7 +286,7 @@ def _validate_metric_catalog(
     )
 
     canonical_seasons = [
-        Season(season, SeasonType.REGULAR.value).id for season in available_seasons
+        Season.parse(season, SeasonType.REGULAR.value).id for season in available_seasons
     ]
     if canonical_seasons != available_seasons:
         raise ValueError("Catalog available_seasons must use canonical season strings")
@@ -310,8 +304,8 @@ def _validate_metric_catalog(
     if full_span_start_season is None:
         return
 
-    start = Season(full_span_start_season, SeasonType.REGULAR.value).id
-    end = Season(full_span_end_season or "", SeasonType.REGULAR.value).id
+    start = Season.parse(full_span_start_season, SeasonType.REGULAR.value).id
+    end = Season.parse(full_span_end_season or "", SeasonType.REGULAR.value).id
     if start not in canonical_seasons or end not in canonical_seasons:
         raise ValueError("Catalog full-span seasons must be present in available_seasons")
     if _season_sort_key(start) > _season_sort_key(end):
@@ -325,7 +319,7 @@ def _canonical_team_id(value: int) -> int:
 
 
 def _season_sort_key(season: str) -> int:
-    return Season(season, SeasonType.REGULAR.value).start_year
+    return Season.parse(season, SeasonType.REGULAR.value).start_year
 
 
 def validate_metric_full_span_rows(
@@ -378,7 +372,7 @@ def validate_metric_full_span_rows(
             raise ValueError("Full-span point rows must match the requested metric scope")
         if row.player_id not in expected_point_counts:
             raise ValueError(f"Full-span point row for unknown player {row.player_id!r}")
-        canonical_season_id = Season(row.season_id, SeasonType.REGULAR.value).id
+        canonical_season_id = Season.parse(row.season_id, SeasonType.REGULAR.value).id
         if canonical_season_id != row.season_id:
             raise ValueError(
                 f"Full-span point row for player {row.player_id!r} uses "

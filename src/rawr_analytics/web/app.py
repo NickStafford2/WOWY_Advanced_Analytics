@@ -38,9 +38,7 @@ def create_app():
             min_average_minutes=_parse_optional_float(
                 request.args.get("min_average_minutes", None)
             ),
-            min_total_minutes=_parse_optional_float(
-                request.args.get("min_total_minutes", None)
-            ),
+            min_total_minutes=_parse_optional_float(request.args.get("min_total_minutes", None)),
             min_games=_parse_optional_int(request.args.get("min_games", None)),
             ridge_alpha=_parse_optional_float(request.args.get("ridge_alpha", None)),
         )
@@ -55,9 +53,7 @@ def create_app():
             min_average_minutes=_parse_optional_float(
                 request.args.get("min_average_minutes", None)
             ),
-            min_total_minutes=_parse_optional_float(
-                request.args.get("min_total_minutes", None)
-            ),
+            min_total_minutes=_parse_optional_float(request.args.get("min_total_minutes", None)),
             min_games_with=_parse_optional_int(request.args.get("min_games_with", None)),
             min_games_without=_parse_optional_int(request.args.get("min_games_without", None)),
         )
@@ -254,4 +250,4 @@ def _parse_season_list(
 ) -> list[Season] | None:
     if not raw_values:
         return None
-    return [Season(raw_value, season_type.value) for raw_value in raw_values]
+    return [Season.parse(raw_value, season_type.value) for raw_value in raw_values]

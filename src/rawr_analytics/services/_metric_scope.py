@@ -153,7 +153,7 @@ def require_current_metric_scope(
 
     season_type = SeasonType.parse(catalog_row.season_type)
     available_seasons = [
-        Season(season_id, season_type.to_nba_format())
+        Season.parse(season_id, season_type.to_nba_format())
         for season_id in catalog_row.available_season_ids
     ]
     return MetricStoreCatalog(
@@ -226,7 +226,7 @@ def _build_metric_options_catalog_from_cache(
         availability=MetricCatalogAvailability(
             teams=[Team.from_id(team_id) for team_id in available_team_ids],
             seasons=[
-                Season(season_id, season_type.to_nba_format())
+                Season.parse(season_id, season_type.to_nba_format())
                 for season_id in available_season_ids
             ],
         ),
@@ -244,9 +244,7 @@ def _build_team_options(catalog: MetricStoreCatalog) -> list[dict[str, Any]]:
         {
             "team_id": team.team_id,
             "label": team.current.abbreviation,
-            "available_seasons": [
-                season.id for season in seasons_by_team.get(team.team_id, [])
-            ],
+            "available_seasons": [season.id for season in seasons_by_team.get(team.team_id, [])],
         }
         for team in sorted(catalog.availability.teams, key=lambda item: item.current.abbreviation)
     ]
@@ -266,7 +264,7 @@ def _build_available_team_seasons(catalog: MetricStoreCatalog) -> dict[int, list
         seasons_by_team_id.setdefault(team_season.team.team_id, set()).add(team_season.season.id)
     return {
         team_id: [
-            Season(season_id, catalog.season_type.to_nba_format())
+            Season.parse(season_id, catalog.season_type.to_nba_format())
             for season_id in available_season_ids
             if season_id in seasons_by_team_id.get(team_id, set())
         ]
@@ -306,8 +304,8 @@ def _build_metric_season_span(
         return None
     assert end_season_id is not None, "metric store full-span seasons must be paired"
     return MetricSeasonSpan(
-        start_season=Season(start_season_id, season_type.to_nba_format()),
-        end_season=Season(end_season_id, season_type.to_nba_format()),
+        start_season=Season.parse(start_season_id, season_type.to_nba_format()),
+        end_season=Season.parse(end_season_id, season_type.to_nba_format()),
     )
 
 

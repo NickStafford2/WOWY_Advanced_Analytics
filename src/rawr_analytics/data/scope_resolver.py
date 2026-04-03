@@ -30,12 +30,10 @@ def resolve_team_seasons(
         )
         or None
     )
-    normalized_season_type = _normalize_season_type(season_type)
+    season_type = season_type or SeasonType.REGULAR
 
     cached_team_seasons = [
-        scope
-        for scope in list_cached_team_seasons()
-        if scope.season.season_type == normalized_season_type
+        scope for scope in list_cached_team_seasons() if scope.season.season_type == season_type
     ]
 
     if normalized_seasons is None and normalized_teams is None:
@@ -54,7 +52,7 @@ def resolve_team_seasons(
     }
     resolved: list[TeamSeasonScope] = []
     for requested_season in normalized_seasons:
-        season = Season(requested_season.id, normalized_season_type.to_nba_format())
+        season = Season.parse(requested_season.id, season_type.to_nba_format())
         if normalized_teams is not None:
             for team in normalized_teams:
                 resolved.append(
@@ -66,9 +64,3 @@ def resolve_team_seasons(
             continue
         resolved.extend([scope for scope in cached_team_seasons if scope.season.id == season.id])
     return resolved
-
-
-def _normalize_season_type(season_type: SeasonType | None) -> SeasonType:
-    if season_type is None:
-        return SeasonType.REGULAR
-    return season_type

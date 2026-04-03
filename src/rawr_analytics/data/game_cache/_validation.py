@@ -16,7 +16,7 @@ from rawr_analytics.data.game_cache.rows import (
     NormalizedGameRow,
 )
 from rawr_analytics.shared.player import PlayerSummary
-from rawr_analytics.shared.season import Season
+from rawr_analytics.shared.season import Season, SeasonType
 from rawr_analytics.shared.team import Team
 
 
@@ -121,7 +121,7 @@ def validate_normalized_cache_loads_table(
             f"season_type={row['season_type']!r}"
         )
         try:
-            season = Season(row["season"], row["season_type"])
+            season = Season.parse(row["season"], row["season_type"])
             team = Team.from_id(row["team_id"])
             team.for_season(season)
             _validate_required_text(row["source_path"], "source_path")
@@ -248,7 +248,7 @@ def validate_normalized_cache_relations(
         try:
             _validate_normalized_scope_batch(
                 team=Team.from_id(team_id),
-                season=Season(season_id, season_type),
+                season=Season.parse(season_id, season_type),
                 games=games_by_scope.get(scope, []),
                 game_players=players_by_scope.get(scope, []),
             )
@@ -397,7 +397,7 @@ def validate_team_history_table(
             _validate_required_text(row["franchise_id"], "franchise_id")
             _validate_required_text(row["lookup_abbreviation"], "lookup_abbreviation")
 
-            season = Season(row["season"], "Regular Season")
+            season = Season.parse(row["season"], SeasonType.REGULAR.value)
             team = Team.from_id(row["team_id"])
             team_season = team.for_season(season)
             if team_season.abbreviation != row["abbreviation"]:
@@ -413,7 +413,7 @@ def validate_team_history_table(
 
 
 def _build_normalized_game_record(row: sqlite3.Row) -> NormalizedGameRow:
-    season = Season(row["season"], row["season_type"])
+    season = Season.parse(row["season"], row["season_type"])
     team = Team.from_id(row["team_id"])
     opponent_team = Team.from_id(row["opponent_team_id"])
     team.for_season(season)
@@ -439,7 +439,7 @@ def _build_normalized_game_record(row: sqlite3.Row) -> NormalizedGameRow:
 def _build_normalized_game_player_record(
     row: sqlite3.Row,
 ) -> tuple[NormalizedGamePlayerRow, Season]:
-    season = Season(row["season"], row["season_type"])
+    season = Season.parse(row["season"], row["season_type"])
     team = Team.from_id(row["team_id"])
     _validate_required_text(row["game_id"], "game_id")
     return (

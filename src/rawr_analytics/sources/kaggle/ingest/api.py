@@ -153,7 +153,9 @@ def _load_game_rows(games_path: Path) -> dict[str, dict[str, str]]:
 def _build_scope_games(
     game_rows: dict[str, dict[str, str]],
 ) -> dict[tuple[int, str, str], _KaggleScopeData]:
-    supported_games_by_scope: dict[tuple[int, str, str], list[NormalizedGameRecord]] = defaultdict(list)
+    supported_games_by_scope: dict[tuple[int, str, str], list[NormalizedGameRecord]] = defaultdict(
+        list
+    )
     raw_game_counts: dict[tuple[int, str, str], int] = defaultdict(int)
     skipped_game_counts: dict[tuple[int, str, str], int] = defaultdict(int)
 
@@ -168,7 +170,9 @@ def _build_scope_games(
             for team in [home_team, away_team]:
                 if team is None:
                     continue
-                skipped_key = _scope_key(team=team, game_date=game_date, season_type="Regular Season")
+                skipped_key = _scope_key(
+                    team=team, game_date=game_date, season_type="Regular Season"
+                )
                 skipped_game_counts[skipped_key] += 1
             continue
         if home_team is None or away_team is None:
@@ -183,8 +187,12 @@ def _build_scope_games(
                 skipped_game_counts[skipped_key] += 1
             continue
 
-        home_season = Season(str(_season_start_year_from_game_date(game_date)), normalized_game_type)
-        away_season = Season(str(_season_start_year_from_game_date(game_date)), normalized_game_type)
+        home_season = Season.parse(
+            str(_season_start_year_from_game_date(game_date)), normalized_game_type
+        )
+        away_season = Season.parse(
+            str(_season_start_year_from_game_date(game_date)), normalized_game_type
+        )
 
         home_key = (home_team.team_id, home_season.id, home_season.season_type.to_nba_format())
         away_key = (away_team.team_id, away_season.id, away_season.season_type.to_nba_format())
@@ -223,7 +231,7 @@ def _build_scope_games(
     scope_data_by_key: dict[tuple[int, str, str], _KaggleScopeData] = {}
     for scope_key, games in supported_games_by_scope.items():
         team = Team.from_id(scope_key[0])
-        season = Season(scope_key[1], scope_key[2])
+        season = Season.parse(scope_key[1], scope_key[2])
         deduped_games = _dedupe_scope_games(games)
         scope_data_by_key[scope_key] = _KaggleScopeData(
             scope=TeamSeasonScope(team=team, season=season),
@@ -260,7 +268,9 @@ def _load_player_rows(
             game_date = _parse_game_date(_required_text(game_row, "gameDateTimeEst"))
             is_home = _parse_home_flag(_required_text(row, "home"))
             team = home_team if is_home else away_team
-            season = Season(str(_season_start_year_from_game_date(game_date)), normalized_game_type)
+            season = Season.parse(
+                str(_season_start_year_from_game_date(game_date)), normalized_game_type
+            )
             scope_key = (team.team_id, season.id, season.season_type.to_nba_format())
             scope_data = scope_data_by_key.get(scope_key)
             assert scope_data is not None, f"Missing kaggle scope for player row {scope_key!r}"
@@ -314,13 +324,9 @@ def _filter_scope_player_coverage(
         for game in games
         if appeared_counts_by_key.get((game.game_id, game.team.team_id), 0) >= 5
     }
-    filtered_games = [
-        game for game in games if (game.game_id, game.team.team_id) in kept_game_keys
-    ]
+    filtered_games = [game for game in games if (game.game_id, game.team.team_id) in kept_game_keys]
     filtered_game_players = [
-        player
-        for player in game_players
-        if (player.game_id, player.team.team_id) in kept_game_keys
+        player for player in game_players if (player.game_id, player.team.team_id) in kept_game_keys
     ]
     return filtered_games, filtered_game_players
 
@@ -346,7 +352,7 @@ def _season_start_year_from_game_date(game_date: str) -> int:
 
 
 def _scope_key(*, team: Team, game_date: str, season_type: str) -> tuple[int, str, str]:
-    season = Season(str(_season_start_year_from_game_date(game_date)), season_type)
+    season = Season.parse(str(_season_start_year_from_game_date(game_date)), season_type)
     return team.team_id, season.id, season.season_type.to_nba_format()
 
 
@@ -369,7 +375,9 @@ def _load_player_names(players_path: Path) -> dict[int, str]:
             player_id_text = row.get("personId", "").strip()
             if player_id_text == "":
                 continue
-            player_name = f"{row.get('firstName', '').strip()} {row.get('lastName', '').strip()}".strip()
+            player_name = (
+                f"{row.get('firstName', '').strip()} {row.get('lastName', '').strip()}".strip()
+            )
             if player_name == "":
                 continue
             player_names_by_id[int(player_id_text)] = player_name
@@ -454,9 +462,7 @@ def _parse_optional_float(raw_value: str) -> float:
 
 def _assert_same_game_row(existing: dict[str, str], current: dict[str, str]) -> None:
     if existing != current:
-        raise ValueError(
-            f"Conflicting kaggle game rows for game_id={existing.get('gameId')!r}"
-        )
+        raise ValueError(f"Conflicting kaggle game rows for game_id={existing.get('gameId')!r}")
 
 
 def _assert_same_normalized_game(

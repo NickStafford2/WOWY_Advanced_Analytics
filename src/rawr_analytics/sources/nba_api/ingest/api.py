@@ -161,7 +161,7 @@ def _build_seasons(
     season_str: str | None,
 ) -> list[Season]:
     if season_str is not None:
-        return [Season(season_str, season_type)]
+        return [Season.parse(season_str, season_type)]
     return build_season_list(
         start_year,
         end_year,

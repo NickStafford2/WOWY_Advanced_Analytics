@@ -47,17 +47,24 @@ class SeasonType(Enum):
 @dataclass(frozen=True)
 class Season:
     start_year: int
-    id: str  # "2014-15"
     season_type: SeasonType
 
-    def __init__(self, year_string: str, season_type_str: str):
-        assert season_type_str is not None and season_type_str != "", "season_type is required"
-        assert year_string is not None and year_string != "", "season is required"
-        start_year = Season._parse_start_year(year_string)
+    @property
+    def id(self) -> str:  # "2014-15"
+        return f"{self.start_year}-{(self.start_year + 1) % 100:02d}"
+
+    @classmethod
+    def parse(cls, year_string: str, season_type_str: str) -> Season:
+        if not year_string or not year_string.strip():
+            raise ValueError("season is required")
+
+        if not season_type_str or not season_type_str.strip():
+            raise ValueError("season_type is required")
+
+        start_year = cls._parse_start_year(year_string)
         season_type = SeasonType.parse(season_type_str)
-        object.__setattr__(self, "start_year", start_year)
-        object.__setattr__(self, "season_type", season_type)
-        object.__setattr__(self, "id", Season._to_nba_api_format(start_year))
+
+        return cls(start_year=start_year, season_type=season_type)
 
     def is_playoffs(self) -> bool:
         return self.season_type == SeasonType.PLAYOFFS
@@ -107,4 +114,6 @@ class Season:
 
 def build_season_list(start_year: int, first_year: int, season_type_str: str) -> list[Season]:
     assert start_year >= first_year, "Start year must be greater than or equal to end year"
-    return [Season(str(year), season_type_str) for year in range(start_year, first_year - 1, -1)]
+    return [
+        Season.parse(str(year), season_type_str) for year in range(start_year, first_year - 1, -1)
+    ]

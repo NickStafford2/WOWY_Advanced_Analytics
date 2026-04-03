@@ -112,8 +112,8 @@ def main(argv: list[str] | None = None) -> int:
     parser = _build_parser()
     args = parser.parse_args(argv)
     season_type = SeasonType.parse(args.season_type)
-    train_seasons = [Season(season, season_type.value) for season in args.train_season]
-    holdout_season = Season(args.holdout_season, season_type.value)
+    train_seasons = [Season.parse(season, season_type.value) for season in args.train_season]
+    holdout_season = Season.parse(args.holdout_season, season_type.value)
     teams = _parse_teams(args.team, season=holdout_season)
     rawr_ridge_values = _parse_float_grid(args.rawr_ridge_grid)
     shrinkage_strength_values = _parse_float_grid(args.shrinkage_strength_grid)

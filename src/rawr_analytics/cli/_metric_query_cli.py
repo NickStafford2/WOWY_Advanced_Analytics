@@ -35,7 +35,7 @@ def parse_metric_query_seasons(
 ) -> list[Season] | None:
     if not raw_values:
         return None
-    return [Season(raw_value, season_type.value) for raw_value in raw_values]
+    return [Season.parse(raw_value, season_type.value) for raw_value in raw_values]
 
 
 def render_metric_query_table(

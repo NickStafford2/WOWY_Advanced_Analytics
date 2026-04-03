@@ -235,7 +235,7 @@ def _scope_from_schedule_path(path: Path) -> tuple[Team, Season]:
         "_leaguegamefinder"
     ).split("_", maxsplit=2)
     season_type = SeasonType.parse(season_type_slug.replace("_", " ").title())
-    season = Season(season_id, season_type.value)
+    season = Season.parse(season_id, season_type.value)
     return Team.from_abbreviation(team_abbreviation, season=season), season
 
 

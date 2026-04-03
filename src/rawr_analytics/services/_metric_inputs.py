@@ -326,7 +326,7 @@ def _build_normalized_game_player_record(
 
 
 def _list_expected_rawr_teams_for_season(season: str) -> list[str]:
-    resolved_season = Season(season, "Regular Season")
+    resolved_season = Season.parse(season, "Regular Season")
     return [
         team.abbreviation(season=resolved_season)
         for team in Team.all_active_in_season(resolved_season)
