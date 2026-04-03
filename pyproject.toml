@@ -16,7 +16,7 @@ dependencies = [
 wowy = "rawr_analytics.metrics.wowy.cli:main"
 rawr = "rawr_analytics.metrics.rawr.cli:main"
 web = "rawr_analytics.cli.run_web:main"
-refresh-web-store = "rawr_analytics.web.refresh_cli:main"
+refresh-web-store = "rawr_analytics.cli.refresh_cli:main"
 audit-db = "rawr_analytics.data.db_validation_cli:main"
 
 [dependency-groups]
