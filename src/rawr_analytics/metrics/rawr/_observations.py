@@ -63,14 +63,14 @@ def _build_rawr_observations(
     player_names: dict[int, str] = {}
 
     for player in game_players:
-        player_names[player.player_id] = player.player_name
+        player_names[player.player.player_id] = player.player.player_name
         if not player.has_positive_minutes():
             continue
         minutes = player.minutes
         assert minutes is not None
-        player_minutes_by_game_team[(player.game_id, player.team.team_id)][player.player_id] = (
-            minutes
-        )
+        player_minutes_by_game_team[(player.game_id, player.team.team_id)][
+            player.player.player_id
+        ] = minutes
 
     games_by_id: dict[str, list[NormalizedGameRecord]] = defaultdict(list)
     for game in games:
