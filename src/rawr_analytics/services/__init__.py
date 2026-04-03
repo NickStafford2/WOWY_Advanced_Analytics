@@ -1,5 +1,14 @@
 """Public application service interface for CLI and web adapters."""
 
+from rawr_analytics.services.compare_rawr_configs import (
+    CompareRawrConfigsEventFn,
+    CompareRawrConfigsProgress,
+    CompareRawrConfigsRequest,
+    ComparisonResult,
+    build_compare_rawr_configs_summary,
+    build_compare_rawr_configs_table,
+    compare_rawr_configs,
+)
 from rawr_analytics.services.ingest import (
     FailureLogFn,
     IngestEvent,
@@ -41,6 +50,10 @@ from rawr_analytics.services.rebuild import (
 __all__ = [
     "DEFAULT_RAWR_RIDGE_ALPHA",
     "DEFAULT_WEB_METRIC_IDS",
+    "CompareRawrConfigsEventFn",
+    "CompareRawrConfigsProgress",
+    "CompareRawrConfigsRequest",
+    "ComparisonResult",
     "FailureLogFn",
     "IngestEvent",
     "IngestFailureLogEntry",
@@ -58,11 +71,14 @@ __all__ = [
     "RebuildValidationProgressEvent",
     "SeasonRangeFailure",
     "SeasonRangeResult",
+    "build_compare_rawr_configs_summary",
+    "build_compare_rawr_configs_table",
     "build_metric_options_payload",
     "build_metric_query_export",
     "build_metric_query_view",
     "build_metric_store_refresh_request",
     "build_rebuild_request",
+    "compare_rawr_configs",
     "format_rebuild_validation_summary",
     "rebuild_player_metrics_db",
     "refresh_metric_store",

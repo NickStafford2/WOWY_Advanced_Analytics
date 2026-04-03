@@ -1,6 +1,476 @@
 from __future__ import annotations
 
-from rawr_analytics.metrics.rawr.tuning import main
+from collections.abc import Callable
+from dataclasses import dataclass
+from itertools import product
 
-if __name__ == "__main__":
-    raise SystemExit(main())
+import numpy as np
+
+from rawr_analytics.metrics.rawr import prepare_rawr_player_season_records
+from rawr_analytics.metrics.rawr.models import RawrPlayerSeasonRecord
+from rawr_analytics.metrics.wowy import prepare_wowy_player_season_records
+from rawr_analytics.metrics.wowy.models import WowyPlayerSeasonRecord
+from rawr_analytics.shared.season import Season, SeasonType
+from rawr_analytics.shared.team import Team
+
+_DEFAULT_SHRINKAGE_MODES = ("uniform", "game-count", "minutes")
+
+
+@dataclass(frozen=True)
+class AggregatedPlayerValue:
+    player_id: int
+    player_name: str
+    value: float
+    season_count: int
+
+
+@dataclass(frozen=True)
+class ComparisonResult:
+    model: str
+    ridge_alpha: float | None
+    shrinkage_mode: str | None
+    shrinkage_strength: float | None
+    shrinkage_minute_scale: float | None
+    players: int
+    pearson: float | None
+    spearman: float | None
+    top_n_overlap: int
+
+
+@dataclass(frozen=True)
+class CompareRawrConfigsRequest:
+    train_seasons: list[Season]
+    holdout_season: Season
+    season_type: SeasonType
+    aggregation: str = "mean"
+    teams: list[Team] | None = None
+    rawr_ridge_values: list[float] | None = None
+    shrinkage_modes: list[str] | None = None
+    shrinkage_strength_values: list[float] | None = None
+    shrinkage_minute_scale_values: list[float] | None = None
+    rawr_min_games: int = 35
+    holdout_min_games_with: int = 15
+    holdout_min_games_without: int = 2
+    min_average_minutes: float = 30.0
+    min_total_minutes: float = 600.0
+    top_n: int = 20
+
+
+@dataclass(frozen=True)
+class CompareRawrConfigsProgress:
+    current: int
+    total: int
+    detail: str
+
+
+CompareRawrConfigsEventFn = Callable[[CompareRawrConfigsProgress], None]
+
+
+def compare_rawr_configs(
+    request: CompareRawrConfigsRequest,
+    *,
+    event_fn: CompareRawrConfigsEventFn | None = None,
+) -> list[ComparisonResult]:
+    _validate_request(request)
+
+    total_steps = _count_evaluation_steps(request)
+    completed_steps = 0
+
+    holdout_records = prepare_wowy_player_season_records(
+        teams=request.teams,
+        seasons=[request.holdout_season],
+        season_type=request.season_type,
+        min_games_with=request.holdout_min_games_with,
+        min_games_without=request.holdout_min_games_without,
+        min_average_minutes=request.min_average_minutes,
+        min_total_minutes=request.min_total_minutes,
+    )
+    completed_steps += 1
+    _emit_progress(
+        event_fn,
+        current=completed_steps,
+        total=total_steps,
+        detail=f"holdout {request.holdout_season}",
+    )
+    holdout_targets = _build_holdout_targets(holdout_records)
+
+    training_wowy_records = prepare_wowy_player_season_records(
+        teams=request.teams,
+        seasons=request.train_seasons,
+        season_type=request.season_type,
+        min_games_with=request.holdout_min_games_with,
+        min_games_without=request.holdout_min_games_without,
+        min_average_minutes=request.min_average_minutes,
+        min_total_minutes=request.min_total_minutes,
+    )
+    completed_steps += 1
+    _emit_progress(
+        event_fn,
+        current=completed_steps,
+        total=total_steps,
+        detail="training WOWY",
+    )
+    results = [
+        _build_comparison_result(
+            model="wowy-baseline",
+            training_scores=_aggregate_wowy_training_records(
+                training_wowy_records,
+                aggregation=request.aggregation,
+            ),
+            holdout_targets=holdout_targets,
+            top_n=request.top_n,
+        )
+    ]
+    completed_steps += 1
+    _emit_progress(
+        event_fn,
+        current=completed_steps,
+        total=total_steps,
+        detail="baseline scored",
+    )
+
+    for ridge_alpha, shrinkage_mode, shrinkage_strength in product(
+        request.rawr_ridge_values or [],
+        request.shrinkage_modes or _DEFAULT_SHRINKAGE_MODES,
+        request.shrinkage_strength_values or [],
+    ):
+        minute_scales = (
+            request.shrinkage_minute_scale_values or []
+            if shrinkage_mode == "minutes"
+            else [(request.shrinkage_minute_scale_values or [48.0])[0]]
+        )
+        for minute_scale in minute_scales:
+            detail = f"alpha={ridge_alpha:.2f} mode={shrinkage_mode}"
+            if shrinkage_mode == "minutes":
+                detail += f" min_scale={minute_scale:.1f}"
+            rawr_records = prepare_rawr_player_season_records(
+                teams=request.teams,
+                seasons=request.train_seasons,
+                season_type=request.season_type,
+                min_games=request.rawr_min_games,
+                ridge_alpha=ridge_alpha,
+                shrinkage_mode=shrinkage_mode,
+                shrinkage_strength=shrinkage_strength,
+                shrinkage_minute_scale=minute_scale,
+                min_average_minutes=request.min_average_minutes,
+                min_total_minutes=request.min_total_minutes,
+            )
+            completed_steps += 1
+            _emit_progress(
+                event_fn,
+                current=completed_steps,
+                total=total_steps,
+                detail=detail,
+            )
+            results.append(
+                _build_comparison_result(
+                    model="rawr",
+                    training_scores=_aggregate_rawr_training_records(
+                        rawr_records,
+                        aggregation=request.aggregation,
+                    ),
+                    holdout_targets=holdout_targets,
+                    top_n=request.top_n,
+                    ridge_alpha=ridge_alpha,
+                    shrinkage_mode=shrinkage_mode,
+                    shrinkage_strength=shrinkage_strength,
+                    shrinkage_minute_scale=(minute_scale if shrinkage_mode == "minutes" else None),
+                )
+            )
+
+    return sorted(
+        results,
+        key=lambda result: (
+            result.spearman if result.spearman is not None else float("-inf"),
+            result.pearson if result.pearson is not None else float("-inf"),
+            result.top_n_overlap,
+            result.players,
+        ),
+        reverse=True,
+    )
+
+
+def build_compare_rawr_configs_summary(
+    request: CompareRawrConfigsRequest,
+    results: list[ComparisonResult],
+) -> str:
+    train_label = ",".join(season.id for season in request.train_seasons)
+    team_label = "all-teams"
+    if request.teams:
+        team_label = ",".join(
+            team.abbreviation(season=request.holdout_season) for team in request.teams
+        )
+    best = results[0] if results else None
+    lines = [
+        (
+            f"train_seasons={train_label} holdout_season={request.holdout_season.id} "
+            f"aggregation={request.aggregation} top_n={request.top_n}"
+        ),
+        f"team_filter={team_label} season_type={request.season_type.to_nba_format()}",
+    ]
+    if best is not None:
+        best_suffix = ""
+        if best.model != "wowy-baseline":
+            minute_scale = (
+                f"{best.shrinkage_minute_scale}" if best.shrinkage_minute_scale is not None else "-"
+            )
+            best_suffix = (
+                f"(alpha={best.ridge_alpha:.2f},mode={best.shrinkage_mode},"
+                f"strength={best.shrinkage_strength:.2f},"
+                f"minute_scale={minute_scale})"
+            )
+        lines.append(f"best_by_spearman={best.model}" + best_suffix)
+    return "\n".join(lines)
+
+
+def build_compare_rawr_configs_table(results: list[ComparisonResult]) -> str:
+    if not results:
+        return "No comparison rows were generated."
+
+    lines = [
+        "RAWR tuning comparison",
+        "-" * 96,
+        (
+            f"{'model':<14} {'alpha':>7} {'mode':<10} {'strength':>9} "
+            f"{'min_scale':>10} {'players':>7} {'pearson':>9} "
+            f"{'spearman':>9} {'top_n':>7}"
+        ),
+        "-" * 96,
+    ]
+    for result in results:
+        lines.append(
+            f"{result.model:<14} "
+            f"{_format_float(result.ridge_alpha, decimals=2):>7} "
+            f"{_format_text(result.shrinkage_mode):<10} "
+            f"{_format_float(result.shrinkage_strength, decimals=2):>9} "
+            f"{_format_float(result.shrinkage_minute_scale, decimals=1):>10} "
+            f"{result.players:>7} "
+            f"{_format_float(result.pearson, decimals=3):>9} "
+            f"{_format_float(result.spearman, decimals=3):>9} "
+            f"{result.top_n_overlap:>7}"
+        )
+    return "\n".join(lines)
+
+
+def _validate_request(request: CompareRawrConfigsRequest) -> None:
+    assert request.rawr_ridge_values is not None
+    assert request.shrinkage_strength_values is not None
+    assert request.shrinkage_minute_scale_values is not None
+    if request.top_n <= 0:
+        raise ValueError("top_n must be positive")
+    train_season_ids = {season.id for season in request.train_seasons}
+    if request.holdout_season.id in train_season_ids:
+        raise ValueError("holdout season must not be included in training seasons")
+
+
+def _emit_progress(
+    event_fn: CompareRawrConfigsEventFn | None,
+    *,
+    current: int,
+    total: int,
+    detail: str,
+) -> None:
+    if event_fn is None:
+        return
+    event_fn(CompareRawrConfigsProgress(current=current, total=total, detail=detail))
+
+
+def _aggregate_wowy_training_records(
+    records: list[WowyPlayerSeasonRecord],
+    aggregation: str,
+) -> dict[int, AggregatedPlayerValue]:
+    grouped: dict[int, list[WowyPlayerSeasonRecord]] = {}
+    for record in records:
+        grouped.setdefault(record.player_id, []).append(record)
+    return {
+        player_id: AggregatedPlayerValue(
+            player_id=player_id,
+            player_name=player_records[0].player_name,
+            value=_aggregate_values(
+                [record.wowy_score for record in player_records],
+                [record.season for record in player_records],
+                aggregation,
+            ),
+            season_count=len(player_records),
+        )
+        for player_id, player_records in grouped.items()
+    }
+
+
+def _aggregate_rawr_training_records(
+    records: list[RawrPlayerSeasonRecord],
+    aggregation: str,
+) -> dict[int, AggregatedPlayerValue]:
+    grouped: dict[int, list[RawrPlayerSeasonRecord]] = {}
+    for record in records:
+        grouped.setdefault(record.player_id, []).append(record)
+    return {
+        player_id: AggregatedPlayerValue(
+            player_id=player_id,
+            player_name=player_records[0].player_name,
+            value=_aggregate_values(
+                [record.coefficient for record in player_records],
+                [record.season for record in player_records],
+                aggregation,
+            ),
+            season_count=len(player_records),
+        )
+        for player_id, player_records in grouped.items()
+    }
+
+
+def _aggregate_values(
+    values: list[float],
+    seasons: list[Season],
+    aggregation: str,
+) -> float:
+    if aggregation == "mean":
+        return sum(values) / len(values)
+    if aggregation == "max":
+        return max(values)
+    if aggregation == "latest":
+        latest_index = max(
+            range(len(seasons)),
+            key=lambda index: (seasons[index].start_year, seasons[index].season_type.value),
+        )
+        return values[latest_index]
+    raise ValueError(f"Unsupported aggregation: {aggregation}")
+
+
+def _build_holdout_targets(
+    records: list[WowyPlayerSeasonRecord],
+) -> dict[int, AggregatedPlayerValue]:
+    return {
+        record.player_id: AggregatedPlayerValue(
+            player_id=record.player_id,
+            player_name=record.player_name,
+            value=record.wowy_score,
+            season_count=1,
+        )
+        for record in records
+    }
+
+
+def _build_comparison_result(
+    *,
+    model: str,
+    training_scores: dict[int, AggregatedPlayerValue],
+    holdout_targets: dict[int, AggregatedPlayerValue],
+    top_n: int,
+    ridge_alpha: float | None = None,
+    shrinkage_mode: str | None = None,
+    shrinkage_strength: float | None = None,
+    shrinkage_minute_scale: float | None = None,
+) -> ComparisonResult:
+    shared_player_ids = sorted(set(training_scores) & set(holdout_targets))
+    train_values = [training_scores[player_id].value for player_id in shared_player_ids]
+    holdout_values = [holdout_targets[player_id].value for player_id in shared_player_ids]
+
+    return ComparisonResult(
+        model=model,
+        ridge_alpha=ridge_alpha,
+        shrinkage_mode=shrinkage_mode,
+        shrinkage_strength=shrinkage_strength,
+        shrinkage_minute_scale=shrinkage_minute_scale,
+        players=len(shared_player_ids),
+        pearson=_pearson_correlation(train_values, holdout_values),
+        spearman=_spearman_correlation(train_values, holdout_values),
+        top_n_overlap=_top_n_overlap(training_scores, holdout_targets, top_n=top_n),
+    )
+
+
+def _pearson_correlation(xs: list[float], ys: list[float]) -> float | None:
+    if len(xs) < 2 or len(ys) < 2:
+        return None
+    if len(set(xs)) <= 1 or len(set(ys)) <= 1:
+        return None
+    return float(np.corrcoef(xs, ys)[0][1])
+
+
+def _spearman_correlation(xs: list[float], ys: list[float]) -> float | None:
+    if len(xs) < 2 or len(ys) < 2:
+        return None
+    ranked_xs = _rank_values(xs)
+    ranked_ys = _rank_values(ys)
+    return _pearson_correlation(ranked_xs, ranked_ys)
+
+
+def _rank_values(values: list[float]) -> list[float]:
+    indexed = sorted(enumerate(values), key=lambda item: item[1])
+    ranks = [0.0] * len(values)
+    position = 0
+    while position < len(indexed):
+        end = position
+        while end + 1 < len(indexed) and indexed[end + 1][1] == indexed[position][1]:
+            end += 1
+        average_rank = (position + end + 2) / 2.0
+        for tie_index in range(position, end + 1):
+            original_index = indexed[tie_index][0]
+            ranks[original_index] = average_rank
+        position = end + 1
+    return ranks
+
+
+def _top_n_overlap(
+    training_scores: dict[int, AggregatedPlayerValue],
+    holdout_targets: dict[int, AggregatedPlayerValue],
+    *,
+    top_n: int,
+) -> int:
+    if top_n <= 0:
+        raise ValueError("top_n must be positive")
+    shared_player_ids = set(training_scores) & set(holdout_targets)
+    if not shared_player_ids:
+        return 0
+    ranked_train = sorted(
+        shared_player_ids,
+        key=lambda player_id: (
+            training_scores[player_id].value,
+            training_scores[player_id].player_name,
+        ),
+        reverse=True,
+    )[:top_n]
+    ranked_holdout = sorted(
+        shared_player_ids,
+        key=lambda player_id: (
+            holdout_targets[player_id].value,
+            holdout_targets[player_id].player_name,
+        ),
+        reverse=True,
+    )[:top_n]
+    return len(set(ranked_train) & set(ranked_holdout))
+
+
+def _count_evaluation_steps(request: CompareRawrConfigsRequest) -> int:
+    rawr_configs = 0
+    for _, shrinkage_mode, _ in product(
+        request.rawr_ridge_values or [],
+        request.shrinkage_modes or _DEFAULT_SHRINKAGE_MODES,
+        request.shrinkage_strength_values or [],
+    ):
+        if shrinkage_mode == "minutes":
+            rawr_configs += len(request.shrinkage_minute_scale_values or [])
+            continue
+        rawr_configs += 1
+    return 3 + rawr_configs
+
+
+def _format_float(value: float | None, *, decimals: int) -> str:
+    if value is None:
+        return "-"
+    return f"{value:.{decimals}f}"
+
+
+def _format_text(value: str | None) -> str:
+    return value if value is not None else "-"
+
+__all__ = [
+    "AggregatedPlayerValue",
+    "CompareRawrConfigsEventFn",
+    "CompareRawrConfigsProgress",
+    "CompareRawrConfigsRequest",
+    "ComparisonResult",
+    "build_compare_rawr_configs_summary",
+    "build_compare_rawr_configs_table",
+    "compare_rawr_configs",
+]
