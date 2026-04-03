@@ -10,7 +10,7 @@ from rawr_analytics.cli._ingest_terminal import (
     render_team_partial_failed_line,
     render_team_validation_failed_line,
 )
-from rawr_analytics.progress import TerminalProgressBar
+from rawr_analytics.cli._progress_bar import TerminalProgressBar
 from rawr_analytics.services import (
     IngestSeasonStartedEvent,
     IngestTeamCompletedEvent,
@@ -82,11 +82,13 @@ def render_rebuild_team_failure(event: RebuildTeamFailureEvent) -> None:
         )
         if event.failed_game_details is not None and event.failure_reason_counts is not None:
             sys.stderr.write(
-                f"{format_partial_failure_details(
-                    failed_game_details=event.failed_game_details,
-                    failure_reason_counts=event.failure_reason_counts,
-                    failure_reason_examples=event.failure_reason_examples or {},
-                )}\n"
+                f"{
+                    format_partial_failure_details(
+                        failed_game_details=event.failed_game_details,
+                        failure_reason_counts=event.failure_reason_counts,
+                        failure_reason_examples=event.failure_reason_examples or {},
+                    )
+                }\n"
             )
         sys.stderr.flush()
         return

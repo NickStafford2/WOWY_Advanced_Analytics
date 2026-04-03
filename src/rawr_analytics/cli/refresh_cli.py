@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import argparse
 
-from rawr_analytics.progress import TerminalProgressBar, print_status_box
+from rawr_analytics.cli._progress_bar import TerminalProgressBar, print_status_box
 from rawr_analytics.services import (
     DEFAULT_RAWR_RIDGE_ALPHA,
     DEFAULT_WEB_METRIC_IDS,

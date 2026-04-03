@@ -4,8 +4,8 @@ import argparse
 from collections.abc import Sequence
 from typing import Any
 
+from rawr_analytics.cli._progress_bar import print_status_box
 from rawr_analytics.metrics.constants import Metric
-from rawr_analytics.progress import print_status_box
 from rawr_analytics.services import MetricQueryRequest, build_metric_query_export
 from rawr_analytics.shared.scope import format_scope
 from rawr_analytics.shared.season import Season, SeasonType
