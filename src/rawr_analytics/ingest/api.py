@@ -1,7 +1,5 @@
 from __future__ import annotations
 
-from collections.abc import Callable
-
 from rawr_analytics.ingest._models import (
     FailureLogFn,
     IngestEvent,
@@ -22,10 +20,14 @@ from rawr_analytics.ingest._models import (
 from rawr_analytics.ingest._store import store_team_season
 from rawr_analytics.ingest._validation import validate_normalized_team_season_batch
 from rawr_analytics.shared.common import LogFn
-from rawr_analytics.shared.ingest import FetchError, PartialTeamSeasonError
+from rawr_analytics.shared.ingest import (
+    FetchError,
+    IngestUpdateFn,
+    PartialTeamSeasonError,
+)
 from rawr_analytics.shared.season import Season, build_season_list
 from rawr_analytics.shared.team import Team
-from rawr_analytics.sources.nba_api import NbaApiGameIngestUpdate, ingest_team_season
+from rawr_analytics.sources.nba_api import ingest_team_season
 
 
 def refresh_team_season(
@@ -38,7 +40,7 @@ def refresh_team_season(
         team=request.team,
         season=request.season,
         log_fn=log,
-        update_fn=_build_source_update_fn(request=request, progress_fn=progress),
+        update_fn=_build_ingest_update_fn(request=request, progress_fn=progress),
     )
     result = IngestResult(
         request=request,
@@ -195,15 +197,15 @@ def _build_progress_fn(
     return _progress
 
 
-def _build_source_update_fn(
+def _build_ingest_update_fn(
     *,
     request: IngestRequest,
     progress_fn: _TeamProgressFn | None,
-) -> Callable[[NbaApiGameIngestUpdate], None] | None:
+) -> IngestUpdateFn | None:
     if progress_fn is None:
         return None
 
-    def _source_update(update: NbaApiGameIngestUpdate) -> None:
+    def _source_update(update: IngestProgress) -> None:
         _emit_progress(
             progress_fn,
             request=request,

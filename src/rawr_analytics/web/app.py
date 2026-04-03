@@ -6,10 +6,12 @@ from typing import Any
 from rawr_analytics.metrics.constants import Metric
 from rawr_analytics.metrics.rawr import RawrQuery, build_rawr_query
 from rawr_analytics.metrics.wowy import WowyQuery, build_wowy_query
-from rawr_analytics.services import (
+from rawr_analytics.services.rawr_query import (
     build_rawr_options_payload,
     build_rawr_query_export,
     build_rawr_query_view,
+)
+from rawr_analytics.services.wowy_query import (
     build_wowy_options_payload,
     build_wowy_query_export,
     build_wowy_query_view,

@@ -6,13 +6,11 @@ from rawr_analytics.sources.nba_api._load import (
     load_player_names_from_cache,
 )
 from rawr_analytics.sources.nba_api.api import (
-    NbaApiGameIngestUpdate,
     NbaApiTeamSeasonData,
     ingest_team_season,
 )
 
 __all__ = [
-    "NbaApiGameIngestUpdate",
     "NbaApiTeamSeasonData",
     "ingest_team_season",
     "load_player_names_from_cache",

@@ -13,7 +13,7 @@ from rawr_analytics.cli._metric_query_cli import (
 from rawr_analytics.cli._progress_bar import print_status_box
 from rawr_analytics.metrics.constants import Metric
 from rawr_analytics.metrics.wowy import build_wowy_query
-from rawr_analytics.services import build_wowy_query_export
+from rawr_analytics.services.wowy_query import build_wowy_query_export
 from rawr_analytics.shared.scope import format_scope
 
 

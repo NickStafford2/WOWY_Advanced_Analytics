@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from collections.abc import Callable
 from dataclasses import dataclass, field
 
 from rawr_analytics.shared.season import Season
@@ -41,6 +42,19 @@ class GameNormalizationFailure:
     message: str
 
 
+@dataclass(frozen=True)
+class IngestProgress:
+    team: Team
+    season: Season
+    current: int
+    total: int
+    status: str
+    game_id: str | None = None
+
+
+IngestUpdateFn = Callable[[IngestProgress], None]
+
+
 @dataclass
 class PartialTeamSeasonError(IngestError):
     team: Team
@@ -58,6 +72,8 @@ __all__ = [
     "FetchError",
     "GameNormalizationFailure",
     "IngestError",
+    "IngestProgress",
+    "IngestUpdateFn",
     "LeagueGamesFetchError",
     "PartialTeamSeasonError",
 ]

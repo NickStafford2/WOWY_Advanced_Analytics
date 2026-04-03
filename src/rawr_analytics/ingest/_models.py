@@ -8,7 +8,7 @@ from rawr_analytics.shared.game import (
     NormalizedGameRecord,
     NormalizedTeamSeasonBatch,
 )
-from rawr_analytics.shared.ingest import FetchError, PartialTeamSeasonError
+from rawr_analytics.shared.ingest import FetchError, IngestProgress, PartialTeamSeasonError
 from rawr_analytics.shared.scope import TeamSeasonScope
 from rawr_analytics.shared.season import Season
 from rawr_analytics.shared.team import Team
@@ -33,16 +33,6 @@ class IngestSummary:
     fetched_box_scores: int
     cached_box_scores: int
     league_games_source: str
-
-
-@dataclass(frozen=True)
-class IngestProgress:
-    team: Team
-    season: Season
-    current: int
-    total: int
-    status: str
-    game_id: str | None = None
 
 
 _TeamProgressFn = Callable[[IngestProgress], None]

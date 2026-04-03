@@ -3,20 +3,20 @@ from __future__ import annotations
 import json
 import sys
 
-from rawr_analytics.shared.ingest import (
-    FetchError,
-    GameNormalizationFailure,
-    PartialTeamSeasonError,
-)
-from rawr_analytics.services import (
+from rawr_analytics.ingest import (
     IngestEvent,
-    IngestProgress,
     IngestResult,
     IngestSeasonStartedEvent,
     IngestTeamCompletedEvent,
     IngestTeamFailedEvent,
     IngestTeamProgressEvent,
     SeasonRangeFailure,
+)
+from rawr_analytics.shared.ingest import (
+    FetchError,
+    GameNormalizationFailure,
+    IngestProgress,
+    PartialTeamSeasonError,
 )
 
 _LAST_STATUS_LINE_LENGTH = 0

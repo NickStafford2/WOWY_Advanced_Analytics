@@ -8,10 +8,7 @@ from rawr_analytics.cli._ingest_terminal import (
     render_failure_summary,
     render_ingest_event,
 )
-from rawr_analytics.services import (
-    SeasonRangeResult,
-    refresh_season_range,
-)
+from rawr_analytics.ingest import SeasonRangeResult, refresh_season_range
 
 _DEFAULT_START_YEAR = 2000
 _DEFAULT_END_YEAR = 1946

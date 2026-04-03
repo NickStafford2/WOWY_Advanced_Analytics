@@ -1,11 +1,15 @@
 from __future__ import annotations
 
-from collections.abc import Callable
 from dataclasses import dataclass
 
 from rawr_analytics.shared.common import LogFn
 from rawr_analytics.shared.game import NormalizedGamePlayerRecord, NormalizedGameRecord
-from rawr_analytics.shared.ingest import GameNormalizationFailure, PartialTeamSeasonError
+from rawr_analytics.shared.ingest import (
+    GameNormalizationFailure,
+    IngestProgress,
+    IngestUpdateFn,
+    PartialTeamSeasonError,
+)
 from rawr_analytics.shared.season import Season
 from rawr_analytics.shared.team import Team
 from rawr_analytics.sources.nba_api._cache import (
@@ -22,14 +26,6 @@ from rawr_analytics.sources.nba_api._parsers import (
 
 
 @dataclass(frozen=True)
-class NbaApiGameIngestUpdate:
-    current: int
-    total: int
-    status: str
-    game_id: str | None = None
-
-
-@dataclass(frozen=True)
 class NbaApiTeamSeasonData:
     games: list[NormalizedGameRecord]
     game_players: list[NormalizedGamePlayerRecord]
@@ -37,10 +33,6 @@ class NbaApiTeamSeasonData:
     fetched_box_scores: int
     cached_box_scores: int
     league_games_source: str
-
-
-GameIngestUpdateFn = Callable[[NbaApiGameIngestUpdate], None]
-
 
 def load_or_fetch_box_score(
     game_id: str,
@@ -60,7 +52,7 @@ def ingest_team_season(
     team: Team,
     season: Season,
     log_fn: LogFn | None = print,
-    update_fn: GameIngestUpdateFn | None = None,
+    update_fn: IngestUpdateFn | None = None,
 ) -> NbaApiTeamSeasonData:
     schedule_games, league_games_source = _load_schedule_games(
         team=team,
@@ -68,7 +60,14 @@ def ingest_team_season(
         log_fn=log_fn,
     )
     total_games = len(schedule_games)
-    _emit_update(update_fn, current=0, total=total_games, status="schedule-loaded")
+    _emit_update(
+        update_fn,
+        team=team,
+        season=season,
+        current=0,
+        total=total_games,
+        status="schedule-loaded",
+    )
 
     games: list[NormalizedGameRecord] = []
     game_players: list[NormalizedGamePlayerRecord] = []
@@ -105,6 +104,8 @@ def ingest_team_season(
                 )
             _emit_update(
                 update_fn,
+                team=team,
+                season=season,
                 current=index,
                 total=total_games,
                 status="failed",
@@ -120,6 +121,8 @@ def ingest_team_season(
         game_players.extend(players)
         _emit_update(
             update_fn,
+            team=team,
+            season=season,
             current=index,
             total=total_games,
             status="ok",
@@ -194,8 +197,10 @@ def _record_failure(
 
 
 def _emit_update(
-    update_fn: GameIngestUpdateFn | None,
+    update_fn: IngestUpdateFn | None,
     *,
+    team: Team,
+    season: Season,
     current: int,
     total: int,
     status: str,
@@ -204,7 +209,9 @@ def _emit_update(
     if update_fn is None:
         return
     update_fn(
-        NbaApiGameIngestUpdate(
+        IngestProgress(
+            team=team,
+            season=season,
             current=current,
             total=total,
             status=status,
@@ -214,8 +221,6 @@ def _emit_update(
 
 
 __all__ = [
-    "GameIngestUpdateFn",
-    "NbaApiGameIngestUpdate",
     "NbaApiTeamSeasonData",
     "ingest_team_season",
     "load_or_fetch_box_score",

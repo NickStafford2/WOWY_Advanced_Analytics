@@ -4,7 +4,7 @@ import argparse
 import sys
 
 from rawr_analytics.cli._progress_bar import TerminalProgressBar, print_status_box
-from rawr_analytics.services import (
+from rawr_analytics.services.compare_rawr_configs import (
     CompareRawrConfigsProgress,
     ComparisonResult,
     compare_rawr_configs,

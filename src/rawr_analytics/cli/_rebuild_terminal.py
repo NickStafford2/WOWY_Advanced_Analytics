@@ -11,10 +11,12 @@ from rawr_analytics.cli._ingest_terminal import (
     render_team_validation_failed_line,
 )
 from rawr_analytics.cli._progress_bar import TerminalProgressBar
-from rawr_analytics.services import (
+from rawr_analytics.ingest import (
     IngestSeasonStartedEvent,
     IngestTeamCompletedEvent,
     IngestTeamProgressEvent,
+)
+from rawr_analytics.services.rebuild import (
     RebuildEvent,
     RebuildMetricRefreshProgressEvent,
     RebuildTeamFailureEvent,
