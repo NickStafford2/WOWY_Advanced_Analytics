@@ -19,6 +19,10 @@ from rawr_analytics.metrics.rawr.models import RawrCustomQueryResult, RawrCustom
 from rawr_analytics.metrics.wowy import build_wowy_custom_query
 from rawr_analytics.metrics.wowy import describe_metric as describe_wowy_metric
 from rawr_analytics.metrics.wowy.models import WowyCustomQueryResult, WowyCustomQueryRow
+from rawr_analytics.services._metric_inputs import (
+    load_rawr_season_inputs,
+    load_wowy_season_inputs,
+)
 from rawr_analytics.shared.season import Season, SeasonType
 from rawr_analytics.shared.team import Team
 
@@ -318,10 +322,13 @@ def _build_rawr_custom_query(
     *,
     query: MetricQuery,
 ) -> RawrCustomQueryResult:
-    return build_rawr_custom_query(
+    season_inputs = load_rawr_season_inputs(
         teams=query.teams,
         seasons=query.seasons,
         season_type=query.season_type,
+    )
+    return build_rawr_custom_query(
+        season_inputs=season_inputs,
         min_games=int(query.min_games or 0),
         ridge_alpha=float(query.ridge_alpha or _rawr_default_filters()["ridge_alpha"]),
         min_average_minutes=query.min_average_minutes,
@@ -334,11 +341,14 @@ def _build_wowy_custom_query(
     metric: Metric,
     query: MetricQuery,
 ) -> WowyCustomQueryResult:
-    return build_wowy_custom_query(
-        metric,
+    season_inputs = load_wowy_season_inputs(
         teams=query.teams,
         seasons=query.seasons,
         season_type=query.season_type,
+    )
+    return build_wowy_custom_query(
+        metric,
+        season_inputs=season_inputs,
         min_games_with=int(query.min_games_with or 0),
         min_games_without=int(query.min_games_without or 0),
         min_average_minutes=query.min_average_minutes,

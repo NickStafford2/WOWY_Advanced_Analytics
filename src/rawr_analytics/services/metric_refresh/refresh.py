@@ -23,7 +23,6 @@ from rawr_analytics.metrics.rawr import (
     DEFAULT_RAWR_SHRINKAGE_MINUTE_SCALE,
     DEFAULT_RAWR_SHRINKAGE_MODE,
     DEFAULT_RAWR_SHRINKAGE_STRENGTH,
-    list_incomplete_rawr_season_warnings,
     prepare_rawr_player_season_records,
 )
 from rawr_analytics.metrics.rawr import describe_metric as describe_rawr_metric
@@ -33,6 +32,11 @@ from rawr_analytics.metrics.wowy import (
     prepare_wowy_player_season_records,
 )
 from rawr_analytics.metrics.wowy import describe_metric as describe_wowy_metric
+from rawr_analytics.services._metric_inputs import (
+    list_incomplete_rawr_season_warnings,
+    load_rawr_season_inputs,
+    load_wowy_season_inputs,
+)
 from rawr_analytics.shared.scope import TeamSeasonScope
 from rawr_analytics.shared.season import Season, SeasonType
 from rawr_analytics.shared.team import Team, normalize_teams, to_team_ids
@@ -389,10 +393,13 @@ def _build_rawr_cached_rows(
     teams: list[Team] | None,
     rawr_ridge_alpha: float,
 ) -> list[RawrPlayerSeasonValueRow]:
-    records = prepare_rawr_player_season_records(
+    season_inputs = load_rawr_season_inputs(
         teams=teams,
         seasons=None,
         season_type=season_type,
+    )
+    records = prepare_rawr_player_season_records(
+        season_inputs=season_inputs,
         min_games=1,
         ridge_alpha=rawr_ridge_alpha,
         shrinkage_mode=DEFAULT_RAWR_SHRINKAGE_MODE,
@@ -428,10 +435,13 @@ def _build_wowy_cached_rows(
     season_type: SeasonType,
     teams: list[Team] | None,
 ) -> list[WowyPlayerSeasonValueRow]:
-    records = prepare_wowy_player_season_records(
+    season_inputs = load_wowy_season_inputs(
         teams=teams,
         seasons=None,
         season_type=season_type,
+    )
+    records = prepare_wowy_player_season_records(
+        season_inputs=season_inputs,
         min_games_with=0,
         min_games_without=0,
         min_average_minutes=None,

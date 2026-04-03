@@ -2,7 +2,6 @@
 
 from rawr_analytics.metrics.rawr.dataset import (
     build_rawr_custom_query,
-    list_incomplete_rawr_season_warnings,
     prepare_rawr_player_season_records,
 )
 from rawr_analytics.metrics.rawr.defaults import (
@@ -26,7 +25,6 @@ __all__ = [
     "build_rawr_custom_query",
     "default_filters",
     "describe_metric",
-    "list_incomplete_rawr_season_warnings",
     "prepare_rawr_player_season_records",
     "validate_filters",
     "validate_request",

@@ -10,6 +10,10 @@ from rawr_analytics.metrics.rawr import prepare_rawr_player_season_records
 from rawr_analytics.metrics.rawr.models import RawrPlayerSeasonRecord
 from rawr_analytics.metrics.wowy import prepare_wowy_player_season_records
 from rawr_analytics.metrics.wowy.models import WowyPlayerSeasonRecord
+from rawr_analytics.services._metric_inputs import (
+    load_rawr_season_inputs,
+    load_wowy_season_inputs,
+)
 from rawr_analytics.shared.season import Season, SeasonType
 from rawr_analytics.shared.team import Team
 
@@ -76,10 +80,13 @@ def compare_rawr_configs(
     total_steps = _count_evaluation_steps(request)
     completed_steps = 0
 
-    holdout_records = prepare_wowy_player_season_records(
+    holdout_season_inputs = load_wowy_season_inputs(
         teams=request.teams,
         seasons=[request.holdout_season],
         season_type=request.season_type,
+    )
+    holdout_records = prepare_wowy_player_season_records(
+        season_inputs=holdout_season_inputs,
         min_games_with=request.holdout_min_games_with,
         min_games_without=request.holdout_min_games_without,
         min_average_minutes=request.min_average_minutes,
@@ -94,10 +101,13 @@ def compare_rawr_configs(
     )
     holdout_targets = _build_holdout_targets(holdout_records)
 
-    training_wowy_records = prepare_wowy_player_season_records(
+    training_wowy_season_inputs = load_wowy_season_inputs(
         teams=request.teams,
         seasons=request.train_seasons,
         season_type=request.season_type,
+    )
+    training_wowy_records = prepare_wowy_player_season_records(
+        season_inputs=training_wowy_season_inputs,
         min_games_with=request.holdout_min_games_with,
         min_games_without=request.holdout_min_games_without,
         min_average_minutes=request.min_average_minutes,
@@ -143,10 +153,13 @@ def compare_rawr_configs(
             detail = f"alpha={ridge_alpha:.2f} mode={shrinkage_mode}"
             if shrinkage_mode == "minutes":
                 detail += f" min_scale={minute_scale:.1f}"
-            rawr_records = prepare_rawr_player_season_records(
+            rawr_season_inputs = load_rawr_season_inputs(
                 teams=request.teams,
                 seasons=request.train_seasons,
                 season_type=request.season_type,
+            )
+            rawr_records = prepare_rawr_player_season_records(
+                season_inputs=rawr_season_inputs,
                 min_games=request.rawr_min_games,
                 ridge_alpha=ridge_alpha,
                 shrinkage_mode=shrinkage_mode,
