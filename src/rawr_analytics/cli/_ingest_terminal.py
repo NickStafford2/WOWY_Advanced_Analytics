@@ -40,7 +40,7 @@ def render_failure_summary(
     sys.stderr.flush()
 
 
-def render_ingest_failure(
+def _render_ingest_failure(
     team_index: int,
     team_total: int,
     failure: SeasonRangeFailure,
@@ -107,7 +107,7 @@ def render_ingest_event(event: IngestEvent) -> None:
         sys.stdout.write("\n")
         return
     if isinstance(event, IngestTeamFailedEvent):
-        render_ingest_failure(event.team_index, event.team_total, event.failure)
+        _render_ingest_failure(event.team_index, event.team_total, event.failure)
         return
 
 
