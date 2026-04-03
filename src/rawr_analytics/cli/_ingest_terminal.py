@@ -3,7 +3,7 @@ from __future__ import annotations
 import json
 import sys
 
-from rawr_analytics.services._ingest_errors import (
+from rawr_analytics.shared.ingest import (
     FetchError,
     GameNormalizationFailure,
     PartialTeamSeasonError,

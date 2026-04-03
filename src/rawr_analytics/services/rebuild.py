@@ -10,7 +10,7 @@ from rawr_analytics.data import (
     validate_rebuild_storage,
 )
 from rawr_analytics.metrics.constants import Metric
-from rawr_analytics.services._ingest_errors import (
+from rawr_analytics.shared.ingest import (
     FetchError,
     GameNormalizationFailure,
     PartialTeamSeasonError,

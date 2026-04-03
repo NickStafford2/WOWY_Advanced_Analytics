@@ -51,3 +51,13 @@ class PartialTeamSeasonError(IngestError):
     failed_game_details: list[GameNormalizationFailure] = field(default_factory=list)
     failure_reason_counts: dict[str, int] = field(default_factory=dict)
     failure_reason_examples: dict[str, list[str]] = field(default_factory=dict)
+
+
+__all__ = [
+    "BoxScoreFetchError",
+    "FetchError",
+    "GameNormalizationFailure",
+    "IngestError",
+    "LeagueGamesFetchError",
+    "PartialTeamSeasonError",
+]

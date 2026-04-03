@@ -13,8 +13,8 @@ from nba_api.stats.endpoints import (
     leaguegamefinder,
 )
 
-from rawr_analytics.services._ingest_errors import BoxScoreFetchError, LeagueGamesFetchError
 from rawr_analytics.shared.common import LogFn
+from rawr_analytics.shared.ingest import BoxScoreFetchError, LeagueGamesFetchError
 from rawr_analytics.shared.season import Season
 from rawr_analytics.shared.team import Team
 

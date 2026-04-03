@@ -3,7 +3,6 @@ from __future__ import annotations
 from collections.abc import Callable
 from dataclasses import dataclass
 
-from rawr_analytics.services._ingest_errors import GameNormalizationFailure, PartialTeamSeasonError
 from rawr_analytics.sources.nba_api.cache import load_or_fetch_box_score_cache
 from rawr_analytics.sources.nba_api.cache import load_or_fetch_league_games
 from rawr_analytics.sources.nba_api.dedupe import dedupe_schedule_games
@@ -13,6 +12,7 @@ from rawr_analytics.sources.nba_api.normalize import normalize_source_league_gam
 from rawr_analytics.sources.nba_api.parsers import parse_box_score_payload
 from rawr_analytics.sources.nba_api.parsers import parse_league_schedule_payload
 from rawr_analytics.shared.game import NormalizedGamePlayerRecord, NormalizedGameRecord
+from rawr_analytics.shared.ingest import GameNormalizationFailure, PartialTeamSeasonError
 from rawr_analytics.shared.common import LogFn
 from rawr_analytics.shared.season import Season
 from rawr_analytics.shared.team import Team
