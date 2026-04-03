@@ -21,7 +21,7 @@ def _build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(description="Run the WOWY custom query used by the web app.")
     add_metric_query_common_arguments(parser)
     parser.add_argument("--min-games-with", type=int, default=15)
-    parser.add_argument("--min-games-without", type=int, default=2)
+    parser.add_argument("--min-games-without", type=int, default=4)
     return parser
 
 
