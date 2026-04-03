@@ -30,7 +30,12 @@ from rawr_analytics.services.metric_refresh import (
     parse_metric_store_refresh_request,
     refresh_metric_store,
 )
-from rawr_analytics.services.rebuild import RebuildRequest, RebuildResult, rebuild_player_metrics_db
+from rawr_analytics.services.rebuild import (
+    RebuildRequest,
+    RebuildResult,
+    format_rebuild_validation_summary,
+    rebuild_player_metrics_db,
+)
 
 __all__ = [
     "DEFAULT_RAWR_RIDGE_ALPHA",
@@ -53,6 +58,7 @@ __all__ = [
     "build_metric_options_payload",
     "build_metric_query_export",
     "build_metric_query_view",
+    "format_rebuild_validation_summary",
     "parse_metric_query_request",
     "parse_metric_store_refresh_request",
     "rebuild_player_metrics_db",

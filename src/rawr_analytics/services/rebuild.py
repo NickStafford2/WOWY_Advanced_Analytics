@@ -8,6 +8,7 @@ from rawr_analytics.data import (
     prepare_rebuild_storage,
     validate_rebuild_storage,
 )
+from rawr_analytics.data.db_validation import render_validation_summary
 from rawr_analytics.metrics.constants import Metric
 from rawr_analytics.services.ingest import (
     IngestProgress,
@@ -55,6 +56,14 @@ class RebuildResult:
     @property
     def ok(self) -> bool:
         return self.failure_message is None
+
+
+def format_rebuild_validation_summary(
+    summary: DatabaseValidationSummary,
+    *,
+    top_n: int = 10,
+) -> str:
+    return render_validation_summary(summary, top_n=top_n)
 
 
 def rebuild_player_metrics_db(
@@ -136,5 +145,6 @@ def rebuild_player_metrics_db(
 __all__ = [
     "RebuildRequest",
     "RebuildResult",
+    "format_rebuild_validation_summary",
     "rebuild_player_metrics_db",
 ]

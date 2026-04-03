@@ -12,7 +12,6 @@ from rawr_analytics.cli import (
     render_team_partial_failed_line,
     render_team_validation_failed_line,
 )
-from rawr_analytics.data.db_validation import render_validation_summary
 from rawr_analytics.metrics.constants import Metric
 from rawr_analytics.nba import FetchError, PartialTeamSeasonError, append_ingest_failure_log
 from rawr_analytics.progress import TerminalProgressBar
@@ -20,6 +19,7 @@ from rawr_analytics.services import (
     IngestResult,
     RebuildRequest,
     SeasonRangeFailure,
+    format_rebuild_validation_summary,
     rebuild_player_metrics_db,
 )
 from rawr_analytics.shared.season import SeasonType
@@ -117,7 +117,7 @@ def main(argv: list[str] | None = None) -> int:
 
     if result.validation_summary is not None:
         print("\n== Validation ==")
-        print(render_validation_summary(result.validation_summary, top_n=10))
+        print(format_rebuild_validation_summary(result.validation_summary, top_n=10))
 
     if result.failure_message is not None:
         print(f"\nRebuild failed: {result.failure_message}")
