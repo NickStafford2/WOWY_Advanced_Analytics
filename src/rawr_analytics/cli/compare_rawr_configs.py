@@ -2,10 +2,8 @@ from __future__ import annotations
 
 import argparse
 import sys
-from pathlib import Path
 
 from rawr_analytics.cli._progress_bar import TerminalProgressBar, print_status_box
-from rawr_analytics.nba.source.cache import DEFAULT_SOURCE_DATA_DIR
 from rawr_analytics.services import (
     CompareRawrConfigsProgress,
     CompareRawrConfigsRequest,
@@ -107,12 +105,6 @@ def _build_parser() -> argparse.ArgumentParser:
         type=int,
         default=20,
         help="Top-N cutoff used for overlap reporting.",
-    )
-    parser.add_argument(
-        "--source-data-dir",
-        type=Path,
-        default=DEFAULT_SOURCE_DATA_DIR,
-        help=argparse.SUPPRESS,
     )
     return parser
 
