@@ -1,6 +1,9 @@
 from __future__ import annotations
 
-from rawr_analytics.ingest._models import (
+from rawr_analytics.ingest._store import store_team_season
+from rawr_analytics.ingest._validation import validate_normalized_team_season_batch
+
+from rawr_analytics.ingest.nba_api._models import (
     FailureLogFn,
     IngestEvent,
     IngestEventFn,
@@ -9,6 +12,7 @@ from rawr_analytics.ingest._models import (
     IngestRequest,
     IngestResult,
     IngestSeasonStartedEvent,
+    IngestSourceKind,
     IngestSummary,
     IngestTeamCompletedEvent,
     IngestTeamFailedEvent,
@@ -17,8 +21,6 @@ from rawr_analytics.ingest._models import (
     SeasonRangeResult,
     _TeamProgressFn,
 )
-from rawr_analytics.ingest._store import store_team_season
-from rawr_analytics.ingest._validation import validate_normalized_team_season_batch
 from rawr_analytics.shared.common import LogFn
 from rawr_analytics.shared.ingest import (
     FetchError,
@@ -27,7 +29,8 @@ from rawr_analytics.shared.ingest import (
 )
 from rawr_analytics.shared.season import Season, build_season_list
 from rawr_analytics.shared.team import Team
-from rawr_analytics.sources.nba_api import ingest_team_season
+from rawr_analytics.sources.kaggle_nba import ingest_team_season as ingest_kaggle_team_season
+from rawr_analytics.sources.nba_api import ingest_team_season as ingest_nba_api_team_season
 
 
 def refresh_team_season(
@@ -36,11 +39,10 @@ def refresh_team_season(
     log: LogFn | None = print,
     progress: _TeamProgressFn | None = None,
 ) -> IngestResult:
-    source_data = ingest_team_season(
-        team=request.team,
-        season=request.season,
-        log_fn=log,
-        update_fn=_build_ingest_update_fn(request=request, progress_fn=progress),
+    source_data = _load_source_team_season(
+        request=request,
+        log=log,
+        progress=progress,
     )
     result = IngestResult(
         request=request,
@@ -52,11 +54,36 @@ def refresh_team_season(
             fetched_box_scores=source_data.fetched_box_scores,
             cached_box_scores=source_data.cached_box_scores,
             league_games_source=source_data.league_games_source,
+            source_kind=request.source_kind,
         ),
     )
     validate_normalized_team_season_batch(result.to_batch())
     store_team_season(result)
     return result
+
+
+def _load_source_team_season(
+    *,
+    request: IngestRequest,
+    log: LogFn | None,
+    progress: _TeamProgressFn | None,
+):
+    update_fn = _build_ingest_update_fn(request=request, progress_fn=progress)
+    if request.source_kind == "nba_api":
+        return ingest_nba_api_team_season(
+            team=request.team,
+            season=request.season,
+            log_fn=log,
+            update_fn=update_fn,
+        )
+    if request.source_kind == "kaggle_nba":
+        return ingest_kaggle_team_season(
+            team=request.team,
+            season=request.season,
+            log_fn=log,
+            update_fn=update_fn,
+        )
+    raise ValueError(f"Unsupported ingest source: {request.source_kind}")
 
 
 def refresh_season_range(
@@ -66,6 +93,7 @@ def refresh_season_range(
     season_type: str,
     season_str: str | None = None,
     team_abbreviations: list[str] | None = None,
+    source_kind: IngestSourceKind = "nba_api",
     log_fn: LogFn | None = None,
     event_fn: IngestEventFn | None = None,
     failure_log_fn: FailureLogFn | None = None,
@@ -95,7 +123,7 @@ def refresh_season_range(
         team_total = len(teams)
         for team_index, team in enumerate(teams, start=1):
             attempted_team_seasons += 1
-            team_request = IngestRequest(team=team, season=season)
+            team_request = IngestRequest(team=team, season=season, source_kind=source_kind)
             try:
                 result = refresh_team_season(
                     team_request,

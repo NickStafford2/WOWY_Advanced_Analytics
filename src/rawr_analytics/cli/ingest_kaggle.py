@@ -8,7 +8,7 @@ from rawr_analytics.cli._ingest_terminal import (
     render_failure_summary,
     render_ingest_event,
 )
-from rawr_analytics.ingest import SeasonRangeResult, refresh_season_range
+from rawr_analytics.ingest.nba_api import SeasonRangeResult, refresh_season_range
 
 _DEFAULT_START_YEAR = 2000
 _DEFAULT_END_YEAR = 1946
@@ -17,7 +17,7 @@ _DEFAULT_SEASON_TYPE = "Regular Season"
 
 def _build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
-        description="Fetch, normalize, and cache all NBA seasons by default, or one season."
+        description="Download, normalize, and cache NBA seasons from the Kaggle dataset."
     )
     parser.add_argument(
         "season",
@@ -38,19 +38,14 @@ def _build_parser() -> argparse.ArgumentParser:
     )
     parser.add_argument(
         "--season-type",
-        default="Regular Season",
+        default=_DEFAULT_SEASON_TYPE,
         help="NBA season type, for example 'Regular Season' or 'Playoffs'",
     )
     parser.add_argument(
         "--teams",
         nargs="*",
         default=None,
-        help="Optional team abbreviations. If omitted, fetches all NBA teams.",
-    )
-    parser.add_argument(
-        "--skip-combine",
-        action="store_true",
-        help=argparse.SUPPRESS,
+        help="Optional team abbreviations. If omitted, loads all NBA teams.",
     )
     return parser
 
@@ -73,6 +68,7 @@ def main(argv: list[str] | None = None) -> int:
         end_year=args.end_year or _DEFAULT_END_YEAR,
         season_type=args.season_type or _DEFAULT_SEASON_TYPE,
         team_abbreviations=args.teams,
+        source_kind="kaggle_nba",
         event_fn=render_ingest_event,
         failure_log_fn=append_failure_log_entry,
     )

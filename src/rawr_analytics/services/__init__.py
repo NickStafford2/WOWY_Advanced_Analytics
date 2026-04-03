@@ -1,6 +1,6 @@
 """Public application service interface for CLI and web adapters."""
 
-from rawr_analytics.ingest import (
+from rawr_analytics.ingest.nba_api import (
     FailureLogFn,
     IngestEvent,
     IngestFailureLogEntry,

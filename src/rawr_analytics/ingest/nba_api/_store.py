@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from rawr_analytics.data.game_cache import replace_team_season_normalized_rows
 from rawr_analytics.data.game_cache.rows import NormalizedGamePlayerRow, NormalizedGameRow
-from rawr_analytics.ingest._models import IngestResult
+from rawr_analytics.ingest.nba_api._models import IngestResult
 from rawr_analytics.shared.game import NormalizedGamePlayerRecord, NormalizedGameRecord
 
 
@@ -13,12 +13,12 @@ def store_team_season(result: IngestResult) -> None:
         games=[_build_game_cache_game_row(game) for game in result.games],
         game_players=[_build_game_cache_game_player_row(player) for player in result.game_players],
         source_path=(
-            "sqlite://normalized_games/"
+            f"{result.request.source_kind}://normalized_games/"
             f"{result.request.team.abbreviation(season=result.request.season)}_"
             f"{result.request.season.id}_{result.request.season.season_type.to_slug()}"
         ),
-        source_snapshot="ingest-build-v2",
-        source_kind="nba_api",
+        source_snapshot=f"ingest-build-v2:{result.request.source_kind}",
+        source_kind=result.request.source_kind,
         expected_games_row_count=result.summary.total_games,
         skipped_games_row_count=0,
     )

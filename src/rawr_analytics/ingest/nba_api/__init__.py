@@ -1,4 +1,4 @@
-from rawr_analytics.ingest.api import (
+from rawr_analytics.ingest.nba_api.api import (
     FailureLogFn,
     IngestEvent,
     IngestEventFn,
@@ -7,6 +7,7 @@ from rawr_analytics.ingest.api import (
     IngestRequest,
     IngestResult,
     IngestSeasonStartedEvent,
+    IngestSourceKind,
     IngestSummary,
     IngestTeamCompletedEvent,
     IngestTeamFailedEvent,
@@ -26,6 +27,7 @@ __all__ = [
     "IngestRequest",
     "IngestResult",
     "IngestSeasonStartedEvent",
+    "IngestSourceKind",
     "IngestSummary",
     "IngestTeamCompletedEvent",
     "IngestTeamFailedEvent",
