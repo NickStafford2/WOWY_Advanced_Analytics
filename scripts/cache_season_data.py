@@ -3,15 +3,6 @@ from __future__ import annotations
 import argparse
 import sys
 
-from rawr_analytics.cli import (
-    render_failure_summary,
-    render_partial_failure_details,
-    render_progress_line,
-    render_team_complete_line,
-    render_team_fetch_failed_line,
-    render_team_partial_failed_line,
-    render_team_validation_failed_line,
-)
 from rawr_analytics.nba import (
     FetchError,
     PartialTeamSeasonError,
@@ -25,6 +16,15 @@ from rawr_analytics.services import (
     refresh_season_range,
 )
 from rawr_analytics.shared import Season
+from scripts._render import (
+    render_failure_summary,
+    render_partial_failure_details,
+    render_progress_line,
+    render_team_complete_line,
+    render_team_fetch_failed_line,
+    render_team_partial_failed_line,
+    render_team_validation_failed_line,
+)
 
 _DEFAULT_START_YEAR = 2000
 _DEFAULT_END_YEAR = 1946
@@ -99,8 +99,8 @@ def _render_team_failed(team_index: int, team_total: int, failure: SeasonRangeFa
         render_team_fetch_failed_line(
             team_index=team_index,
             team_total=team_total,
-            team=team,
-            season=season,
+            team_label=team.abbreviation(season=season),
+            season_label=str(season),
             error_type=error.last_error_type,
         )
         sys.stdout.write("\n")
@@ -113,8 +113,8 @@ def _render_team_failed(team_index: int, team_total: int, failure: SeasonRangeFa
         render_team_partial_failed_line(
             team_index=team_index,
             team_total=team_total,
-            team=team,
-            season=season,
+            team_label=team.abbreviation(season=season),
+            season_label=str(season),
             failed_games=error.failed_games,
             total_games=error.total_games,
         )
@@ -131,8 +131,8 @@ def _render_team_failed(team_index: int, team_total: int, failure: SeasonRangeFa
     render_team_validation_failed_line(
         team_index=team_index,
         team_total=team_total,
-        team=team,
-        season=season,
+        team_label=team.abbreviation(season=season),
+        season_label=str(season),
         reason=reason,
     )
     sys.stdout.write("\n")

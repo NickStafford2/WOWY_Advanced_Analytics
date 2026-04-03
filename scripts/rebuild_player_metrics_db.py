@@ -4,14 +4,6 @@ import argparse
 import sys
 from collections.abc import Sequence
 
-from rawr_analytics.cli import (
-    render_failure_summary,
-    render_progress_line,
-    render_team_complete_line,
-    render_team_fetch_failed_line,
-    render_team_partial_failed_line,
-    render_team_validation_failed_line,
-)
 from rawr_analytics.progress import TerminalProgressBar
 from rawr_analytics.services import (
     IngestResult,
@@ -20,6 +12,14 @@ from rawr_analytics.services import (
     format_rebuild_validation_summary,
     parse_rebuild_request,
     rebuild_player_metrics_db,
+)
+from scripts._render import (
+    render_failure_summary,
+    render_progress_line,
+    render_team_complete_line,
+    render_team_fetch_failed_line,
+    render_team_partial_failed_line,
+    render_team_validation_failed_line,
 )
 
 _DEFAULT_START_YEAR = 2025

@@ -1,0 +1,186 @@
+from __future__ import annotations
+
+import json
+import sys
+
+from rawr_analytics.nba.errors import GameNormalizationFailure, PartialTeamSeasonError
+from rawr_analytics.services import IngestProgress
+
+_LAST_STATUS_LINE_LENGTH = 0
+
+
+def filtered_log(message: str) -> None:
+    if not _should_emit_log_message(message):
+        return
+    sys.stderr.write(f"{message}\n")
+    sys.stderr.flush()
+
+
+def record_failure(
+    failure_counts: dict[str, int],
+    failed_scopes: list[str],
+    *,
+    failure_kind: str,
+    scope: str,
+) -> None:
+    failure_counts[failure_kind] = failure_counts.get(failure_kind, 0) + 1
+    failed_scopes.append(scope)
+
+
+def render_failure_summary(
+    *,
+    failure_counts: dict[str, int],
+    failed_scopes: list[str],
+) -> None:
+    total_failures = len(failed_scopes)
+    summary = ", ".join(f"{kind}={count}" for kind, count in sorted(failure_counts.items()))
+    scope_preview = ", ".join(failed_scopes[:10])
+    suffix = "" if len(failed_scopes) <= 10 else ", ..."
+    banner = "!" * 72
+    sys.stderr.write(f"{banner}\n")
+    sys.stderr.write(f"ERROR: season cache finished with {total_failures} failed team-seasons\n")
+    sys.stderr.write(f"{banner}\n")
+    sys.stderr.write(f"Completed with failures across {total_failures} team-seasons: {summary}\n")
+    sys.stderr.write(f"Failed scopes: {scope_preview}{suffix}\n")
+    sys.stderr.flush()
+
+
+def render_partial_failure_details(error: PartialTeamSeasonError) -> str:
+    lines = ["Failure reasons:"]
+    details_by_game_id = {failure.game_id: failure for failure in error.failed_game_details}
+    ranked_reasons = sorted(
+        error.failure_reason_counts.items(),
+        key=lambda item: (-item[1], item[0]),
+    )
+    for reason, count in ranked_reasons:
+        example_game_ids = error.failure_reason_examples.get(reason, [])[:3]
+        lines.append(f"  - {count} games: {reason}")
+        for game_id in example_game_ids:
+            failure = details_by_game_id.get(game_id)
+            if failure is None:
+                lines.append(f"    {game_id}: details unavailable")
+                continue
+            lines.append(f"    {game_id}: {_summarize_game_failure_detail(failure)}")
+    return "\n".join(lines)
+
+
+def render_progress_line(team_index: int, team_total: int, progress: IngestProgress) -> None:
+    current = progress.current
+    total = progress.total
+    status = progress.status
+    team_id = progress.team.team_id
+    season = progress.season.id
+    game_id = progress.game_id or ""
+    filled = 20 if total == 0 else int((current / total) * 20)
+    bar = "#" * filled + "-" * (20 - filled)
+    line = (
+        f"  [{team_index:>2}/{team_total}] {team_id} {season} "
+        f"{current}/{total} [{bar}] {status:<7} {game_id}"
+    )
+    _write_status_line(line)
+
+
+def render_team_complete_line(
+    team_index: int,
+    team_total: int,
+    result,
+) -> None:
+    request = result.request
+    summary = result.summary
+    line = (
+        f"  [{team_index:>2}/{team_total}] "
+        f"{request.team.abbreviation(season=request.season)} {request.season} "
+        f"{summary.processed_games}/{summary.total_games} "
+        f"league={'cached' if summary.league_games_source == 'cached' else 'fetched'} "
+        f"boxscores={summary.fetched_box_scores} fetched, {summary.cached_box_scores} cached "
+    )
+    _write_status_line(line)
+
+
+def render_team_fetch_failed_line(
+    team_index: int,
+    team_total: int,
+    team_label: str,
+    season_label: str,
+    error_type: str,
+) -> None:
+    line = (
+        f"  [{team_index:>2}/{team_total}] "
+        f"{team_label} {season_label} failed fetch={error_type}"
+    )
+    _write_status_line(line)
+
+
+def render_team_partial_failed_line(
+    team_index: int,
+    team_total: int,
+    team_label: str,
+    season_label: str,
+    failed_games: int,
+    total_games: int,
+) -> None:
+    line = (
+        f"  [{team_index:>2}/{team_total}] {team_label} {season_label} "
+        f"failed partial={failed_games}/{total_games}"
+    )
+    _write_status_line(line)
+
+
+def render_team_validation_failed_line(
+    team_index: int,
+    team_total: int,
+    team_label: str,
+    season_label: str,
+    reason: str,
+) -> None:
+    line = (
+        f"  [{team_index:>2}/{team_total}] "
+        f"{team_label} {season_label} failed validation={reason}"
+    )
+    _write_status_line(line)
+
+
+def _should_emit_log_message(message: str) -> bool:
+    return message.startswith("cache discard") or message.startswith("cache skip")
+
+
+def _summarize_game_failure_detail(failure: GameNormalizationFailure) -> str:
+    message = failure.message
+    if "; nba_api_" not in message:
+        return message
+
+    summary, raw_payload = message.split("; nba_api_", maxsplit=1)
+    raw_json = raw_payload.split("=", maxsplit=1)[-1].strip()
+    try:
+        payload = json.loads(raw_json)
+    except json.JSONDecodeError:
+        return summary
+
+    parts: list[str] = []
+    player_name = str(payload.get("PLAYER_NAME", "")).strip()
+    if player_name:
+        parts.append(f"player={player_name!r}")
+    min_value = payload.get("MIN")
+    if min_value is not None or "MIN" in payload:
+        parts.append(f"min={min_value!r}")
+    comment = str(payload.get("COMMENT", "")).strip()
+    if comment:
+        parts.append(f"comment={comment!r}")
+
+    for key in ("TEAM_ABBREVIATION", "TEAM_ID"):
+        value = payload.get(key)
+        if value is not None and value != "":
+            parts.append(f"{key.lower()}={value!r}")
+            break
+
+    if not parts:
+        return summary
+    return f"{summary} ({', '.join(parts)})"
+
+
+def _write_status_line(line: str) -> None:
+    global _LAST_STATUS_LINE_LENGTH
+    padding = max(0, _LAST_STATUS_LINE_LENGTH - len(line))
+    sys.stdout.write(f"\r{line}{' ' * padding}")
+    sys.stdout.flush()
+    _LAST_STATUS_LINE_LENGTH = len(line)
