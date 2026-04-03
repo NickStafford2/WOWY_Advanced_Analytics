@@ -32,6 +32,7 @@ from rawr_analytics.services.metric_query import (
 from rawr_analytics.services.metric_refresh import (
     DEFAULT_RAWR_RIDGE_ALPHA,
     DEFAULT_WEB_METRIC_IDS,
+    MetricStoreRefreshProgressEvent,
     build_metric_store_refresh_request,
     refresh_metric_store,
 )
@@ -63,14 +64,13 @@ __all__ = [
     "IngestTeamFailedEvent",
     "IngestTeamProgressEvent",
     "MetricQueryRequest",
+    "MetricStoreRefreshProgressEvent",
     "RebuildEvent",
     "RebuildMetricRefreshProgressEvent",
     "RebuildTeamFailureEvent",
     "RebuildValidationProgressEvent",
     "SeasonRangeFailure",
     "SeasonRangeResult",
-    "build_compare_rawr_configs_summary",
-    "build_compare_rawr_configs_table",
     "build_metric_options_payload",
     "build_metric_query_export",
     "build_metric_query_view",
