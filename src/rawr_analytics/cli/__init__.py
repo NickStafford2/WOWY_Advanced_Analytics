@@ -11,6 +11,8 @@ from rawr_analytics.cli.rebuild_player_metrics_db import (
 from rawr_analytics.cli.rebuild_player_metrics_db import (
     run as rebuild_player_metrics_db_run,
 )
+from rawr_analytics.cli.run_web import main as run_web_main
+from rawr_analytics.cli.run_web import run as run_web_run
 
 __all__ = [
     "build_rebuild_player_metrics_db_parser",
@@ -18,4 +20,6 @@ __all__ = [
     "cache_season_data_run",
     "rebuild_player_metrics_db_main",
     "rebuild_player_metrics_db_run",
+    "run_web_main",
+    "run_web_run",
 ]

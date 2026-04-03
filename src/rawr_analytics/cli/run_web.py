@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import argparse
+import sys
 
 from rawr_analytics.web.app import create_app
 
@@ -32,3 +33,16 @@ def main(argv: list[str] | None = None) -> int:
     app = create_app()
     app.run(host=args.host, port=args.port, debug=args.debug)
     return 0
+
+
+def run(argv: list[str] | None = None) -> int:
+    try:
+        return main(argv)
+    except KeyboardInterrupt:
+        sys.stderr.write("\nInterrupted. Shutting down cleanly.\n")
+        sys.stderr.flush()
+        return 130
+
+
+if __name__ == "__main__":
+    raise SystemExit(run())
