@@ -2,16 +2,15 @@ from __future__ import annotations
 
 import argparse
 
-from rawr_analytics.metrics.constants import Metric
 from rawr_analytics.progress import TerminalProgressBar, print_status_box
 from rawr_analytics.services import (
     DEFAULT_RAWR_RIDGE_ALPHA,
-    MetricStoreRefreshRequest,
+    DEFAULT_WEB_METRIC_IDS,
+    parse_metric_store_refresh_request,
     refresh_metric_store,
 )
-from rawr_analytics.shared.season import SeasonType
 
-_choices = [Metric.WOWY, Metric.WOWY_SHRUNK, Metric.RAWR]
+_choices = list(DEFAULT_WEB_METRIC_IDS)
 
 
 def _build_parser() -> argparse.ArgumentParser:
@@ -21,7 +20,7 @@ def _build_parser() -> argparse.ArgumentParser:
     parser.add_argument(
         "--metric",
         action="append",
-        choices=[metric.value for metric in _choices],
+        choices=_choices,
         help=(
             "Metric to refresh into the SQLite store. "
             "Repeat to refresh multiple metrics. Defaults to all metrics."
@@ -44,23 +43,22 @@ def _build_parser() -> argparse.ArgumentParser:
 def main(argv: list[str] | None = None) -> int:
     parser = _build_parser()
     args = parser.parse_args(argv)
-    season_type = SeasonType.parse(args.season_type)
-    metrics = [Metric.parse(metric) for metric in args.metric] if args.metric else _choices
+    metrics = args.metric or _choices
     print_status_box(
         "Web Store Refresh",
         [
-            f"Metrics: {', '.join(metric.value for metric in metrics)}",
+            f"Metrics: {', '.join(metrics)}",
             "Refreshing cached player-season rows and full-span leaderboard"
             " slices used by the Flask and React web app.",
             "The progress bar below tracks each built team scope in the SQLite metric store.",
         ],
     )
     for metric in metrics:
-        progress_bar = TerminalProgressBar(f"Refresh {metric.value}", total=1)
+        progress_bar = TerminalProgressBar(f"Refresh {metric}", total=1)
         result = refresh_metric_store(
-            MetricStoreRefreshRequest(
+            parse_metric_store_refresh_request(
                 metric=metric,
-                season_type=season_type,
+                season_type=args.season_type,
                 rawr_ridge_alpha=args.rawr_ridge_alpha,
                 include_team_scopes=False,
             ),
@@ -73,10 +71,10 @@ def main(argv: list[str] | None = None) -> int:
         )
         progress_bar.finish(detail="done")
         if not result.ok:
-            print(f"failed to refresh {metric.value} store")
+            print(f"failed to refresh {metric} store")
             print(result.failure_message)
             return 1
-        print(f"refreshed {metric.value} store ({result.total_rows} rows)")
+        print(f"refreshed {metric} store ({result.total_rows} rows)")
     return 0
 
 

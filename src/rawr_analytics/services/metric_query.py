@@ -1,12 +1,16 @@
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, fields, is_dataclass
+from enum import Enum
 from typing import Any
 
 from rawr_analytics.metrics.constants import Metric
 from rawr_analytics.metrics.metric_query import (
     MetricOptionsPayload,
     MetricQuery,
+    RawrMetricFilters,
+    TeamOption,
+    WowyMetricFilters,
 )
 from rawr_analytics.metrics.metric_query import (
     build_metric_export_table as _build_metric_export_table,
@@ -56,6 +60,81 @@ class MetricExportResult:
     query: MetricQuery
     metric_label: str
     rows: list[dict[str, Any]]
+
+
+def parse_metric_query_request(
+    *,
+    metric: str,
+    season_type: str,
+    team_ids: list[str] | None = None,
+    seasons: list[str] | None = None,
+    top_n: str | None = None,
+    min_average_minutes: str | None = None,
+    min_total_minutes: str | None = None,
+    min_games: str | None = None,
+    ridge_alpha: str | None = None,
+    min_games_with: str | None = None,
+    min_games_without: str | None = None,
+) -> MetricQueryRequest:
+    parsed_season_type = SeasonType.parse(season_type)
+    return MetricQueryRequest(
+        metric=Metric.parse(metric),
+        season_type=parsed_season_type,
+        teams=_parse_team_list(team_ids),
+        seasons=_parse_season_list(seasons, season_type=parsed_season_type),
+        top_n=_parse_optional_int(top_n),
+        min_average_minutes=_parse_optional_float(min_average_minutes),
+        min_total_minutes=_parse_optional_float(min_total_minutes),
+        min_games=_parse_optional_int(min_games),
+        ridge_alpha=_parse_optional_float(ridge_alpha),
+        min_games_with=_parse_optional_int(min_games_with),
+        min_games_without=_parse_optional_int(min_games_without),
+    )
+
+
+def serialize_service_value(value: Any) -> Any:
+    if isinstance(value, Team):
+        return value.current.abbreviation
+    if isinstance(value, Season):
+        return value.id
+    if isinstance(value, SeasonType):
+        return value.to_nba_format()
+    if isinstance(value, Metric):
+        return value.value
+    if isinstance(value, RawrMetricFilters):
+        return _serialize_rawr_metric_filters(value)
+    if isinstance(value, WowyMetricFilters):
+        return _serialize_wowy_metric_filters(value)
+    if isinstance(value, TeamOption):
+        return {
+            "team_id": value.team.team_id,
+            "label": value.label,
+            "available_seasons": [season.id for season in value.available_seasons],
+        }
+    if isinstance(value, MetricOptionsPayload):
+        return {
+            "metric": value.metric,
+            "metric_label": value.metric_label,
+            "available_teams": [team.current.abbreviation for team in value.available_teams],
+            "team_options": [serialize_service_value(option) for option in value.team_options],
+            "available_seasons": [season.id for season in value.available_seasons],
+            "available_teams_by_season": {
+                season_id: [team.current.abbreviation for team in teams]
+                for season_id, teams in value.available_teams_by_season.items()
+            },
+            "filters": serialize_service_value(value.filters),
+        }
+    if is_dataclass(value):
+        return {
+            field.name: serialize_service_value(getattr(value, field.name)) for field in fields(value)
+        }
+    if isinstance(value, dict):
+        return {key: serialize_service_value(item) for key, item in value.items()}
+    if isinstance(value, (list, tuple, set)):
+        return [serialize_service_value(item) for item in value]
+    if isinstance(value, Enum):
+        return value.value
+    return value
 
 
 def build_metric_options_payload(request: MetricQueryRequest) -> MetricOptionsPayload:
@@ -122,6 +201,71 @@ def _build_query(request: MetricQueryRequest) -> MetricQuery:
     )
 
 
+def _parse_optional_int(raw_value: str | None) -> int | None:
+    return None if raw_value is None else int(raw_value)
+
+
+def _parse_optional_float(raw_value: str | None) -> float | None:
+    return None if raw_value is None else float(raw_value)
+
+
+def _parse_positive_int_list(raw_values: list[str] | None) -> list[int] | None:
+    if not raw_values:
+        return None
+    parsed_values: list[int] = []
+    for raw_value in raw_values:
+        value = int(raw_value)
+        if value <= 0:
+            raise ValueError("team_id values must be positive integers")
+        parsed_values.append(value)
+    return parsed_values
+
+
+def _parse_team_list(raw_values: list[str] | None) -> list[Team] | None:
+    team_ids = _parse_positive_int_list(raw_values)
+    if team_ids is None:
+        return None
+    return [Team.from_id(team_id) for team_id in team_ids]
+
+
+def _parse_season_list(
+    raw_values: list[str] | None,
+    *,
+    season_type: SeasonType,
+) -> list[Season] | None:
+    if not raw_values:
+        return None
+    return [Season(raw_value, season_type.value) for raw_value in raw_values]
+
+
+def _serialize_rawr_metric_filters(filters: RawrMetricFilters) -> dict[str, Any]:
+    return {
+        "team": None if filters.teams is None else [team.current.abbreviation for team in filters.teams],
+        "team_id": None if filters.teams is None else [team.team_id for team in filters.teams],
+        "season": None if filters.seasons is None else [season.id for season in filters.seasons],
+        "season_type": filters.season_type.to_nba_format(),
+        "min_average_minutes": filters.min_average_minutes,
+        "min_total_minutes": filters.min_total_minutes,
+        "top_n": filters.top_n,
+        "min_games": filters.min_games,
+        "ridge_alpha": filters.ridge_alpha,
+    }
+
+
+def _serialize_wowy_metric_filters(filters: WowyMetricFilters) -> dict[str, Any]:
+    return {
+        "team": None if filters.teams is None else [team.current.abbreviation for team in filters.teams],
+        "team_id": None if filters.teams is None else [team.team_id for team in filters.teams],
+        "season": None if filters.seasons is None else [season.id for season in filters.seasons],
+        "season_type": filters.season_type.to_nba_format(),
+        "min_average_minutes": filters.min_average_minutes,
+        "min_total_minutes": filters.min_total_minutes,
+        "top_n": filters.top_n,
+        "min_games_with": filters.min_games_with,
+        "min_games_without": filters.min_games_without,
+    }
+
+
 __all__ = [
     "MetricExportResult",
     "MetricQueryRequest",
@@ -129,4 +273,6 @@ __all__ = [
     "build_metric_options_payload",
     "build_metric_query_export",
     "build_metric_query_view",
+    "parse_metric_query_request",
+    "serialize_service_value",
 ]

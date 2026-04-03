@@ -4,6 +4,7 @@ from collections.abc import Callable
 from dataclasses import dataclass
 
 from rawr_analytics.data.game_cache import (
+    NormalizedCacheLoadRow,
     build_normalized_cache_fingerprint,
     list_cache_load_rows,
     list_cached_team_seasons,
@@ -38,6 +39,7 @@ from rawr_analytics.shared.team import Team, normalize_teams, to_team_ids
 
 RefreshProgressFn = Callable[[int, int, str], None]
 DEFAULT_RAWR_RIDGE_ALPHA = 10.0
+DEFAULT_WEB_METRIC_IDS = ("wowy", "wowy-shrunk", "rawr")
 
 
 @dataclass(frozen=True)
@@ -70,6 +72,21 @@ class RefreshMetricStoreResult:
     @property
     def total_rows(self) -> int:
         return sum(scope.row_count for scope in self.scope_results)
+
+
+def parse_metric_store_refresh_request(
+    *,
+    metric: str,
+    season_type: str,
+    rawr_ridge_alpha: float = DEFAULT_RAWR_RIDGE_ALPHA,
+    include_team_scopes: bool = True,
+) -> MetricStoreRefreshRequest:
+    return MetricStoreRefreshRequest(
+        metric=Metric.parse(metric),
+        season_type=SeasonType.parse(season_type),
+        rawr_ridge_alpha=rawr_ridge_alpha,
+        include_team_scopes=include_team_scopes,
+    )
 
 
 @dataclass(frozen=True)

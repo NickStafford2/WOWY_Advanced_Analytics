@@ -2,13 +2,12 @@ from __future__ import annotations
 
 import argparse
 
-from rawr_analytics.metrics.constants import Metric
 from rawr_analytics.services import (
     DEFAULT_RAWR_RIDGE_ALPHA,
-    MetricStoreRefreshRequest,
+    DEFAULT_WEB_METRIC_IDS,
+    parse_metric_store_refresh_request,
     refresh_metric_store,
 )
-from rawr_analytics.shared.season import SeasonType
 from rawr_analytics.web.app import create_app
 
 
@@ -38,7 +37,7 @@ def _build_parser() -> argparse.ArgumentParser:
     parser.add_argument(
         "--refresh-metric",
         action="append",
-        choices=[metric.value for metric in Metric],
+        choices=list(DEFAULT_WEB_METRIC_IDS),
         help=(
             "Metric to refresh when used with --refresh-store. "
             "Repeat to refresh multiple metrics. Defaults to refreshing both."
@@ -61,19 +60,14 @@ def _build_parser() -> argparse.ArgumentParser:
 def main(argv: list[str] | None = None) -> int:
     parser = _build_parser()
     args = parser.parse_args(argv)
-    season_type = SeasonType.parse(args.season_type)
     if args.refresh_store:
-        refresh_metrics = (
-            [Metric.parse(metric) for metric in args.refresh_metric]
-            if args.refresh_metric
-            else [Metric.WOWY, Metric.WOWY_SHRUNK, Metric.RAWR]
-        )
+        refresh_metrics = args.refresh_metric or list(DEFAULT_WEB_METRIC_IDS)
         for metric in refresh_metrics:
-            print(f"refreshing {metric.value} web store")
+            print(f"refreshing {metric} web store")
             result = refresh_metric_store(
-                MetricStoreRefreshRequest(
+                parse_metric_store_refresh_request(
                     metric=metric,
-                    season_type=season_type,
+                    season_type=args.season_type,
                     rawr_ridge_alpha=args.rawr_ridge_alpha,
                     include_team_scopes=False,
                 )
