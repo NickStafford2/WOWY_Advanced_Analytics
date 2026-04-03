@@ -3,6 +3,12 @@ from __future__ import annotations
 import json
 import sys
 
+from rawr_analytics.shared.ingest import (
+    FetchError,
+    GameNormalizationFailure,
+    IngestProgress,
+    PartialTeamSeasonError,
+)
 from rawr_analytics.sources.nba_api.ingest import (
     IngestEvent,
     IngestResult,
@@ -12,21 +18,8 @@ from rawr_analytics.sources.nba_api.ingest import (
     IngestTeamProgressEvent,
     SeasonRangeFailure,
 )
-from rawr_analytics.shared.ingest import (
-    FetchError,
-    GameNormalizationFailure,
-    IngestProgress,
-    PartialTeamSeasonError,
-)
 
 _LAST_STATUS_LINE_LENGTH = 0
-
-
-def filtered_log(message: str) -> None:
-    if not _should_emit_log_message(message):
-        return
-    sys.stderr.write(f"{message}\n")
-    sys.stderr.flush()
 
 
 def render_failure_summary(
@@ -128,8 +121,7 @@ def render_partial_failure_details(error: PartialTeamSeasonError) -> str:
         failed_game_details=list(error.failed_game_details),
         failure_reason_counts=dict(error.failure_reason_counts),
         failure_reason_examples={
-            reason: examples[:]
-            for reason, examples in error.failure_reason_examples.items()
+            reason: examples[:] for reason, examples in error.failure_reason_examples.items()
         },
     )
 
@@ -198,10 +190,7 @@ def render_team_fetch_failed_line(
     season_label: str,
     error_type: str,
 ) -> None:
-    line = (
-        f"  [{team_index:>2}/{team_total}] "
-        f"{team_label} {season_label} failed fetch={error_type}"
-    )
+    line = f"  [{team_index:>2}/{team_total}] {team_label} {season_label} failed fetch={error_type}"
     _write_status_line(line)
 
 
@@ -228,14 +217,9 @@ def render_team_validation_failed_line(
     reason: str,
 ) -> None:
     line = (
-        f"  [{team_index:>2}/{team_total}] "
-        f"{team_label} {season_label} failed validation={reason}"
+        f"  [{team_index:>2}/{team_total}] {team_label} {season_label} failed validation={reason}"
     )
     _write_status_line(line)
-
-
-def _should_emit_log_message(message: str) -> bool:
-    return message.startswith("cache discard") or message.startswith("cache skip")
 
 
 def _summarize_game_failure_detail(failure: GameNormalizationFailure) -> str:
