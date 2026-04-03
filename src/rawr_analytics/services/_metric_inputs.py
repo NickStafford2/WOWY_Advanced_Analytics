@@ -3,14 +3,13 @@ from __future__ import annotations
 from collections import defaultdict
 from dataclasses import dataclass
 
-from rawr_analytics.game_data import player_has_positive_minutes
-from rawr_analytics.game_data.models import NormalizedGamePlayerRecord, NormalizedGameRecord
 from rawr_analytics.data.game_cache import (
     list_cache_load_rows,
     load_normalized_scope_records_from_db,
 )
 from rawr_analytics.data.game_cache.rows import NormalizedGamePlayerRow, NormalizedGameRow
 from rawr_analytics.data.scope_resolver import resolve_team_seasons
+from rawr_analytics.game_data.models import NormalizedGamePlayerRecord, NormalizedGameRecord
 from rawr_analytics.metrics.rawr._observations import (
     _build_rawr_observations,
     _build_rawr_player_season_minute_stats,
@@ -255,7 +254,7 @@ def _build_wowy_player_season_minute_stats(
     season_by_game_id = {game.game_id: game.season for game in games}
     for player in game_players:
         season = season_by_game_id.get(player.game_id)
-        if season is None or not player_has_positive_minutes(player):
+        if season is None or not player.has_positive_minutes():
             continue
         assert player.minutes is not None
         key = (season, player.player.player_id)

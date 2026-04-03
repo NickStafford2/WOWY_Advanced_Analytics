@@ -28,6 +28,9 @@ class NormalizedGamePlayerRecord:
     minutes: float | None
     team: Team
 
+    def has_positive_minutes(self) -> bool:
+        return self.appeared and self.minutes is not None and self.minutes > 0.0
+
 
 @dataclass(frozen=True)
 class NormalizedTeamSeasonBatch:

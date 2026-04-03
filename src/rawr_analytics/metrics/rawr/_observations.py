@@ -2,9 +2,8 @@ from __future__ import annotations
 
 from collections import defaultdict
 
-from rawr_analytics.metrics.rawr.models import RawrObservation
-from rawr_analytics.game_data import player_has_positive_minutes
 from rawr_analytics.game_data.models import NormalizedGamePlayerRecord, NormalizedGameRecord
+from rawr_analytics.metrics.rawr.models import RawrObservation
 from rawr_analytics.shared.season import Season
 
 _LINEUP_WEIGHT_SUM = 5.0
@@ -65,11 +64,13 @@ def _build_rawr_observations(
 
     for player in game_players:
         player_names[player.player_id] = player.player_name
-        if not player_has_positive_minutes(player):
+        if not player.has_positive_minutes():
             continue
         minutes = player.minutes
         assert minutes is not None
-        player_minutes_by_game_team[(player.game_id, player.team.team_id)][player.player_id] = minutes
+        player_minutes_by_game_team[(player.game_id, player.team.team_id)][player.player_id] = (
+            minutes
+        )
 
     games_by_id: dict[str, list[NormalizedGameRecord]] = defaultdict(list)
     for game in games:
@@ -131,7 +132,7 @@ def _build_rawr_player_season_minute_stats(
 
     for player in game_players:
         season = season_by_game_id.get(player.game_id)
-        if season is None or not player_has_positive_minutes(player):
+        if season is None or not player.has_positive_minutes():
             continue
         assert player.minutes is not None
         key = (season, player.player_id)
