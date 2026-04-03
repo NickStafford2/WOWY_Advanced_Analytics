@@ -5,6 +5,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 
 from rawr_analytics.data.metric_store.models import (
+    MetricFullSpanSeries,
     MetricFullSpanSeriesRow,
     MetricScopeCatalogRow,
     MetricSnapshotState,
@@ -29,6 +30,7 @@ from rawr_analytics.data.metric_store.wowy import (
     WowyPlayerSeasonValueRow,
     load_wowy_player_season_value_rows,
 )
+from rawr_analytics.shared.player import PlayerSummary
 
 
 @dataclass(frozen=True)
@@ -39,8 +41,7 @@ class MetricScopeStoreState:
 
 @dataclass(frozen=True)
 class MetricSpanStoreRows:
-    series_rows: list[MetricFullSpanSeriesRow]
-    points_map: dict[int, dict[str, float]]
+    series: list[MetricFullSpanSeries]
 
 
 def load_metric_scope_store_state(
@@ -67,13 +68,29 @@ def load_metric_span_store_rows(
         scope_key=scope_key,
         top_n=top_n,
     )
+    points_map = load_metric_full_span_points_map(
+        metric=metric,
+        scope_key=scope_key,
+        player_ids=[row.player_id for row in series_rows],
+    )
     return MetricSpanStoreRows(
-        series_rows=series_rows,
-        points_map=load_metric_full_span_points_map(
-            metric=metric,
-            scope_key=scope_key,
-            player_ids=[row.player_id for row in series_rows],
-        ),
+        series=[
+            MetricFullSpanSeries(
+                player=_build_player_summary(row),
+                span_average_value=row.span_average_value,
+                season_count=row.season_count,
+                rank_order=row.rank_order,
+                points_by_season=dict(points_map.get(row.player_id, {})),
+            )
+            for row in series_rows
+        ],
+    )
+
+
+def _build_player_summary(row: MetricFullSpanSeriesRow) -> PlayerSummary:
+    return PlayerSummary(
+        player_id=row.player_id,
+        player_name=row.player_name,
     )
 
 

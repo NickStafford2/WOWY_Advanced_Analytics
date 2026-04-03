@@ -2,6 +2,8 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
+from rawr_analytics.shared.player import PlayerSummary
+
 
 @dataclass(frozen=True)
 class MetricSnapshotState:
@@ -48,3 +50,12 @@ class MetricFullSpanPointRow:
     player_id: int
     season_id: str
     value: float
+
+
+@dataclass(frozen=True)
+class MetricFullSpanSeries:
+    player: PlayerSummary
+    span_average_value: float
+    season_count: int
+    rank_order: int
+    points_by_season: dict[str, float]

@@ -23,13 +23,23 @@ MetricQuery = RawrQuery | WowyQuery
 
 
 @dataclass(frozen=True)
+class MetricCatalogAvailability:
+    teams: list[Team]
+    seasons: list[Season]
+
+
+@dataclass(frozen=True)
+class MetricSeasonSpan:
+    start_season: Season
+    end_season: Season
+
+
+@dataclass(frozen=True)
 class MetricStoreCatalog:
     metric_label: str
     season_type: SeasonType
-    available_teams: list[Team]
-    available_seasons: list[Season]
-    full_span_start_season_id: str | None
-    full_span_end_season_id: str | None
+    availability: MetricCatalogAvailability
+    full_span: MetricSeasonSpan | None
 
 
 def build_metric_scope_key(query: MetricQuery) -> str:
@@ -56,9 +66,9 @@ def build_metric_options_payload(
     return {
         "metric": metric.value,
         "metric_label": catalog.metric_label,
-        "available_teams": [team.current.abbreviation for team in catalog.available_teams],
+        "available_teams": [team.current.abbreviation for team in catalog.availability.teams],
         "team_options": _build_team_options(catalog),
-        "available_seasons": [season.id for season in catalog.available_seasons],
+        "available_seasons": [season.id for season in catalog.availability.seasons],
         "available_teams_by_season": _build_available_teams_by_season(catalog),
         "filters": filters,
     }
@@ -76,31 +86,33 @@ def build_metric_span_chart_payload(
         scope_key=scope_key,
         top_n=top_n,
     )
-    available_season_ids = [season.id for season in catalog.available_seasons]
+    available_season_ids = [season.id for season in catalog.availability.seasons]
     return {
         "metric": metric.value,
         "metric_label": catalog.metric_label,
         "span": {
-            "start_season": catalog.full_span_start_season_id,
-            "end_season": catalog.full_span_end_season_id,
+            "start_season": (
+                None if catalog.full_span is None else catalog.full_span.start_season.id
+            ),
+            "end_season": None if catalog.full_span is None else catalog.full_span.end_season.id,
             "available_seasons": available_season_ids,
             "top_n": top_n,
         },
         "series": [
             {
-                "player_id": row.player_id,
-                "player_name": row.player_name,
+                "player_id": row.player.player_id,
+                "player_name": row.player.player_name,
                 "span_average_value": row.span_average_value,
                 "season_count": row.season_count,
                 "points": [
                     {
                         "season": season_id,
-                        "value": span_rows.points_map.get(row.player_id, {}).get(season_id),
+                        "value": row.points_by_season.get(season_id),
                     }
                     for season_id in available_season_ids
                 ],
             }
-            for row in span_rows.series_rows[:top_n]
+            for row in span_rows.series[:top_n]
         ],
     }
 
@@ -136,16 +148,22 @@ def require_current_metric_scope(
         )
 
     season_type = SeasonType.parse(catalog_row.season_type)
+    available_seasons = [
+        Season(season_id, season_type.to_nba_format())
+        for season_id in catalog_row.available_season_ids
+    ]
     return MetricStoreCatalog(
         metric_label=catalog_row.label,
         season_type=season_type,
-        available_teams=[Team.from_id(team_id) for team_id in catalog_row.available_team_ids],
-        available_seasons=[
-            Season(season_id, season_type.to_nba_format())
-            for season_id in catalog_row.available_season_ids
-        ],
-        full_span_start_season_id=catalog_row.full_span_start_season_id,
-        full_span_end_season_id=catalog_row.full_span_end_season_id,
+        availability=MetricCatalogAvailability(
+            teams=[Team.from_id(team_id) for team_id in catalog_row.available_team_ids],
+            seasons=available_seasons,
+        ),
+        full_span=_build_metric_season_span(
+            season_type=season_type,
+            start_season_id=catalog_row.full_span_start_season_id,
+            end_season_id=catalog_row.full_span_end_season_id,
+        ),
     )
 
 
@@ -153,7 +171,7 @@ def selected_seasons(
     seasons: list[Season] | None,
     catalog: MetricStoreCatalog,
 ) -> list[str]:
-    return season_ids(seasons) or [season.id for season in catalog.available_seasons]
+    return season_ids(seasons) or [season.id for season in catalog.availability.seasons]
 
 
 def season_ids(seasons: list[Season] | None) -> list[str] | None:
@@ -172,13 +190,13 @@ def _build_team_options(catalog: MetricStoreCatalog) -> list[dict[str, Any]]:
                 season.id for season in seasons_by_team.get(team.team_id, [])
             ],
         }
-        for team in sorted(catalog.available_teams, key=lambda item: item.current.abbreviation)
+        for team in sorted(catalog.availability.teams, key=lambda item: item.current.abbreviation)
     ]
 
 
 def _build_available_team_seasons(catalog: MetricStoreCatalog) -> dict[int, list[Season]]:
-    available_team_ids = {team.team_id for team in catalog.available_teams}
-    available_season_ids = [season.id for season in catalog.available_seasons]
+    available_team_ids = {team.team_id for team in catalog.availability.teams}
+    available_season_ids = [season.id for season in catalog.availability.seasons]
     seasons_by_team_id: dict[int, set[str]] = {}
     for team_season in list_cached_team_seasons():
         if team_season.season.season_type != catalog.season_type:
@@ -199,8 +217,8 @@ def _build_available_team_seasons(catalog: MetricStoreCatalog) -> dict[int, list
 
 
 def _build_available_teams_by_season(catalog: MetricStoreCatalog) -> dict[str, list[str]]:
-    available_team_ids = {team.team_id for team in catalog.available_teams}
-    available_season_ids = [season.id for season in catalog.available_seasons]
+    available_team_ids = {team.team_id for team in catalog.availability.teams}
+    available_season_ids = [season.id for season in catalog.availability.seasons]
     teams_by_season: dict[str, set[int]] = {season_id: set() for season_id in available_season_ids}
     for team_season in list_cached_team_seasons():
         if team_season.season.season_type != catalog.season_type:
@@ -213,8 +231,23 @@ def _build_available_teams_by_season(catalog: MetricStoreCatalog) -> dict[str, l
     return {
         season_id: [
             team.current.abbreviation
-            for team in catalog.available_teams
+            for team in catalog.availability.teams
             if team.team_id in teams_by_season.get(season_id, set())
         ]
         for season_id in available_season_ids
     }
+
+
+def _build_metric_season_span(
+    *,
+    season_type: SeasonType,
+    start_season_id: str | None,
+    end_season_id: str | None,
+) -> MetricSeasonSpan | None:
+    if start_season_id is None:
+        return None
+    assert end_season_id is not None, "metric store full-span seasons must be paired"
+    return MetricSeasonSpan(
+        start_season=Season(start_season_id, season_type.to_nba_format()),
+        end_season=Season(end_season_id, season_type.to_nba_format()),
+    )
