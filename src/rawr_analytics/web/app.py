@@ -24,8 +24,11 @@ def create_app():
 
     app = Flask(__name__)
 
-    def parse_rawr_query() -> RawrQuery:
-        season_type = SeasonType.parse(request.args.get("season_type", "Regular Season"))
+    def _parse_season_type() -> SeasonType:
+        return SeasonType.parse(request.args.get("season_type", "Regular Season"))
+
+    def _parse_rawr_query() -> RawrQuery:
+        season_type = _parse_season_type()
         return build_rawr_query(
             season_type=season_type,
             teams=_parse_team_list(request.args.getlist("team_id")),
@@ -41,8 +44,8 @@ def create_app():
             ridge_alpha=_parse_optional_float(request.args.get("ridge_alpha", None)),
         )
 
-    def parse_wowy_query() -> WowyQuery:
-        season_type = SeasonType.parse(request.args.get("season_type", "Regular Season"))
+    def _parse_wowy_query() -> WowyQuery:
+        season_type = _parse_season_type()
         return build_wowy_query(
             season_type=season_type,
             teams=_parse_team_list(request.args.getlist("team_id")),
@@ -58,24 +61,26 @@ def create_app():
             min_games_without=_parse_optional_int(request.args.get("min_games_without", None)),
         )
 
-    def parse_rawr_options_query() -> RawrQuery:
+    def _parse_rawr_options_query() -> RawrQuery:
         return build_rawr_query(
-            season_type=SeasonType.parse(request.args.get("season_type", "Regular Season")),
+            season_type=_parse_season_type(),
             teams=_parse_team_list(request.args.getlist("team_id")),
         )
 
-    def parse_wowy_options_query() -> WowyQuery:
+    def _parse_wowy_options_query() -> WowyQuery:
         return build_wowy_query(
-            season_type=SeasonType.parse(request.args.get("season_type", "Regular Season")),
+            season_type=_parse_season_type(),
             teams=_parse_team_list(request.args.getlist("team_id")),
         )
 
-    def json_metric_response(metric: str, view: str):
-        parsed_metric = Metric.parse(metric)
+    def _parse_metric(metric: str) -> Metric:
+        return Metric.parse(metric)
+
+    def _json_metric_response(parsed_metric: Metric, view: str):
         if parsed_metric == Metric.RAWR:
-            result = build_rawr_query_view(parse_rawr_query(), view=view)
+            result = build_rawr_query_view(_parse_rawr_query(), view=view)
         else:
-            result = build_wowy_query_view(parsed_metric, parse_wowy_query(), view=view)
+            result = build_wowy_query_view(parsed_metric, _parse_wowy_query(), view=view)
         return jsonify(serialize_service_value(result.payload))
 
     def run_json(handler):
@@ -84,13 +89,12 @@ def create_app():
         except ValueError as exc:
             return jsonify({"error": str(exc)}), 400
 
-    def csv_metric_response(metric: str, view: str):
-        parsed_metric = Metric.parse(metric)
+    def _csv_metric_response(parsed_metric: Metric, view: str):
         if parsed_metric == Metric.RAWR:
-            result = build_rawr_query_export(parse_rawr_query(), view=view)
+            result = build_rawr_query_export(_parse_rawr_query(), view=view)
         else:
-            result = build_wowy_query_export(parsed_metric, parse_wowy_query(), view=view)
-        filename = f"{metric}-all-players.csv"
+            result = build_wowy_query_export(parsed_metric, _parse_wowy_query(), view=view)
+        filename = f"{parsed_metric.value}-all-players.csv"
         return Response(
             _render_leaderboard_csv(metric_label=result.metric_label, table_rows=result.rows),
             mimetype="text/csv",
@@ -99,15 +103,15 @@ def create_app():
 
     @app.get("/api/metrics/<metric>/options")
     def get_metric_options(metric: str):
-        parsed_metric = Metric.parse(metric)
+        parsed_metric = _parse_metric(metric)
         return run_json(
             lambda: jsonify(
                 serialize_service_value(
-                    build_rawr_options_payload(parse_rawr_options_query())
+                    build_rawr_options_payload(_parse_rawr_options_query())
                     if parsed_metric == Metric.RAWR
                     else build_wowy_options_payload(
                         parsed_metric,
-                        parse_wowy_options_query(),
+                        _parse_wowy_options_query(),
                     )
                 )
             )
@@ -115,55 +119,33 @@ def create_app():
 
     @app.get("/api/metrics/<metric>/player-seasons")
     def get_metric_player_seasons(metric: str):
-        return run_json(lambda: json_metric_response(metric, "player-seasons"))
+        parsed_metric = _parse_metric(metric)
+        return run_json(lambda: _json_metric_response(parsed_metric, "player-seasons"))
 
     @app.get("/api/metrics/<metric>/span-chart")
     def get_metric_span_chart(metric: str):
-        return run_json(lambda: json_metric_response(metric, "span-chart"))
+        parsed_metric = _parse_metric(metric)
+        return run_json(lambda: _json_metric_response(parsed_metric, "span-chart"))
 
     @app.get("/api/metrics/<metric>/cached-leaderboard")
     def get_metric_cached_leaderboard(metric: str):
-        return run_json(lambda: json_metric_response(metric, "cached-leaderboard"))
+        parsed_metric = _parse_metric(metric)
+        return run_json(lambda: _json_metric_response(parsed_metric, "cached-leaderboard"))
 
     @app.get("/api/metrics/<metric>/cached-leaderboard.csv")
     def export_metric_cached_leaderboard(metric: str):
-        return run_json(lambda: csv_metric_response(metric, "cached-leaderboard"))
+        parsed_metric = _parse_metric(metric)
+        return run_json(lambda: _csv_metric_response(parsed_metric, "cached-leaderboard"))
 
     @app.get("/api/metrics/<metric>/custom-query")
     def get_metric_custom_query(metric: str):
-        return run_json(lambda: json_metric_response(metric, "custom-query"))
+        parsed_metric = _parse_metric(metric)
+        return run_json(lambda: _json_metric_response(parsed_metric, "custom-query"))
 
     @app.get("/api/metrics/<metric>/custom-query.csv")
     def export_metric_custom_query(metric: str):
-        return run_json(lambda: csv_metric_response(metric, "custom-query"))
-
-    @app.get("/api/wowy/player-seasons")
-    def get_wowy_player_seasons():
-        return get_metric_player_seasons("wowy")
-
-    @app.get("/api/wowy/options")
-    def get_wowy_options():
-        return get_metric_options("wowy")
-
-    @app.get("/api/wowy/span-chart")
-    def get_wowy_span_chart():
-        return get_metric_span_chart("wowy")
-
-    @app.get("/api/wowy/cached-leaderboard")
-    def get_wowy_cached_leaderboard():
-        return get_metric_cached_leaderboard("wowy")
-
-    @app.get("/api/wowy/custom-query")
-    def get_wowy_custom_query():
-        return get_metric_custom_query("wowy")
-
-    @app.get("/api/wowy-shrunk/custom-query")
-    def get_wowy_shrunk_custom_query():
-        return get_metric_custom_query("wowy-shrunk")
-
-    @app.get("/api/rawr/custom-query")
-    def get_rawr_custom_query():
-        return get_metric_custom_query("rawr")
+        parsed_metric = _parse_metric(metric)
+        return run_json(lambda: _csv_metric_response(parsed_metric, "custom-query"))
 
     return app
 
