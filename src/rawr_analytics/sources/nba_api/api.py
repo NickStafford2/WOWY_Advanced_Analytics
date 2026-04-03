@@ -8,14 +8,14 @@ from rawr_analytics.shared.game import NormalizedGamePlayerRecord, NormalizedGam
 from rawr_analytics.shared.ingest import GameNormalizationFailure, PartialTeamSeasonError
 from rawr_analytics.shared.season import Season
 from rawr_analytics.shared.team import Team
-from rawr_analytics.sources.nba_api.cache import (
+from rawr_analytics.sources.nba_api._cache import (
     load_or_fetch_box_score_cache,
     load_or_fetch_league_games,
 )
-from rawr_analytics.sources.nba_api.dedupe import dedupe_schedule_games
-from rawr_analytics.sources.nba_api.models import SourceBoxScore, SourceLeagueGame
-from rawr_analytics.sources.nba_api.normalize import normalize_source_league_game
-from rawr_analytics.sources.nba_api.parsers import (
+from rawr_analytics.sources.nba_api._dedupe import dedupe_schedule_games
+from rawr_analytics.sources.nba_api._models import SourceBoxScore, SourceLeagueGame
+from rawr_analytics.sources.nba_api._normalize import normalize_source_league_game
+from rawr_analytics.sources.nba_api._parsers import (
     parse_box_score_payload,
     parse_league_schedule_payload,
 )

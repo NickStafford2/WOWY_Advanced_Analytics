@@ -10,9 +10,9 @@ from pathlib import Path
 
 from rawr_analytics.shared.season import Season, SeasonType
 from rawr_analytics.shared.team import Team
-from rawr_analytics.sources.nba_api.cache import DEFAULT_NBA_API_DATA_DIR
-from rawr_analytics.sources.nba_api.dedupe import dedupe_schedule_games
-from rawr_analytics.sources.nba_api.parsers import (
+from rawr_analytics.sources.nba_api._cache import DEFAULT_NBA_API_DATA_DIR
+from rawr_analytics.sources.nba_api._dedupe import dedupe_schedule_games
+from rawr_analytics.sources.nba_api._parsers import (
     parse_box_score_payload,
     parse_league_schedule_payload,
 )
