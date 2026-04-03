@@ -7,9 +7,9 @@ from rawr_analytics.services.metric_refresh import (
     DEFAULT_RAWR_RIDGE_ALPHA,
     DEFAULT_WEB_METRIC_IDS,
     MetricStoreRefreshProgressEvent,
+    build_metric_store_refresh_request,
     refresh_metric_store,
 )
-from rawr_analytics.web._requests import build_metric_store_refresh_request
 
 _choices = list(DEFAULT_WEB_METRIC_IDS)
 

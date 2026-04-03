@@ -5,13 +5,11 @@ from typing import Any
 
 from rawr_analytics.services.metric_query import (
     build_metric_options_payload,
+    build_metric_options_request,
     build_metric_query_export,
+    build_metric_query_request,
     build_metric_query_view,
     serialize_service_value,
-)
-from rawr_analytics.web._requests import (
-    build_metric_options_request,
-    build_metric_query_request,
 )
 
 

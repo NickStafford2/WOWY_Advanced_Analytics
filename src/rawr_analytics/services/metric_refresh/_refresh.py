@@ -65,6 +65,21 @@ class MetricStoreRefreshRequest:
     include_team_scopes: bool = True
 
 
+def build_metric_store_refresh_request(
+    *,
+    metric: str,
+    season_type: str,
+    rawr_ridge_alpha: float = DEFAULT_RAWR_RIDGE_ALPHA,
+    include_team_scopes: bool = True,
+) -> MetricStoreRefreshRequest:
+    return MetricStoreRefreshRequest(
+        metric=Metric.parse(metric),
+        season_type=SeasonType.parse(season_type),
+        rawr_ridge_alpha=rawr_ridge_alpha,
+        include_team_scopes=include_team_scopes,
+    )
+
+
 @dataclass(frozen=True)
 class RefreshMetricStoreResult:
     metric: Metric

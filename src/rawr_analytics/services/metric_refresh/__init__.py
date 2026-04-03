@@ -5,6 +5,7 @@ from rawr_analytics.services.metric_refresh._refresh import (
     MetricStoreRefreshProgressEvent,
     MetricStoreRefreshRequest,
     RefreshMetricStoreResult,
+    build_metric_store_refresh_request,
     refresh_metric_store,
 )
 
@@ -15,5 +16,6 @@ __all__ = [
     "MetricStoreRefreshProgressEvent",
     "MetricStoreRefreshRequest",
     "RefreshMetricStoreResult",
+    "build_metric_store_refresh_request",
     "refresh_metric_store",
 ]

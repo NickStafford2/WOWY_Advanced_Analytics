@@ -46,6 +46,27 @@ class RebuildRequest:
     rawr_ridge_alpha: float = DEFAULT_RAWR_RIDGE_ALPHA
 
 
+def build_rebuild_request(
+    *,
+    start_year: int,
+    end_year: int,
+    season_type: str,
+    teams: list[str] | None,
+    metrics: list[str] | None,
+    keep_existing_db: bool,
+) -> RebuildRequest:
+    if start_year < end_year:
+        raise ValueError("Start year must be greater than or equal to end year")
+    return RebuildRequest(
+        start_year=start_year,
+        end_year=end_year,
+        season_type=SeasonType.parse(season_type),
+        teams=teams,
+        metrics=[Metric.parse(metric) for metric in metrics] if metrics else None,
+        keep_existing_db=keep_existing_db,
+    )
+
+
 @dataclass(frozen=True)
 class RebuildResult:
     ingest_result: SeasonRangeResult
@@ -294,6 +315,7 @@ __all__ = [
     "RebuildResult",
     "RebuildTeamFailureEvent",
     "RebuildValidationProgressEvent",
+    "build_rebuild_request",
     "format_rebuild_validation_summary",
     "rebuild_player_metrics_db",
 ]
