@@ -3,8 +3,8 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
-from rawr_analytics.basketball.nba_api_audit import _audit_nba_api
-from rawr_analytics.basketball.nba_api_audit import main as source_audit_main
+from rawr_analytics.sources.nba_api_audit import _audit_nba_api
+from rawr_analytics.sources.nba_api_audit import main as source_audit_main
 
 
 def test_audit_nba_api_reports_known_classifications_without_failure(tmp_path: Path) -> None:

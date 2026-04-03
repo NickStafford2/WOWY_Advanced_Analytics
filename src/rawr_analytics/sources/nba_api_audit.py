@@ -8,13 +8,13 @@ from collections.abc import Callable
 from dataclasses import dataclass
 from pathlib import Path
 
-from rawr_analytics.basketball.nba_api.cache import DEFAULT_NBA_API_DATA_DIR
-from rawr_analytics.basketball.nba_api.dedupe import dedupe_schedule_games
-from rawr_analytics.basketball.nba_api.parsers import (
+from rawr_analytics.sources.nba_api.cache import DEFAULT_NBA_API_DATA_DIR
+from rawr_analytics.sources.nba_api.dedupe import dedupe_schedule_games
+from rawr_analytics.sources.nba_api.parsers import (
     parse_box_score_payload,
     parse_league_schedule_payload,
 )
-from rawr_analytics.basketball.nba_api.rules import (
+from rawr_analytics.sources.nba_api.rules import (
     classify_source_player_row,
     classify_source_schedule_row,
     classify_source_team_row,

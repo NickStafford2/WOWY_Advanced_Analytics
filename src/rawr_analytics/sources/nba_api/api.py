@@ -1,8 +1,8 @@
 from __future__ import annotations
 
-from rawr_analytics.basketball.nba_api.cache import load_or_fetch_box_score_cache
-from rawr_analytics.basketball.nba_api.models import SourceBoxScore
-from rawr_analytics.basketball.nba_api.parsers import parse_box_score_payload
+from rawr_analytics.sources.nba_api.cache import load_or_fetch_box_score_cache
+from rawr_analytics.sources.nba_api.models import SourceBoxScore
+from rawr_analytics.sources.nba_api.parsers import parse_box_score_payload
 from rawr_analytics.shared.common import LogFn
 
 

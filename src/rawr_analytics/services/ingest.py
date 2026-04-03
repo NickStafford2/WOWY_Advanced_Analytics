@@ -14,7 +14,7 @@ from rawr_analytics.basketball.normalize import (
     normalize_source_league_game,
     validate_normalized_team_season_batch,
 )
-from rawr_analytics.basketball.nba_api import (
+from rawr_analytics.sources.nba_api import (
     SourceLeagueGame,
     dedupe_schedule_games,
     load_or_fetch_box_score,

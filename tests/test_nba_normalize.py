@@ -7,7 +7,7 @@ from rawr_analytics.basketball.normalize.normalize_game import (
     _extract_opponent,
     normalize_source_league_game,
 )
-from rawr_analytics.basketball.nba_api.models import (
+from rawr_analytics.sources.nba_api.models import (
     SourceBoxScore,
     SourceBoxScorePlayer,
     SourceBoxScoreTeam,

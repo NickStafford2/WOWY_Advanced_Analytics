@@ -6,18 +6,18 @@ import pytest
 
 from rawr_analytics.basketball.errors import PartialTeamSeasonError
 from rawr_analytics.basketball.normalize.normalize_game import normalize_source_league_game
-from rawr_analytics.basketball.nba_api.dedupe import dedupe_schedule_games
-from rawr_analytics.basketball.nba_api.models import (
+from rawr_analytics.sources.nba_api.dedupe import dedupe_schedule_games
+from rawr_analytics.sources.nba_api.models import (
     SourceBoxScorePlayer,
     SourceBoxScoreTeam,
     SourceLeagueGame,
 )
 
-from rawr_analytics.basketball.nba_api.parsers import (
+from rawr_analytics.sources.nba_api.parsers import (
     parse_box_score_payload,
     parse_league_schedule_payload,
 )
-from rawr_analytics.basketball.nba_api.rules import (
+from rawr_analytics.sources.nba_api.rules import (
     CANONICAL_SCHEDULE_SOURCE_ROW,
     CANONICAL_TEAM_SOURCE_ROW,
     INACTIVE_PLAYER_STATUS_ROW,
