@@ -31,6 +31,27 @@ class MetricScopeCatalogRow:
 
 
 @dataclass(frozen=True)
+class MetricScopeAvailability:
+    season_ids: list[str]
+    team_ids: list[int]
+
+
+@dataclass(frozen=True)
+class MetricSeasonSpanIds:
+    start_season_id: str
+    end_season_id: str
+
+
+@dataclass(frozen=True)
+class MetricScopeCatalog:
+    label: str
+    team_filter: str
+    season_type: str
+    availability: MetricScopeAvailability
+    full_span: MetricSeasonSpanIds | None
+
+
+@dataclass(frozen=True)
 class MetricFullSpanSeriesRow:
     snapshot_id: int | None
     metric_id: str

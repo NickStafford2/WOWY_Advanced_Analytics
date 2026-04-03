@@ -7,6 +7,7 @@ from dataclasses import dataclass
 from rawr_analytics.data.metric_store.models import (
     MetricFullSpanSeries,
     MetricFullSpanSeriesRow,
+    MetricScopeCatalog,
     MetricScopeCatalogRow,
     MetricSnapshotState,
 )
@@ -95,6 +96,7 @@ def _build_player_summary(row: MetricFullSpanSeriesRow) -> PlayerSummary:
 
 
 __all__ = [
+    "MetricScopeCatalog",
     "MetricScopeCatalogRow",
     "MetricScopeStoreState",
     "MetricSpanStoreRows",

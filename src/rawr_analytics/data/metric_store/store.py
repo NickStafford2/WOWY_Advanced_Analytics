@@ -20,6 +20,7 @@ from rawr_analytics.data.metric_store.full_span import (
 from rawr_analytics.data.metric_store.models import (
     MetricFullSpanPointRow,
     MetricFullSpanSeriesRow,
+    MetricScopeCatalog,
     MetricScopeCatalogRow,
 )
 from rawr_analytics.data.metric_store.rawr import RawrPlayerSeasonValueRow
@@ -30,11 +31,7 @@ from rawr_analytics.data.metric_store.wowy import WowyPlayerSeasonValueRow
 def replace_rawr_scope_snapshot(
     *,
     scope_key: str,
-    label: str,
-    team_filter: str,
-    season_type: str,
-    available_season_ids: list[str],
-    available_team_ids: list[int],
+    catalog: MetricScopeCatalog,
     build_version: str,
     source_fingerprint: str,
     rows: list[RawrPlayerSeasonValueRow],
@@ -49,7 +46,7 @@ def replace_rawr_scope_snapshot(
     series_rows, point_rows = build_rawr_full_span_rows(
         rows=rows,
         scope_key=scope_key,
-        season_ids=available_season_ids,
+        season_ids=catalog.availability.season_ids,
     )
     _replace_metric_scope_snapshot(
         metric_id="rawr",
@@ -59,11 +56,7 @@ def replace_rawr_scope_snapshot(
         catalog_row=_build_metric_scope_catalog_row(
             metric_id="rawr",
             scope_key=scope_key,
-            label=label,
-            team_filter=team_filter,
-            season_type=season_type,
-            available_season_ids=available_season_ids,
-            available_team_ids=available_team_ids,
+            catalog=catalog,
             updated_at=updated_at,
         ),
         series_rows=series_rows,
@@ -81,11 +74,7 @@ def replace_wowy_scope_snapshot(
     *,
     metric_id: str,
     scope_key: str,
-    label: str,
-    team_filter: str,
-    season_type: str,
-    available_season_ids: list[str],
-    available_team_ids: list[int],
+    catalog: MetricScopeCatalog,
     build_version: str,
     source_fingerprint: str,
     rows: list[WowyPlayerSeasonValueRow],
@@ -102,7 +91,7 @@ def replace_wowy_scope_snapshot(
         metric_id=metric_id,
         rows=rows,
         scope_key=scope_key,
-        season_ids=available_season_ids,
+        season_ids=catalog.availability.season_ids,
     )
     _replace_metric_scope_snapshot(
         metric_id=metric_id,
@@ -112,11 +101,7 @@ def replace_wowy_scope_snapshot(
         catalog_row=_build_metric_scope_catalog_row(
             metric_id=metric_id,
             scope_key=scope_key,
-            label=label,
-            team_filter=team_filter,
-            season_type=season_type,
-            available_season_ids=available_season_ids,
-            available_team_ids=available_team_ids,
+            catalog=catalog,
             updated_at=updated_at,
         ),
         series_rows=series_rows,
@@ -304,23 +289,23 @@ def _build_metric_scope_catalog_row(
     *,
     metric_id: str,
     scope_key: str,
-    label: str,
-    team_filter: str,
-    season_type: str,
-    available_season_ids: list[str],
-    available_team_ids: list[int],
+    catalog: MetricScopeCatalog,
     updated_at: str,
 ) -> MetricScopeCatalogRow:
     return MetricScopeCatalogRow(
         metric_id=metric_id,
         scope_key=scope_key,
-        label=label,
-        team_filter=team_filter,
-        season_type=season_type,
-        available_season_ids=available_season_ids,
-        available_team_ids=available_team_ids,
-        full_span_start_season_id=available_season_ids[0] if available_season_ids else None,
-        full_span_end_season_id=available_season_ids[-1] if available_season_ids else None,
+        label=catalog.label,
+        team_filter=catalog.team_filter,
+        season_type=catalog.season_type,
+        available_season_ids=catalog.availability.season_ids,
+        available_team_ids=catalog.availability.team_ids,
+        full_span_start_season_id=(
+            None if catalog.full_span is None else catalog.full_span.start_season_id
+        ),
+        full_span_end_season_id=(
+            None if catalog.full_span is None else catalog.full_span.end_season_id
+        ),
         updated_at=updated_at,
     )
 

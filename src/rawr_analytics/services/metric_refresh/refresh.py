@@ -10,6 +10,7 @@ from rawr_analytics.data.game_cache import (
     list_cached_team_seasons,
 )
 from rawr_analytics.data.metric_store import (
+    MetricScopeCatalog,
     RawrPlayerSeasonValueRow,
     WowyPlayerSeasonValueRow,
     clear_metric_scope_store,
@@ -17,6 +18,7 @@ from rawr_analytics.data.metric_store import (
     replace_rawr_scope_snapshot,
     replace_wowy_scope_snapshot,
 )
+from rawr_analytics.data.metric_store.models import MetricScopeAvailability, MetricSeasonSpanIds
 from rawr_analytics.data.metric_store_scope import build_scope_key, build_team_filter
 from rawr_analytics.metrics.constants import Metric, MetricSummary
 from rawr_analytics.metrics.rawr import (
@@ -42,7 +44,7 @@ from rawr_analytics.services._metric_inputs import (
     load_wowy_season_inputs,
 )
 from rawr_analytics.shared.scope import TeamSeasonScope
-from rawr_analytics.shared.season import Season, SeasonType
+from rawr_analytics.shared.season import SeasonType
 from rawr_analytics.shared.team import Team, normalize_teams, to_team_ids
 
 MetricStoreRefreshEventFn = Callable[["MetricStoreRefreshProgressEvent"], None]
@@ -119,9 +121,8 @@ class _MetricStoreRefreshPlan:
 class _MetricStoreRefreshScope:
     teams: list[Team] | None
     scope_key: str
-    team_filter: str
     scope_label: str
-    available_seasons: list[Season]
+    catalog: MetricScopeCatalog
 
 
 def refresh_metric_store(
@@ -293,10 +294,16 @@ def _refresh_metric_store_scope(
             False,
         )
 
+    catalog = _build_scope_catalog(
+        metric_label=metric_label,
+        scope=scope,
+        season_type=season_type,
+        available_teams=available_teams,
+    )
     if metric == Metric.RAWR:
         rows = _build_rawr_cached_rows(
             scope_key=scope.scope_key,
-            team_filter=scope.team_filter,
+            team_filter=scope.catalog.team_filter,
             season_type=season_type,
             teams=scope.teams,
             rawr_ridge_alpha=rawr_ridge_alpha,
@@ -317,11 +324,7 @@ def _refresh_metric_store_scope(
             )
         replace_rawr_scope_snapshot(
             scope_key=scope.scope_key,
-            label=metric_label,
-            team_filter=scope.team_filter,
-            season_type=season_type.to_nba_format(),
-            available_season_ids=[season.id for season in scope.available_seasons],
-            available_team_ids=[team.team_id for team in available_teams],
+            catalog=catalog,
             build_version=build_version,
             source_fingerprint=source_fingerprint,
             rows=rows,
@@ -331,18 +334,14 @@ def _refresh_metric_store_scope(
         rows = _build_wowy_cached_rows(
             metric=metric,
             scope_key=scope.scope_key,
-            team_filter=scope.team_filter,
+            team_filter=scope.catalog.team_filter,
             season_type=season_type,
             teams=scope.teams,
         )
         replace_wowy_scope_snapshot(
             metric_id=metric.value,
             scope_key=scope.scope_key,
-            label=metric_label,
-            team_filter=scope.team_filter,
-            season_type=season_type.to_nba_format(),
-            available_season_ids=[season.id for season in scope.available_seasons],
-            available_team_ids=[team.team_id for team in available_teams],
+            catalog=catalog,
             build_version=build_version,
             source_fingerprint=source_fingerprint,
             rows=rows,
@@ -372,20 +371,61 @@ def _build_refresh_scope(
     return _MetricStoreRefreshScope(
         teams=normalized_teams,
         scope_key=scope_key,
-        team_filter=team_filter,
         scope_label=(
             normalized_teams[0].current.abbreviation
             if normalized_teams and len(normalized_teams) == 1
             else team_filter or "all-teams"
         ),
-        available_seasons=sorted(
-            {
-                scope.season
-                for scope in cached_team_seasons
-                if normalized_team_ids is None or scope.team.team_id in normalized_team_ids
-            },
-            key=lambda season: season.id,
+        catalog=MetricScopeCatalog(
+            label="",
+            team_filter=team_filter,
+            season_type=season_type.to_nba_format(),
+            availability=MetricScopeAvailability(
+                season_ids=[
+                    season.id
+                    for season in sorted(
+                        {
+                            scope.season
+                            for scope in cached_team_seasons
+                            if normalized_team_ids is None
+                            or scope.team.team_id in normalized_team_ids
+                        },
+                        key=lambda season: season.id,
+                    )
+                ],
+                team_ids=[],
+            ),
+            full_span=None,
         ),
+    )
+
+
+def _build_scope_catalog(
+    *,
+    metric_label: str,
+    scope: _MetricStoreRefreshScope,
+    season_type: SeasonType,
+    available_teams: list[Team],
+) -> MetricScopeCatalog:
+    season_ids = scope.catalog.availability.season_ids
+    return MetricScopeCatalog(
+        label=metric_label,
+        team_filter=scope.catalog.team_filter,
+        season_type=season_type.to_nba_format(),
+        availability=MetricScopeAvailability(
+            season_ids=season_ids,
+            team_ids=[team.team_id for team in available_teams],
+        ),
+        full_span=_build_metric_season_span_ids(season_ids),
+    )
+
+
+def _build_metric_season_span_ids(season_ids: list[str]) -> MetricSeasonSpanIds | None:
+    if not season_ids:
+        return None
+    return MetricSeasonSpanIds(
+        start_season_id=season_ids[0],
+        end_season_id=season_ids[-1],
     )
 
 
