@@ -11,7 +11,7 @@ from rawr_analytics.cli._ingest_terminal import (
     render_team_validation_failed_line,
 )
 from rawr_analytics.cli._progress_bar import TerminalProgressBar
-from rawr_analytics.ingest import (
+from rawr_analytics.sources.nba_api.ingest import (
     IngestSeasonStartedEvent,
     IngestTeamCompletedEvent,
     IngestTeamProgressEvent,

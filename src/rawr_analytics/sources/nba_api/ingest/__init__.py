@@ -1,4 +1,4 @@
-from rawr_analytics.ingest.nba_api.api import (
+from rawr_analytics.sources.nba_api.ingest.api import (
     FailureLogFn,
     IngestEvent,
     IngestEventFn,

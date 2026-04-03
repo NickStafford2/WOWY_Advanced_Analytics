@@ -5,7 +5,10 @@ import math
 import re
 from dataclasses import dataclass
 
-from rawr_analytics.sources.nba_api._models import SourceBoxScorePlayer, SourceBoxScoreTeam
+from rawr_analytics.sources.nba_api.download._models import (
+    SourceBoxScorePlayer,
+    SourceBoxScoreTeam,
+)
 
 
 @dataclass(frozen=True)

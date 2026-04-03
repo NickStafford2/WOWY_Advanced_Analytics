@@ -8,14 +8,14 @@ from rawr_analytics.shared.player import PlayerSummary
 from rawr_analytics.shared.scope import TeamSeasonScope
 from rawr_analytics.shared.season import Season
 from rawr_analytics.shared.team import Team
-from rawr_analytics.sources.nba_api._models import (
+from rawr_analytics.sources.nba_api.download._models import (
     SourceBoxScore,
     SourceBoxScorePlayer,
     SourceBoxScoreTeam,
     SourceLeagueGame,
     SourceLeagueSchedule,
 )
-from rawr_analytics.sources.nba_api.rules import (
+from rawr_analytics.sources.nba_api.download.rules import (
     classify_source_player_row,
     classify_source_schedule_row,
     classify_source_team_row,

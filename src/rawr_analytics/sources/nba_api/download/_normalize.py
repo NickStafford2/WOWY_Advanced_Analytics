@@ -4,13 +4,13 @@ from rawr_analytics.shared.game import NormalizedGamePlayerRecord, NormalizedGam
 from rawr_analytics.shared.player import PlayerSummary
 from rawr_analytics.shared.season import Season
 from rawr_analytics.shared.team import Team
-from rawr_analytics.sources.nba_api._models import (
+from rawr_analytics.sources.nba_api.download._models import (
     SourceBoxScore,
     SourceBoxScorePlayer,
     SourceBoxScoreTeam,
     SourceLeagueGame,
 )
-from rawr_analytics.sources.nba_api.rules import (
+from rawr_analytics.sources.nba_api.download.rules import (
     classify_source_player_row,
     format_source_row,
     format_source_rows,

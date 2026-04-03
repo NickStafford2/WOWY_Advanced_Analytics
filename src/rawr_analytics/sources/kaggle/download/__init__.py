@@ -1,4 +1,4 @@
-from rawr_analytics.download.kaggle.api import KaggleDownloadResult, download_dataset
+from rawr_analytics.sources.kaggle.download.api import KaggleDownloadResult, download_dataset
 
 __all__ = [
     "KaggleDownloadResult",

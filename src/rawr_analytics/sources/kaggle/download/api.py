@@ -3,7 +3,10 @@ from __future__ import annotations
 from dataclasses import dataclass
 from pathlib import Path
 
-from rawr_analytics.download.kaggle._dataset import DATASET_HANDLE, download_dataset_to_repo
+from rawr_analytics.sources.kaggle.download._dataset import (
+    DATASET_HANDLE,
+    download_dataset_to_repo,
+)
 
 
 @dataclass(frozen=True)

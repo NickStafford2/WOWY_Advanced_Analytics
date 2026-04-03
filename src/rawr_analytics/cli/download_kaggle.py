@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import sys
 
-from rawr_analytics.download.kaggle import download_dataset
+from rawr_analytics.sources.kaggle.download import download_dataset
 
 
 def main(argv: list[str] | None = None) -> int:

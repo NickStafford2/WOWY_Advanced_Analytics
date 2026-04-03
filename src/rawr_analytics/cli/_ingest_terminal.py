@@ -3,7 +3,7 @@ from __future__ import annotations
 import json
 import sys
 
-from rawr_analytics.ingest import (
+from rawr_analytics.sources.nba_api.ingest import (
     IngestEvent,
     IngestResult,
     IngestSeasonStartedEvent,

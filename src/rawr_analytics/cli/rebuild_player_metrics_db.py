@@ -11,7 +11,7 @@ from rawr_analytics.cli._ingest_terminal import (
 from rawr_analytics.cli._rebuild_terminal import (
     render_rebuild_event,
 )
-from rawr_analytics.ingest import SeasonRangeFailure
+from rawr_analytics.sources.nba_api.ingest import SeasonRangeFailure
 from rawr_analytics.services.rebuild import (
     format_rebuild_validation_summary,
     rebuild_player_metrics_db,

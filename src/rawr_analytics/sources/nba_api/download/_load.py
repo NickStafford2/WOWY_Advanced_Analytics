@@ -2,12 +2,12 @@ from __future__ import annotations
 
 from collections.abc import Callable
 
-from rawr_analytics.sources.nba_api._cache import (
+from rawr_analytics.sources.nba_api.download._cache import (
     DEFAULT_NBA_API_DATA_DIR,
     box_score_payload_is_empty,
     load_cached_payload,
 )
-from rawr_analytics.sources.nba_api._parsers import parse_box_score_payload
+from rawr_analytics.sources.nba_api.download._parsers import parse_box_score_payload
 
 
 def load_player_names_from_cache(

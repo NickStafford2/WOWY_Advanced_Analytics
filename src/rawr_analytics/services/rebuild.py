@@ -9,7 +9,7 @@ from rawr_analytics.data import (
     render_rebuild_validation_summary,
     validate_rebuild_storage,
 )
-from rawr_analytics.ingest.nba_api import (
+from rawr_analytics.sources.nba_api.ingest import (
     FailureLogFn,
     IngestEvent,
     IngestFailureLogEntry,

@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from rawr_analytics.data.game_cache import replace_team_season_normalized_rows
 from rawr_analytics.data.game_cache.rows import NormalizedGamePlayerRow, NormalizedGameRow
-from rawr_analytics.ingest.nba_api._models import IngestResult
+from rawr_analytics.sources.nba_api.ingest._models import IngestResult
 from rawr_analytics.shared.game import NormalizedGamePlayerRecord, NormalizedGameRecord
 
 
