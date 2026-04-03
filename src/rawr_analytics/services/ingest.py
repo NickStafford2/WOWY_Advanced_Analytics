@@ -11,7 +11,7 @@ from rawr_analytics.services._ingest_errors import (
     GameNormalizationFailure,
     PartialTeamSeasonError,
 )
-from rawr_analytics.game_data.models import (
+from rawr_analytics.shared.game import (
     NormalizedGamePlayerRecord,
     NormalizedGameRecord,
     NormalizedTeamSeasonBatch,

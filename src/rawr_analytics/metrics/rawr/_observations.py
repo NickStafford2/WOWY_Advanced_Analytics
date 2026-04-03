@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from collections import defaultdict
 
-from rawr_analytics.game_data.models import NormalizedGamePlayerRecord, NormalizedGameRecord
+from rawr_analytics.shared.game import NormalizedGamePlayerRecord, NormalizedGameRecord
 from rawr_analytics.metrics.rawr.models import RawrObservation
 from rawr_analytics.shared.season import Season
 

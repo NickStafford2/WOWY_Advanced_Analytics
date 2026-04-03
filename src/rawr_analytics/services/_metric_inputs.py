@@ -9,7 +9,7 @@ from rawr_analytics.data.game_cache import (
 )
 from rawr_analytics.data.game_cache.rows import NormalizedGamePlayerRow, NormalizedGameRow
 from rawr_analytics.data.scope_resolver import resolve_team_seasons
-from rawr_analytics.game_data.models import NormalizedGamePlayerRecord, NormalizedGameRecord
+from rawr_analytics.shared.game import NormalizedGamePlayerRecord, NormalizedGameRecord
 from rawr_analytics.metrics.rawr._observations import (
     _build_rawr_observations,
     _build_rawr_player_season_minute_stats,

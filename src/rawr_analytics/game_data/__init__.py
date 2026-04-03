@@ -1,6 +1,6 @@
 """Public API for canonical basketball game records and rules."""
 
-from rawr_analytics.game_data.models import (
+from rawr_analytics.shared.game import (
     NormalizedGamePlayerRecord,
     NormalizedGameRecord,
     NormalizedTeamSeasonBatch,

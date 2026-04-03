@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from rawr_analytics.game_data.models import NormalizedGamePlayerRecord, NormalizedGameRecord
+from rawr_analytics.shared.game import NormalizedGamePlayerRecord, NormalizedGameRecord
 from rawr_analytics.shared.player import PlayerSummary
 from rawr_analytics.shared.season import Season
 from rawr_analytics.shared.team import Team
