@@ -8,12 +8,12 @@ Examples:
 - team identity and historical continuity rules
 """
 
-from rawr_analytics.nba.errors import (
+from rawr_analytics.basketball.errors import (
     FetchError,
     PartialTeamSeasonError,
 )
-from rawr_analytics.nba.ingest_logging import append_ingest_failure_log
-from rawr_analytics.nba.player_participation import (
+from rawr_analytics.basketball.ingest_logging import append_ingest_failure_log
+from rawr_analytics.basketball.player_participation import (
     has_positive_minutes,
     player_has_positive_minutes,
 )

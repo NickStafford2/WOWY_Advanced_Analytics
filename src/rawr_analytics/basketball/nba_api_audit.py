@@ -8,13 +8,13 @@ from collections.abc import Callable
 from dataclasses import dataclass
 from pathlib import Path
 
-from rawr_analytics.nba.source.cache import DEFAULT_SOURCE_DATA_DIR
-from rawr_analytics.nba.source.dedupe import dedupe_schedule_games
-from rawr_analytics.nba.source.parsers import (
+from rawr_analytics.basketball.nba_api.cache import DEFAULT_NBA_API_DATA_DIR
+from rawr_analytics.basketball.nba_api.dedupe import dedupe_schedule_games
+from rawr_analytics.basketball.nba_api.parsers import (
     parse_box_score_payload,
     parse_league_schedule_payload,
 )
-from rawr_analytics.nba.source.rules import (
+from rawr_analytics.basketball.nba_api.rules import (
     classify_source_player_row,
     classify_source_schedule_row,
     classify_source_team_row,
@@ -63,8 +63,8 @@ class SourceAuditReport:
         }
 
 
-def _audit_nba_source(
-    source_dir: Path = DEFAULT_SOURCE_DATA_DIR,
+def _audit_nba_api(
+    source_dir: Path = DEFAULT_NBA_API_DATA_DIR,
     *,
     progress: AuditProgressFn | None = None,
 ) -> SourceAuditReport:
@@ -165,13 +165,13 @@ def _render_source_audit_report(report: SourceAuditReport) -> str:
 
 def _build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
-        description="Audit cached NBA source payloads for known anomalies and hard failures."
+        description="Audit cached nba_api payloads for known anomalies and hard failures."
     )
     parser.add_argument(
         "--source-dir",
         type=Path,
-        default=DEFAULT_SOURCE_DATA_DIR,
-        help="Root source cache directory to audit.",
+        default=DEFAULT_NBA_API_DATA_DIR,
+        help="Root nba_api cache directory to audit.",
     )
     parser.add_argument(
         "--json",
@@ -211,7 +211,7 @@ def main(argv: list[str] | None = None) -> int:
 
     progress = None if args.json else _render_progress
     try:
-        report = _audit_nba_source(args.source_dir, progress=progress)
+        report = _audit_nba_api(args.source_dir, progress=progress)
     finally:
         if progress is not None:
             _clear_progress_line()

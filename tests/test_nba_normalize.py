@@ -2,12 +2,12 @@ from __future__ import annotations
 
 import pytest
 
-from rawr_analytics.nba.normalize.normalize_game import (
+from rawr_analytics.basketball.normalize.normalize_game import (
     _extract_is_home,
     _extract_opponent,
     normalize_source_league_game,
 )
-from rawr_analytics.nba.source.models import (
+from rawr_analytics.basketball.nba_api.models import (
     SourceBoxScore,
     SourceBoxScorePlayer,
     SourceBoxScoreTeam,

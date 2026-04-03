@@ -3,8 +3,8 @@ from __future__ import annotations
 from collections import defaultdict
 
 from rawr_analytics.metrics.rawr.models import RawrObservation
-from rawr_analytics.nba import player_has_positive_minutes
-from rawr_analytics.nba.models import NormalizedGamePlayerRecord, NormalizedGameRecord
+from rawr_analytics.basketball import player_has_positive_minutes
+from rawr_analytics.basketball.models import NormalizedGamePlayerRecord, NormalizedGameRecord
 from rawr_analytics.shared.season import Season
 
 _LINEUP_WEIGHT_SUM = 5.0

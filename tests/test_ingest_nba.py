@@ -4,20 +4,20 @@ from pathlib import Path
 
 import pytest
 
-from rawr_analytics.nba.errors import PartialTeamSeasonError
-from rawr_analytics.nba.normalize.normalize_game import normalize_source_league_game
-from rawr_analytics.nba.source.dedupe import dedupe_schedule_games
-from rawr_analytics.nba.source.models import (
+from rawr_analytics.basketball.errors import PartialTeamSeasonError
+from rawr_analytics.basketball.normalize.normalize_game import normalize_source_league_game
+from rawr_analytics.basketball.nba_api.dedupe import dedupe_schedule_games
+from rawr_analytics.basketball.nba_api.models import (
     SourceBoxScorePlayer,
     SourceBoxScoreTeam,
     SourceLeagueGame,
 )
 
-from rawr_analytics.nba.source.parsers import (
+from rawr_analytics.basketball.nba_api.parsers import (
     parse_box_score_payload,
     parse_league_schedule_payload,
 )
-from rawr_analytics.nba.source.rules import (
+from rawr_analytics.basketball.nba_api.rules import (
     CANONICAL_SCHEDULE_SOURCE_ROW,
     CANONICAL_TEAM_SOURCE_ROW,
     INACTIVE_PLAYER_STATUS_ROW,
@@ -28,7 +28,7 @@ from rawr_analytics.nba.source.rules import (
 )
 from rawr_analytics.workflows.nba_ingest import ingest_team_season
 
-SOURCE_DATA_DIR = Path("data/source/nba")
+SOURCE_DATA_DIR = Path("data/source/nba_api")
 
 
 def _sample_cached_team_seasons() -> list[tuple[str, str]]:
@@ -36,7 +36,7 @@ def _sample_cached_team_seasons() -> list[tuple[str, str]]:
         SOURCE_DATA_DIR.glob("team_seasons/*_regular_season_leaguegamefinder.json")
     )
     assert cache_paths, (
-        "Expected cached NBA team-season payloads under data/source/nba/team_seasons"
+        "Expected cached NBA team-season payloads under data/source/nba_api/team_seasons"
     )
     latest_season = max(path.stem.split("_", maxsplit=2)[1] for path in cache_paths)
     cache_paths = [

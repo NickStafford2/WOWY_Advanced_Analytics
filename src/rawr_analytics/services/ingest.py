@@ -5,16 +5,16 @@ from dataclasses import dataclass
 
 from rawr_analytics.data.game_cache import replace_team_season_normalized_rows
 from rawr_analytics.data.game_cache.rows import NormalizedGamePlayerRow, NormalizedGameRow
-from rawr_analytics.nba import FetchError, PartialTeamSeasonError
-from rawr_analytics.nba.errors import GameNormalizationFailure
-from rawr_analytics.nba.normalize import (
+from rawr_analytics.basketball import FetchError, PartialTeamSeasonError
+from rawr_analytics.basketball.errors import GameNormalizationFailure
+from rawr_analytics.basketball.normalize import (
     NormalizedGamePlayerRecord,
     NormalizedGameRecord,
     NormalizedTeamSeasonBatch,
     normalize_source_league_game,
     validate_normalized_team_season_batch,
 )
-from rawr_analytics.nba.source import (
+from rawr_analytics.basketball.nba_api import (
     SourceLeagueGame,
     dedupe_schedule_games,
     load_or_fetch_box_score,
@@ -452,7 +452,7 @@ def _store_team_season(result: IngestResult) -> None:
             f"{result.request.season.id}_{result.request.season.season_type.to_slug()}"
         ),
         source_snapshot="ingest-build-v2",
-        source_kind="nba-api",
+        source_kind="nba_api",
         expected_games_row_count=result.summary.total_games,
         skipped_games_row_count=0,
     )

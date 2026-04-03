@@ -4,14 +4,14 @@ import math
 import re
 from typing import NoReturn
 
-from rawr_analytics.nba.source.models import (
+from rawr_analytics.basketball.nba_api.models import (
     SourceBoxScore,
     SourceBoxScorePlayer,
     SourceBoxScoreTeam,
     SourceLeagueGame,
     SourceLeagueSchedule,
 )
-from rawr_analytics.nba.source.rules import (
+from rawr_analytics.basketball.nba_api.rules import (
     classify_source_player_row,
     classify_source_schedule_row,
     classify_source_team_row,

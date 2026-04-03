@@ -7,7 +7,7 @@ from rawr_analytics.shared.team import Team
 
 
 @dataclass
-class NbaIngestError(Exception):
+class IngestError(Exception):
     message: str
 
     def __str__(self) -> str:
@@ -15,7 +15,7 @@ class NbaIngestError(Exception):
 
 
 @dataclass
-class FetchError(NbaIngestError):
+class FetchError(IngestError):
     resource: str
     identifier: str
     attempts: int
@@ -42,7 +42,7 @@ class GameNormalizationFailure:
 
 
 @dataclass
-class PartialTeamSeasonError(NbaIngestError):
+class PartialTeamSeasonError(IngestError):
     team: Team
     season: Season
     failed_game_ids: list[str]

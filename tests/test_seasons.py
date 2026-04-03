@@ -6,7 +6,7 @@ import pytest
 
 from rawr_analytics.data.game_cache import list_cached_team_seasons
 from rawr_analytics.data.scopes import TeamSeasonScope
-from rawr_analytics.nba.seasons import canonicalize_season_year_string
+from rawr_analytics.basketball.seasons import canonicalize_season_year_string
 from tests.support import game, player, seed_db_from_team_seasons
 
 

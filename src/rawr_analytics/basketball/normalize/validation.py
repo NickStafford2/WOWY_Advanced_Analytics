@@ -5,7 +5,7 @@ import re
 from collections import defaultdict
 from datetime import date
 
-from rawr_analytics.nba.models import (
+from rawr_analytics.basketball.models import (
     NormalizedGamePlayerRecord,
     NormalizedGameRecord,
     NormalizedTeamSeasonBatch,

@@ -5,7 +5,7 @@ from dataclasses import dataclass
 from datetime import UTC, datetime
 from pathlib import Path
 
-from rawr_analytics.nba.errors import (
+from rawr_analytics.basketball.errors import (
     BoxScoreFetchError,
     FetchError,
     GameNormalizationFailure,

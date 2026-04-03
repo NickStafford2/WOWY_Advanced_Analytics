@@ -22,8 +22,8 @@ from rawr_analytics.metrics.wowy.models import (
     WowyPlayerContext,
     WowySeasonInput,
 )
-from rawr_analytics.nba import player_has_positive_minutes
-from rawr_analytics.nba.models import NormalizedGamePlayerRecord, NormalizedGameRecord
+from rawr_analytics.basketball import player_has_positive_minutes
+from rawr_analytics.basketball.models import NormalizedGamePlayerRecord, NormalizedGameRecord
 from rawr_analytics.shared.player import PlayerMinutes, PlayerSummary
 from rawr_analytics.shared.scope import TeamSeasonScope
 from rawr_analytics.shared.season import Season, SeasonType

@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from rawr_analytics.nba.models import NormalizedGamePlayerRecord
+from rawr_analytics.basketball.models import NormalizedGamePlayerRecord
 
 
 def has_positive_minutes(minutes: float | None) -> bool:

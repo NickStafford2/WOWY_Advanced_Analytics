@@ -2,13 +2,13 @@
 
 from __future__ import annotations
 
-from rawr_analytics.nba.models import (
+from rawr_analytics.basketball.models import (
     NormalizedGamePlayerRecord,
     NormalizedGameRecord,
     NormalizedTeamSeasonBatch,
 )
-from rawr_analytics.nba.normalize.normalize_game import normalize_source_league_game
-from rawr_analytics.nba.normalize.validation import (
+from rawr_analytics.basketball.normalize.normalize_game import normalize_source_league_game
+from rawr_analytics.basketball.normalize.validation import (
     validate_normalized_cache_batch,
     validate_normalized_game_player_record,
     validate_normalized_game_record,

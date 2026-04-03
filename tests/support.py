@@ -4,8 +4,8 @@ from typing import TypeAlias
 
 import rawr_analytics.data.game_cache.repository as game_cache_repository
 from rawr_analytics.data.game_cache.repository import replace_team_season_normalized_rows
-from rawr_analytics.nba.models import NormalizedGamePlayerRecord, NormalizedGameRecord
-from rawr_analytics.nba.team_identity import resolve_team_id
+from rawr_analytics.basketball.models import NormalizedGamePlayerRecord, NormalizedGameRecord
+from rawr_analytics.basketball.team_identity import resolve_team_id
 
 TeamSeasonSeed: TypeAlias = tuple[
     str,

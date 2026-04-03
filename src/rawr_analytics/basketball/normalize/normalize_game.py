@@ -1,13 +1,13 @@
 from __future__ import annotations
 
-from rawr_analytics.nba.models import NormalizedGamePlayerRecord, NormalizedGameRecord
-from rawr_analytics.nba.source.models import (
+from rawr_analytics.basketball.models import NormalizedGamePlayerRecord, NormalizedGameRecord
+from rawr_analytics.basketball.nba_api.models import (
     SourceBoxScore,
     SourceBoxScorePlayer,
     SourceBoxScoreTeam,
     SourceLeagueGame,
 )
-from rawr_analytics.nba.source.rules import (
+from rawr_analytics.basketball.nba_api.rules import (
     classify_source_player_row,
     format_source_row,
     format_source_rows,

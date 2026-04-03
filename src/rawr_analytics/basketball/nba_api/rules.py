@@ -5,7 +5,7 @@ import math
 import re
 from dataclasses import dataclass
 
-from rawr_analytics.nba.source.models import SourceBoxScorePlayer, SourceBoxScoreTeam
+from rawr_analytics.basketball.nba_api.models import SourceBoxScorePlayer, SourceBoxScoreTeam
 
 
 @dataclass(frozen=True)

@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from rawr_analytics.nba import append_ingest_failure_log
+from rawr_analytics.basketball import append_ingest_failure_log
 from rawr_analytics.services import IngestFailureLogEntry
 
 

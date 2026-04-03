@@ -13,12 +13,12 @@ from nba_api.stats.endpoints import (
     leaguegamefinder,
 )
 
-from rawr_analytics.nba.errors import BoxScoreFetchError, LeagueGamesFetchError
+from rawr_analytics.basketball.errors import BoxScoreFetchError, LeagueGamesFetchError
 from rawr_analytics.shared.common import LogFn
 from rawr_analytics.shared.season import Season
 from rawr_analytics.shared.team import Team
 
-DEFAULT_SOURCE_DATA_DIR = Path("data/source/nba")
+DEFAULT_NBA_API_DATA_DIR = Path("data/source/nba_api")
 _LEAGUE_GAMES_REQUEST_RETRIES = 3
 _LEAGUE_GAMES_RETRY_BACKOFF_SECONDS = 2.0
 _LEAGUE_GAMES_REQUEST_DELAY_SECONDS = 0.6
@@ -168,19 +168,19 @@ def _league_games_cache_path(
         f"{team.abbreviation(season=season)}_{season}_"
         f"{season.season_type.to_nba_format().lower().replace(' ', '_')}_leaguegamefinder.json"
     )
-    return DEFAULT_SOURCE_DATA_DIR / "team_seasons" / filename
+    return DEFAULT_NBA_API_DATA_DIR / "team_seasons" / filename
 
 
 def _box_score_cache_path(game_id: str) -> Path:
-    return DEFAULT_SOURCE_DATA_DIR / "boxscores" / f"{game_id}_boxscoretraditionalv2.json"
+    return DEFAULT_NBA_API_DATA_DIR / "boxscores" / f"{game_id}_boxscoretraditionalv2.json"
 
 
 def _box_score_v3_cache_path(game_id: str) -> Path:
-    return DEFAULT_SOURCE_DATA_DIR / "boxscores" / f"{game_id}_boxscoretraditionalv3.json"
+    return DEFAULT_NBA_API_DATA_DIR / "boxscores" / f"{game_id}_boxscoretraditionalv3.json"
 
 
 def _box_score_live_cache_path(game_id: str) -> Path:
-    return DEFAULT_SOURCE_DATA_DIR / "boxscores" / f"{game_id}_boxscorelive.json"
+    return DEFAULT_NBA_API_DATA_DIR / "boxscores" / f"{game_id}_boxscorelive.json"
 
 
 def _box_score_cache_paths(game_id: str) -> tuple[Path, Path, Path]:
@@ -288,7 +288,7 @@ def box_score_payload_is_empty(payload: dict) -> bool:
 
 __all__ = [
     "BOX_SCORE_REQUEST_TIMEOUT_SECONDS",
-    "DEFAULT_SOURCE_DATA_DIR",
+    "DEFAULT_NBA_API_DATA_DIR",
     "LEAGUE_GAMES_REQUEST_TIMEOUT_SECONDS",
     "_box_score_cache_path",
     "_box_score_cache_paths",
