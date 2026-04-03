@@ -1,6 +1,3 @@
-from __future__ import annotations
-
-
 def validate_top_n_and_minutes(
     top_n: int | None = None,
     min_average_minutes: float | None = None,

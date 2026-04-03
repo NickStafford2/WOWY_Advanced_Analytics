@@ -1,7 +1,7 @@
 from __future__ import annotations
 
+from rawr_analytics.metrics._validation import validate_top_n_and_minutes
 from rawr_analytics.metrics.wowy.models import WowyPlayerContext, WowyRequest, WowySeasonInput
-from rawr_analytics.shared.filters import validate_top_n_and_minutes
 
 
 def validate_filters(
