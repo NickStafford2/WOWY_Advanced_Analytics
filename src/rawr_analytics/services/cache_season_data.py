@@ -8,13 +8,6 @@ from rawr_analytics.nba import (
     PartialTeamSeasonError,
     append_ingest_failure_log,
 )
-from rawr_analytics.services import (
-    IngestRefreshRequest,
-    IngestResult,
-    SeasonRangeFailure,
-    SeasonRangeResult,
-    refresh_season_range,
-)
 from rawr_analytics.services._render import (
     render_failure_summary,
     render_partial_failure_details,
@@ -23,6 +16,13 @@ from rawr_analytics.services._render import (
     render_team_fetch_failed_line,
     render_team_partial_failed_line,
     render_team_validation_failed_line,
+)
+from rawr_analytics.services.ingest import (
+    IngestRefreshRequest,
+    IngestResult,
+    SeasonRangeFailure,
+    SeasonRangeResult,
+    refresh_season_range,
 )
 from rawr_analytics.shared import Season
 
