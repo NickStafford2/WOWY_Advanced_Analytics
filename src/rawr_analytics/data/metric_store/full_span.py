@@ -8,12 +8,12 @@ from rawr_analytics.data.metric_store.models import (
 )
 from rawr_analytics.data.metric_store.rawr import RawrPlayerSeasonValueRow
 from rawr_analytics.data.metric_store.wowy import WowyPlayerSeasonValueRow
-from rawr_analytics.shared.player import PlayerSummary
 
 
 @dataclass(frozen=True)
 class _PlayerSeasonValue:
-    player: PlayerSummary
+    player_id: int
+    player_name: str
     season_id: str
     value: float
 
@@ -30,9 +30,10 @@ def build_rawr_full_span_rows(
         season_ids=season_ids,
         player_season_values=[
             _PlayerSeasonValue(
-                player=row.value.player,
-                season_id=row.value.season_id,
-                value=row.value.result.coefficient,
+                player_id=row.player_id,
+                player_name=row.player_name,
+                season_id=row.season_id,
+                value=row.coefficient,
             )
             for row in rows
         ],
@@ -48,13 +49,14 @@ def build_wowy_full_span_rows(
 ) -> tuple[list[MetricFullSpanSeriesRow], list[MetricFullSpanPointRow]]:
     player_season_values: list[_PlayerSeasonValue] = []
     for row in rows:
-        if row.value.result.value is None:
+        if row.value is None:
             continue
         player_season_values.append(
             _PlayerSeasonValue(
-                player=row.value.player,
-                season_id=row.value.season_id,
-                value=row.value.result.value,
+                player_id=row.player_id,
+                player_name=row.player_name,
+                season_id=row.season_id,
+                value=row.value,
             )
         )
     return _build_metric_full_span_rows(
@@ -78,10 +80,10 @@ def _build_metric_full_span_rows(
     season_values: dict[int, dict[str, float]] = {}
 
     for row in player_season_values:
-        player_id = row.player.player_id
+        player_id = row.player_id
         totals[player_id] = totals.get(player_id, 0.0) + row.value
         counts[player_id] = counts.get(player_id, 0) + 1
-        names[player_id] = row.player.player_name
+        names[player_id] = row.player_name
         season_values.setdefault(player_id, {})[row.season_id] = row.value
 
     span_length = len(season_ids) or 1

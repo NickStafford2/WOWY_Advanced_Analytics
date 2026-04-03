@@ -2,12 +2,17 @@ from __future__ import annotations
 
 from typing import cast
 
-from rawr_analytics.data.metric_store import load_rawr_player_season_value_rows
+from rawr_analytics.data.metric_store import (
+    RawrPlayerSeasonValueRow,
+    load_rawr_player_season_value_rows,
+)
 from rawr_analytics.metrics.constants import Metric
 from rawr_analytics.metrics.rawr import (
     RawrCustomQueryResult,
+    RawrPlayerSeasonValue,
     RawrQuery,
     RawrQueryFilters,
+    RawrValue,
     build_cached_leaderboard_payload,
     build_custom_leaderboard_payload,
     build_export_table,
@@ -25,6 +30,7 @@ from rawr_analytics.services._metric_scope import (
     season_ids,
     selected_seasons,
 )
+from rawr_analytics.shared.player import PlayerMinutes, PlayerSummary
 
 type JSONScalar = None | bool | int | float | str
 type JSONValue = JSONScalar | list[JSONValue] | dict[str, JSONValue]
@@ -72,10 +78,11 @@ def build_rawr_query_export(
             min_total_minutes=query.min_total_minutes,
             min_games=query.min_games,
         )
+        values = _build_rawr_store_values(store_rows)
         return cast(
             MetricQueryExport,
             build_export_table(
-                rows=[row.value for row in store_rows],
+                rows=values,
                 seasons=selected_seasons(query.seasons, catalog),
             ),
         )
@@ -110,9 +117,10 @@ def _build_rawr_view_payload(
             min_total_minutes=query.min_total_minutes,
             min_games=query.min_games,
         )
+        values = _build_rawr_store_values(store_rows)
         return cast(
             dict[str, JSONValue],
-            build_player_seasons_payload([row.value for row in store_rows]),
+            build_player_seasons_payload(values),
         )
 
     if view == "cached-leaderboard":
@@ -124,13 +132,14 @@ def _build_rawr_view_payload(
             min_total_minutes=query.min_total_minutes,
             min_games=query.min_games,
         )
+        values = _build_rawr_store_values(store_rows)
         payload = cast(
             dict[str, JSONValue],
             build_cached_leaderboard_payload(
                 metric_label=catalog.metric_label,
                 available_seasons=catalog.available_seasons,
                 available_teams=catalog.available_teams,
-                rows=[row.value for row in store_rows],
+                rows=values,
                 seasons=selected_seasons(query.seasons, catalog),
                 top_n=query.top_n,
             ),
@@ -176,6 +185,29 @@ def _build_rawr_custom_query_result(query: RawrQuery) -> RawrCustomQueryResult:
         min_average_minutes=query.min_average_minutes,
         min_total_minutes=query.min_total_minutes,
     )
+
+
+def _build_rawr_store_values(
+    rows: list[RawrPlayerSeasonValueRow],
+) -> list[RawrPlayerSeasonValue]:
+    return [
+        RawrPlayerSeasonValue(
+            season_id=row.season_id,
+            player=PlayerSummary(
+                player_id=row.player_id,
+                player_name=row.player_name,
+            ),
+            minutes=PlayerMinutes(
+                average_minutes=row.average_minutes,
+                total_minutes=row.total_minutes,
+            ),
+            result=RawrValue(
+                games=row.games,
+                coefficient=row.coefficient,
+            ),
+        )
+        for row in rows
+    ]
 
 
 def _build_rawr_filters_payload(query: RawrQuery) -> RawrQueryFilters:

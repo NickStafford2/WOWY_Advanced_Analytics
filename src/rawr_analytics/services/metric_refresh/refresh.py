@@ -25,15 +25,11 @@ from rawr_analytics.metrics.rawr import (
     DEFAULT_RAWR_SHRINKAGE_MINUTE_SCALE,
     DEFAULT_RAWR_SHRINKAGE_MODE,
     DEFAULT_RAWR_SHRINKAGE_STRENGTH,
-    RawrPlayerSeasonValue,
-    RawrValue,
     prepare_rawr_player_season_records,
 )
 from rawr_analytics.metrics.rawr import describe_metric as describe_rawr_metric
 from rawr_analytics.metrics.wowy import (
     DEFAULT_WOWY_SHRINKAGE_PRIOR_GAMES,
-    WowyPlayerSeasonValue,
-    WowyPlayerValue,
     compute_wowy_shrinkage_score,
     prepare_wowy_player_season_records,
 )
@@ -459,15 +455,13 @@ def _build_rawr_cached_rows(
             scope_key=scope_key,
             team_filter=team_filter,
             season_type=season_type.value,
-            value=RawrPlayerSeasonValue(
-                season_id=record.season.id,
-                player=record.player,
-                minutes=record.minutes,
-                result=RawrValue(
-                    games=record.result.games,
-                    coefficient=record.result.coefficient,
-                ),
-            ),
+            season_id=record.season.id,
+            player_id=record.player.player_id,
+            player_name=record.player.player_name,
+            games=record.result.games,
+            coefficient=record.result.coefficient,
+            average_minutes=record.minutes.average_minutes,
+            total_minutes=record.minutes.total_minutes,
         )
         for record in records
     ]
@@ -520,23 +514,17 @@ def _build_wowy_cached_rows(
                 scope_key=scope_key,
                 team_filter=team_filter,
                 season_type=season_type.value,
-                value=WowyPlayerSeasonValue(
-                    season_id=record.season.id,
-                    player=record.player,
-                    minutes=record.minutes,
-                    result=WowyPlayerValue(
-                        games_with=record.result.games_with,
-                        games_without=record.result.games_without,
-                        avg_margin_with=record.result.avg_margin_with,
-                        avg_margin_without=record.result.avg_margin_without,
-                        value=value,
-                        raw_value=(
-                            record.result.value
-                            if include_raw_wowy_score
-                            else None
-                        ),
-                    ),
-                ),
+                season_id=record.season.id,
+                player_id=record.player.player_id,
+                player_name=record.player.player_name,
+                value=value,
+                games_with=record.result.games_with,
+                games_without=record.result.games_without,
+                avg_margin_with=record.result.avg_margin_with,
+                avg_margin_without=record.result.avg_margin_without,
+                average_minutes=record.minutes.average_minutes,
+                total_minutes=record.minutes.total_minutes,
+                raw_wowy_score=record.result.value if include_raw_wowy_score else None,
             )
         )
     return rows

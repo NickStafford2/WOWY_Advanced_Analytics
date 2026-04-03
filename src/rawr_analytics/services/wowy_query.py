@@ -2,10 +2,15 @@ from __future__ import annotations
 
 from typing import cast
 
-from rawr_analytics.data.metric_store import load_wowy_player_season_value_rows
+from rawr_analytics.data.metric_store import (
+    WowyPlayerSeasonValueRow,
+    load_wowy_player_season_value_rows,
+)
 from rawr_analytics.metrics.constants import Metric
 from rawr_analytics.metrics.wowy import (
     WowyCustomQueryResult,
+    WowyPlayerSeasonValue,
+    WowyPlayerValue,
     WowyQuery,
     WowyQueryFilters,
     build_cached_leaderboard_payload,
@@ -25,6 +30,7 @@ from rawr_analytics.services._metric_scope import (
     season_ids,
     selected_seasons,
 )
+from rawr_analytics.shared.player import PlayerMinutes, PlayerSummary
 
 type JSONScalar = None | bool | int | float | str
 type JSONValue = JSONScalar | list[JSONValue] | dict[str, JSONValue]
@@ -81,11 +87,12 @@ def build_wowy_query_export(
             min_games_with=query.min_games_with,
             min_games_without=query.min_games_without,
         )
+        values = _build_wowy_store_values(store_rows)
         return cast(
             MetricQueryExport,
             build_export_table(
                 metric,
-                rows=[row.value for row in store_rows],
+                rows=values,
                 seasons=selected_seasons(query.seasons, catalog),
             ),
         )
@@ -124,9 +131,10 @@ def _build_wowy_view_payload(
             min_games_with=query.min_games_with,
             min_games_without=query.min_games_without,
         )
+        values = _build_wowy_store_values(store_rows)
         return cast(
             dict[str, JSONValue],
-            build_player_seasons_payload(metric, [row.value for row in store_rows]),
+            build_player_seasons_payload(metric, values),
         )
 
     if view == "cached-leaderboard":
@@ -140,6 +148,7 @@ def _build_wowy_view_payload(
             min_games_with=query.min_games_with,
             min_games_without=query.min_games_without,
         )
+        values = _build_wowy_store_values(store_rows)
         payload = cast(
             dict[str, JSONValue],
             build_cached_leaderboard_payload(
@@ -147,7 +156,7 @@ def _build_wowy_view_payload(
                 metric_label=catalog.metric_label,
                 available_seasons=catalog.available_seasons,
                 available_teams=catalog.available_teams,
-                rows=[row.value for row in store_rows],
+                rows=values,
                 seasons=selected_seasons(query.seasons, catalog),
                 top_n=query.top_n,
             ),
@@ -197,6 +206,33 @@ def _build_wowy_custom_query_result(
         min_average_minutes=query.min_average_minutes,
         min_total_minutes=query.min_total_minutes,
     )
+
+
+def _build_wowy_store_values(
+    rows: list[WowyPlayerSeasonValueRow],
+) -> list[WowyPlayerSeasonValue]:
+    return [
+        WowyPlayerSeasonValue(
+            season_id=row.season_id,
+            player=PlayerSummary(
+                player_id=row.player_id,
+                player_name=row.player_name,
+            ),
+            minutes=PlayerMinutes(
+                average_minutes=row.average_minutes,
+                total_minutes=row.total_minutes,
+            ),
+            result=WowyPlayerValue(
+                games_with=row.games_with,
+                games_without=row.games_without,
+                avg_margin_with=row.avg_margin_with,
+                avg_margin_without=row.avg_margin_without,
+                value=row.value,
+                raw_value=row.raw_wowy_score,
+            ),
+        )
+        for row in rows
+    ]
 
 
 def _build_wowy_filters_payload(query: WowyQuery) -> WowyQueryFilters:
