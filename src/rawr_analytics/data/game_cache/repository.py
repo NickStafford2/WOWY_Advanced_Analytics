@@ -4,9 +4,12 @@ from collections.abc import Sequence
 from datetime import UTC, datetime
 
 from rawr_analytics.data._paths import NORMALIZED_CACHE_DB_PATH
-from rawr_analytics.data.game_cache.rows import NormalizedCacheLoadRow
+from rawr_analytics.data.game_cache.rows import (
+    NormalizedCacheLoadRow,
+    NormalizedGamePlayerRow,
+    NormalizedGameRow,
+)
 from rawr_analytics.data.game_cache.schema import connect, initialize_game_cache_db
-from rawr_analytics.nba.models import NormalizedGamePlayerRecord, NormalizedGameRecord
 from rawr_analytics.shared.player import PlayerSummary
 from rawr_analytics.shared.scope import TeamSeasonScope
 from rawr_analytics.shared.season import Season
@@ -18,8 +21,8 @@ _GAME_CACHE_BUILD_VERSION = "normalized-cache-v3"
 def replace_team_season_normalized_rows(
     team: Team,
     season: Season,
-    games: list[NormalizedGameRecord],
-    game_players: list[NormalizedGamePlayerRecord],
+    games: list[NormalizedGameRow],
+    game_players: list[NormalizedGamePlayerRow],
     source_path: str,
     source_snapshot: str,
     source_kind: str,
@@ -153,7 +156,7 @@ def load_normalized_games_from_db(
     teams: list[Team] | None = None,
     seasons: list[Season] | None = None,
     game_ids: list[str] | None = None,
-) -> list[NormalizedGameRecord]:
+) -> list[NormalizedGameRow]:
     initialize_game_cache_db()
     team_ids = [team.team_id for team in teams or []]
     season_ids = [season.id for season in seasons or []]
@@ -184,7 +187,7 @@ def load_normalized_games_from_db(
         rows = connection.execute(query, params).fetchall()
 
     games = [
-        NormalizedGameRecord(
+        NormalizedGameRow(
             game_id=row["game_id"],
             game_date=row["game_date"],
             season=Season(row["season"], row["season_type"]),
@@ -207,7 +210,7 @@ def _load_normalized_game_players_from_db(
     teams: list[Team] | None = None,
     seasons: list[Season] | None = None,
     game_ids: list[str] | None = None,
-) -> list[NormalizedGamePlayerRecord]:
+) -> list[NormalizedGamePlayerRow]:
     initialize_game_cache_db()
     team_ids = [team.team_id for team in teams or []]
     season_ids = [season.id for season in seasons or []]
@@ -237,7 +240,7 @@ def _load_normalized_game_players_from_db(
         rows = connection.execute(query, params).fetchall()
 
     players = [
-        NormalizedGamePlayerRecord(
+        NormalizedGamePlayerRow(
             game_id=row["game_id"],
             player=PlayerSummary(
                 player_id=row["player_id"],
@@ -309,7 +312,7 @@ def _load_cache_load_row(
 
 def load_normalized_scope_records_from_db(
     team_seasons: list[TeamSeasonScope],
-) -> tuple[list[NormalizedGameRecord], list[NormalizedGamePlayerRecord]]:
+) -> tuple[list[NormalizedGameRow], list[NormalizedGamePlayerRow]]:
     for scope in team_seasons:
         _require_cached_team_season_scope(scope=scope)
 
@@ -414,10 +417,10 @@ def list_cached_team_seasons(
 
 def _filter_records_to_team_seasons(
     *,
-    games: list[NormalizedGameRecord],
-    game_players: list[NormalizedGamePlayerRecord],
+    games: list[NormalizedGameRow],
+    game_players: list[NormalizedGamePlayerRow],
     team_seasons: list[TeamSeasonScope],
-) -> tuple[list[NormalizedGameRecord], list[NormalizedGamePlayerRecord]]:
+) -> tuple[list[NormalizedGameRow], list[NormalizedGamePlayerRow]]:
     allowed = _team_season_keys(team_seasons)
     filtered_games = [game for game in games if (game.team.team_id, game.season.id) in allowed]
     allowed_game_keys = {(game.game_id, game.team.team_id) for game in filtered_games}

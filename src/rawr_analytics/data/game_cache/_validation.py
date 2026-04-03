@@ -11,18 +11,11 @@ from rawr_analytics.data._validation import (
     _validate_required_text,
 )
 from rawr_analytics.data._validation_issue import ValidationIssue
-from rawr_analytics.nba.models import (
-    NormalizedGamePlayerRecord,
-    NormalizedGameRecord,
-    NormalizedTeamSeasonBatch,
-)
-from rawr_analytics.nba.normalize import (
-    validate_normalized_game_player_record,
-    validate_normalized_game_record,
-    validate_normalized_team_season_batch,
+from rawr_analytics.data.game_cache.rows import (
+    NormalizedGamePlayerRow,
+    NormalizedGameRow,
 )
 from rawr_analytics.shared.player import PlayerSummary
-from rawr_analytics.shared.scope import TeamSeasonScope
 from rawr_analytics.shared.season import Season
 from rawr_analytics.shared.team import Team
 
@@ -56,7 +49,7 @@ def validate_normalized_games_table(
             if row["is_home"] not in {0, 1}:
                 raise ValueError(f"is_home must be 0 or 1, got {row['is_home']!r}")
             game = _build_normalized_game_record(row)
-            validate_normalized_game_record(
+            _validate_normalized_game_row(
                 game,
                 expected_team=game.team,
                 expected_season=game.season,
@@ -93,10 +86,7 @@ def validate_normalized_game_players_table(
             if row["appeared"] not in {0, 1}:
                 raise ValueError(f"appeared must be 0 or 1, got {row['appeared']!r}")
             player, season = _build_normalized_game_player_record(row)
-            validate_normalized_game_player_record(
-                player,
-                expected_team=player.team,
-            )
+            _validate_normalized_game_player_row(player, expected_team=player.team)
             player.team.for_season(season)
         except (AssertionError, ValueError) as exc:
             issues.append(ValidationIssue("normalized_game_players", key, str(exc)))
@@ -203,10 +193,8 @@ def validate_normalized_cache_relations(
         """
     ).fetchall()
 
-    games_by_scope: dict[tuple[int, str, str], list[NormalizedGameRecord]] = defaultdict(list)
-    players_by_scope: dict[tuple[int, str, str], list[NormalizedGamePlayerRecord]] = defaultdict(
-        list
-    )
+    games_by_scope: dict[tuple[int, str, str], list[NormalizedGameRow]] = defaultdict(list)
+    players_by_scope: dict[tuple[int, str, str], list[NormalizedGamePlayerRow]] = defaultdict(list)
     game_key_scope_map: dict[tuple[str, int], tuple[int, str, str]] = {}
 
     for row in game_rows:
@@ -258,15 +246,12 @@ def validate_normalized_cache_relations(
     for scope in sorted(game_scopes | player_scopes):
         team_id, season_id, season_type = scope
         try:
-            batch = NormalizedTeamSeasonBatch(
-                scope=TeamSeasonScope(
-                    team=Team.from_id(team_id),
-                    season=Season(season_id, season_type),
-                ),
+            _validate_normalized_scope_batch(
+                team=Team.from_id(team_id),
+                season=Season(season_id, season_type),
                 games=games_by_scope.get(scope, []),
                 game_players=players_by_scope.get(scope, []),
             )
-            validate_normalized_team_season_batch(batch)
         except (AssertionError, ValueError) as exc:
             issues.append(
                 ValidationIssue(
@@ -316,7 +301,7 @@ def _validate_reciprocal_game_margins(
     game_rows: list[sqlite3.Row],
     issues: list[ValidationIssue],
 ) -> None:
-    games_by_id: dict[tuple[str, str, str], list[NormalizedGameRecord]] = defaultdict(list)
+    games_by_id: dict[tuple[str, str, str], list[NormalizedGameRow]] = defaultdict(list)
 
     for row in game_rows:
         try:
@@ -427,7 +412,7 @@ def validate_team_history_table(
             issues.append(ValidationIssue("team_history", key, str(exc)))
 
 
-def _build_normalized_game_record(row: sqlite3.Row) -> NormalizedGameRecord:
+def _build_normalized_game_record(row: sqlite3.Row) -> NormalizedGameRow:
     season = Season(row["season"], row["season_type"])
     team = Team.from_id(row["team_id"])
     opponent_team = Team.from_id(row["opponent_team_id"])
@@ -439,7 +424,7 @@ def _build_normalized_game_record(row: sqlite3.Row) -> NormalizedGameRecord:
     if not math.isfinite(row["margin"]):
         raise ValueError("margin must be finite")
     date.fromisoformat(row["game_date"])
-    return NormalizedGameRecord(
+    return NormalizedGameRow(
         game_id=row["game_id"],
         game_date=row["game_date"],
         season=season,
@@ -453,12 +438,12 @@ def _build_normalized_game_record(row: sqlite3.Row) -> NormalizedGameRecord:
 
 def _build_normalized_game_player_record(
     row: sqlite3.Row,
-) -> tuple[NormalizedGamePlayerRecord, Season]:
+) -> tuple[NormalizedGamePlayerRow, Season]:
     season = Season(row["season"], row["season_type"])
     team = Team.from_id(row["team_id"])
     _validate_required_text(row["game_id"], "game_id")
     return (
-        NormalizedGamePlayerRecord(
+        NormalizedGamePlayerRow(
             game_id=row["game_id"],
             player=PlayerSummary(
                 player_id=row["player_id"],
@@ -470,6 +455,128 @@ def _build_normalized_game_player_record(
         ),
         season,
     )
+
+
+def _validate_normalized_scope_batch(
+    *,
+    team: Team,
+    season: Season,
+    games: list[NormalizedGameRow],
+    game_players: list[NormalizedGamePlayerRow],
+) -> None:
+    game_keys: set[tuple[str, int]] = set()
+    players_by_game_key: dict[tuple[str, int], list[NormalizedGamePlayerRow]] = defaultdict(list)
+
+    for game in games:
+        _validate_normalized_game_row(game, expected_team=team, expected_season=season)
+        game_key = (game.game_id, game.team.team_id)
+        if game_key in game_keys:
+            raise ValueError(f"Duplicate canonical game row for {game_key!r}")
+        game_keys.add(game_key)
+
+    player_keys: set[tuple[str, int, int]] = set()
+    for player in game_players:
+        _validate_normalized_game_player_row(player, expected_team=team)
+        player_key = (player.game_id, player.team.team_id, player.player.player_id)
+        if player_key in player_keys:
+            raise ValueError(f"Duplicate canonical player row for {player_key!r}")
+        player_keys.add(player_key)
+        players_by_game_key[(player.game_id, player.team.team_id)].append(player)
+
+    if set(players_by_game_key) != game_keys:
+        missing_players = sorted(game_keys - set(players_by_game_key))
+        extra_players = sorted(set(players_by_game_key) - game_keys)
+        raise ValueError(
+            "Canonical game/player keys do not match: "
+            f"missing_players={missing_players} extra_players={extra_players}"
+        )
+
+    for game_key, players in players_by_game_key.items():
+        appeared_players = [player for player in players if player.appeared]
+        if len(appeared_players) < 5:
+            raise ValueError(
+                f"Expected at least 5 appeared players for {game_key!r}; "
+                f"found {len(appeared_players)}"
+            )
+        if len(players) > 25:
+            raise ValueError(
+                f"Expected at most 25 player rows for {game_key!r}; found {len(players)}"
+            )
+        total_minutes = sum(player.minutes or 0.0 for player in appeared_players)
+        if total_minutes < 220.0 or total_minutes > 450.0:
+            raise ValueError(
+                f"Implausible total appeared minutes for {game_key!r}: {total_minutes}"
+            )
+
+
+def _validate_normalized_game_row(
+    game: NormalizedGameRow,
+    *,
+    expected_team: Team,
+    expected_season: Season,
+) -> None:
+    if not game.game_id.strip():
+        raise ValueError("Canonical game_id must not be empty")
+    if not Season.are_same(game.season, expected_season):
+        raise ValueError(
+            f"Canonical game {game.game_id!r} season {game.season!r}; expected {expected_season!r}"
+        )
+    if not Team.are_same(game.team, expected_team):
+        raise ValueError(
+            f"Canonical game {game.game_id!r} is not the same as {game.team!r}; "
+            f"expected {expected_team!r}"
+        )
+    if game.opponent_team.team_id is None or game.opponent_team.team_id <= 0:
+        raise ValueError(f"Canonical game {game.game_id!r} must have a positive opponent_team_id")
+    if game.opponent_team.team_id == expected_team.team_id:
+        raise ValueError(
+            f"Canonical game {game.game_id!r} must not use the same team_id and opponent_team_id"
+        )
+    game.team.validate()
+    game.opponent_team.validate()
+    parsed_date = date.fromisoformat(game.game_date)
+    if parsed_date.year not in {expected_season.start_year, expected_season.start_year + 1}:
+        raise ValueError(
+            f"Canonical game {game.game_id!r} date {game.game_date!r} "
+            f"falls outside season {expected_season!r}"
+        )
+    if not math.isfinite(game.margin):
+        raise ValueError(f"Canonical game {game.game_id!r} has non-finite margin")
+    if not game.source.strip():
+        raise ValueError(f"Canonical game {game.game_id!r} must have a non-empty source")
+
+
+def _validate_normalized_game_player_row(
+    player: NormalizedGamePlayerRow,
+    *,
+    expected_team: Team,
+) -> None:
+    player_ref = (
+        "game "
+        f"{player.game_id!r} player_id={player.player.player_id!r} "
+        f"player_name={player.player.player_name!r}"
+    )
+    if not player.game_id.strip():
+        raise ValueError("Canonical player game_id must not be empty")
+    if player.team.team_id != expected_team.team_id:
+        raise ValueError(
+            f"Canonical player row for game {player.game_id!r} has team_id "
+            f"{player.team.team_id!r}; expected {expected_team.team_id!r}"
+        )
+    if player.player.player_id <= 0:
+        raise ValueError(f"Canonical player row for {player_ref} has invalid player_id")
+    if not player.player.player_name.strip():
+        raise ValueError(f"Canonical player row for {player_ref} must have a player name")
+
+    minutes = player.minutes
+    if minutes is None:
+        return
+    if not math.isfinite(minutes) or minutes < 0.0:
+        raise ValueError(f"Canonical player row for {player_ref} has invalid minutes {minutes!r}")
+    if minutes > 80.0:
+        raise ValueError(
+            f"Canonical player row for {player_ref} has implausible minutes {minutes!r}"
+        )
 
 
 __all__ = [

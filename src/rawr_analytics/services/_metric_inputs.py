@@ -7,6 +7,7 @@ from rawr_analytics.data.game_cache.repository import (
     list_cache_load_rows,
     load_normalized_scope_records_from_db,
 )
+from rawr_analytics.data.game_cache.rows import NormalizedGamePlayerRow, NormalizedGameRow
 from rawr_analytics.data.scope_resolver import resolve_team_seasons
 from rawr_analytics.metrics.rawr._observations import (
     _build_rawr_observations,
@@ -79,7 +80,9 @@ def load_wowy_season_inputs(
     if not team_seasons:
         raise ValueError("No cached data matched the requested scope")
 
-    games, game_players = load_normalized_scope_records_from_db(team_seasons)
+    game_rows, game_player_rows = load_normalized_scope_records_from_db(team_seasons)
+    games = [_build_normalized_game_record(row) for row in game_rows]
+    game_players = [_build_normalized_game_player_record(row) for row in game_player_rows]
     player_names = _build_player_names(game_players)
     minute_stats = _build_wowy_player_season_minute_stats(games, game_players)
     games_by_season = _derive_wowy_games_by_season(games, game_players)
@@ -138,7 +141,8 @@ def _load_rawr_season_input(
     if not requested_team_seasons:
         return None
 
-    games, _ = load_normalized_scope_records_from_db(requested_team_seasons)
+    game_rows, _ = load_normalized_scope_records_from_db(requested_team_seasons)
+    games = [_build_normalized_game_record(row) for row in game_rows]
     team_scopes = list(requested_team_seasons)
     seen_scope_keys = {
         (
@@ -155,7 +159,9 @@ def _load_rawr_season_input(
             continue
         team_scopes.append(scope)
         seen_scope_keys.add(scope_key)
-    games, game_players = load_normalized_scope_records_from_db(team_scopes)
+    game_rows, game_player_rows = load_normalized_scope_records_from_db(team_scopes)
+    games = [_build_normalized_game_record(row) for row in game_rows]
+    game_players = [_build_normalized_game_player_record(row) for row in game_player_rows]
     games, game_players = _filter_rawr_scope(
         games,
         game_players,
@@ -256,6 +262,31 @@ def _build_wowy_player_season_minute_stats(
         totals[key] = totals.get(key, 0.0) + player.minutes
         counts[key] = counts.get(key, 0) + 1
     return {key: (totals[key] / counts[key], totals[key]) for key in totals}
+
+
+def _build_normalized_game_record(row: NormalizedGameRow) -> NormalizedGameRecord:
+    return NormalizedGameRecord(
+        game_id=row.game_id,
+        game_date=row.game_date,
+        season=row.season,
+        team=row.team,
+        opponent_team=row.opponent_team,
+        is_home=row.is_home,
+        margin=row.margin,
+        source=row.source,
+    )
+
+
+def _build_normalized_game_player_record(
+    row: NormalizedGamePlayerRow,
+) -> NormalizedGamePlayerRecord:
+    return NormalizedGamePlayerRecord(
+        game_id=row.game_id,
+        player=row.player,
+        appeared=row.appeared,
+        minutes=row.minutes,
+        team=row.team,
+    )
 
 
 def _list_expected_rawr_teams_for_season(season: str) -> list[str]:
