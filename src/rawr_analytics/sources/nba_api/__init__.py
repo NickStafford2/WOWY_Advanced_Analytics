@@ -5,7 +5,12 @@ from __future__ import annotations
 from rawr_analytics.sources.nba_api._load import (
     load_player_names_from_cache,
 )
-from rawr_analytics.sources.nba_api.api import load_or_fetch_box_score
+from rawr_analytics.sources.nba_api.api import (
+    NbaApiGameIngestUpdate,
+    NbaApiTeamSeasonData,
+    ingest_team_season,
+    load_or_fetch_box_score,
+)
 from rawr_analytics.sources.nba_api.cache import (
     load_or_fetch_league_games,
 )
@@ -29,7 +34,10 @@ __all__ = [
     "SourceBoxScoreTeam",
     "SourceLeagueGame",
     "SourceLeagueSchedule",
+    "NbaApiGameIngestUpdate",
+    "NbaApiTeamSeasonData",
     "dedupe_schedule_games",
+    "ingest_team_season",
     "load_or_fetch_box_score",
     "load_or_fetch_league_games",
     "load_player_names_from_cache",

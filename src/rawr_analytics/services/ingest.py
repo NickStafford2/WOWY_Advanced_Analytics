@@ -8,7 +8,6 @@ from rawr_analytics.data.game_cache.rows import NormalizedGamePlayerRow, Normali
 from rawr_analytics.services._ingest_validation import validate_normalized_team_season_batch
 from rawr_analytics.services._ingest_errors import (
     FetchError,
-    GameNormalizationFailure,
     PartialTeamSeasonError,
 )
 from rawr_analytics.shared.game import (
@@ -17,12 +16,8 @@ from rawr_analytics.shared.game import (
     NormalizedTeamSeasonBatch,
 )
 from rawr_analytics.sources.nba_api import (
-    SourceLeagueGame,
-    dedupe_schedule_games,
-    load_or_fetch_box_score,
-    load_or_fetch_league_games,
-    normalize_source_league_game,
-    parse_league_schedule_payload,
+    NbaApiGameIngestUpdate,
+    ingest_team_season,
 )
 from rawr_analytics.shared.common import LogFn
 from rawr_analytics.shared.scope import TeamSeasonScope
@@ -173,11 +168,25 @@ def refresh_team_season(
     log: LogFn | None = print,
     progress: _TeamProgressFn | None = None,
 ) -> IngestResult:
-    result = _ingest_team_season(
-        request,
+    source_data = ingest_team_season(
+        team=request.team,
+        season=request.season,
         log_fn=log,
-        progress_fn=progress,
+        update_fn=_build_source_update_fn(request=request, progress_fn=progress),
     )
+    result = IngestResult(
+        request=request,
+        games=source_data.games,
+        game_players=source_data.game_players,
+        summary=IngestSummary(
+            total_games=source_data.total_games,
+            processed_games=len(source_data.games),
+            fetched_box_scores=source_data.fetched_box_scores,
+            cached_box_scores=source_data.cached_box_scores,
+            league_games_source=source_data.league_games_source,
+        ),
+    )
+    validate_normalized_team_season_batch(result.to_batch())
     _store_team_season(result)
     return result
 
@@ -320,127 +329,25 @@ def _build_progress_fn(
     return _progress
 
 
-def _get_schedule(
-    request: IngestRequest,
-    log_fn: LogFn | None,
-) -> tuple[list[SourceLeagueGame], str]:
-    schedule_payload, league_games_source = load_or_fetch_league_games(
-        team=request.team,
-        season=request.season,
-        log_fn=log_fn,
-    )
-    schedule = parse_league_schedule_payload(
-        schedule_payload,
-        team=request.team,
-        season=request.season,
-    )
-    games = dedupe_schedule_games(schedule.games)
-    return games, league_games_source
-
-
-def _ingest_team_season(
-    request: IngestRequest,
+def _build_source_update_fn(
     *,
-    log_fn: LogFn | None,
+    request: IngestRequest,
     progress_fn: _TeamProgressFn | None,
-) -> IngestResult:
-    schedule_games, league_games_source = _get_schedule(request, log_fn)
-    total_games = len(schedule_games)
+) -> Callable[[NbaApiGameIngestUpdate], None] | None:
+    if progress_fn is None:
+        return None
 
-    games: list[NormalizedGameRecord] = []
-    game_players: list[NormalizedGamePlayerRecord] = []
-    failures: list[GameNormalizationFailure] = []
-    failure_reason_counts: dict[str, int] = {}
-    failure_reason_examples: dict[str, list[str]] = {}
-    fetched_box_scores = 0
-    cached_box_scores = 0
-
-    _emit_progress(
-        progress_fn,
-        request=request,
-        current=0,
-        total=total_games,
-        status="schedule-loaded",
-    )
-
-    for index, schedule_game in enumerate(schedule_games, start=1):
-        try:
-            box_score, box_score_source = load_or_fetch_box_score(
-                game_id=schedule_game.game_id,
-                log_fn=log_fn,
-            )
-            game, players = normalize_source_league_game(
-                source_league_game=schedule_game,
-                box_score=box_score,
-                season=request.season,
-            )
-        except ValueError as exc:
-            _record_failure(
-                failures=failures,
-                failure_reason_counts=failure_reason_counts,
-                failure_reason_examples=failure_reason_examples,
-                game_id=schedule_game.game_id,
-                exc=exc,
-            )
-            if log_fn is not None:
-                log_fn(f"failed {request.label} game={schedule_game.game_id} reason={exc}")
-            _emit_progress(
-                progress_fn,
-                request=request,
-                current=index,
-                total=total_games,
-                status="failed",
-                game_id=schedule_game.game_id,
-            )
-            continue
-
-        if box_score_source == "fetched":
-            fetched_box_scores += 1
-        else:
-            cached_box_scores += 1
-        games.append(game)
-        game_players.extend(players)
+    def _source_update(update: NbaApiGameIngestUpdate) -> None:
         _emit_progress(
             progress_fn,
             request=request,
-            current=index,
-            total=total_games,
-            status="ok",
-            game_id=schedule_game.game_id,
+            current=update.current,
+            total=update.total,
+            status=update.status,
+            game_id=update.game_id,
         )
 
-    if failures:
-        raise PartialTeamSeasonError(
-            message=(
-                f"Incomplete team-season ingest for {request.label}: "
-                f"{len(failures)}/{total_games} games failed normalization"
-            ),
-            team=request.team,
-            season=request.season,
-            failed_game_ids=[failure.game_id for failure in failures],
-            total_games=total_games,
-            failed_games=len(failures),
-            failed_game_details=failures,
-            failure_reason_counts=dict(sorted(failure_reason_counts.items())),
-            failure_reason_examples={
-                reason: examples[:] for reason, examples in sorted(failure_reason_examples.items())
-            },
-        )
-
-    result = IngestResult(
-        request=request,
-        games=games,
-        game_players=game_players,
-        summary=IngestSummary(
-            total_games=total_games,
-            processed_games=len(games),
-            fetched_box_scores=fetched_box_scores,
-            cached_box_scores=cached_box_scores,
-            league_games_source=league_games_source,
-        ),
-    )
-    validate_normalized_team_season_batch(result.to_batch())
-    return result
+    return _source_update
 
 
 def _store_team_season(result: IngestResult) -> None:
@@ -484,26 +391,6 @@ def _build_game_cache_game_player_row(
         minutes=player.minutes,
         team=player.team,
     )
-
-
-def _record_failure(
-    *,
-    failures: list[GameNormalizationFailure],
-    failure_reason_counts: dict[str, int],
-    failure_reason_examples: dict[str, list[str]],
-    game_id: str,
-    exc: Exception,
-) -> None:
-    failure = GameNormalizationFailure(
-        game_id=game_id,
-        error_type=type(exc).__name__,
-        message=str(exc),
-    )
-    failures.append(failure)
-    failure_reason_counts[failure.message] = failure_reason_counts.get(failure.message, 0) + 1
-    failure_reason_examples.setdefault(failure.message, [])
-    if len(failure_reason_examples[failure.message]) < 3:
-        failure_reason_examples[failure.message].append(game_id)
 
 
 def _emit_progress(
