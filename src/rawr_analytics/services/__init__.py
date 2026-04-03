@@ -1,74 +1,37 @@
-"""Stable application service boundary for outer layers. I want most of these removed and a
-small interface. used by web as well as the cli."""
+"""Public application service interface for outer layers."""
 
 from rawr_analytics.services.ingest import (
-    IngestProgress,
-    IngestProgressFn,
-    IngestRefreshRequest,
-    IngestRequest,
     IngestResult,
-    IngestSummary,
     SeasonRangeFailure,
-    SeasonRangeResult,
-    refresh_season_range,
-    refresh_team_season,
 )
 from rawr_analytics.services.metric_query import (
-    MetricExportResult,
-    MetricQueryRequest,
-    MetricViewResult,
     build_metric_options_payload,
     build_metric_query_export,
     build_metric_query_view,
-    parse_metric_query_request,
     serialize_service_value,
 )
 from rawr_analytics.services.metric_refresh import (
     DEFAULT_RAWR_RIDGE_ALPHA,
     DEFAULT_WEB_METRIC_IDS,
-    MetricStoreRefreshRequest,
-    RefreshMetricStoreResult,
-    parse_metric_store_refresh_request,
     refresh_metric_store,
 )
 from rawr_analytics.services.rebuild import (
-    RebuildRequest,
-    RebuildResult,
     RebuildTeamFailureEvent,
     format_rebuild_validation_summary,
-    parse_rebuild_request,
     rebuild_player_metrics_db,
 )
 
 __all__ = [
     "DEFAULT_RAWR_RIDGE_ALPHA",
     "DEFAULT_WEB_METRIC_IDS",
-    "IngestProgress",
-    "IngestProgressFn",
-    "IngestRefreshRequest",
-    "IngestRequest",
     "IngestResult",
-    "IngestSummary",
-    "MetricExportResult",
-    "MetricQueryRequest",
-    "MetricStoreRefreshRequest",
-    "MetricViewResult",
-    "RebuildRequest",
-    "RebuildResult",
     "RebuildTeamFailureEvent",
-    "RefreshMetricStoreResult",
     "SeasonRangeFailure",
-    "SeasonRangeResult",
     "build_metric_options_payload",
     "build_metric_query_export",
     "build_metric_query_view",
     "format_rebuild_validation_summary",
-    "parse_metric_query_request",
-    "parse_metric_store_refresh_request",
-    "parse_rebuild_request",
     "rebuild_player_metrics_db",
     "refresh_metric_store",
-    "refresh_season_range",
-    "refresh_team_season",
     "serialize_service_value",
 ]

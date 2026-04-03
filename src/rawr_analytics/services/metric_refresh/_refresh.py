@@ -74,21 +74,6 @@ class RefreshMetricStoreResult:
         return sum(scope.row_count for scope in self.scope_results)
 
 
-def parse_metric_store_refresh_request(
-    *,
-    metric: str,
-    season_type: str,
-    rawr_ridge_alpha: float = DEFAULT_RAWR_RIDGE_ALPHA,
-    include_team_scopes: bool = True,
-) -> MetricStoreRefreshRequest:
-    return MetricStoreRefreshRequest(
-        metric=Metric.parse(metric),
-        season_type=SeasonType.parse(season_type),
-        rawr_ridge_alpha=rawr_ridge_alpha,
-        include_team_scopes=include_team_scopes,
-    )
-
-
 @dataclass(frozen=True)
 class _MetricStoreRefreshPlan:
     metric_label: str

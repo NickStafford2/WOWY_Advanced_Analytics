@@ -3,12 +3,15 @@ from __future__ import annotations
 import json
 from typing import Any
 
-from rawr_analytics.services import (
+from rawr_analytics.services.metric_query import (
     build_metric_options_payload,
     build_metric_query_export,
     build_metric_query_view,
-    parse_metric_query_request,
     serialize_service_value,
+)
+from rawr_analytics.web._requests import (
+    build_metric_options_request,
+    build_metric_query_request,
 )
 
 
@@ -18,18 +21,10 @@ def create_app():
     app = Flask(__name__)
 
     def parse_metric_query(metric: str):
-        return parse_metric_query_request(
+        return build_metric_query_request(
             metric=metric,
-            season_type=request.args.get("season_type", "Regular Season"),
-            team_ids=request.args.getlist("team_id"),
-            seasons=request.args.getlist("season"),
-            top_n=request.args.get("top_n"),
-            min_average_minutes=request.args.get("min_average_minutes"),
-            min_total_minutes=request.args.get("min_total_minutes"),
-            min_games=request.args.get("min_games"),
-            ridge_alpha=request.args.get("ridge_alpha"),
-            min_games_with=request.args.get("min_games_with"),
-            min_games_without=request.args.get("min_games_without"),
+            get_arg=request.args.get,
+            get_list=request.args.getlist,
         )
 
     def json_metric_response(metric: str, view: str):
@@ -63,10 +58,10 @@ def create_app():
             lambda: jsonify(
                 serialize_service_value(
                     build_metric_options_payload(
-                        parse_metric_query_request(
+                        build_metric_options_request(
                             metric=metric,
-                            team_ids=request.args.getlist("team_id"),
-                            season_type=request.args.get("season_type", "Regular Season"),
+                            get_arg=request.args.get,
+                            get_list=request.args.getlist,
                         )
                     )
                 )

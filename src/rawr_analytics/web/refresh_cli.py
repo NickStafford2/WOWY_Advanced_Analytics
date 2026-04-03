@@ -3,12 +3,12 @@ from __future__ import annotations
 import argparse
 
 from rawr_analytics.progress import TerminalProgressBar, print_status_box
-from rawr_analytics.services import (
+from rawr_analytics.services.metric_refresh import (
     DEFAULT_RAWR_RIDGE_ALPHA,
     DEFAULT_WEB_METRIC_IDS,
-    parse_metric_store_refresh_request,
     refresh_metric_store,
 )
+from rawr_analytics.web._requests import build_metric_store_refresh_request
 
 _choices = list(DEFAULT_WEB_METRIC_IDS)
 
@@ -56,7 +56,7 @@ def main(argv: list[str] | None = None) -> int:
     for metric in metrics:
         progress_bar = TerminalProgressBar(f"Refresh {metric}", total=1)
         result = refresh_metric_store(
-            parse_metric_store_refresh_request(
+            build_metric_store_refresh_request(
                 metric=metric,
                 season_type=args.season_type,
                 rawr_ridge_alpha=args.rawr_ridge_alpha,

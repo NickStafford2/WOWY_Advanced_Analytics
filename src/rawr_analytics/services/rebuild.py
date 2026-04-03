@@ -80,27 +80,6 @@ class RebuildTeamFailureEvent:
     failure_reason_examples: dict[str, list[str]] | None = None
 
 
-def parse_rebuild_request(
-    *,
-    start_year: int,
-    end_year: int,
-    season_type: str,
-    teams: list[str] | None,
-    metrics: list[str] | None,
-    keep_existing_db: bool,
-) -> RebuildRequest:
-    if start_year < end_year:
-        raise ValueError("Start year must be greater than or equal to end year")
-    return RebuildRequest(
-        start_year=start_year,
-        end_year=end_year,
-        season_type=SeasonType.parse(season_type),
-        teams=teams,
-        metrics=[Metric.parse(metric) for metric in metrics] if metrics else None,
-        keep_existing_db=keep_existing_db,
-    )
-
-
 def format_rebuild_validation_summary(
     summary: DatabaseValidationSummary,
     *,
@@ -280,6 +259,5 @@ __all__ = [
     "RebuildResult",
     "RebuildTeamFailureEvent",
     "format_rebuild_validation_summary",
-    "parse_rebuild_request",
     "rebuild_player_metrics_db",
 ]

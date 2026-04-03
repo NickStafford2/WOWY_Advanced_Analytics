@@ -14,12 +14,11 @@ from rawr_analytics.cli._rebuild_terminal import (
     render_rebuild_team_failure,
     render_validation_progress as _render_validation_progress_bar,
 )
-from rawr_analytics.services import (
-    IngestResult,
+from rawr_analytics.cli._requests import build_rebuild_request
+from rawr_analytics.services.ingest import IngestResult, SeasonRangeFailure
+from rawr_analytics.services.rebuild import (
     RebuildTeamFailureEvent,
-    SeasonRangeFailure,
     format_rebuild_validation_summary,
-    parse_rebuild_request,
     rebuild_player_metrics_db,
 )
 
@@ -76,7 +75,7 @@ def main(argv: list[str] | None = None) -> int:
     args = parser.parse_args(argv)
 
     result = rebuild_player_metrics_db(
-        parse_rebuild_request(
+        build_rebuild_request(
             start_year=args.start_year,
             end_year=args.end_year,
             season_type=args.season_type,
