@@ -113,10 +113,7 @@ def load_wowy_season_inputs(
                             player_id=player_id,
                             player_name=player_names.get(player_id, str(player_id)),
                         ),
-                        minutes=PlayerMinutes(
-                            average_minutes=minute_stats.get((season, player_id), (None, None))[0],
-                            total_minutes=minute_stats.get((season, player_id), (None, None))[1],
-                        ),
+                        minutes=_player_minutes(minute_stats, season, player_id),
                     )
                     for player_id in player_ids
                 ],
@@ -197,10 +194,7 @@ def _load_rawr_season_input(
                     player_id=player_id,
                     player_name=player_names.get(player_id, str(player_id)),
                 ),
-                minutes=PlayerMinutes(
-                    average_minutes=player_minute_stats.get((season, player_id), (None, None))[0],
-                    total_minutes=player_minute_stats.get((season, player_id), (None, None))[1],
-                ),
+                minutes=_player_minutes(player_minute_stats, season, player_id),
             )
             for player_id in player_ids
         ],
@@ -427,4 +421,16 @@ def _build_rawr_warning_messages(*, season: str, summary: _SeasonCacheSummary) -
 def _list_cached_rawr_seasons_for_type(season_type: SeasonType) -> list[str]:
     return sorted(
         {row.season.id for row in list_cache_load_rows() if row.season.season_type == season_type}
+    )
+
+
+def _player_minutes(
+    minute_stats: dict[tuple[Season, int], tuple[float, float]],
+    season: Season,
+    player_id: int,
+) -> PlayerMinutes:
+    average_minutes, total_minutes = minute_stats.get((season, player_id), (None, None))
+    return PlayerMinutes(
+        average_minutes=average_minutes,
+        total_minutes=total_minutes,
     )

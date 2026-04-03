@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import json
-from dataclasses import dataclass
+from dataclasses import asdict, dataclass
 from datetime import UTC, datetime
 from pathlib import Path
 
@@ -14,9 +14,6 @@ from rawr_analytics.shared.ingest import (
 )
 from rawr_analytics.shared.season import Season
 from rawr_analytics.shared.team import Team
-
-type JsonValue = None | bool | int | float | str | list[JsonValue] | dict[str, JsonValue]
-type JsonObject = dict[str, JsonValue]
 
 _DEFAULT_INGEST_FAILURE_LOG_PATH = Path("data/logs/ingest_failures.jsonl")
 
@@ -85,32 +82,32 @@ def append_ingest_failure_log(
 ) -> None:
     record = _IngestFailureLogRecord(
         timestamp_utc=datetime.now(UTC).isoformat(),
-        team=_build_logged_team(team),
-        season=_build_logged_season(season),
+        team=_logged_team(team),
+        season=_logged_season(season),
         failure_kind=failure_kind,
         error_type=type(error).__name__,
         message=str(error),
-        details=_build_error_details(error),
+        details=_error_details(error),
     )
 
-    log_path: Path = _DEFAULT_INGEST_FAILURE_LOG_PATH
+    log_path = _DEFAULT_INGEST_FAILURE_LOG_PATH
     log_path.parent.mkdir(parents=True, exist_ok=True)
-    with open(log_path, "a", encoding="utf-8") as log_file:
-        log_file.write(json.dumps(_serialize_record(record), sort_keys=True))
+    with log_path.open("a", encoding="utf-8") as log_file:
+        log_file.write(json.dumps(asdict(record), sort_keys=True))
         log_file.write("\n")
 
 
-def _build_error_details(
+def _error_details(
     error: Exception,
 ) -> _FetchErrorLogDetails | _PartialTeamSeasonLogDetails | None:
     if isinstance(error, PartialTeamSeasonError):
-        return _build_partial_team_season_details(error)
+        return _partial_team_season_details(error)
     if isinstance(error, FetchError):
-        return _build_fetch_error_details(error)
+        return _fetch_error_details(error)
     return None
 
 
-def _build_fetch_error_details(error: FetchError) -> _FetchErrorLogDetails:
+def _fetch_error_details(error: FetchError) -> _FetchErrorLogDetails:
     if isinstance(error, LeagueGamesFetchError):
         return _FetchErrorLogDetails(
             resource=error.resource,
@@ -118,8 +115,8 @@ def _build_fetch_error_details(error: FetchError) -> _FetchErrorLogDetails:
             attempts=error.attempts,
             last_error_type=error.last_error_type,
             last_error_message=error.last_error_message,
-            team_scope=_build_logged_team(error.team),
-            season_scope=_build_logged_season(error.season),
+            team_scope=_logged_team(error.team),
+            season_scope=_logged_season(error.season),
         )
     if isinstance(error, BoxScoreFetchError):
         return _FetchErrorLogDetails(
@@ -139,34 +136,32 @@ def _build_fetch_error_details(error: FetchError) -> _FetchErrorLogDetails:
     )
 
 
-def _build_partial_team_season_details(
+def _partial_team_season_details(
     error: PartialTeamSeasonError,
 ) -> _PartialTeamSeasonLogDetails:
     return _PartialTeamSeasonLogDetails(
-        team_scope=_build_logged_team(error.team),
-        season_scope=_build_logged_season(error.season),
+        team_scope=_logged_team(error.team),
+        season_scope=_logged_season(error.season),
         failed_game_ids=list(error.failed_game_ids),
-        failed_game_details=[
-            _build_logged_game_failure(failure) for failure in error.failed_game_details
-        ],
-        failure_reason_counts=dict(error.failure_reason_counts),
+        failed_game_details=[_logged_game_failure(f) for f in error.failed_game_details],
+        failure_reason_counts={**error.failure_reason_counts},
         failure_reason_examples={
-            reason: list(example_game_ids)
-            for reason, example_game_ids in error.failure_reason_examples.items()
+            reason: list(example_ids)
+            for reason, example_ids in error.failure_reason_examples.items()
         },
         total_games=error.total_games,
         failed_games=error.failed_games,
     )
 
 
-def _build_logged_team(team: Team) -> _LoggedTeam:
+def _logged_team(team: Team) -> _LoggedTeam:
     return _LoggedTeam(
         team_id=team.team_id,
         abbreviation=team.current.abbreviation,
     )
 
 
-def _build_logged_season(season: Season) -> _LoggedSeason:
+def _logged_season(season: Season) -> _LoggedSeason:
     return _LoggedSeason(
         id=season.id,
         start_year=season.start_year,
@@ -174,89 +169,9 @@ def _build_logged_season(season: Season) -> _LoggedSeason:
     )
 
 
-def _build_logged_game_failure(failure: GameNormalizationFailure) -> _LoggedGameFailure:
+def _logged_game_failure(failure: GameNormalizationFailure) -> _LoggedGameFailure:
     return _LoggedGameFailure(
         game_id=failure.game_id,
         error_type=failure.error_type,
         message=failure.message,
     )
-
-
-def _serialize_record(record: _IngestFailureLogRecord) -> JsonObject:
-    payload: JsonObject = {
-        "timestamp_utc": record.timestamp_utc,
-        "team": _serialize_logged_team(record.team),
-        "season": _serialize_logged_season(record.season),
-        "failure_kind": record.failure_kind,
-        "error_type": record.error_type,
-        "message": record.message,
-    }
-    if record.details is not None:
-        payload["details"] = _serialize_error_details(record.details)
-    return payload
-
-
-def _serialize_error_details(
-    details: _FetchErrorLogDetails | _PartialTeamSeasonLogDetails,
-) -> JsonObject:
-    if isinstance(details, _FetchErrorLogDetails):
-        return _serialize_fetch_error_details(details)
-    return _serialize_partial_team_season_details(details)
-
-
-def _serialize_fetch_error_details(details: _FetchErrorLogDetails) -> JsonObject:
-    payload: JsonObject = {
-        "resource": details.resource,
-        "identifier": details.identifier,
-        "attempts": details.attempts,
-        "last_error_type": details.last_error_type,
-        "last_error_message": details.last_error_message,
-    }
-    if details.team_scope is not None:
-        payload["team_scope"] = _serialize_logged_team(details.team_scope)
-    if details.season_scope is not None:
-        payload["season_scope"] = _serialize_logged_season(details.season_scope)
-    if details.game_id is not None:
-        payload["game_id"] = details.game_id
-    return payload
-
-
-def _serialize_partial_team_season_details(details: _PartialTeamSeasonLogDetails) -> JsonObject:
-    return {
-        "team_scope": _serialize_logged_team(details.team_scope),
-        "season_scope": _serialize_logged_season(details.season_scope),
-        "failed_game_ids": list(details.failed_game_ids),
-        "failed_game_details": [
-            _serialize_logged_game_failure(failure) for failure in details.failed_game_details
-        ],
-        "failure_reason_counts": dict(details.failure_reason_counts),
-        "failure_reason_examples": {
-            reason: list(example_game_ids)
-            for reason, example_game_ids in details.failure_reason_examples.items()
-        },
-        "total_games": details.total_games,
-        "failed_games": details.failed_games,
-    }
-
-
-def _serialize_logged_team(team: _LoggedTeam) -> JsonObject:
-    return {
-        "team_id": team.team_id,
-        "abbreviation": team.abbreviation,
-    }
-
-
-def _serialize_logged_season(season: _LoggedSeason) -> JsonObject:
-    return {
-        "id": season.id,
-        "start_year": season.start_year,
-        "season_type": season.season_type,
-    }
-
-
-def _serialize_logged_game_failure(failure: _LoggedGameFailure) -> JsonObject:
-    return {
-        "game_id": failure.game_id,
-        "error_type": failure.error_type,
-        "message": failure.message,
-    }
