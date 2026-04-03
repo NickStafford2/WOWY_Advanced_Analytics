@@ -2,31 +2,29 @@ from __future__ import annotations
 
 import argparse
 import sys
+from collections.abc import Sequence
 
 from rawr_analytics.cli import (
     render_failure_summary,
-    render_partial_failure_details,
     render_progress_line,
     render_team_complete_line,
     render_team_fetch_failed_line,
     render_team_partial_failed_line,
     render_team_validation_failed_line,
 )
-from rawr_analytics.metrics.constants import Metric
-from rawr_analytics.nba import FetchError, PartialTeamSeasonError, append_ingest_failure_log
 from rawr_analytics.progress import TerminalProgressBar
 from rawr_analytics.services import (
     IngestResult,
-    RebuildRequest,
+    RebuildTeamFailureEvent,
     SeasonRangeFailure,
     format_rebuild_validation_summary,
+    parse_rebuild_request,
     rebuild_player_metrics_db,
 )
-from rawr_analytics.shared.season import SeasonType
 
 _DEFAULT_START_YEAR = 2025
 _DEFAULT_END_YEAR = 1998
-_METRIC_PROGRESS_BARS: dict[Metric, TerminalProgressBar] = {}
+_METRIC_PROGRESS_BARS: dict[str, TerminalProgressBar] = {}
 _VALIDATION_PROGRESS_BAR: TerminalProgressBar | None = None
 
 
@@ -78,16 +76,13 @@ def main(argv: list[str] | None = None) -> int:
     parser = build_parser()
     args = parser.parse_args(argv)
 
-    if args.start_year < args.end_year:
-        raise ValueError("Start year must be greater than or equal to end year")
-
     result = rebuild_player_metrics_db(
-        RebuildRequest(
+        parse_rebuild_request(
             start_year=args.start_year,
             end_year=args.end_year,
-            season_type=SeasonType.parse(args.season_type),
+            season_type=args.season_type,
             teams=args.teams,
-            metrics=[Metric.parse(metric) for metric in args.metric] if args.metric else None,
+            metrics=args.metric,
             keep_existing_db=args.keep_existing_db,
         ),
         ingest_progress_fn=render_progress_line,
@@ -127,7 +122,7 @@ def main(argv: list[str] | None = None) -> int:
     return 0
 
 
-def _render_season_started(season_index: int, season_count: int, season: object) -> None:
+def _render_season_started(season_index: int, season_count: int, season: str) -> None:
     if season_count > 1:
         print(f"[{season_index}/{season_count}] caching {season}")
 
@@ -137,66 +132,49 @@ def _render_team_completed(team_index: int, team_total: int, result: IngestResul
     sys.stdout.write("\n")
 
 
-def _render_team_failed(team_index: int, team_total: int, failure: SeasonRangeFailure) -> None:
-    request = failure.request
-    team = request.team
-    season = request.season
-    error = failure.error
-
-    append_ingest_failure_log(
-        team=team,
-        season=season,
-        failure_kind=failure.failure_kind,
-        error=error,
-    )
-
-    if failure.failure_kind == "fetch_error":
-        assert isinstance(error, FetchError)
+def _render_team_failed(event: RebuildTeamFailureEvent) -> None:
+    if event.failure_kind == "fetch_error":
         render_team_fetch_failed_line(
-            team_index=team_index,
-            team_total=team_total,
-            team=team,
-            season=season,
-            error_type=error.last_error_type,
+            team_index=event.team_index,
+            team_total=event.team_total,
+            team_label=event.team_label,
+            season_label=event.season_label,
+            error_type=event.fetch_error_type or "unknown",
         )
         sys.stdout.write("\n")
-        sys.stderr.write(f"Fetch failed for {request.label}: {error}\n")
+        sys.stderr.write(f"{event.stderr_message}\n")
         sys.stderr.flush()
         return
 
-    if failure.failure_kind == "partial_scope_error":
-        assert isinstance(error, PartialTeamSeasonError)
+    if event.failure_kind == "partial_scope_error":
         render_team_partial_failed_line(
-            team_index=team_index,
-            team_total=team_total,
-            team=team,
-            season=season,
-            failed_games=error.failed_games,
-            total_games=error.total_games,
+            team_index=event.team_index,
+            team_total=event.team_total,
+            team_label=event.team_label,
+            season_label=event.season_label,
+            failed_games=event.failed_games or 0,
+            total_games=event.total_games or 0,
         )
         sys.stdout.write("\n")
-        sys.stderr.write(
-            f"Incomplete cache for {request.label}: "
-            f"{error.failed_games}/{error.total_games} games failed normalization\n"
-        )
-        sys.stderr.write(f"{render_partial_failure_details(error)}\n")
+        sys.stderr.write(f"{event.stderr_message}\n")
+        if event.stderr_details is not None:
+            sys.stderr.write(f"{event.stderr_details}\n")
         sys.stderr.flush()
         return
 
-    reason = str(error)
     render_team_validation_failed_line(
-        team_index=team_index,
-        team_total=team_total,
-        team=team,
-        season=season,
-        reason=reason,
+        team_index=event.team_index,
+        team_total=event.team_total,
+        team_label=event.team_label,
+        season_label=event.season_label,
+        reason=event.reason,
     )
     sys.stdout.write("\n")
-    sys.stderr.write(f"Validation failed for {request.label}: {reason}\n")
+    sys.stderr.write(f"{event.stderr_message}\n")
     sys.stderr.flush()
 
 
-def _render_failure_summary(failures: list[SeasonRangeFailure]) -> None:
+def _render_failure_summary(failures: Sequence[SeasonRangeFailure]) -> None:
     if not failures:
         return
     counts: dict[str, int] = {}
@@ -208,10 +186,10 @@ def _render_failure_summary(failures: list[SeasonRangeFailure]) -> None:
     )
 
 
-def _render_metric_progress(metric: Metric, current: int, total: int, detail: str) -> None:
+def _render_metric_progress(metric: str, current: int, total: int, detail: str) -> None:
     progress_bar = _METRIC_PROGRESS_BARS.get(metric)
     if progress_bar is None:
-        progress_bar = TerminalProgressBar(f"Refresh {metric.value}", total=max(total, 1))
+        progress_bar = TerminalProgressBar(f"Refresh {metric}", total=max(total, 1))
         _METRIC_PROGRESS_BARS[metric] = progress_bar
     progress_bar.total = max(total, 1)
     progress_bar.update(current, detail=detail)

@@ -10,6 +10,7 @@ from rawr_analytics.data._paths import (
 from rawr_analytics.data.db_validation import (
     DatabaseValidationSummary,
     audit_player_metrics_db,
+    render_validation_summary,
     summarize_validation_report,
 )
 
@@ -38,9 +39,18 @@ def validate_rebuild_storage(
     return summarize_validation_report(audit_player_metrics_db(progress=progress))
 
 
+def render_rebuild_validation_summary(
+    summary: DatabaseValidationSummary,
+    *,
+    top_n: int = 10,
+) -> str:
+    return render_validation_summary(summary, top_n=top_n)
+
+
 __all__ = [
     "DatabaseValidationSummary",
     "ValidationProgressFn",
     "prepare_rebuild_storage",
+    "render_rebuild_validation_summary",
     "validate_rebuild_storage",
 ]

@@ -13,6 +13,7 @@ from rawr_analytics.data.rebuild import (
     DatabaseValidationSummary,
     ValidationProgressFn,
     prepare_rebuild_storage,
+    render_rebuild_validation_summary,
     validate_rebuild_storage,
 )
 
@@ -20,5 +21,6 @@ __all__ = [
     "DatabaseValidationSummary",
     "ValidationProgressFn",
     "prepare_rebuild_storage",
+    "render_rebuild_validation_summary",
     "validate_rebuild_storage",
 ]

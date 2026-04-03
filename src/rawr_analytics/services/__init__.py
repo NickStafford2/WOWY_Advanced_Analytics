@@ -33,7 +33,9 @@ from rawr_analytics.services.metric_refresh import (
 from rawr_analytics.services.rebuild import (
     RebuildRequest,
     RebuildResult,
+    RebuildTeamFailureEvent,
     format_rebuild_validation_summary,
+    parse_rebuild_request,
     rebuild_player_metrics_db,
 )
 
@@ -52,6 +54,7 @@ __all__ = [
     "MetricViewResult",
     "RebuildRequest",
     "RebuildResult",
+    "RebuildTeamFailureEvent",
     "RefreshMetricStoreResult",
     "SeasonRangeFailure",
     "SeasonRangeResult",
@@ -61,6 +64,7 @@ __all__ = [
     "format_rebuild_validation_summary",
     "parse_metric_query_request",
     "parse_metric_store_refresh_request",
+    "parse_rebuild_request",
     "rebuild_player_metrics_db",
     "refresh_metric_store",
     "refresh_season_range",

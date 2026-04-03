@@ -1,12 +1,8 @@
 from __future__ import annotations
 
-import json
 import sys
 
-from rawr_analytics.nba.errors import GameNormalizationFailure, PartialTeamSeasonError
 from rawr_analytics.services import IngestProgress
-from rawr_analytics.shared.season import Season
-from rawr_analytics.shared.team import Team
 
 _LAST_STATUS_LINE_LENGTH = 0
 
@@ -66,106 +62,54 @@ def render_team_complete_line(
 def render_team_partial_failed_line(
     team_index: int,
     team_total: int,
-    team: Team,
-    season: Season,
+    team_label: str,
+    season_label: str,
     failed_games: int,
     total_games: int,
 ) -> None:
-    team_label = team.abbreviation(season=season)
     line = (
-        f"  [{team_index:>2}/{team_total}] {team_label} {season} "
+        f"  [{team_index:>2}/{team_total}] {team_label} {season_label} "
         f"failed partial={failed_games}/{total_games}"
     )
     _write_status_line(line)
 
 
-def _summarize_game_failure_detail(failure: GameNormalizationFailure) -> str:
-    message = failure.message
-    if "; nba_api_" not in message:
-        return message
-
-    summary, raw_payload = message.split("; nba_api_", maxsplit=1)
-    raw_json = raw_payload.split("=", maxsplit=1)[-1].strip()
-    try:
-        payload = json.loads(raw_json)
-    except json.JSONDecodeError:
-        return summary
-
-    parts: list[str] = []
-    player_name = str(payload.get("PLAYER_NAME", "")).strip()
-    if player_name:
-        parts.append(f"player={player_name!r}")
-    min_value = payload.get("MIN")
-    if min_value is not None or "MIN" in payload:
-        parts.append(f"min={min_value!r}")
-    comment = str(payload.get("COMMENT", "")).strip()
-    if comment:
-        parts.append(f"comment={comment!r}")
-
-    for key in ("TEAM_ABBREVIATION", "TEAM_ID"):
-        value = payload.get(key)
-        if value is not None and value != "":
-            parts.append(f"{key.lower()}={value!r}")
-            break
-
-    if not parts:
-        return summary
-    return f"{summary} ({', '.join(parts)})"
-
-
-def render_partial_failure_details(error: PartialTeamSeasonError) -> str:
-    lines = ["Failure reasons:"]
-    details_by_game_id = {failure.game_id: failure for failure in error.failed_game_details}
-    ranked_reasons = sorted(
-        error.failure_reason_counts.items(),
-        key=lambda item: (-item[1], item[0]),
-    )
-    for reason, count in ranked_reasons:
-        example_game_ids = error.failure_reason_examples.get(reason, [])[:3]
-        lines.append(f"  - {count} games: {reason}")
-        for game_id in example_game_ids:
-            failure = details_by_game_id.get(game_id)
-            if failure is None:
-                lines.append(f"    {game_id}: details unavailable")
-                continue
-            detail = _summarize_game_failure_detail(failure)
-            lines.append(f"    {game_id}: {detail}")
-    return "\n".join(lines)
-
-
 def render_team_validation_failed_line(
     team_index: int,
     team_total: int,
-    team: Team,
-    season: Season,
+    team_label: str,
+    season_label: str,
     reason: str,
 ) -> None:
-    team_label = team.abbreviation(season=season)
-    line = f"  [{team_index:>2}/{team_total}] {team_label} {season} failed validation={reason}"
+    line = (
+        f"  [{team_index:>2}/{team_total}] "
+        f"{team_label} {season_label} failed validation={reason}"
+    )
     _write_status_line(line)
 
 
 def render_team_fetch_failed_line(
     team_index: int,
     team_total: int,
-    team: Team,
-    season: Season,
+    team_label: str,
+    season_label: str,
     error_type: str,
 ) -> None:
-    team_label = team.abbreviation(season=season)
-    line = f"  [{team_index:>2}/{team_total}] {team_label} {season} failed fetch={error_type}"
+    line = (
+        f"  [{team_index:>2}/{team_total}] "
+        f"{team_label} {season_label} failed fetch={error_type}"
+    )
     _write_status_line(line)
 
 
 def _render_team_skipped_line(
     team_index: int,
     team_total: int,
-    team: Team,
-    season: Season,
+    team_label: str,
+    season_label: str,
     reason: str,
 ) -> None:
-    team_label = team.abbreviation(season=season)
-    line = f"  [{team_index:>2}/{team_total}] {team_label} {season} skipped {reason}"
+    line = f"  [{team_index:>2}/{team_total}] {team_label} {season_label} skipped {reason}"
     _write_status_line(line)
 
 
