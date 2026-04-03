@@ -1,9 +1,6 @@
 from __future__ import annotations
 
 from rawr_analytics.basketball.models import NormalizedGamePlayerRecord, NormalizedGameRecord
-from rawr_analytics.shared.player import PlayerSummary
-from rawr_analytics.shared.season import Season
-from rawr_analytics.shared.team import Team
 from rawr_analytics.sources.nba_api.models import (
     SourceBoxScore,
     SourceBoxScorePlayer,
@@ -18,6 +15,9 @@ from rawr_analytics.sources.nba_api.rules import (
     parse_minutes_to_float,
     source_player_played_in_game,
 )
+from rawr_analytics.shared.player import PlayerSummary
+from rawr_analytics.shared.season import Season
+from rawr_analytics.shared.team import Team
 
 
 def normalize_source_league_game(
@@ -25,7 +25,7 @@ def normalize_source_league_game(
     source_league_game: SourceLeagueGame,
     box_score: SourceBoxScore,
     season: Season,
-    source: str = "nba_api",  # todo remove
+    source: str = "nba_api",
 ) -> tuple[NormalizedGameRecord, list[NormalizedGamePlayerRecord]]:
     team_stat, opponent_stat = _resolve_game_teams(
         schedule_game=source_league_game,
@@ -67,15 +67,6 @@ def normalize_source_league_game(
         opponent_team=opponent_stat.team,
     )
     return game, players
-
-
-def _extract_opponent(matchup: str, team_abbreviation: str) -> str:
-    left, right, _ = _split_matchup(matchup)
-    if _validate_matchup(left, team_abbreviation):
-        return right
-    if _validate_matchup(right, team_abbreviation):
-        return left
-    raise ValueError(f"Failed to parse opponent from matchup {matchup!r}")
 
 
 def _extract_is_home(matchup: str, team_abbreviation: str) -> bool:
@@ -214,6 +205,5 @@ def _validate_matchup(side: str, team_abbreviation: str) -> bool:
 
 
 __all__ = [
-    "_extract_is_home",
     "normalize_source_league_game",
 ]

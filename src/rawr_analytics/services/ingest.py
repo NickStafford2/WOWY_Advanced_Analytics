@@ -10,18 +10,18 @@ from rawr_analytics.services._ingest_errors import (
     GameNormalizationFailure,
     PartialTeamSeasonError,
 )
-from rawr_analytics.basketball.normalize import (
+from rawr_analytics.basketball.models import (
     NormalizedGamePlayerRecord,
     NormalizedGameRecord,
     NormalizedTeamSeasonBatch,
-    normalize_source_league_game,
-    validate_normalized_team_season_batch,
 )
+from rawr_analytics.basketball.normalize import validate_normalized_team_season_batch
 from rawr_analytics.sources.nba_api import (
     SourceLeagueGame,
     dedupe_schedule_games,
     load_or_fetch_box_score,
     load_or_fetch_league_games,
+    normalize_source_league_game,
     parse_league_schedule_payload,
 )
 from rawr_analytics.shared.common import LogFn

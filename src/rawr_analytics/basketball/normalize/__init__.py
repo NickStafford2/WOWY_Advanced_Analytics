@@ -1,4 +1,4 @@
-"""Public package API for canonical NBA normalization."""
+"""Public package API for normalized game record validation."""
 
 from __future__ import annotations
 
@@ -7,7 +7,6 @@ from rawr_analytics.basketball.models import (
     NormalizedGameRecord,
     NormalizedTeamSeasonBatch,
 )
-from rawr_analytics.basketball.normalize.normalize_game import normalize_source_league_game
 from rawr_analytics.basketball.normalize.validation import (
     validate_normalized_cache_batch,
     validate_normalized_game_player_record,
@@ -19,7 +18,6 @@ __all__ = [
     "NormalizedGamePlayerRecord",
     "NormalizedGameRecord",
     "NormalizedTeamSeasonBatch",
-    "normalize_source_league_game",
     "validate_normalized_cache_batch",
     "validate_normalized_game_player_record",
     "validate_normalized_game_record",
