@@ -156,15 +156,6 @@ class SeasonRangeResult:
 
 
 @dataclass(frozen=True)
-class _IngestRefreshRequest:
-    start_year: int
-    end_year: int
-    season_type: str
-    season_str: str | None = None
-    team_abbreviations: list[str] | None = None
-
-
-@dataclass(frozen=True)
 class IngestFailureLogEntry:
     scope: str
     team: Team
@@ -199,14 +190,12 @@ def refresh_season_range(
     event_fn: IngestEventFn | None = None,
     failure_log_fn: FailureLogFn | None = None,
 ) -> SeasonRangeResult:
-    request = _IngestRefreshRequest(
+    seasons = _build_seasons(
         start_year=start_year,
         end_year=end_year,
         season_type=season_type,
         season_str=season_str,
-        team_abbreviations=team_abbreviations,
     )
-    seasons = _build_seasons(request=request)
     season_total = len(seasons)
     attempted_team_seasons = 0
     completed_team_seasons = 0
@@ -222,7 +211,7 @@ def refresh_season_range(
             ),
         )
 
-        teams = _resolve_teams(team_abbreviations=request.team_abbreviations, season=season)
+        teams = _resolve_teams(team_abbreviations=team_abbreviations, season=season)
         team_total = len(teams)
         for team_index, team in enumerate(teams, start=1):
             attempted_team_seasons += 1
@@ -282,13 +271,19 @@ def refresh_season_range(
     )
 
 
-def _build_seasons(*, request: _IngestRefreshRequest) -> list[Season]:
-    if request.season_str is not None:
-        return [Season(request.season_str, request.season_type)]
+def _build_seasons(
+    *,
+    start_year: int,
+    end_year: int,
+    season_type: str,
+    season_str: str | None,
+) -> list[Season]:
+    if season_str is not None:
+        return [Season(season_str, season_type)]
     return build_season_list(
-        request.start_year,
-        request.end_year,
-        request.season_type,
+        start_year,
+        end_year,
+        season_type,
     )
 
 

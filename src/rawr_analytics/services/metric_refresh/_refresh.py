@@ -64,14 +64,6 @@ class MetricStoreRefreshProgressEvent:
 
 
 @dataclass(frozen=True)
-class _MetricStoreRefreshRequest:
-    metric: Metric
-    season_type: SeasonType
-    rawr_ridge_alpha: float = DEFAULT_RAWR_RIDGE_ALPHA
-    include_team_scopes: bool = True
-
-
-@dataclass(frozen=True)
 class RefreshMetricStoreResult:
     metric: Metric
     scope_results: list[RefreshScopeResult]
@@ -114,23 +106,19 @@ def refresh_metric_store(
     include_team_scopes: bool = True,
     event_fn: MetricStoreRefreshEventFn | None = None,
 ) -> RefreshMetricStoreResult:
-    request = _MetricStoreRefreshRequest(
-        metric=Metric.parse(metric) if isinstance(metric, str) else metric,
-        season_type=SeasonType.parse(season_type)
-        if isinstance(season_type, str)
-        else season_type,
+    normalized_metric = Metric.parse(metric) if isinstance(metric, str) else metric
+    normalized_season_type = (
+        SeasonType.parse(season_type) if isinstance(season_type, str) else season_type
+    )
+    plan = _prepare_metric_store_refresh(
+        normalized_metric,
+        season_type=normalized_season_type,
         rawr_ridge_alpha=rawr_ridge_alpha,
         include_team_scopes=include_team_scopes,
     )
-    plan = _prepare_metric_store_refresh(
-        request.metric,
-        season_type=request.season_type,
-        rawr_ridge_alpha=request.rawr_ridge_alpha,
-        include_team_scopes=request.include_team_scopes,
-    )
     if plan.failure_message is not None:
         return RefreshMetricStoreResult(
-            metric=request.metric,
+            metric=normalized_metric,
             scope_results=[],
             warnings=plan.warnings,
             failure_message=plan.failure_message,
@@ -149,11 +137,11 @@ def refresh_metric_store(
         )
 
         scope_result, should_fail_empty_rawr_scope = _refresh_metric_store_scope(
-            metric=request.metric,
+            metric=normalized_metric,
             metric_label=plan.metric_label,
             scope=scope,
-            season_type=request.season_type,
-            rawr_ridge_alpha=request.rawr_ridge_alpha,
+            season_type=normalized_season_type,
+            rawr_ridge_alpha=rawr_ridge_alpha,
             available_teams=available_teams,
             source_fingerprint=plan.source_fingerprint,
             build_version=plan.build_version,
@@ -175,7 +163,7 @@ def refresh_metric_store(
             break
 
     return RefreshMetricStoreResult(
-        metric=request.metric,
+        metric=normalized_metric,
         scope_results=scope_results,
         warnings=plan.warnings,
         failure_message=failure_message,
