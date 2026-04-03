@@ -5,6 +5,7 @@ from dataclasses import dataclass
 
 from rawr_analytics.data.game_cache import replace_team_season_normalized_rows
 from rawr_analytics.data.game_cache.rows import NormalizedGamePlayerRow, NormalizedGameRow
+from rawr_analytics.services._ingest_validation import validate_normalized_team_season_batch
 from rawr_analytics.services._ingest_errors import (
     FetchError,
     GameNormalizationFailure,
@@ -15,7 +16,6 @@ from rawr_analytics.game_data.models import (
     NormalizedGameRecord,
     NormalizedTeamSeasonBatch,
 )
-from rawr_analytics.game_data.validation import validate_normalized_team_season_batch
 from rawr_analytics.sources.nba_api import (
     SourceLeagueGame,
     dedupe_schedule_games,

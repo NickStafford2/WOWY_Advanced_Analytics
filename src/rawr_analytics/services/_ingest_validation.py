@@ -10,11 +10,9 @@ from rawr_analytics.game_data.models import (
     NormalizedGameRecord,
     NormalizedTeamSeasonBatch,
 )
-from rawr_analytics.shared.scope import TeamSeasonScope
 from rawr_analytics.shared.season import Season
 from rawr_analytics.shared.team import Team
 
-_TEAM_ABBREVIATION_PATTERN = re.compile(r"^[A-Z0-9]{2,4}$")
 _GAME_DATE_PATTERN = re.compile(r"^\d{4}-\d{2}-\d{2}$")
 
 
@@ -23,7 +21,7 @@ def validate_normalized_team_season_batch(batch: NormalizedTeamSeasonBatch) -> N
     players_by_game_key: dict[tuple[str, int], list[NormalizedGamePlayerRecord]] = defaultdict(list)
 
     for game in batch.games:
-        validate_normalized_game_record(
+        _validate_normalized_game_record(
             game,
             expected_team=batch.scope.team,
             expected_season=batch.scope.season,
@@ -35,7 +33,7 @@ def validate_normalized_team_season_batch(batch: NormalizedTeamSeasonBatch) -> N
 
     player_keys: set[tuple[str, int, int]] = set()
     for player in batch.game_players:
-        validate_normalized_game_player_record(player, expected_team=batch.scope.team)
+        _validate_normalized_game_player_record(player, expected_team=batch.scope.team)
         player_key = (player.game_id, player.team.team_id, player.player.player_id)
         if player_key in player_keys:
             raise ValueError(f"Duplicate canonical player row for {player_key!r}")
@@ -68,22 +66,7 @@ def validate_normalized_team_season_batch(batch: NormalizedTeamSeasonBatch) -> N
             )
 
 
-def validate_normalized_cache_batch(
-    *,
-    team: Team,
-    season: Season,
-    games: list[NormalizedGameRecord],
-    game_players: list[NormalizedGamePlayerRecord],
-) -> None:
-    batch = NormalizedTeamSeasonBatch(
-        scope=TeamSeasonScope(team=team, season=season),
-        games=games,
-        game_players=game_players,
-    )
-    validate_normalized_team_season_batch(batch)
-
-
-def validate_normalized_game_record(
+def _validate_normalized_game_record(
     game: NormalizedGameRecord,
     *,
     expected_team: Team,
@@ -122,7 +105,7 @@ def validate_normalized_game_record(
         raise ValueError(f"Canonical game {game.game_id!r} must have a non-empty source")
 
 
-def validate_normalized_game_player_record(
+def _validate_normalized_game_player_record(
     player: NormalizedGamePlayerRecord,
     *,
     expected_team: Team,
@@ -157,8 +140,5 @@ def validate_normalized_game_player_record(
 
 
 __all__ = [
-    "validate_normalized_cache_batch",
-    "validate_normalized_game_player_record",
-    "validate_normalized_game_record",
     "validate_normalized_team_season_batch",
 ]
