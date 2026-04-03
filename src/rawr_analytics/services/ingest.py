@@ -6,23 +6,23 @@ from dataclasses import dataclass
 from rawr_analytics.data.game_cache import replace_team_season_normalized_rows
 from rawr_analytics.data.game_cache.rows import NormalizedGamePlayerRow, NormalizedGameRow
 from rawr_analytics.services._ingest_validation import validate_normalized_team_season_batch
-from rawr_analytics.shared.ingest import (
-    FetchError,
-    PartialTeamSeasonError,
-)
+from rawr_analytics.shared.common import LogFn
 from rawr_analytics.shared.game import (
     NormalizedGamePlayerRecord,
     NormalizedGameRecord,
     NormalizedTeamSeasonBatch,
 )
+from rawr_analytics.shared.ingest import (
+    FetchError,
+    PartialTeamSeasonError,
+)
+from rawr_analytics.shared.scope import TeamSeasonScope
+from rawr_analytics.shared.season import Season, build_season_list
+from rawr_analytics.shared.team import Team
 from rawr_analytics.sources.nba_api import (
     NbaApiGameIngestUpdate,
     ingest_team_season,
 )
-from rawr_analytics.shared.common import LogFn
-from rawr_analytics.shared.scope import TeamSeasonScope
-from rawr_analytics.shared.season import Season, build_season_list
-from rawr_analytics.shared.team import Team
 
 _TeamProgressFn = Callable[["IngestProgress"], None]
 IngestEventFn = Callable[["IngestEvent"], None]

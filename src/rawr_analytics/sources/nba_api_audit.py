@@ -8,6 +8,8 @@ from collections.abc import Callable
 from dataclasses import dataclass
 from pathlib import Path
 
+from rawr_analytics.shared.season import Season, SeasonType
+from rawr_analytics.shared.team import Team
 from rawr_analytics.sources.nba_api.cache import DEFAULT_NBA_API_DATA_DIR
 from rawr_analytics.sources.nba_api.dedupe import dedupe_schedule_games
 from rawr_analytics.sources.nba_api.parsers import (
@@ -19,8 +21,6 @@ from rawr_analytics.sources.nba_api.rules import (
     classify_source_schedule_row,
     classify_source_team_row,
 )
-from rawr_analytics.shared.season import Season, SeasonType
-from rawr_analytics.shared.team import Team
 
 AuditProgressFn = Callable[[int, int, str], None]
 _LAST_PROGRESS_LINE_LENGTH = 0
@@ -231,9 +231,9 @@ def _load_json_payload(path: Path) -> dict:
 
 
 def _scope_from_schedule_path(path: Path) -> tuple[Team, Season]:
-    team_abbreviation, season_id, season_type_slug = (
-        path.stem.removesuffix("_leaguegamefinder").split("_", maxsplit=2)
-    )
+    team_abbreviation, season_id, season_type_slug = path.stem.removesuffix(
+        "_leaguegamefinder"
+    ).split("_", maxsplit=2)
     season_type = SeasonType.parse(season_type_slug.replace("_", " ").title())
     season = Season(season_id, season_type.value)
     return Team.from_abbreviation(team_abbreviation, season=season), season

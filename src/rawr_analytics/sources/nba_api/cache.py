@@ -12,7 +12,6 @@ from nba_api.stats.endpoints import (
     boxscoretraditionalv3,
     leaguegamefinder,
 )
-
 from rawr_analytics.shared.common import LogFn
 from rawr_analytics.shared.ingest import BoxScoreFetchError, LeagueGamesFetchError
 from rawr_analytics.shared.season import Season

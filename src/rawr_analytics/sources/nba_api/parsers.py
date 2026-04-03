@@ -4,6 +4,10 @@ import math
 import re
 from typing import NoReturn
 
+from rawr_analytics.shared.player import PlayerSummary
+from rawr_analytics.shared.scope import TeamSeasonScope
+from rawr_analytics.shared.season import Season
+from rawr_analytics.shared.team import Team
 from rawr_analytics.sources.nba_api.models import (
     SourceBoxScore,
     SourceBoxScorePlayer,
@@ -19,10 +23,6 @@ from rawr_analytics.sources.nba_api.rules import (
     parse_box_score_numeric_value,
     source_player_played_in_game,
 )
-from rawr_analytics.shared.player import PlayerSummary
-from rawr_analytics.shared.scope import TeamSeasonScope
-from rawr_analytics.shared.season import Season
-from rawr_analytics.shared.team import Team
 
 _ROW_VALUE_ALIASES: dict[str, tuple[str, ...]] = {
     "GAME_ID": ("gameId",),

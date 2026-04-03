@@ -10,11 +10,6 @@ from rawr_analytics.data import (
     validate_rebuild_storage,
 )
 from rawr_analytics.metrics.constants import Metric
-from rawr_analytics.shared.ingest import (
-    FetchError,
-    GameNormalizationFailure,
-    PartialTeamSeasonError,
-)
 from rawr_analytics.services.ingest import (
     FailureLogFn,
     IngestEvent,
@@ -32,6 +27,11 @@ from rawr_analytics.services.metric_refresh import (
     MetricStoreRefreshProgressEvent,
     RefreshMetricStoreResult,
     refresh_metric_store,
+)
+from rawr_analytics.shared.ingest import (
+    FetchError,
+    GameNormalizationFailure,
+    PartialTeamSeasonError,
 )
 from rawr_analytics.shared.season import Season, SeasonType
 from rawr_analytics.shared.team import Team
@@ -146,6 +146,7 @@ def rebuild_player_metrics_db(
 
     metric_results: list[RefreshMetricStoreResult] = []
     for metric in normalized_metrics or [Metric.WOWY, Metric.WOWY_SHRUNK, Metric.RAWR]:
+
         def _emit_metric_refresh_event(
             event: MetricStoreRefreshProgressEvent,
             *,
