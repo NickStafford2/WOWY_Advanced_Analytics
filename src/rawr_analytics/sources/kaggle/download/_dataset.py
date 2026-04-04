@@ -4,8 +4,9 @@ import importlib
 from pathlib import Path
 from shutil import copy2
 
+from rawr_analytics.sources.kaggle.constants import LOCAL_DATASET_DIR
+
 DATASET_HANDLE = "eoinamoore/historical-nba-data-and-player-box-scores"
-LOCAL_DATASET_DIR = Path("data/source/eoinamoore")
 
 
 def download_dataset_to_repo() -> tuple[Path, Path]:
@@ -32,6 +33,5 @@ def _copy_dataset_to_local_source(*, source_root: Path, target_root: Path) -> Pa
 
 __all__ = [
     "DATASET_HANDLE",
-    "LOCAL_DATASET_DIR",
     "download_dataset_to_repo",
 ]
