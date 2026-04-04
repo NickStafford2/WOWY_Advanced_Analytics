@@ -6,7 +6,6 @@ from itertools import product
 
 import numpy as np
 
-from rawr_analytics.metrics.rawr import prepare_rawr_player_season_records
 from rawr_analytics.metrics.rawr.records import RawrPlayerSeasonRecord
 from rawr_analytics.metrics.wowy import prepare_wowy_player_season_records
 from rawr_analytics.metrics.wowy.records import WowyPlayerSeasonRecord
@@ -165,7 +164,7 @@ def compare_rawr_configs(
                 seasons=train_seasons,
                 season_type=season_type,
             )
-            rawr_records = prepare_rawr_player_season_records(
+            rawr_records = RawrPlayerSeasonRecord.prepare_rawr_player_season_records(
                 season_inputs=rawr_season_inputs,
                 min_games=rawr_min_games,
                 ridge_alpha=ridge_alpha,
@@ -258,11 +257,7 @@ def _aggregate_wowy_training_records(
                     for record in player_records
                     if record.result.value is not None
                 ],
-                [
-                    record.season
-                    for record in player_records
-                    if record.result.value is not None
-                ],
+                [record.season for record in player_records if record.result.value is not None],
                 aggregation,
             ),
             season_count=len(player_records),

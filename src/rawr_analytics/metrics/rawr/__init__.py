@@ -4,7 +4,6 @@ from rawr_analytics.metrics.rawr.analysis import RawrValue
 from rawr_analytics.metrics.rawr.dataset import (
     RawrCustomQueryResult,
     RawrPlayerSeasonValue,
-    prepare_rawr_player_season_records,
 )
 from rawr_analytics.metrics.rawr.defaults import (
     DEFAULT_RAWR_SHRINKAGE_MINUTE_SCALE,
@@ -39,7 +38,6 @@ __all__ = [
     "build_rawr_query",
     "default_filters",
     "describe_metric",
-    "prepare_rawr_player_season_records",
     "validate_filters",
     "validate_request",
 ]

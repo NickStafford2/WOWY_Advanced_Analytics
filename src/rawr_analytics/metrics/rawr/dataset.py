@@ -10,7 +10,7 @@ from rawr_analytics.metrics.rawr.defaults import (
     DEFAULT_RAWR_SHRINKAGE_STRENGTH,
     describe_metric,
 )
-from rawr_analytics.metrics.rawr.inputs import RawrRequest, RawrSeasonInput
+from rawr_analytics.metrics.rawr.inputs import RawrSeasonInput
 from rawr_analytics.metrics.rawr.records import RawrPlayerSeasonRecord
 from rawr_analytics.shared.player import PlayerMinutes, PlayerSummary
 
@@ -38,7 +38,7 @@ class RawrCustomQueryResult:
         min_average_minutes: float | None,
         min_total_minutes: float | None,
     ) -> RawrCustomQueryResult:
-        records = prepare_rawr_player_season_records(
+        records = RawrPlayerSeasonRecord.prepare_rawr_player_season_records(
             season_inputs=season_inputs,
             min_games=min_games,
             ridge_alpha=ridge_alpha,
@@ -61,28 +61,3 @@ class RawrCustomQueryResult:
                 for record in records
             ],
         )
-
-
-def prepare_rawr_player_season_records(
-    *,
-    season_inputs: list[RawrSeasonInput],
-    min_games: int,
-    ridge_alpha: float,
-    shrinkage_mode: str,
-    shrinkage_strength: float,
-    shrinkage_minute_scale: float,
-    min_average_minutes: float | None = None,
-    min_total_minutes: float | None = None,
-) -> list[RawrPlayerSeasonRecord]:
-    return RawrPlayerSeasonRecord.build_player_season_records(
-        RawrRequest(
-            season_inputs=season_inputs,
-            min_games=min_games,
-            ridge_alpha=ridge_alpha,
-            shrinkage_mode=shrinkage_mode,
-            shrinkage_strength=shrinkage_strength,
-            shrinkage_minute_scale=shrinkage_minute_scale,
-            min_average_minutes=min_average_minutes,
-            min_total_minutes=min_total_minutes,
-        )
-    )

@@ -37,6 +37,31 @@ class RawrPlayerSeasonRecord:
         )
         return records
 
+    @staticmethod
+    def prepare_rawr_player_season_records(
+        *,
+        season_inputs: list[RawrSeasonInput],
+        min_games: int,
+        ridge_alpha: float,
+        shrinkage_mode: str,
+        shrinkage_strength: float,
+        shrinkage_minute_scale: float,
+        min_average_minutes: float | None = None,
+        min_total_minutes: float | None = None,
+    ) -> list[RawrPlayerSeasonRecord]:
+        return RawrPlayerSeasonRecord.build_player_season_records(
+            RawrRequest(
+                season_inputs=season_inputs,
+                min_games=min_games,
+                ridge_alpha=ridge_alpha,
+                shrinkage_mode=shrinkage_mode,
+                shrinkage_strength=shrinkage_strength,
+                shrinkage_minute_scale=shrinkage_minute_scale,
+                min_average_minutes=min_average_minutes,
+                min_total_minutes=min_total_minutes,
+            )
+        )
+
 
 def _build_season_records(
     season_input: RawrSeasonInput,

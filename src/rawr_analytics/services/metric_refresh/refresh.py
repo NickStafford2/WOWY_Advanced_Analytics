@@ -10,8 +10,8 @@ from rawr_analytics.data.game_cache import (
     list_cached_team_seasons,
 )
 from rawr_analytics.data.metric_store import (
-    MetricScopeCatalog,
     MetricScopeAvailability,
+    MetricScopeCatalog,
     MetricSeasonSpanIds,
     RawrPlayerSeasonValueRow,
     WowyPlayerSeasonValueRow,
@@ -26,7 +26,7 @@ from rawr_analytics.metrics.rawr import (
     DEFAULT_RAWR_SHRINKAGE_MINUTE_SCALE,
     DEFAULT_RAWR_SHRINKAGE_MODE,
     DEFAULT_RAWR_SHRINKAGE_STRENGTH,
-    prepare_rawr_player_season_records,
+    RawrPlayerSeasonRecord,
 )
 from rawr_analytics.metrics.rawr import describe_metric as describe_rawr_metric
 from rawr_analytics.metrics.wowy import (
@@ -422,7 +422,7 @@ def _build_rawr_cached_rows(
         seasons=None,
         season_type=season_type,
     )
-    records = prepare_rawr_player_season_records(
+    records = RawrPlayerSeasonRecord.prepare_rawr_player_season_records(
         season_inputs=season_inputs,
         min_games=1,
         ridge_alpha=rawr_ridge_alpha,
