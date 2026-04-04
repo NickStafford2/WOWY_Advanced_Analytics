@@ -3,6 +3,11 @@ from __future__ import annotations
 import argparse
 import sys
 
+from rawr_analytics.app.wowy.query import build_wowy_query
+from rawr_analytics.app.wowy.service import (
+    build_wowy_leaderboard_export,
+    resolve_wowy_result,
+)
 from rawr_analytics.cli._common import format_scope
 from rawr_analytics.cli._metric_query_cli import (
     add_metric_query_common_arguments,
@@ -13,8 +18,6 @@ from rawr_analytics.cli._metric_query_cli import (
 )
 from rawr_analytics.cli._progress_bar import print_status_box
 from rawr_analytics.metrics.constants import Metric
-from rawr_analytics.metrics.wowy import build_wowy_query
-from rawr_analytics.services.wowy_query import build_wowy_query_export
 
 
 def _build_parser() -> argparse.ArgumentParser:
@@ -48,7 +51,8 @@ def main(argv: list[str] | None = None) -> int:
         ],
     )
     print(f"[1/2] building {Metric.WOWY.value} custom query")
-    rows = build_wowy_query_export(Metric.WOWY, query, view="custom-query")
+    result = resolve_wowy_result(query, metric=Metric.WOWY, recalculate=True)
+    rows = build_wowy_leaderboard_export(query, result)
     print(f"[2/2] built {len(rows)} leaderboard rows")
     print(render_metric_query_table(Metric.WOWY, rows))
     return 0

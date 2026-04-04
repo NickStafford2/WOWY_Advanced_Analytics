@@ -52,9 +52,7 @@ def build_wowy_query(
             else defaults["min_total_minutes"]
         ),
         min_games_with=int(
-            min_games_with
-            if min_games_with is not None
-            else defaults["min_games_with"]
+            min_games_with if min_games_with is not None else defaults["min_games_with"]
         ),
         min_games_without=int(
             min_games_without

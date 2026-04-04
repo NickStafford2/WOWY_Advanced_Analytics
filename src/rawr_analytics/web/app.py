@@ -12,14 +12,16 @@ from rawr_analytics.app.rawr.service import (
     build_rawr_span_chart_payload,
     resolve_rawr_result,
 )
-from rawr_analytics.metrics import MetricView
-from rawr_analytics.metrics.constants import Metric
-from rawr_analytics.metrics.wowy import WowyQuery, build_wowy_query
-from rawr_analytics.services.wowy_query import (
+from rawr_analytics.app.wowy.query import WowyQuery, build_wowy_query
+from rawr_analytics.app.wowy.service import (
+    build_wowy_leaderboard_export,
+    build_wowy_leaderboard_payload,
     build_wowy_options_payload,
-    build_wowy_query_export,
-    build_wowy_query_view,
+    build_wowy_player_seasons_payload,
+    build_wowy_span_chart_payload,
+    resolve_wowy_result,
 )
+from rawr_analytics.metrics.constants import Metric
 from rawr_analytics.shared.season import Season, SeasonType
 from rawr_analytics.shared.team import Team
 
@@ -97,12 +99,6 @@ def create_app():
             )
         return query
 
-    def _json_metric_response(parsed_metric: Metric, view: MetricView):
-        if parsed_metric == Metric.RAWR:
-            raise ValueError("RAWR uses _json_rawr_response")
-        payload = build_wowy_query_view(parsed_metric, _parse_wowy_query(), view=view)
-        return jsonify(payload)
-
     def run_json(handler):
         try:
             return handler()
@@ -127,6 +123,25 @@ def create_app():
         result = resolve_rawr_result(query)
         return jsonify(build_rawr_span_chart_payload(query, result))
 
+    def _json_wowy_leaderboard_response(
+        parsed_metric: Metric,
+        *,
+        recalculate: bool = False,
+    ):
+        query = _parse_wowy_query()
+        result = resolve_wowy_result(query, metric=parsed_metric, recalculate=recalculate)
+        return jsonify(build_wowy_leaderboard_payload(query, result))
+
+    def _json_wowy_player_seasons_response(parsed_metric: Metric):
+        query = _parse_wowy_query()
+        result = resolve_wowy_result(query, metric=parsed_metric)
+        return jsonify(build_wowy_player_seasons_payload(query, result))
+
+    def _json_wowy_span_chart_response(parsed_metric: Metric):
+        query = _parse_wowy_query()
+        result = resolve_wowy_result(query, metric=parsed_metric)
+        return jsonify(build_wowy_span_chart_payload(query, result))
+
     def _csv_rawr_leaderboard_response(
         *,
         rawr_recalculate: bool | None = None,
@@ -141,14 +156,14 @@ def create_app():
             headers={"Content-Disposition": f'attachment; filename="{filename}"'},
         )
 
-    def _csv_metric_response(parsed_metric: Metric, view: MetricView):
-        if parsed_metric == Metric.RAWR:
-            raise ValueError("RAWR uses _csv_rawr_response")
-        rows = build_wowy_query_export(
-            parsed_metric,
-            _parse_wowy_query(),
-            view=view,
-        )
+    def _csv_wowy_leaderboard_response(
+        parsed_metric: Metric,
+        *,
+        recalculate: bool = False,
+    ):
+        query = _parse_wowy_query()
+        result = resolve_wowy_result(query, metric=parsed_metric, recalculate=recalculate)
+        rows = build_wowy_leaderboard_export(query, result)
         filename = f"{parsed_metric.value}-all-players.csv"
         return Response(
             _render_leaderboard_csv(metric=parsed_metric, table_rows=rows),
@@ -164,8 +179,8 @@ def create_app():
                 build_rawr_options_payload(_parse_rawr_options_query())
                 if parsed_metric == Metric.RAWR
                 else build_wowy_options_payload(
-                    parsed_metric,
                     _parse_wowy_options_query(),
+                    metric=parsed_metric,
                 )
             )
         )
@@ -177,7 +192,7 @@ def create_app():
             lambda: (
                 _json_rawr_player_seasons_response()
                 if parsed_metric == Metric.RAWR
-                else _json_metric_response(parsed_metric, "player-seasons")
+                else _json_wowy_player_seasons_response(parsed_metric)
             )
         )
 
@@ -188,7 +203,7 @@ def create_app():
             lambda: (
                 _json_rawr_span_chart_response()
                 if parsed_metric == Metric.RAWR
-                else _json_metric_response(parsed_metric, "span-chart")
+                else _json_wowy_span_chart_response(parsed_metric)
             )
         )
 
@@ -199,7 +214,7 @@ def create_app():
             lambda: (
                 _json_rawr_leaderboard_response(rawr_recalculate=False)
                 if parsed_metric == Metric.RAWR
-                else _json_metric_response(parsed_metric, "cached-leaderboard")
+                else _json_wowy_leaderboard_response(parsed_metric, recalculate=False)
             )
         )
 
@@ -210,7 +225,7 @@ def create_app():
             lambda: (
                 _csv_rawr_leaderboard_response(rawr_recalculate=False)
                 if parsed_metric == Metric.RAWR
-                else _csv_metric_response(parsed_metric, "cached-leaderboard")
+                else _csv_wowy_leaderboard_response(parsed_metric, recalculate=False)
             )
         )
 
@@ -221,7 +236,7 @@ def create_app():
             lambda: (
                 _json_rawr_leaderboard_response(rawr_recalculate=True)
                 if parsed_metric == Metric.RAWR
-                else _json_metric_response(parsed_metric, "custom-query")
+                else _json_wowy_leaderboard_response(parsed_metric, recalculate=True)
             )
         )
 
@@ -232,7 +247,7 @@ def create_app():
             lambda: (
                 _csv_rawr_leaderboard_response(rawr_recalculate=True)
                 if parsed_metric == Metric.RAWR
-                else _csv_metric_response(parsed_metric, "custom-query")
+                else _csv_wowy_leaderboard_response(parsed_metric, recalculate=True)
             )
         )
 
@@ -243,7 +258,7 @@ def create_app():
             lambda: (
                 _json_rawr_leaderboard_response()
                 if parsed_metric == Metric.RAWR
-                else _json_metric_response(parsed_metric, "cached-leaderboard")
+                else _json_wowy_leaderboard_response(parsed_metric, recalculate=False)
             )
         )
 
@@ -254,7 +269,7 @@ def create_app():
             lambda: (
                 _csv_rawr_leaderboard_response()
                 if parsed_metric == Metric.RAWR
-                else _csv_metric_response(parsed_metric, "cached-leaderboard")
+                else _csv_wowy_leaderboard_response(parsed_metric, recalculate=False)
             )
         )
 
