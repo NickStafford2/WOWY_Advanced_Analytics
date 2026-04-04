@@ -43,7 +43,18 @@ def build_wowy_options_payload(
     query: WowyQuery,
 ) -> dict[str, JSONValue]:
     _require_wowy_metric(metric)
-    filters = build_options_filters_payload(_build_wowy_filters_payload(query))
+    filters = build_options_filters_payload(
+        WowyQueryFilters.build_payload(
+            teams=query.teams,
+            seasons=query.seasons,
+            season_type=query.season_type,
+            min_average_minutes=query.min_average_minutes,
+            min_total_minutes=query.min_total_minutes,
+            top_n=query.top_n,
+            min_games_with=query.min_games_with,
+            min_games_without=query.min_games_without,
+        )
+    )
     return cast(
         dict[str, JSONValue],
         build_metric_options_payload(
@@ -63,7 +74,18 @@ def build_wowy_query_view(
 ) -> dict[str, JSONValue]:
     _require_wowy_metric(metric)
     payload = _build_wowy_view_payload(metric, view=view, query=query)
-    payload["filters"] = _serialize_wowy_filters(_build_wowy_filters_payload(query))
+    payload["filters"] = _serialize_wowy_filters(
+        WowyQueryFilters.build_payload(
+            teams=query.teams,
+            seasons=query.seasons,
+            season_type=query.season_type,
+            min_average_minutes=query.min_average_minutes,
+            min_total_minutes=query.min_total_minutes,
+            top_n=query.top_n,
+            min_games_with=query.min_games_with,
+            min_games_without=query.min_games_without,
+        )
+    )
     return payload
 
 
@@ -232,19 +254,6 @@ def _build_wowy_store_values(
         )
         for row in rows
     ]
-
-
-def _build_wowy_filters_payload(query: WowyQuery) -> WowyQueryFilters:
-    return WowyQueryFilters.build_payload(
-        teams=query.teams,
-        seasons=query.seasons,
-        season_type=query.season_type,
-        min_average_minutes=query.min_average_minutes,
-        min_total_minutes=query.min_total_minutes,
-        top_n=query.top_n,
-        min_games_with=query.min_games_with,
-        min_games_without=query.min_games_without,
-    )
 
 
 def _serialize_wowy_filters(filters: WowyQueryFilters) -> dict[str, JSONValue]:
