@@ -29,17 +29,21 @@ from rawr_analytics.metrics.rawr.defaults import (
     DEFAULT_RAWR_SHRINKAGE_STRENGTH,
     RAWR_METRIC_SUMMARY,
 )
+from rawr_analytics.metrics.rawr.inputs import build_rawr_request
 from rawr_analytics.metrics.rawr.records import build_player_season_records
 from rawr_analytics.metrics.wowy import (
     DEFAULT_WOWY_SHRINKAGE_PRIOR_GAMES,
     compute_wowy_shrinkage_score,
     prepare_wowy_player_season_records,
 )
-from rawr_analytics.metrics.wowy import describe_metric as describe_wowy_metric
+from rawr_analytics.metrics.wowy import (
+    describe_metric as describe_wowy_metric,
+)
+from rawr_analytics.metrics.wowy.inputs import build_wowy_season_inputs
 from rawr_analytics.services._metric_inputs import (
     list_incomplete_rawr_season_warnings,
-    load_rawr_request,
-    load_wowy_season_inputs,
+    load_rawr_records,
+    load_wowy_records,
 )
 from rawr_analytics.shared.scope import TeamSeasonScope
 from rawr_analytics.shared.season import SeasonType
@@ -413,10 +417,14 @@ def _build_rawr_cached_rows(
     teams: list[Team] | None,
     rawr_ridge_alpha: float,
 ) -> list[RawrPlayerSeasonValueRow]:
-    request = load_rawr_request(
+    season_games, season_game_players = load_rawr_records(
         teams=teams,
         seasons=None,
         season_type=season_type,
+    )
+    request = build_rawr_request(
+        season_games=season_games,
+        season_game_players=season_game_players,
         min_games=1,
         ridge_alpha=rawr_ridge_alpha,
         shrinkage_mode=DEFAULT_RAWR_SHRINKAGE_MODE,
@@ -443,11 +451,12 @@ def _build_wowy_cached_rows(
     season_type: SeasonType,
     teams: list[Team] | None,
 ) -> list[WowyPlayerSeasonValueRow]:
-    season_inputs = load_wowy_season_inputs(
+    games, game_players = load_wowy_records(
         teams=teams,
         seasons=None,
         season_type=season_type,
     )
+    season_inputs = build_wowy_season_inputs(games=games, game_players=game_players)
     records = prepare_wowy_player_season_records(
         season_inputs=season_inputs,
         min_games_with=0,

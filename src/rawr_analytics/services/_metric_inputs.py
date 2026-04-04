@@ -10,14 +10,7 @@ from rawr_analytics.data.game_cache import (
 )
 from rawr_analytics.data.game_cache.rows import NormalizedGamePlayerRow, NormalizedGameRow
 from rawr_analytics.data.scope_resolver import resolve_team_seasons
-from rawr_analytics.metrics._player_context import PlayerSeasonContext
-from rawr_analytics.metrics.rawr._shrinkage import RawrShrinkageMode
-from rawr_analytics.metrics.rawr.defaults import DEFAULT_RAWR_SHRINKAGE_MODE
-from rawr_analytics.metrics.rawr.inputs import RawrRequestDTO, build_rawr_request
-from rawr_analytics.metrics.wowy.analysis import WowyGame
-from rawr_analytics.metrics.wowy.inputs import WowySeasonInputDTO
 from rawr_analytics.shared.game import NormalizedGamePlayerRecord, NormalizedGameRecord
-from rawr_analytics.shared.player import PlayerMinutes, PlayerSummary
 from rawr_analytics.shared.scope import TeamSeasonScope
 from rawr_analytics.shared.season import Season, SeasonType
 from rawr_analytics.shared.team import Team
@@ -33,20 +26,16 @@ class _SeasonCacheSummary:
     skipped_teams: dict[str, int]
 
 
-def load_rawr_request(
+def load_rawr_records(
     *,
     teams: list[Team] | None,
     seasons: list[Season] | None,
     season_type: SeasonType,
-    min_games: int,
-    ridge_alpha: float,
-    shrinkage_mode: RawrShrinkageMode = DEFAULT_RAWR_SHRINKAGE_MODE,
-    shrinkage_strength: float = 1.0,
-    shrinkage_minute_scale: float = 48.0,
-    min_average_minutes: float | None = None,
-    min_total_minutes: float | None = None,
     progress_fn: RawrSeasonProgressFn | None = None,
-) -> RawrRequestDTO:
+) -> tuple[
+    dict[Season, list[NormalizedGameRecord]],
+    dict[Season, list[NormalizedGamePlayerRecord]],
+]:
     requested_team_seasons = resolve_team_seasons(teams, seasons, season_type=season_type)
     if not requested_team_seasons:
         raise ValueError("No cached data matched the requested RAWR scope")
@@ -82,25 +71,15 @@ def load_rawr_request(
         games, game_players = season_records
         season_games[season] = games
         season_game_players[season] = game_players
-    return build_rawr_request(
-        season_games=season_games,
-        season_game_players=season_game_players,
-        min_games=min_games,
-        ridge_alpha=ridge_alpha,
-        shrinkage_mode=shrinkage_mode,
-        shrinkage_strength=shrinkage_strength,
-        shrinkage_minute_scale=shrinkage_minute_scale,
-        min_average_minutes=min_average_minutes,
-        min_total_minutes=min_total_minutes,
-    )
+    return season_games, season_game_players
 
 
-def load_wowy_season_inputs(
+def load_wowy_records(
     *,
     teams: list[Team] | None,
     seasons: list[Season] | None,
     season_type: SeasonType,
-) -> list[WowySeasonInputDTO]:
+) -> tuple[list[NormalizedGameRecord], list[NormalizedGamePlayerRecord]]:
     team_seasons = resolve_team_seasons(teams, seasons, season_type=season_type)
     if not team_seasons:
         raise ValueError("No cached data matched the requested scope")
@@ -108,32 +87,7 @@ def load_wowy_season_inputs(
     game_rows, game_player_rows = load_normalized_scope_records_from_db(team_seasons)
     games = [_build_normalized_game_record(row) for row in game_rows]
     game_players = [_build_normalized_game_player_record(row) for row in game_player_rows]
-    player_names = _build_player_names(game_players)
-    minute_stats = _build_wowy_player_season_minute_stats(games, game_players)
-    games_by_season = _derive_wowy_games_by_season(games, game_players)
-
-    season_inputs: list[WowySeasonInputDTO] = []
-    for season in sorted(games_by_season, key=lambda item: item.id):
-        player_ids = sorted(
-            {player_id for game in games_by_season[season] for player_id in game.players}
-        )
-        season_inputs.append(
-            WowySeasonInputDTO(
-                season=season,
-                games=games_by_season[season],
-                players_by_id={
-                    player_id: PlayerSeasonContext(
-                        player=PlayerSummary(
-                            player_id=player_id,
-                            player_name=player_names.get(player_id, str(player_id)),
-                        ),
-                        minutes=_player_minutes(minute_stats, season, player_id),
-                    )
-                    for player_id in player_ids
-                },
-            )
-        )
-    return season_inputs
+    return games, game_players
 
 
 def list_incomplete_rawr_season_warnings(
@@ -241,57 +195,6 @@ def _exclude_rawr_games_without_positive_minutes(
     filtered_games = [game for game in games if game.game_id in valid_game_ids]
     filtered_game_players = [player for player in game_players if player.game_id in valid_game_ids]
     return filtered_games, filtered_game_players
-
-
-def _build_player_names(game_players: list[NormalizedGamePlayerRecord]) -> dict[int, str]:
-    return {player.player.player_id: player.player.player_name for player in game_players}
-
-
-def _derive_wowy_games_by_season(
-    games: list[NormalizedGameRecord],
-    game_players: list[NormalizedGamePlayerRecord],
-) -> dict[Season, list[WowyGame]]:
-    players_by_game_team: dict[tuple[str, int], set[int]] = defaultdict(set)
-    for player in game_players:
-        if not player.appeared:
-            continue
-        players_by_game_team[(player.game_id, player.team.team_id)].add(player.player.player_id)
-
-    games_by_season: dict[Season, list[WowyGame]] = defaultdict(list)
-    for game in games:
-        players = players_by_game_team.get((game.game_id, game.team.team_id), set())
-        if not players:
-            raise ValueError(
-                f"No appeared players found for game {game.game_id!r} and team "
-                f"{game.team.abbreviation(season=game.season)!r}"
-            )
-        games_by_season[game.season].append(
-            WowyGame(
-                game_id=game.game_id,
-                margin=game.margin,
-                players=frozenset(players),
-                team=game.team,
-            )
-        )
-    return dict(games_by_season)
-
-
-def _build_wowy_player_season_minute_stats(
-    games: list[NormalizedGameRecord],
-    game_players: list[NormalizedGamePlayerRecord],
-) -> dict[tuple[Season, int], tuple[float, float]]:
-    totals: dict[tuple[Season, int], float] = {}
-    counts: dict[tuple[Season, int], int] = {}
-    season_by_game_id = {game.game_id: game.season for game in games}
-    for player in game_players:
-        season = season_by_game_id.get(player.game_id)
-        if season is None or not player.has_positive_minutes():
-            continue
-        assert player.minutes is not None
-        key = (season, player.player.player_id)
-        totals[key] = totals.get(key, 0.0) + player.minutes
-        counts[key] = counts.get(key, 0) + 1
-    return {key: (totals[key] / counts[key], totals[key]) for key in totals}
 
 
 def _build_normalized_game_record(row: NormalizedGameRow) -> NormalizedGameRecord:
@@ -421,16 +324,4 @@ def _build_rawr_warning_messages(*, season: str, summary: _SeasonCacheSummary) -
 def _list_cached_rawr_seasons_for_type(season_type: SeasonType) -> list[str]:
     return sorted(
         {row.season.id for row in list_cache_load_rows() if row.season.season_type == season_type}
-    )
-
-
-def _player_minutes(
-    minute_stats: dict[tuple[Season, int], tuple[float, float]],
-    season: Season,
-    player_id: int,
-) -> PlayerMinutes:
-    average_minutes, total_minutes = minute_stats.get((season, player_id), (None, None))
-    return PlayerMinutes(
-        average_minutes=average_minutes,
-        total_minutes=total_minutes,
     )

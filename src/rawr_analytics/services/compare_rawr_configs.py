@@ -7,12 +7,14 @@ from itertools import product
 import numpy as np
 
 from rawr_analytics.metrics.rawr import RawrShrinkageMode
+from rawr_analytics.metrics.rawr.inputs import build_rawr_request
 from rawr_analytics.metrics.rawr.records import RawrPlayerSeasonRecord, build_player_season_records
 from rawr_analytics.metrics.wowy import prepare_wowy_player_season_records
+from rawr_analytics.metrics.wowy.inputs import build_wowy_season_inputs
 from rawr_analytics.metrics.wowy.records import WowyPlayerSeasonRecord
 from rawr_analytics.services._metric_inputs import (
-    load_rawr_request,
-    load_wowy_season_inputs,
+    load_rawr_records,
+    load_wowy_records,
 )
 from rawr_analytics.shared.season import Season, SeasonType
 from rawr_analytics.shared.team import Team
@@ -92,10 +94,14 @@ def compare_rawr_configs(
     completed_steps = 0
     normalized_shrinkage_modes = _normalize_shrinkage_modes(shrinkage_modes)
 
-    holdout_season_inputs = load_wowy_season_inputs(
+    holdout_games, holdout_game_players = load_wowy_records(
         teams=teams,
         seasons=[holdout_season],
         season_type=season_type,
+    )
+    holdout_season_inputs = build_wowy_season_inputs(
+        games=holdout_games,
+        game_players=holdout_game_players,
     )
     holdout_records = prepare_wowy_player_season_records(
         season_inputs=holdout_season_inputs,
@@ -113,10 +119,14 @@ def compare_rawr_configs(
     )
     holdout_targets = _build_holdout_targets(holdout_records)
 
-    training_wowy_season_inputs = load_wowy_season_inputs(
+    training_wowy_games, training_wowy_game_players = load_wowy_records(
         teams=teams,
         seasons=train_seasons,
         season_type=season_type,
+    )
+    training_wowy_season_inputs = build_wowy_season_inputs(
+        games=training_wowy_games,
+        game_players=training_wowy_game_players,
     )
     training_wowy_records = prepare_wowy_player_season_records(
         season_inputs=training_wowy_season_inputs,
@@ -165,10 +175,14 @@ def compare_rawr_configs(
             detail = f"alpha={ridge_alpha:.2f} mode={shrinkage_mode}"
             if shrinkage_mode == RawrShrinkageMode.MINUTES:
                 detail += f" min_scale={minute_scale:.1f}"
-            rawr_request = load_rawr_request(
+            season_games, season_game_players = load_rawr_records(
                 teams=teams,
                 seasons=train_seasons,
                 season_type=season_type,
+            )
+            rawr_request = build_rawr_request(
+                season_games=season_games,
+                season_game_players=season_game_players,
                 min_games=rawr_min_games,
                 ridge_alpha=ridge_alpha,
                 shrinkage_mode=shrinkage_mode,

@@ -20,8 +20,9 @@ from rawr_analytics.app.wowy.presenters import (
 from rawr_analytics.app.wowy.query import WowyQuery
 from rawr_analytics.data.metric_store import load_wowy_player_season_value_rows
 from rawr_analytics.metrics.constants import Metric
+from rawr_analytics.metrics.wowy.inputs import build_wowy_season_inputs
 from rawr_analytics.metrics.wowy.records import WowyPlayerSeasonValue, build_wowy_custom_query
-from rawr_analytics.services._metric_inputs import load_wowy_season_inputs
+from rawr_analytics.services._metric_inputs import load_wowy_records
 from rawr_analytics.services._metric_scope import (
     MetricStoreCatalog,
     build_metric_options_payload,
@@ -138,11 +139,12 @@ def _build_live_wowy_query_result(
     metric: Metric,
     query: WowyQuery,
 ) -> list[WowyPlayerSeasonValue]:
-    season_inputs = load_wowy_season_inputs(
+    games, game_players = load_wowy_records(
         teams=query.teams,
         seasons=query.seasons,
         season_type=query.season_type,
     )
+    season_inputs = build_wowy_season_inputs(games=games, game_players=game_players)
     return build_wowy_custom_query(
         metric,
         season_inputs=season_inputs,
