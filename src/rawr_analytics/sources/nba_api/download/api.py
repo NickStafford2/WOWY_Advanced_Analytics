@@ -34,7 +34,8 @@ class NbaApiTeamSeasonData:
     cached_box_scores: int
     league_games_source: str
 
-def load_or_fetch_box_score(
+
+def _load_or_fetch_box_score(
     game_id: str,
     log_fn: LogFn | None = print,
 ) -> tuple[SourceBoxScore, str]:
@@ -79,7 +80,7 @@ def ingest_team_season(
 
     for index, schedule_game in enumerate(schedule_games, start=1):
         try:
-            box_score, box_score_source = load_or_fetch_box_score(
+            box_score, box_score_source = _load_or_fetch_box_score(
                 game_id=schedule_game.game_id,
                 log_fn=log_fn,
             )
@@ -223,5 +224,5 @@ def _emit_update(
 __all__ = [
     "NbaApiTeamSeasonData",
     "ingest_team_season",
-    "load_or_fetch_box_score",
+    "_load_or_fetch_box_score",
 ]

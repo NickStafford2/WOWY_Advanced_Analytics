@@ -51,7 +51,7 @@ def render_rebuild_event(event: RebuildEvent) -> None:
         )
         return
     if isinstance(event, RebuildValidationProgressEvent):
-        render_validation_progress(event.current, event.total, event.label)
+        _render_validation_progress(event.current, event.total, event.label)
 
 
 def render_rebuild_team_failure(event: RebuildTeamFailureEvent) -> None:
@@ -119,7 +119,7 @@ def render_metric_progress(metric: str, current: int, total: int, detail: str) -
         del _METRIC_PROGRESS_BARS[metric]
 
 
-def render_validation_progress(current: int, total: int, label: str) -> None:
+def _render_validation_progress(current: int, total: int, label: str) -> None:
     global _VALIDATION_PROGRESS_BAR
     if _VALIDATION_PROGRESS_BAR is None:
         _VALIDATION_PROGRESS_BAR = TerminalProgressBar(

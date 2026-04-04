@@ -79,7 +79,7 @@ def _render_ingest_failure(
             f"Incomplete cache for {request.label}: "
             f"{error.failed_games}/{error.total_games} games failed normalization\n"
         )
-        sys.stderr.write(f"{render_partial_failure_details(error)}\n")
+        sys.stderr.write(f"{_render_partial_failure_details(error)}\n")
         sys.stderr.flush()
         return
 
@@ -116,7 +116,7 @@ def _render_season_started(event: IngestSeasonStartedEvent) -> None:
         print(f"[{event.season_index}/{event.season_total}] caching {event.season}")
 
 
-def render_partial_failure_details(error: PartialTeamSeasonError) -> str:
+def _render_partial_failure_details(error: PartialTeamSeasonError) -> str:
     return format_partial_failure_details(
         failed_game_details=list(error.failed_game_details),
         failure_reason_counts=dict(error.failure_reason_counts),

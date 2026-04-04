@@ -157,7 +157,7 @@ def main(argv: list[str] | None = None) -> int:
     )
     progress_bar.finish(detail="done")
     print(
-        build_compare_rawr_configs_summary(
+        _build_compare_rawr_configs_summary(
             train_seasons=train_seasons,
             holdout_season=holdout_season,
             season_type=season_type,
@@ -167,7 +167,7 @@ def main(argv: list[str] | None = None) -> int:
             results=results,
         )
     )
-    print(build_compare_rawr_configs_table(results))
+    print(_build_compare_rawr_configs_table(results))
     return 0
 
 
@@ -204,7 +204,7 @@ def _parse_teams(raw_values: list[str] | None, *, season: Season) -> list[Team] 
     return [Team.from_abbreviation(raw_value, season=season) for raw_value in raw_values]
 
 
-def build_compare_rawr_configs_summary(
+def _build_compare_rawr_configs_summary(
     *,
     train_seasons: list[Season],
     holdout_season: Season,
@@ -241,7 +241,7 @@ def build_compare_rawr_configs_summary(
     return "\n".join(lines)
 
 
-def build_compare_rawr_configs_table(results: list[ComparisonResult]) -> str:
+def _build_compare_rawr_configs_table(results: list[ComparisonResult]) -> str:
     if not results:
         return "No comparison rows were generated."
 

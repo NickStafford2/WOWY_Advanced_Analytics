@@ -4,10 +4,10 @@ import math
 from collections import defaultdict
 
 from rawr_analytics.data._validation import (
-    _validate_iso_datetime,
-    _validate_optional_non_negative_float,
-    _validate_optional_non_negative_int,
-    _validate_required_text,
+    validate_iso_datetime,
+    validate_optional_non_negative_float,
+    validate_optional_non_negative_int,
+    validate_required_text,
 )
 from rawr_analytics.data.metric_store.models import (
     MetricFullSpanPointRow,
@@ -28,10 +28,10 @@ def validate_rawr_rows(
     source_fingerprint: str,
     rows: list[RawrPlayerSeasonValueRow],
 ) -> None:
-    _validate_required_text("rawr", "metric_id")
-    _validate_required_text(scope_key, "scope_key")
-    _validate_required_text(build_version, "build_version")
-    _validate_required_text(source_fingerprint, "source_fingerprint")
+    validate_required_text("rawr", "metric_id")
+    validate_required_text(scope_key, "scope_key")
+    validate_required_text(build_version, "build_version")
+    validate_required_text(source_fingerprint, "source_fingerprint")
 
     row_keys: set[tuple[str, int]] = set()
     expected_team_filter: str | None = None
@@ -99,21 +99,21 @@ def validate_rawr_rows(
 
         if row.player_id <= 0:
             raise ValueError(f"Metric row has invalid player_id {row.player_id!r}")
-        _validate_required_text(
+        validate_required_text(
             row.player_name,
             f"player_name for player {row.player_id}",
         )
         if not math.isfinite(row.coefficient):
             raise ValueError(f"Metric row for player {row.player_id!r} has non-finite value")
-        _validate_optional_non_negative_int(
+        validate_optional_non_negative_int(
             row.games,
             f"games for player {row.player_id}",
         )
-        _validate_optional_non_negative_float(
+        validate_optional_non_negative_float(
             row.average_minutes,
             f"average_minutes for player {row.player_id}",
         )
-        _validate_optional_non_negative_float(
+        validate_optional_non_negative_float(
             row.total_minutes,
             f"total_minutes for player {row.player_id}",
         )
@@ -140,10 +140,10 @@ def validate_wowy_rows(
     source_fingerprint: str,
     rows: list[WowyPlayerSeasonValueRow],
 ) -> None:
-    _validate_required_text(metric_id, "metric_id")
-    _validate_required_text(scope_key, "scope_key")
-    _validate_required_text(build_version, "build_version")
-    _validate_required_text(source_fingerprint, "source_fingerprint")
+    validate_required_text(metric_id, "metric_id")
+    validate_required_text(scope_key, "scope_key")
+    validate_required_text(build_version, "build_version")
+    validate_required_text(source_fingerprint, "source_fingerprint")
 
     row_keys: set[tuple[str, int]] = set()
     expected_team_filter: str | None = None
@@ -210,14 +210,14 @@ def validate_wowy_rows(
 
         if player_id <= 0:
             raise ValueError(f"Metric row has invalid player_id {player_id!r}")
-        _validate_required_text(row.player_name, f"player_name for player {player_id}")
+        validate_required_text(row.player_name, f"player_name for player {player_id}")
         if row.value is None or not math.isfinite(row.value):
             raise ValueError(f"Metric row for player {player_id!r} has non-finite value")
-        _validate_optional_non_negative_int(
+        validate_optional_non_negative_int(
             row.games_with,
             f"games_with for player {player_id}",
         )
-        _validate_optional_non_negative_int(
+        validate_optional_non_negative_int(
             row.games_without,
             f"games_without for player {player_id}",
         )
@@ -229,11 +229,11 @@ def validate_wowy_rows(
             )
         if row.raw_wowy_score is not None and not math.isfinite(row.raw_wowy_score):
             raise ValueError(f"Metric row for player {player_id!r} has non-finite raw_wowy_score")
-        _validate_optional_non_negative_float(
+        validate_optional_non_negative_float(
             row.average_minutes,
             f"average_minutes for player {player_id}",
         )
-        _validate_optional_non_negative_float(
+        validate_optional_non_negative_float(
             row.total_minutes,
             f"total_minutes for player {player_id}",
         )
@@ -254,9 +254,9 @@ def validate_wowy_rows(
 
 
 def validate_metric_scope_catalog_row(row: MetricScopeCatalogRow) -> None:
-    _validate_required_text(row.metric_id, "metric_id")
-    _validate_required_text(row.scope_key, "scope_key")
-    _validate_required_text(row.label, "label")
+    validate_required_text(row.metric_id, "metric_id")
+    validate_required_text(row.scope_key, "scope_key")
+    validate_required_text(row.label, "label")
     _validate_metric_catalog(
         scope_key=row.scope_key,
         team_filter=row.team_filter,
@@ -266,7 +266,7 @@ def validate_metric_scope_catalog_row(row: MetricScopeCatalogRow) -> None:
         full_span_start_season=row.full_span_start_season_id,
         full_span_end_season=row.full_span_end_season_id,
     )
-    _validate_iso_datetime(row.updated_at, "catalog updated_at")
+    validate_iso_datetime(row.updated_at, "catalog updated_at")
 
 
 def _validate_metric_catalog(
@@ -329,8 +329,8 @@ def validate_metric_full_span_rows(
     series_rows: list[MetricFullSpanSeriesRow],
     point_rows: list[MetricFullSpanPointRow],
 ) -> None:
-    _validate_required_text(metric_id, "metric_id")
-    _validate_required_text(scope_key, "scope_key")
+    validate_required_text(metric_id, "metric_id")
+    validate_required_text(scope_key, "scope_key")
     if not series_rows and point_rows:
         raise ValueError("Full-span points require matching series rows")
 
@@ -342,7 +342,7 @@ def validate_metric_full_span_rows(
             raise ValueError("Full-span series rows must match the requested metric scope")
         if row.player_id <= 0:
             raise ValueError(f"Full-span series row has invalid player_id {row.player_id!r}")
-        _validate_required_text(
+        validate_required_text(
             row.player_name,
             f"full-span player_name for player {row.player_id}",
         )

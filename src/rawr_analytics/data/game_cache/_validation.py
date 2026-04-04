@@ -6,9 +6,9 @@ from collections import defaultdict
 from datetime import date
 
 from rawr_analytics.data._validation import (
-    _validate_iso_datetime,
-    _validate_optional_non_negative_int,
-    _validate_required_text,
+    validate_iso_datetime,
+    validate_optional_non_negative_int,
+    validate_required_text,
 )
 from rawr_analytics.data._validation_issue import ValidationIssue
 from rawr_analytics.data.game_cache.rows import (
@@ -124,21 +124,21 @@ def validate_normalized_cache_loads_table(
             season = Season.parse(row["season"], row["season_type"])
             team = Team.from_id(row["team_id"])
             team.for_season(season)
-            _validate_required_text(row["source_path"], "source_path")
-            _validate_required_text(row["source_snapshot"], "source_snapshot")
-            _validate_required_text(row["source_kind"], "source_kind")
-            _validate_required_text(row["build_version"], "build_version")
-            _validate_iso_datetime(row["refreshed_at"], "refreshed_at")
-            _validate_optional_non_negative_int(row["games_row_count"], "games_row_count")
-            _validate_optional_non_negative_int(
+            validate_required_text(row["source_path"], "source_path")
+            validate_required_text(row["source_snapshot"], "source_snapshot")
+            validate_required_text(row["source_kind"], "source_kind")
+            validate_required_text(row["build_version"], "build_version")
+            validate_iso_datetime(row["refreshed_at"], "refreshed_at")
+            validate_optional_non_negative_int(row["games_row_count"], "games_row_count")
+            validate_optional_non_negative_int(
                 row["game_players_row_count"],
                 "game_players_row_count",
             )
-            _validate_optional_non_negative_int(
+            validate_optional_non_negative_int(
                 row["expected_games_row_count"],
                 "expected_games_row_count",
             )
-            _validate_optional_non_negative_int(
+            validate_optional_non_negative_int(
                 row["skipped_games_row_count"],
                 "skipped_games_row_count",
             )
@@ -390,12 +390,12 @@ def validate_team_history_table(
     for row in rows:
         key = f"team_id={row['team_id']!r},season={row['season']!r}"
         try:
-            _validate_optional_non_negative_int(row["team_id"], "team_id")
+            validate_optional_non_negative_int(row["team_id"], "team_id")
             if row["team_id"] is None or row["team_id"] <= 0:
                 raise ValueError("team_id must be a positive integer")
-            _validate_required_text(row["abbreviation"], "abbreviation")
-            _validate_required_text(row["franchise_id"], "franchise_id")
-            _validate_required_text(row["lookup_abbreviation"], "lookup_abbreviation")
+            validate_required_text(row["abbreviation"], "abbreviation")
+            validate_required_text(row["franchise_id"], "franchise_id")
+            validate_required_text(row["lookup_abbreviation"], "lookup_abbreviation")
 
             season = Season.parse(row["season"], SeasonType.REGULAR.value)
             team = Team.from_id(row["team_id"])
@@ -418,9 +418,9 @@ def _build_normalized_game_record(row: sqlite3.Row) -> NormalizedGameRow:
     opponent_team = Team.from_id(row["opponent_team_id"])
     team.for_season(season)
     opponent_team.for_season(season)
-    _validate_required_text(row["game_id"], "game_id")
-    _validate_required_text(row["game_date"], "game_date")
-    _validate_required_text(row["source"], "source")
+    validate_required_text(row["game_id"], "game_id")
+    validate_required_text(row["game_date"], "game_date")
+    validate_required_text(row["source"], "source")
     if not math.isfinite(row["margin"]):
         raise ValueError("margin must be finite")
     date.fromisoformat(row["game_date"])
@@ -441,7 +441,7 @@ def _build_normalized_game_player_record(
 ) -> tuple[NormalizedGamePlayerRow, Season]:
     season = Season.parse(row["season"], row["season_type"])
     team = Team.from_id(row["team_id"])
-    _validate_required_text(row["game_id"], "game_id")
+    validate_required_text(row["game_id"], "game_id")
     return (
         NormalizedGamePlayerRow(
             game_id=row["game_id"],
