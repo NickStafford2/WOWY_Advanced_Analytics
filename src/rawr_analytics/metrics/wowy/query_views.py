@@ -6,8 +6,8 @@ from typing import Any
 
 from rawr_analytics.metrics._span import build_span_payload
 from rawr_analytics.metrics.constants import Metric
-from rawr_analytics.metrics.wowy.dataset import WowyPlayerSeasonValue
 from rawr_analytics.metrics.wowy.query import WowyQuery
+from rawr_analytics.metrics.wowy.records import WowyPlayerSeasonValue
 from rawr_analytics.shared.season import Season, SeasonType
 from rawr_analytics.shared.team import Team
 

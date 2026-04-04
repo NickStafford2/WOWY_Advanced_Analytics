@@ -2,7 +2,6 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
-from rawr_analytics.metrics.rawr._shrinkage import RawrShrinkageMode
 from rawr_analytics.metrics.rawr.analysis import RawrValue, fit_player_rawr
 from rawr_analytics.metrics.rawr.inputs import (
     RawrRequest,
