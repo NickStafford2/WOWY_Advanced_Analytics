@@ -1,4 +1,4 @@
-from rawr_analytics.services.metric_refresh._refresh import (
+from rawr_analytics.services.metric_refresh.refresh import (
     DEFAULT_RAWR_RIDGE_ALPHA,
     DEFAULT_WEB_METRIC_IDS,
     MetricStoreRefreshEventFn,
