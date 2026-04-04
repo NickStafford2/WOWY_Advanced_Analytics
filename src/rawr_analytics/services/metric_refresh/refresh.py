@@ -45,7 +45,6 @@ from rawr_analytics.shared.team import Team, normalize_teams, to_team_ids
 
 MetricStoreRefreshEventFn = Callable[["MetricStoreRefreshProgressEvent"], None]
 DEFAULT_RAWR_RIDGE_ALPHA = 10.0
-DEFAULT_WEB_METRIC_IDS = ("wowy", "wowy_shrunk", "rawr")
 
 
 @dataclass(frozen=True)

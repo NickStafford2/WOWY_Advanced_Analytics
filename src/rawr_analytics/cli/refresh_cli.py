@@ -5,12 +5,11 @@ import argparse
 from rawr_analytics.cli._progress_bar import TerminalProgressBar, print_status_box
 from rawr_analytics.services.metric_refresh import (
     DEFAULT_RAWR_RIDGE_ALPHA,
-    DEFAULT_WEB_METRIC_IDS,
     MetricStoreRefreshProgressEvent,
     refresh_metric_store,
 )
 
-_choices = list(DEFAULT_WEB_METRIC_IDS)
+_choices = ["wowy", "wowy_shrunk", "rawr"]
 
 
 def _build_parser() -> argparse.ArgumentParser:
