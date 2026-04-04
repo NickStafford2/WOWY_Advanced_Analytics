@@ -11,7 +11,6 @@ from rawr_analytics.shared.season import Season
 
 @dataclass(frozen=True)
 class RawrPlayerContext:
-    season: Season
     player: PlayerSummary
     minutes: PlayerMinutes
 
@@ -77,14 +76,14 @@ def validate_request(request: RawrRequest) -> None:
 
 
 def _validate_season_input(season_input: RawrSeasonInput) -> None:
-    player_keys = {(player.season, player.player.player_id) for player in season_input.players}
-    if len(player_keys) != len(season_input.players):
+    player_ids = {player.player.player_id for player in season_input.players}
+    if len(player_ids) != len(season_input.players):
         raise ValueError(f"RAWR season {season_input.season!r} has duplicate player contexts")
     for observation in season_input.observations:
         unknown_player_ids = sorted(
             player_id
             for player_id in observation.player_weights
-            if (season_input.season, player_id) not in player_keys
+            if player_id not in player_ids
         )
         if unknown_player_ids:
             raise ValueError(

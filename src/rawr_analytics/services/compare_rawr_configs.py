@@ -7,7 +7,8 @@ from itertools import product
 import numpy as np
 
 from rawr_analytics.metrics.rawr._shrinkage import RawrShrinkageMode
-from rawr_analytics.metrics.rawr.records import RawrPlayerSeasonRecord
+from rawr_analytics.metrics.rawr.inputs import RawrRequest
+from rawr_analytics.metrics.rawr.records import RawrPlayerSeasonRecord, build_player_season_records
 from rawr_analytics.metrics.wowy import prepare_wowy_player_season_records
 from rawr_analytics.metrics.wowy.records import WowyPlayerSeasonRecord
 from rawr_analytics.services._metric_inputs import (
@@ -170,15 +171,17 @@ def compare_rawr_configs(
                 seasons=train_seasons,
                 season_type=season_type,
             )
-            rawr_records = RawrPlayerSeasonRecord.prepare_rawr_player_season_records(
-                season_inputs=rawr_season_inputs,
-                min_games=rawr_min_games,
-                ridge_alpha=ridge_alpha,
-                shrinkage_mode=shrinkage_mode,
-                shrinkage_strength=shrinkage_strength,
-                shrinkage_minute_scale=minute_scale,
-                min_average_minutes=min_average_minutes,
-                min_total_minutes=min_total_minutes,
+            rawr_records = build_player_season_records(
+                RawrRequest(
+                    season_inputs=rawr_season_inputs,
+                    min_games=rawr_min_games,
+                    ridge_alpha=ridge_alpha,
+                    shrinkage_mode=shrinkage_mode,
+                    shrinkage_strength=shrinkage_strength,
+                    shrinkage_minute_scale=minute_scale,
+                    min_average_minutes=min_average_minutes,
+                    min_total_minutes=min_total_minutes,
+                )
             )
             completed_steps += 1
             _emit_progress(

@@ -7,7 +7,7 @@ from rawr_analytics.metrics._query_normalization import (
     normalize_query_seasons,
     normalize_query_teams,
 )
-from rawr_analytics.metrics.rawr.defaults import default_filters
+from rawr_analytics.metrics.rawr.defaults import DEFAULT_RAWR_FILTERS
 from rawr_analytics.metrics.rawr.inputs import validate_filters
 from rawr_analytics.shared.season import Season, SeasonType
 from rawr_analytics.shared.team import Team
@@ -63,25 +63,24 @@ def build_rawr_query(
     min_games: int | None = None,
     ridge_alpha: float | None = None,
 ) -> RawrQuery:
-    defaults = default_filters()
     normalized_query = RawrQuery(
         season_type=season_type,
         teams=normalize_query_teams(teams),
         seasons=normalize_query_seasons(seasons),
-        top_n=int(top_n if top_n is not None else defaults["top_n"]),
+        top_n=int(top_n if top_n is not None else DEFAULT_RAWR_FILTERS.top_n),
         min_average_minutes=float(
             min_average_minutes
             if min_average_minutes is not None
-            else defaults["min_average_minutes"]
+            else DEFAULT_RAWR_FILTERS.min_average_minutes
         ),
         min_total_minutes=float(
             min_total_minutes
             if min_total_minutes is not None
-            else defaults["min_total_minutes"]
+            else DEFAULT_RAWR_FILTERS.min_total_minutes
         ),
-        min_games=int(min_games if min_games is not None else defaults["min_games"]),
+        min_games=int(min_games if min_games is not None else DEFAULT_RAWR_FILTERS.min_games),
         ridge_alpha=float(
-            ridge_alpha if ridge_alpha is not None else defaults["ridge_alpha"]
+            ridge_alpha if ridge_alpha is not None else DEFAULT_RAWR_FILTERS.ridge_alpha
         ),
     )
     validate_filters(

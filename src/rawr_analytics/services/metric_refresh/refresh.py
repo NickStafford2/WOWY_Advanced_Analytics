@@ -26,9 +26,10 @@ from rawr_analytics.metrics.rawr import (
     DEFAULT_RAWR_SHRINKAGE_MINUTE_SCALE,
     DEFAULT_RAWR_SHRINKAGE_MODE,
     DEFAULT_RAWR_SHRINKAGE_STRENGTH,
-    RawrPlayerSeasonRecord,
 )
 from rawr_analytics.metrics.rawr import describe_metric as describe_rawr_metric
+from rawr_analytics.metrics.rawr.inputs import RawrRequest
+from rawr_analytics.metrics.rawr.records import build_player_season_records
 from rawr_analytics.metrics.wowy import (
     DEFAULT_WOWY_SHRINKAGE_PRIOR_GAMES,
     compute_wowy_shrinkage_score,
@@ -422,15 +423,17 @@ def _build_rawr_cached_rows(
         seasons=None,
         season_type=season_type,
     )
-    records = RawrPlayerSeasonRecord.prepare_rawr_player_season_records(
-        season_inputs=season_inputs,
-        min_games=1,
-        ridge_alpha=rawr_ridge_alpha,
-        shrinkage_mode=DEFAULT_RAWR_SHRINKAGE_MODE,
-        shrinkage_strength=DEFAULT_RAWR_SHRINKAGE_STRENGTH,
-        shrinkage_minute_scale=DEFAULT_RAWR_SHRINKAGE_MINUTE_SCALE,
-        min_average_minutes=None,
-        min_total_minutes=None,
+    records = build_player_season_records(
+        RawrRequest(
+            season_inputs=season_inputs,
+            min_games=1,
+            ridge_alpha=rawr_ridge_alpha,
+            shrinkage_mode=DEFAULT_RAWR_SHRINKAGE_MODE,
+            shrinkage_strength=DEFAULT_RAWR_SHRINKAGE_STRENGTH,
+            shrinkage_minute_scale=DEFAULT_RAWR_SHRINKAGE_MINUTE_SCALE,
+            min_average_minutes=None,
+            min_total_minutes=None,
+        )
     )
     return [
         RawrPlayerSeasonValueRow(

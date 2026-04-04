@@ -4,14 +4,14 @@ from collections.abc import Sequence
 from typing import Any
 
 from rawr_analytics.metrics._span import build_span_payload
-from rawr_analytics.metrics.rawr.dataset import RawrPlayerSeasonValue
 from rawr_analytics.metrics.rawr.defaults import describe_rawr_metric
+from rawr_analytics.metrics.rawr.records import RawrPlayerSeasonRecord
 from rawr_analytics.shared.season import Season, SeasonType
 from rawr_analytics.shared.team import Team
 
 
 def build_player_seasons_payload(
-    rows: Sequence[RawrPlayerSeasonValue],
+    rows: Sequence[RawrPlayerSeasonRecord],
 ) -> dict[str, Any]:
     return {
         "metric": "rawr",
@@ -24,7 +24,7 @@ def build_leaderboard_payload(
     *,
     metric: str,
     metric_label: str,
-    rows: Sequence[RawrPlayerSeasonValue],
+    rows: Sequence[RawrPlayerSeasonRecord],
     seasons: list[str],
     top_n: int,
     mode: str,
@@ -49,7 +49,7 @@ def build_leaderboard_payload(
 
 def build_export_table(
     *,
-    rows: Sequence[RawrPlayerSeasonValue],
+    rows: Sequence[RawrPlayerSeasonRecord],
     seasons: list[str],
     metric_label: str | None = None,
 ) -> tuple[str, list[dict[str, Any]]]:
@@ -60,10 +60,10 @@ def build_export_table(
 
 
 def _serialize_player_season_row(
-    row: RawrPlayerSeasonValue,
+    row: RawrPlayerSeasonRecord,
 ) -> dict[str, Any]:
     return {
-        "season_id": row.season_id,
+        "season_id": row.season.id,
         "player_id": row.player.player_id,
         "player_name": row.player.player_name,
         "value": row.result.coefficient,
@@ -77,11 +77,11 @@ def _serialize_player_season_row(
 
 def _build_ranked_table_rows(
     *,
-    rows: Sequence[RawrPlayerSeasonValue],
+    rows: Sequence[RawrPlayerSeasonRecord],
     seasons: list[str],
     top_n: int | None,
 ) -> list[dict[str, Any]]:
-    rows_by_player: dict[int, list[RawrPlayerSeasonValue]] = {}
+    rows_by_player: dict[int, list[RawrPlayerSeasonRecord]] = {}
     for row in rows:
         rows_by_player.setdefault(row.player.player_id, []).append(row)
 
@@ -113,7 +113,7 @@ def _build_ranked_table_rows(
                             (
                                 row.result.coefficient
                                 for row in player_rows
-                                if row.season_id == season_id
+                                if row.season.id == season_id
                             ),
                             None,
                         ),

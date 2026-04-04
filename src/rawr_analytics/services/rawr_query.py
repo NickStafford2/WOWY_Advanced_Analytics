@@ -10,9 +10,10 @@ from rawr_analytics.metrics import MetricView
 from rawr_analytics.metrics.constants import Metric
 from rawr_analytics.metrics.rawr import (
     RawrCustomQueryResult,
-    RawrPlayerSeasonValue,
+    RawrPlayerSeasonRecord,
     RawrQuery,
     RawrValue,
+    build_rawr_custom_query_result,
     build_export_table,
     build_leaderboard_payload,
     build_player_seasons_payload,
@@ -80,7 +81,7 @@ def build_rawr_query_export(
                 MetricQueryExport,
                 build_export_table(
                     rows=result.rows,
-                    seasons=sorted({row.season_id for row in result.rows}),
+                    seasons=sorted({row.season.id for row in result.rows}),
                     metric_label=result.metric_label,
                 ),
             )
@@ -136,7 +137,7 @@ def _build_rawr_view_payload(
                     metric=Metric.RAWR.value,
                     metric_label=result.metric_label,
                     rows=result.rows,
-                    seasons=sorted({row.season_id for row in result.rows}),
+                    seasons=sorted({row.season.id for row in result.rows}),
                     top_n=query.top_n,
                     mode="custom",
                 ),
@@ -156,7 +157,7 @@ def _build_rawr_custom_query_result(
         season_type=query.season_type,
         progress_fn=progress_fn,
     )
-    return RawrCustomQueryResult.build_rawr_custom_query(
+    return build_rawr_custom_query_result(
         season_inputs=season_inputs,
         min_games=query.min_games,
         ridge_alpha=query.ridge_alpha,
@@ -169,10 +170,10 @@ def _load_rawr_store_values(
     query: RawrQuery,
     *,
     scope_key: str,
-) -> list[RawrPlayerSeasonValue]:
+) -> list[RawrPlayerSeasonRecord]:
     return [
-        RawrPlayerSeasonValue(
-            season_id=row.season_id,
+        RawrPlayerSeasonRecord(
+            season=Season.parse(row.season_id),
             player=PlayerSummary(
                 player_id=row.player_id,
                 player_name=row.player_name,

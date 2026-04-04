@@ -183,7 +183,6 @@ def _load_rawr_season_input(
         observations=observations,
         players=[
             RawrPlayerContext(
-                season=season,
                 player=PlayerSummary(
                     player_id=player_id,
                     player_name=player_names.get(player_id, str(player_id)),

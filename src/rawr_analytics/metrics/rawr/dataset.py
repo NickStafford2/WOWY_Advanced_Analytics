@@ -3,42 +3,36 @@ from __future__ import annotations
 from dataclasses import dataclass
 
 from rawr_analytics.metrics.constants import Metric
-from rawr_analytics.metrics.rawr.analysis import RawrValue
 from rawr_analytics.metrics.rawr.defaults import (
     DEFAULT_RAWR_SHRINKAGE_MINUTE_SCALE,
     DEFAULT_RAWR_SHRINKAGE_MODE,
     DEFAULT_RAWR_SHRINKAGE_STRENGTH,
     describe_rawr_metric,
 )
-from rawr_analytics.metrics.rawr.inputs import RawrSeasonInput
-from rawr_analytics.metrics.rawr.records import RawrPlayerSeasonRecord
-from rawr_analytics.shared.player import PlayerMinutes, PlayerSummary
-
-
-@dataclass(frozen=True)
-class RawrPlayerSeasonValue:
-    season_id: str
-    player: PlayerSummary
-    minutes: PlayerMinutes
-    result: RawrValue
+from rawr_analytics.metrics.rawr.inputs import RawrRequest, RawrSeasonInput
+from rawr_analytics.metrics.rawr.records import RawrPlayerSeasonRecord, build_player_season_records
 
 
 @dataclass(frozen=True)
 class RawrCustomQueryResult:
     metric: str
     metric_label: str
-    rows: list[RawrPlayerSeasonValue]
+    rows: list[RawrPlayerSeasonRecord]
 
-    @staticmethod
-    def build_rawr_custom_query(
-        *,
-        season_inputs: list[RawrSeasonInput],
-        min_games: int,
-        ridge_alpha: float,
-        min_average_minutes: float | None,
-        min_total_minutes: float | None,
-    ) -> RawrCustomQueryResult:
-        records = RawrPlayerSeasonRecord.prepare_rawr_player_season_records(
+
+def build_rawr_custom_query_result(
+    *,
+    season_inputs: list[RawrSeasonInput],
+    min_games: int,
+    ridge_alpha: float,
+    min_average_minutes: float | None,
+    min_total_minutes: float | None,
+) -> RawrCustomQueryResult:
+    return RawrCustomQueryResult(
+        metric=Metric.RAWR.value,
+        metric_label=describe_rawr_metric().label,
+        rows=build_player_season_records(
+            RawrRequest(
             season_inputs=season_inputs,
             min_games=min_games,
             ridge_alpha=ridge_alpha,
@@ -47,17 +41,6 @@ class RawrCustomQueryResult:
             shrinkage_minute_scale=DEFAULT_RAWR_SHRINKAGE_MINUTE_SCALE,
             min_average_minutes=min_average_minutes,
             min_total_minutes=min_total_minutes,
-        )
-        return RawrCustomQueryResult(
-            metric=Metric.RAWR.value,
-            metric_label=describe_rawr_metric().label,
-            rows=[
-                RawrPlayerSeasonValue(
-                    season_id=record.season.id,
-                    player=record.player,
-                    minutes=record.minutes,
-                    result=record.result,
-                )
-                for record in records
-            ],
-        )
+            )
+        ),
+    )

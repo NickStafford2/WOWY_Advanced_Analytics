@@ -12,7 +12,6 @@ from rawr_analytics.metrics.rawr._observations import (
     count_player_season_minutes,
 )
 from rawr_analytics.metrics.rawr._shrinkage import RawrShrinkageMode
-from rawr_analytics.shared.player import PlayerSummary
 from rawr_analytics.shared.season import Season
 from rawr_analytics.shared.team import Team
 
@@ -26,24 +25,17 @@ class RawrValue:
 
 
 @dataclass(frozen=True)
-class RawrPlayerEstimate:
-    season: Season
-    player: PlayerSummary
-    result: RawrValue
-
-
-@dataclass(frozen=True)
 class RawrResult:
     observations: int
     players: int
     intercept: float
     home_court_advantage: float
-    estimates: list[RawrPlayerEstimate]
+    values_by_player_id: dict[int, RawrValue]
 
 
 @dataclass(frozen=True)
 class RawrModel:
-    player_keys: list[tuple[Season, int]]
+    player_ids: list[int]
     team_seasons: list[tuple[int, Season]]
     coefficients: list[float]
 
@@ -62,7 +54,6 @@ class RidgeTuningSummary:
 
 def fit_player_rawr(
     observations: list[RawrObservation],
-    player_names: dict[int, str],
     *,
     season: Season,
     min_games: int = 1,
@@ -84,16 +75,16 @@ def fit_player_rawr(
     if not observations:
         raise ValueError("At least one RAWR observation is required")
 
-    games_by_player_season = count_player_season_games(observations, season=season)
-    included_player_keys = sorted(
-        player_key for player_key, games in games_by_player_season.items() if games >= min_games
+    games_by_player = count_player_season_games(observations)
+    included_player_ids = sorted(
+        player_id for player_id, games in games_by_player.items() if games >= min_games
     )
-    if not included_player_keys:
+    if not included_player_ids:
         raise ValueError("No players met the minimum games requirement")
 
     model = _fit_regression_model(
         observations,
-        included_player_keys,
+        included_player_ids,
         season=season,
         ridge_alpha=ridge_alpha,
         shrinkage_mode=shrinkage_mode,
@@ -104,33 +95,26 @@ def fit_player_rawr(
     intercept = model.coefficients[0]
     home_court_advantage = model.coefficients[1]
 
-    estimates = [
-        RawrPlayerEstimate(
-            season=season,
-            player=PlayerSummary(
-                player_id=player_id,
-                player_name=player_names.get(player_id, str(player_id)),
-            ),
-            result=RawrValue(
-                games=games_by_player_season[(season, player_id)],
-                coefficient=model.coefficients[index + 2],
-            ),
+    values_by_player_id = {
+        player_id: RawrValue(
+            games=games_by_player[player_id],
+            coefficient=model.coefficients[index + 2],
         )
-        for index, (season, player_id) in enumerate(included_player_keys)
-    ]
+        for index, player_id in enumerate(included_player_ids)
+    }
 
     return RawrResult(
         observations=len(observations),
-        players=len(estimates),
+        players=len(values_by_player_id),
         intercept=intercept,
         home_court_advantage=home_court_advantage,
-        estimates=estimates,
+        values_by_player_id=values_by_player_id,
     )
 
 
 def _fit_regression_model(
     observations: list[RawrObservation],
-    player_keys: list[tuple[Season, int]],
+    player_ids: list[int],
     *,
     season: Season,
     ridge_alpha: float = 1.0,
@@ -149,10 +133,10 @@ def _fit_regression_model(
         | {_team_season_key(observation.away_team, season) for observation in observations}
     )
     player_offset = 2
-    team_effect_offset = player_offset + len(player_keys)
+    team_effect_offset = player_offset + len(player_ids)
     opponent_effect_offset = team_effect_offset + len(team_seasons)
     feature_count = opponent_effect_offset + len(team_seasons)
-    player_index = {player_key: index + 2 for index, player_key in enumerate(player_keys)}
+    player_index = {player_id: index + 2 for index, player_id in enumerate(player_ids)}
     team_effect_index = {
         team_season: team_effect_offset + index for index, team_season in enumerate(team_seasons)
     }
@@ -162,7 +146,7 @@ def _fit_regression_model(
     }
     player_penalties = _build_player_penalties(
         observations=observations,
-        player_keys=player_keys,
+        player_ids=player_ids,
         season=season,
         ridge_alpha=ridge_alpha,
         shrinkage_mode=shrinkage_mode,
@@ -220,8 +204,8 @@ def _fit_regression_model(
         if progress is not None:
             progress(completed_steps, total_steps, "building gram matrix")
 
-    for player_key, diagonal_index in player_index.items():
-        gram[diagonal_index][diagonal_index] += player_penalties[player_key]
+    for player_id, diagonal_index in player_index.items():
+        gram[diagonal_index][diagonal_index] += player_penalties[player_id]
         completed_steps += 1
         if progress is not None:
             progress(completed_steps, total_steps, "applying ridge penalty")
@@ -233,7 +217,7 @@ def _fit_regression_model(
             progress(completed_steps, total_steps, "applying ridge penalty")
 
     return RawrModel(
-        player_keys=player_keys,
+        player_ids=player_ids,
         team_seasons=team_seasons,
         coefficients=_solve_linear_system(
             gram,
@@ -253,13 +237,13 @@ def _predict_margin(
 ) -> float:
     row = _build_feature_row(
         feature_count=len(model.coefficients),
-        player_index={player_key: index + 2 for index, player_key in enumerate(model.player_keys)},
+        player_index={player_id: index + 2 for index, player_id in enumerate(model.player_ids)},
         team_effect_index={
-            team_season: len(model.player_keys) + 2 + index
+            team_season: len(model.player_ids) + 2 + index
             for index, team_season in enumerate(model.team_seasons)
         },
         opponent_effect_index={
-            team_season: len(model.player_keys) + 2 + len(model.team_seasons) + index
+            team_season: len(model.player_ids) + 2 + len(model.team_seasons) + index
             for index, team_season in enumerate(model.team_seasons)
         },
         season=season,
@@ -307,20 +291,20 @@ def _tune_ridge_alpha(
 
     training = ordered_observations[:-validation_count]
     validation = ordered_observations[-validation_count:]
-    training_player_counts = count_player_season_games(training, season=season)
-    included_player_keys = sorted(
-        player_key
-        for player_key, games in training_player_counts.items()
-        if games >= min_games and player_key[1] in player_names
+    training_player_counts = count_player_season_games(training)
+    included_player_ids = sorted(
+        player_id
+        for player_id, games in training_player_counts.items()
+        if games >= min_games and player_id in player_names
     )
-    if not included_player_keys:
+    if not included_player_ids:
         raise ValueError("No players met the minimum games requirement in training data")
 
     results: list[RidgeTuningResult] = []
     for alpha in alphas:
         model = _fit_regression_model(
             training,
-            included_player_keys,
+            included_player_ids,
             season=season,
             ridge_alpha=alpha,
             shrinkage_mode=shrinkage_mode,
@@ -339,7 +323,7 @@ def _tune_ridge_alpha(
 
 def _build_feature_row(
     feature_count: int,
-    player_index: dict[tuple[Season, int], int],
+    player_index: dict[int, int],
     team_effect_index: dict[tuple[int, Season], int],
     opponent_effect_index: dict[tuple[int, Season], int],
     season: Season,
@@ -354,7 +338,7 @@ def _build_feature_row(
     row[team_effect_index[team_effect_key]] = 1.0
     row[opponent_effect_index[opponent_effect_key]] = 1.0
     for player_id, weight in player_weights.items():
-        feature_index = player_index.get((season, player_id))
+        feature_index = player_index.get(player_id)
         if feature_index is not None:
             row[feature_index] = weight
     return row
@@ -363,34 +347,34 @@ def _build_feature_row(
 def _build_player_penalties(
     *,
     observations: list[RawrObservation],
-    player_keys: list[tuple[Season, int]],
+    player_ids: list[int],
     season: Season,
     ridge_alpha: float,
     shrinkage_mode: RawrShrinkageMode,
     shrinkage_strength: float,
     shrinkage_minute_scale: float = 48.0,
-) -> dict[tuple[Season, int], float]:
+) -> dict[int, float]:
     if shrinkage_mode == RawrShrinkageMode.UNIFORM:
-        return dict.fromkeys(player_keys, ridge_alpha)
+        return dict.fromkeys(player_ids, ridge_alpha)
 
     if shrinkage_mode == RawrShrinkageMode.GAME_COUNT:
-        games_by_player_season = count_player_season_games(observations, season=season)
-        penalties: dict[tuple[Season, int], float] = {}
-        for player_key in player_keys:
-            games = games_by_player_season[player_key]
-            penalties[player_key] = ridge_alpha / (games**shrinkage_strength)
+        games_by_player = count_player_season_games(observations)
+        penalties: dict[int, float] = {}
+        for player_id in player_ids:
+            games = games_by_player[player_id]
+            penalties[player_id] = ridge_alpha / (games**shrinkage_strength)
         return penalties
 
-    minutes_by_player_season = count_player_season_minutes(observations, season=season)
-    penalties: dict[tuple[Season, int], float] = {}
-    for player_key in player_keys:
-        if player_key not in minutes_by_player_season:
+    minutes_by_player = count_player_season_minutes(observations)
+    penalties: dict[int, float] = {}
+    for player_id in player_ids:
+        if player_id not in minutes_by_player:
             raise ValueError(
                 "Minute-aware shrinkage requires player minute totals for every included "
-                "player-season"
+                "player"
             )
-        scaled_minutes = minutes_by_player_season[player_key] / shrinkage_minute_scale
-        penalties[player_key] = ridge_alpha / (scaled_minutes**shrinkage_strength)
+        scaled_minutes = minutes_by_player[player_id] / shrinkage_minute_scale
+        penalties[player_id] = ridge_alpha / (scaled_minutes**shrinkage_strength)
     return penalties
 
 

@@ -42,29 +42,24 @@ def _count_player_games(observations: list[RawrObservation]) -> dict[int, int]:
 
 def count_player_season_games(
     observations: list[RawrObservation],
-    *,
-    season: Season,
-) -> dict[tuple[Season, int], int]:
-    games_by_player_season: dict[tuple[Season, int], int] = defaultdict(int)
+) -> dict[int, int]:
+    games_by_player: dict[int, int] = defaultdict(int)
     for observation in observations:
         for player_id in observation.player_weights:
-            games_by_player_season[(season, player_id)] += 1
-    return dict(games_by_player_season)
+            games_by_player[player_id] += 1
+    return dict(games_by_player)
 
 
 def count_player_season_minutes(
     observations: list[RawrObservation],
-    *,
-    season: Season,
-) -> dict[tuple[Season, int], float]:
-    minutes_by_player_season: dict[tuple[Season, int], float] = {}
+) -> dict[int, float]:
+    minutes_by_player: dict[int, float] = {}
     for observation in observations:
         if observation.player_minutes is None:
             continue
         for player_id, minutes in observation.player_minutes.items():
-            key = (season, player_id)
-            minutes_by_player_season[key] = minutes_by_player_season.get(key, 0.0) + minutes
-    return minutes_by_player_season
+            minutes_by_player[player_id] = minutes_by_player.get(player_id, 0.0) + minutes
+    return minutes_by_player
 
 
 def build_rawr_observations(
