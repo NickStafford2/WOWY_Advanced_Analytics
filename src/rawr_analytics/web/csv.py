@@ -78,3 +78,4 @@ def _metric_column_label(metric: Metric) -> str:
         return "WOWY"
     if metric == Metric.WOWY_SHRUNK:
         return "WOWY Shrunk"
+    raise ValueError(f"Unknown metric: {metric}")

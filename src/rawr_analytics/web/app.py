@@ -75,9 +75,6 @@ def create_app():
             teams=_parse_team_list(request.args.getlist("team_id")),
         )
 
-    def _parse_metric(metric: str) -> Metric:
-        return Metric.parse(metric)
-
     def _resolve_rawr_query(
         *,
         rawr_recalculate: bool | None = None,
@@ -169,107 +166,88 @@ def create_app():
             headers={"Content-Disposition": f'attachment; filename="{filename}"'},
         )
 
-    @app.get("/api/metrics/<metric>/options")
-    def get_metric_options(metric: str):
-        parsed_metric = _parse_metric(metric)
-        return run_json(
-            lambda: jsonify(
-                build_rawr_options_payload(_parse_rawr_options_query())
-                if parsed_metric == Metric.RAWR
-                else build_wowy_options_payload(
-                    _parse_wowy_options_query(),
-                    metric=parsed_metric,
-                )
+    def _json_metric_options_response(parsed_metric: Metric):
+        if parsed_metric == Metric.RAWR:
+            return jsonify(build_rawr_options_payload(_parse_rawr_options_query()))
+        return jsonify(
+            build_wowy_options_payload(
+                _parse_wowy_options_query(),
+                metric=parsed_metric,
             )
         )
+
+    def _json_metric_player_seasons_response(parsed_metric: Metric):
+        if parsed_metric == Metric.RAWR:
+            return _json_rawr_player_seasons_response()
+        return _json_wowy_player_seasons_response(parsed_metric)
+
+    def _json_metric_span_chart_response(parsed_metric: Metric):
+        if parsed_metric == Metric.RAWR:
+            return _json_rawr_span_chart_response()
+        return _json_wowy_span_chart_response(parsed_metric)
+
+    def _json_metric_leaderboard_response(
+        parsed_metric: Metric,
+        *,
+        recalculate: bool = False,
+    ):
+        if parsed_metric == Metric.RAWR:
+            return _json_rawr_leaderboard_response(rawr_recalculate=recalculate)
+        return _json_wowy_leaderboard_response(parsed_metric, recalculate=recalculate)
+
+    def _csv_metric_leaderboard_response(
+        parsed_metric: Metric,
+        *,
+        recalculate: bool = False,
+    ):
+        if parsed_metric == Metric.RAWR:
+            return _csv_rawr_leaderboard_response(rawr_recalculate=recalculate)
+        return _csv_wowy_leaderboard_response(parsed_metric, recalculate=recalculate)
+
+    @app.get("/api/metrics/<metric>/options")
+    def get_metric_options(metric: str):
+        parsed_metric = Metric.parse(metric)
+        return run_json(lambda: _json_metric_options_response(parsed_metric))
 
     @app.get("/api/metrics/<metric>/player-seasons")
     def get_metric_player_seasons(metric: str):
-        parsed_metric = _parse_metric(metric)
-        return run_json(
-            lambda: (
-                _json_rawr_player_seasons_response()
-                if parsed_metric == Metric.RAWR
-                else _json_wowy_player_seasons_response(parsed_metric)
-            )
-        )
+        parsed_metric = Metric.parse(metric)
+        return run_json(lambda: _json_metric_player_seasons_response(parsed_metric))
 
     @app.get("/api/metrics/<metric>/span-chart")
     def get_metric_span_chart(metric: str):
-        parsed_metric = _parse_metric(metric)
-        return run_json(
-            lambda: (
-                _json_rawr_span_chart_response()
-                if parsed_metric == Metric.RAWR
-                else _json_wowy_span_chart_response(parsed_metric)
-            )
-        )
+        parsed_metric = Metric.parse(metric)
+        return run_json(lambda: _json_metric_span_chart_response(parsed_metric))
 
     @app.get("/api/metrics/<metric>/cached-leaderboard")
     def get_metric_cached_leaderboard(metric: str):
-        parsed_metric = _parse_metric(metric)
-        return run_json(
-            lambda: (
-                _json_rawr_leaderboard_response(rawr_recalculate=False)
-                if parsed_metric == Metric.RAWR
-                else _json_wowy_leaderboard_response(parsed_metric, recalculate=False)
-            )
-        )
+        parsed_metric = Metric.parse(metric)
+        return run_json(lambda: _json_metric_leaderboard_response(parsed_metric, recalculate=False))
 
     @app.get("/api/metrics/<metric>/cached-leaderboard.csv")
     def export_metric_cached_leaderboard(metric: str):
-        parsed_metric = _parse_metric(metric)
-        return run_json(
-            lambda: (
-                _csv_rawr_leaderboard_response(rawr_recalculate=False)
-                if parsed_metric == Metric.RAWR
-                else _csv_wowy_leaderboard_response(parsed_metric, recalculate=False)
-            )
-        )
+        parsed_metric = Metric.parse(metric)
+        return run_json(lambda: _csv_metric_leaderboard_response(parsed_metric, recalculate=False))
 
     @app.get("/api/metrics/<metric>/custom-query")
     def get_metric_custom_query(metric: str):
-        parsed_metric = _parse_metric(metric)
-        return run_json(
-            lambda: (
-                _json_rawr_leaderboard_response(rawr_recalculate=True)
-                if parsed_metric == Metric.RAWR
-                else _json_wowy_leaderboard_response(parsed_metric, recalculate=True)
-            )
-        )
+        parsed_metric = Metric.parse(metric)
+        return run_json(lambda: _json_metric_leaderboard_response(parsed_metric, recalculate=True))
 
     @app.get("/api/metrics/<metric>/custom-query.csv")
     def export_metric_custom_query(metric: str):
-        parsed_metric = _parse_metric(metric)
-        return run_json(
-            lambda: (
-                _csv_rawr_leaderboard_response(rawr_recalculate=True)
-                if parsed_metric == Metric.RAWR
-                else _csv_wowy_leaderboard_response(parsed_metric, recalculate=True)
-            )
-        )
+        parsed_metric = Metric.parse(metric)
+        return run_json(lambda: _csv_metric_leaderboard_response(parsed_metric, recalculate=True))
 
     @app.get("/api/metrics/<metric>/leaderboard")
     def get_metric_leaderboard(metric: str):
-        parsed_metric = _parse_metric(metric)
-        return run_json(
-            lambda: (
-                _json_rawr_leaderboard_response()
-                if parsed_metric == Metric.RAWR
-                else _json_wowy_leaderboard_response(parsed_metric, recalculate=False)
-            )
-        )
+        parsed_metric = Metric.parse(metric)
+        return run_json(lambda: _json_metric_leaderboard_response(parsed_metric, recalculate=False))
 
     @app.get("/api/metrics/<metric>/leaderboard.csv")
     def export_metric_leaderboard(metric: str):
-        parsed_metric = _parse_metric(metric)
-        return run_json(
-            lambda: (
-                _csv_rawr_leaderboard_response()
-                if parsed_metric == Metric.RAWR
-                else _csv_wowy_leaderboard_response(parsed_metric, recalculate=False)
-            )
-        )
+        parsed_metric = Metric.parse(metric)
+        return run_json(lambda: _csv_metric_leaderboard_response(parsed_metric, recalculate=False))
 
     return app
 
