@@ -17,5 +17,5 @@ def default_filters() -> dict[str, int | float]:
     }
 
 
-def describe_metric() -> MetricSummary:
+def describe_rawr_metric() -> MetricSummary:
     return MetricSummary(Metric.RAWR, "RAWR", "rawr-player-season-v3")

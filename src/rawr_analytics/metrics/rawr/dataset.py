@@ -8,7 +8,7 @@ from rawr_analytics.metrics.rawr.defaults import (
     DEFAULT_RAWR_SHRINKAGE_MINUTE_SCALE,
     DEFAULT_RAWR_SHRINKAGE_MODE,
     DEFAULT_RAWR_SHRINKAGE_STRENGTH,
-    describe_metric,
+    describe_rawr_metric,
 )
 from rawr_analytics.metrics.rawr.inputs import RawrSeasonInput
 from rawr_analytics.metrics.rawr.records import RawrPlayerSeasonRecord
@@ -50,7 +50,7 @@ class RawrCustomQueryResult:
         )
         return RawrCustomQueryResult(
             metric=Metric.RAWR.value,
-            metric_label=describe_metric().label,
+            metric_label=describe_rawr_metric().label,
             rows=[
                 RawrPlayerSeasonValue(
                     season_id=record.season.id,

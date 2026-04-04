@@ -6,7 +6,7 @@ from typing import Any
 
 from rawr_analytics.metrics._span import build_span_payload
 from rawr_analytics.metrics.rawr.dataset import RawrPlayerSeasonValue
-from rawr_analytics.metrics.rawr.defaults import describe_metric
+from rawr_analytics.metrics.rawr.defaults import describe_rawr_metric
 from rawr_analytics.metrics.rawr.query import RawrQuery
 from rawr_analytics.shared.season import Season, SeasonType
 from rawr_analytics.shared.team import Team
@@ -69,7 +69,7 @@ def build_player_seasons_payload(
 ) -> dict[str, Any]:
     return {
         "metric": "rawr",
-        "metric_label": describe_metric().label,
+        "metric_label": describe_rawr_metric().label,
         "rows": [_serialize_player_season_row(row) for row in rows],
     }
 
@@ -108,7 +108,7 @@ def build_export_table(
     metric_label: str | None = None,
 ) -> tuple[str, list[dict[str, Any]]]:
     return (
-        metric_label or describe_metric().label,
+        metric_label or describe_rawr_metric().label,
         _build_ranked_table_rows(rows=rows, seasons=seasons, top_n=None),
     )
 
