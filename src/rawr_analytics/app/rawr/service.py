@@ -1,15 +1,22 @@
 from __future__ import annotations
 
 from collections.abc import Callable
-from typing import Literal
 
 from rawr_analytics.app.rawr._store import build_rawr_record_from_store_row
 from rawr_analytics.app.rawr.presenters import (
     RawrQueryFiltersDTO,
-    build_rawr_export_rows,
-    build_rawr_leaderboard_payload,
-    build_rawr_player_seasons_payload,
-    build_rawr_span_chart_payload,
+)
+from rawr_analytics.app.rawr.presenters import (
+    build_rawr_export_rows as build_rawr_export_rows_from_records,
+)
+from rawr_analytics.app.rawr.presenters import (
+    build_rawr_leaderboard_payload as build_rawr_leaderboard_payload_from_records,
+)
+from rawr_analytics.app.rawr.presenters import (
+    build_rawr_player_seasons_payload as build_rawr_player_seasons_payload_from_records,
+)
+from rawr_analytics.app.rawr.presenters import (
+    build_rawr_span_chart_payload as build_rawr_span_chart_payload_from_records,
 )
 from rawr_analytics.app.rawr.query import RawrQuery
 from rawr_analytics.data.metric_store import load_rawr_player_season_value_rows
@@ -25,7 +32,6 @@ from rawr_analytics.services._metric_inputs import load_rawr_request
 from rawr_analytics.services._metric_scope import (
     build_metric_options_payload,
     build_metric_scope_key,
-    build_metric_span_chart_payload,
     require_current_metric_scope,
     season_ids,
 )
@@ -34,7 +40,6 @@ from rawr_analytics.shared.season import Season
 
 type RawrProgressFn = Callable[[int, int, Season], None]
 type MetricQueryExport = list[JSONDict]
-type RawrView = Literal["leaderboard", "player-seasons", "span-chart"]
 
 
 def build_rawr_options_payload(query: RawrQuery) -> JSONDict:
@@ -47,82 +52,7 @@ def build_rawr_options_payload(query: RawrQuery) -> JSONDict:
     )
 
 
-def build_rawr_query_view(
-    query: RawrQuery,
-    *,
-    view: RawrView,
-) -> JSONDict:
-    payload = _build_rawr_view_payload(view=view, query=query)
-    payload["filters"] = RawrQueryFiltersDTO.from_query(query).to_payload()
-    return payload
-
-
-def build_rawr_query_export(
-    query: RawrQuery,
-    *,
-    view: RawrView,
-    progress_fn: RawrProgressFn | None = None,
-) -> MetricQueryExport:
-    match view:
-        case "leaderboard":
-            rows = _resolve_rawr_rows(query, progress_fn=progress_fn)
-            seasons = _selected_rawr_seasons(query, rows)
-            return build_rawr_export_rows(
-                rows=rows,
-                seasons=seasons,
-            )
-        case _:
-            raise ValueError(f"Metric view {view!r} does not support CSV export")
-
-
-def _build_rawr_view_payload(
-    *,
-    view: RawrView,
-    query: RawrQuery,
-) -> JSONDict:
-    scope_key = build_metric_scope_key(query)
-
-    match view:
-        case "player-seasons":
-            return build_rawr_player_seasons_payload(_resolve_rawr_rows(query))
-        case "leaderboard":
-            rows = _resolve_rawr_rows(query)
-            seasons = _selected_rawr_seasons(query, rows)
-            catalog = _try_require_current_metric_scope(query)
-            return build_rawr_leaderboard_payload(
-                metric=Metric.RAWR.value,
-                rows=rows,
-                seasons=seasons,
-                top_n=query.top_n,
-                mode="recalculated" if query.recalculate else "resolved",
-                available_seasons=None if catalog is None else catalog.availability.seasons,
-                available_teams=None if catalog is None else catalog.availability.teams,
-            )
-        case "span-chart":
-            if not query.recalculate:
-                try:
-                    catalog = require_current_metric_scope(metric=Metric.RAWR, scope_key=scope_key)
-                    return build_metric_span_chart_payload(
-                        metric=Metric.RAWR,
-                        catalog=catalog,
-                        scope_key=scope_key,
-                        top_n=query.top_n,
-                    )
-                except ValueError:
-                    pass
-            rows = _build_live_rawr_query_result(query)
-            seasons = _selected_rawr_seasons(query, rows)
-            return build_rawr_span_chart_payload(
-                metric=Metric.RAWR.value,
-                rows=rows,
-                seasons=seasons,
-                top_n=query.top_n,
-            )
-        case _:
-            raise ValueError(f"Unknown metric view: {view}")
-
-
-def _resolve_rawr_rows(
+def resolve_rawr_rows(
     query: RawrQuery,
     *,
     progress_fn: RawrProgressFn | None = None,
@@ -132,6 +62,58 @@ def _resolve_rawr_rows(
         if cached_rows is not None:
             return cached_rows
     return _build_live_rawr_query_result(query, progress_fn=progress_fn)
+
+
+def build_rawr_leaderboard_payload(
+    query: RawrQuery,
+    rows: list[RawrPlayerSeasonRecord],
+) -> JSONDict:
+    seasons = _selected_rawr_seasons(query, rows)
+    catalog = _try_require_current_metric_scope(query)
+    payload = build_rawr_leaderboard_payload_from_records(
+        metric=Metric.RAWR.value,
+        rows=rows,
+        seasons=seasons,
+        top_n=query.top_n,
+        mode="recalculated" if query.recalculate else "resolved",
+        available_seasons=None if catalog is None else catalog.availability.seasons,
+        available_teams=None if catalog is None else catalog.availability.teams,
+    )
+    payload["filters"] = RawrQueryFiltersDTO.from_query(query).to_payload()
+    return payload
+
+
+def build_rawr_player_seasons_payload(
+    query: RawrQuery,
+    rows: list[RawrPlayerSeasonRecord],
+) -> JSONDict:
+    payload = build_rawr_player_seasons_payload_from_records(rows)
+    payload["filters"] = RawrQueryFiltersDTO.from_query(query).to_payload()
+    return payload
+
+
+def build_rawr_span_chart_payload(
+    query: RawrQuery,
+    rows: list[RawrPlayerSeasonRecord],
+) -> JSONDict:
+    payload = build_rawr_span_chart_payload_from_records(
+        metric=Metric.RAWR.value,
+        rows=rows,
+        seasons=_selected_rawr_seasons(query, rows),
+        top_n=query.top_n,
+    )
+    payload["filters"] = RawrQueryFiltersDTO.from_query(query).to_payload()
+    return payload
+
+
+def build_rawr_leaderboard_export(
+    query: RawrQuery,
+    rows: list[RawrPlayerSeasonRecord],
+) -> MetricQueryExport:
+    return build_rawr_export_rows_from_records(
+        rows=rows,
+        seasons=_selected_rawr_seasons(query, rows),
+    )
 
 
 def _build_live_rawr_query_result(

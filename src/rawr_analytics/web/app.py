@@ -5,11 +5,13 @@ from typing import Any
 
 from rawr_analytics.app.rawr import (
     RawrQuery,
-    RawrView,
+    build_rawr_leaderboard_export,
+    build_rawr_leaderboard_payload,
     build_rawr_options_payload,
+    build_rawr_player_seasons_payload,
     build_rawr_query,
-    build_rawr_query_export,
-    build_rawr_query_view,
+    build_rawr_span_chart_payload,
+    resolve_rawr_rows,
 )
 from rawr_analytics.metrics import MetricView
 from rawr_analytics.metrics.constants import Metric
@@ -77,14 +79,13 @@ def create_app():
     def _parse_metric(metric: str) -> Metric:
         return Metric.parse(metric)
 
-    def _json_rawr_response(
-        view: RawrView,
+    def _resolve_rawr_query(
         *,
         rawr_recalculate: bool | None = None,
-    ):
+    ) -> RawrQuery:
         query = _parse_rawr_query()
         if rawr_recalculate is not None:
-            query = build_rawr_query(
+            return build_rawr_query(
                 season_type=query.season_type,
                 teams=query.teams,
                 seasons=query.seasons,
@@ -95,8 +96,7 @@ def create_app():
                 ridge_alpha=query.ridge_alpha,
                 recalculate=rawr_recalculate,
             )
-        payload = build_rawr_query_view(query, view=view)
-        return jsonify(payload)
+        return query
 
     def _json_metric_response(parsed_metric: Metric, view: MetricView):
         if parsed_metric == Metric.RAWR:
@@ -110,28 +110,34 @@ def create_app():
         except ValueError as exc:
             return jsonify({"error": str(exc)}), 400
 
-    def _csv_rawr_response(
-        view: RawrView,
+    def _json_rawr_leaderboard_response(
         *,
         rawr_recalculate: bool | None = None,
     ):
-        query = _parse_rawr_query()
-        if rawr_recalculate is not None:
-            query = build_rawr_query(
-                season_type=query.season_type,
-                teams=query.teams,
-                seasons=query.seasons,
-                top_n=query.top_n,
-                min_average_minutes=query.min_average_minutes,
-                min_total_minutes=query.min_total_minutes,
-                min_games=query.min_games,
-                ridge_alpha=query.ridge_alpha,
-                recalculate=rawr_recalculate,
-            )
-        rows = build_rawr_query_export(query, view=view)
+        query = _resolve_rawr_query(rawr_recalculate=rawr_recalculate)
+        rows = resolve_rawr_rows(query)
+        return jsonify(build_rawr_leaderboard_payload(query, rows))
+
+    def _json_rawr_player_seasons_response():
+        query = _resolve_rawr_query()
+        rows = resolve_rawr_rows(query)
+        return jsonify(build_rawr_player_seasons_payload(query, rows))
+
+    def _json_rawr_span_chart_response():
+        query = _resolve_rawr_query()
+        rows = resolve_rawr_rows(query)
+        return jsonify(build_rawr_span_chart_payload(query, rows))
+
+    def _csv_rawr_leaderboard_response(
+        *,
+        rawr_recalculate: bool | None = None,
+    ):
+        query = _resolve_rawr_query(rawr_recalculate=rawr_recalculate)
+        rows = resolve_rawr_rows(query)
+        table_rows = build_rawr_leaderboard_export(query, rows)
         filename = f"{Metric.RAWR.value}-all-players.csv"
         return Response(
-            _render_leaderboard_csv(metric=Metric.RAWR, table_rows=rows),
+            _render_leaderboard_csv(metric=Metric.RAWR, table_rows=table_rows),
             mimetype="text/csv",
             headers={"Content-Disposition": f'attachment; filename="{filename}"'},
         )
@@ -170,7 +176,7 @@ def create_app():
         parsed_metric = _parse_metric(metric)
         return run_json(
             lambda: (
-                _json_rawr_response("player-seasons")
+                _json_rawr_player_seasons_response()
                 if parsed_metric == Metric.RAWR
                 else _json_metric_response(parsed_metric, "player-seasons")
             )
@@ -181,7 +187,7 @@ def create_app():
         parsed_metric = _parse_metric(metric)
         return run_json(
             lambda: (
-                _json_rawr_response("span-chart")
+                _json_rawr_span_chart_response()
                 if parsed_metric == Metric.RAWR
                 else _json_metric_response(parsed_metric, "span-chart")
             )
@@ -192,7 +198,7 @@ def create_app():
         parsed_metric = _parse_metric(metric)
         return run_json(
             lambda: (
-                _json_rawr_response("leaderboard", rawr_recalculate=False)
+                _json_rawr_leaderboard_response(rawr_recalculate=False)
                 if parsed_metric == Metric.RAWR
                 else _json_metric_response(parsed_metric, "cached-leaderboard")
             )
@@ -203,7 +209,7 @@ def create_app():
         parsed_metric = _parse_metric(metric)
         return run_json(
             lambda: (
-                _csv_rawr_response("leaderboard", rawr_recalculate=False)
+                _csv_rawr_leaderboard_response(rawr_recalculate=False)
                 if parsed_metric == Metric.RAWR
                 else _csv_metric_response(parsed_metric, "cached-leaderboard")
             )
@@ -214,7 +220,7 @@ def create_app():
         parsed_metric = _parse_metric(metric)
         return run_json(
             lambda: (
-                _json_rawr_response("leaderboard", rawr_recalculate=True)
+                _json_rawr_leaderboard_response(rawr_recalculate=True)
                 if parsed_metric == Metric.RAWR
                 else _json_metric_response(parsed_metric, "custom-query")
             )
@@ -225,7 +231,7 @@ def create_app():
         parsed_metric = _parse_metric(metric)
         return run_json(
             lambda: (
-                _csv_rawr_response("leaderboard", rawr_recalculate=True)
+                _csv_rawr_leaderboard_response(rawr_recalculate=True)
                 if parsed_metric == Metric.RAWR
                 else _csv_metric_response(parsed_metric, "custom-query")
             )
@@ -236,7 +242,7 @@ def create_app():
         parsed_metric = _parse_metric(metric)
         return run_json(
             lambda: (
-                _json_rawr_response("leaderboard")
+                _json_rawr_leaderboard_response()
                 if parsed_metric == Metric.RAWR
                 else _json_metric_response(parsed_metric, "cached-leaderboard")
             )
@@ -247,7 +253,7 @@ def create_app():
         parsed_metric = _parse_metric(metric)
         return run_json(
             lambda: (
-                _csv_rawr_response("leaderboard")
+                _csv_rawr_leaderboard_response()
                 if parsed_metric == Metric.RAWR
                 else _csv_metric_response(parsed_metric, "cached-leaderboard")
             )

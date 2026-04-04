@@ -4,7 +4,10 @@ import argparse
 import sys
 
 from rawr_analytics.app.rawr import build_rawr_query
-from rawr_analytics.app.rawr.service import build_rawr_query_export
+from rawr_analytics.app.rawr.service import (
+    build_rawr_leaderboard_export,
+    resolve_rawr_rows,
+)
 from rawr_analytics.cli._common import format_scope
 from rawr_analytics.cli._metric_query_cli import (
     add_metric_query_common_arguments,
@@ -54,10 +57,9 @@ def main(argv: list[str] | None = None) -> int:
     load_bar = TerminalProgressBar("Season load", total=max(1, total_seasons))
     print("[1/3] loading season inputs", flush=True)
     progress_fn = _build_progress_updater(load_bar)
-    rows = build_rawr_query_export(
+    rows = build_rawr_leaderboard_export(
         query,
-        view="leaderboard",
-        progress_fn=progress_fn,
+        rows=resolve_rawr_rows(query, progress_fn=progress_fn),
     )
     load_bar.finish(detail="season inputs ready")
     print("[2/3] computed rawr rankings", flush=True)
