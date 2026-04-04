@@ -35,7 +35,7 @@ class IngestSummary:
     league_games_source: str
 
 
-_TeamProgressFn = Callable[[IngestProgress], None]
+TeamProgressFn = Callable[[IngestProgress], None]
 IngestEventFn = Callable[["IngestEvent"], None]
 FailureLogFn = Callable[["IngestFailureLogEntry"], None]
 
@@ -157,5 +157,5 @@ __all__ = [
     "IngestTeamProgressEvent",
     "SeasonRangeFailure",
     "SeasonRangeResult",
-    "_TeamProgressFn",
+    "TeamProgressFn",
 ]

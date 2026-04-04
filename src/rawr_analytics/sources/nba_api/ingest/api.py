@@ -23,7 +23,7 @@ from rawr_analytics.sources.nba_api.ingest._models import (
     IngestTeamProgressEvent,
     SeasonRangeFailure,
     SeasonRangeResult,
-    _TeamProgressFn,
+    TeamProgressFn,
 )
 from rawr_analytics.sources.nba_api.ingest._store import store_team_season
 from rawr_analytics.sources.nba_api.ingest._validation import (
@@ -35,7 +35,7 @@ def refresh_team_season(
     request: IngestRequest,
     *,
     log: LogFn | None = print,
-    progress: _TeamProgressFn | None = None,
+    progress: TeamProgressFn | None = None,
 ) -> IngestResult:
     source_data = ingest_nba_api_team_season(
         team=request.team,
@@ -181,7 +181,7 @@ def _build_progress_fn(
     event_fn: IngestEventFn | None,
     team_index: int,
     team_total: int,
-) -> _TeamProgressFn | None:
+) -> TeamProgressFn | None:
     if event_fn is None:
         return None
 
@@ -201,7 +201,7 @@ def _build_progress_fn(
 def _build_ingest_update_fn(
     *,
     request: IngestRequest,
-    progress_fn: _TeamProgressFn | None,
+    progress_fn: TeamProgressFn | None,
 ) -> IngestUpdateFn | None:
     if progress_fn is None:
         return None
@@ -220,7 +220,7 @@ def _build_ingest_update_fn(
 
 
 def _emit_progress(
-    progress: _TeamProgressFn | None,
+    progress: TeamProgressFn | None,
     *,
     request: IngestRequest,
     current: int,
