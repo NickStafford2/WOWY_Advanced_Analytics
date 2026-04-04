@@ -3,13 +3,12 @@ from __future__ import annotations
 import json
 from typing import Any
 
-from rawr_analytics.app.rawr import (
-    RawrQuery,
+from rawr_analytics.app.rawr.query import RawrQuery, build_rawr_query
+from rawr_analytics.app.rawr.service import (
     build_rawr_leaderboard_export,
     build_rawr_leaderboard_payload,
     build_rawr_options_payload,
     build_rawr_player_seasons_payload,
-    build_rawr_query,
     build_rawr_span_chart_payload,
     resolve_rawr_result,
 )

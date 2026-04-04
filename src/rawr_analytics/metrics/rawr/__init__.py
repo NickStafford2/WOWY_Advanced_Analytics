@@ -12,13 +12,7 @@ from rawr_analytics.metrics.rawr.defaults import (
     DEFAULT_RAWR_TOP_N,
     RAWR_METRIC_SUMMARY,
 )
-from rawr_analytics.metrics.rawr.inputs import (
-    RawrRequestDTO,
-    RawrSeasonInputDTO,
-    build_rawr_request,
-    validate_filters,
-    validate_request,
-)
+from rawr_analytics.metrics.rawr.inputs import validate_filters
 from rawr_analytics.metrics.rawr.records import RawrPlayerSeasonRecord, build_player_season_records
 
 __all__ = [
@@ -32,11 +26,7 @@ __all__ = [
     "DEFAULT_RAWR_TOP_N",
     "RAWR_METRIC_SUMMARY",
     "RawrPlayerSeasonRecord",
-    "RawrRequestDTO",
-    "RawrSeasonInputDTO",
     "RawrShrinkageMode",
     "build_player_season_records",
-    "build_rawr_request",
     "validate_filters",
-    "validate_request",
 ]

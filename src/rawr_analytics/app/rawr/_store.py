@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from rawr_analytics.data.metric_store import RawrPlayerSeasonValueRow
-from rawr_analytics.metrics.rawr import RawrPlayerSeasonRecord
+from rawr_analytics.metrics.rawr.records import RawrPlayerSeasonRecord
 from rawr_analytics.shared.player import PlayerMinutes, PlayerSummary
 from rawr_analytics.shared.season import Season, SeasonType
 
@@ -47,4 +47,3 @@ def build_rawr_store_row_from_record(
         average_minutes=record.minutes.average_minutes,
         total_minutes=record.minutes.total_minutes,
     )
-

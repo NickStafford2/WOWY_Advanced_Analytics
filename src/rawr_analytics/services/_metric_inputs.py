@@ -11,12 +11,9 @@ from rawr_analytics.data.game_cache import (
 from rawr_analytics.data.game_cache.rows import NormalizedGamePlayerRow, NormalizedGameRow
 from rawr_analytics.data.scope_resolver import resolve_team_seasons
 from rawr_analytics.metrics._player_context import PlayerSeasonContext
-from rawr_analytics.metrics.rawr import (
-    DEFAULT_RAWR_SHRINKAGE_MODE,
-    RawrRequestDTO,
-    RawrShrinkageMode,
-    build_rawr_request,
-)
+from rawr_analytics.metrics.rawr._shrinkage import RawrShrinkageMode
+from rawr_analytics.metrics.rawr.defaults import DEFAULT_RAWR_SHRINKAGE_MODE
+from rawr_analytics.metrics.rawr.inputs import RawrRequestDTO, build_rawr_request
 from rawr_analytics.metrics.wowy.analysis import WowyGame
 from rawr_analytics.metrics.wowy.inputs import WowySeasonInput
 from rawr_analytics.shared.game import NormalizedGamePlayerRecord, NormalizedGameRecord

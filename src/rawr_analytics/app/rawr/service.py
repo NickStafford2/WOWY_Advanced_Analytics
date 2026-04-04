@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from collections.abc import Callable
 from dataclasses import dataclass
+from typing import Literal
 
 from rawr_analytics.app.rawr._store import build_rawr_record_from_store_row
 from rawr_analytics.app.rawr.presenters import (
@@ -22,10 +23,12 @@ from rawr_analytics.app.rawr.presenters import (
 from rawr_analytics.app.rawr.query import RawrQuery
 from rawr_analytics.data.metric_store import load_rawr_player_season_value_rows
 from rawr_analytics.metrics.constants import Metric
-from rawr_analytics.metrics.rawr import (
+from rawr_analytics.metrics.rawr.defaults import (
     DEFAULT_RAWR_SHRINKAGE_MINUTE_SCALE,
     DEFAULT_RAWR_SHRINKAGE_MODE,
     DEFAULT_RAWR_SHRINKAGE_STRENGTH,
+)
+from rawr_analytics.metrics.rawr.records import (
     RawrPlayerSeasonRecord,
     build_player_season_records,
 )
@@ -42,13 +45,14 @@ from rawr_analytics.shared.season import Season
 
 type RawrProgressFn = Callable[[int, int, Season], None]
 type MetricQueryExport = list[JSONDict]
+type RawrResultSource = Literal["cache", "live"]
 
 
 @dataclass(frozen=True)
 class ResolvedRawrResultDTO:
     rows: list[RawrPlayerSeasonRecord]
     seasons: list[str]
-    source: str
+    source: RawrResultSource
     catalog: MetricStoreCatalog | None
 
 

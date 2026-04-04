@@ -3,7 +3,7 @@ from __future__ import annotations
 import argparse
 import sys
 
-from rawr_analytics.app.rawr import build_rawr_query
+from rawr_analytics.app.rawr.query import build_rawr_query
 from rawr_analytics.app.rawr.service import (
     build_rawr_leaderboard_export,
     resolve_rawr_result,
