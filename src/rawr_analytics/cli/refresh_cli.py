@@ -3,13 +3,14 @@ from __future__ import annotations
 import argparse
 
 from rawr_analytics.cli._progress_bar import TerminalProgressBar, print_status_box
+from rawr_analytics.metrics.constants import Metric
 from rawr_analytics.services.metric_refresh import (
     DEFAULT_RAWR_RIDGE_ALPHA,
     MetricStoreRefreshProgressEvent,
     refresh_metric_store,
 )
 
-_choices = ["wowy", "wowy_shrunk", "rawr"]
+_choices = [m.value for m in Metric]
 
 
 def _build_parser() -> argparse.ArgumentParser:
