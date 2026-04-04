@@ -47,3 +47,4 @@ def build_rawr_store_row_from_record(
         average_minutes=record.minutes.average_minutes,
         total_minutes=record.minutes.total_minutes,
     )
+

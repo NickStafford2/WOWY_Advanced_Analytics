@@ -2,12 +2,68 @@ from __future__ import annotations
 
 from collections.abc import Sequence
 from dataclasses import asdict, dataclass
-from typing import Any
+from typing import Any, cast
 
+from rawr_analytics.app.rawr.query import RawrQuery
 from rawr_analytics.metrics._span import build_span_payload
 from rawr_analytics.metrics.rawr.records import RawrPlayerSeasonRecord
-from rawr_analytics.shared.season import Season
+from rawr_analytics.shared import JSONDict
+from rawr_analytics.shared.season import Season, SeasonType
 from rawr_analytics.shared.team import Team
+
+
+@dataclass(frozen=True)
+class RawrQueryFiltersDTO:
+    teams: list[Team] | None
+    seasons: list[Season] | None
+    season_type: SeasonType
+    top_n: int
+    min_average_minutes: float
+    min_total_minutes: float
+    min_games: int
+    ridge_alpha: float
+
+    @classmethod
+    def from_query(cls, query: RawrQuery) -> RawrQueryFiltersDTO:
+        return cls(
+            teams=query.teams,
+            seasons=query.seasons,
+            season_type=query.season_type,
+            top_n=query.top_n,
+            min_average_minutes=query.min_average_minutes,
+            min_total_minutes=query.min_total_minutes,
+            min_games=query.min_games,
+            ridge_alpha=query.ridge_alpha,
+        )
+
+    def for_options(self) -> RawrQueryFiltersDTO:
+        return RawrQueryFiltersDTO(
+            teams=self.teams,
+            seasons=None,
+            season_type=self.season_type,
+            top_n=self.top_n,
+            min_average_minutes=self.min_average_minutes,
+            min_total_minutes=self.min_total_minutes,
+            min_games=self.min_games,
+            ridge_alpha=self.ridge_alpha,
+        )
+
+    def to_payload(self) -> JSONDict:
+        return {
+            "team": (
+                None
+                if self.teams is None
+                else [team.current.abbreviation for team in self.teams]
+            ),
+            "team_id": None if self.teams is None else [team.team_id for team in self.teams],
+            "season": None if self.seasons is None else [season.id for season in self.seasons],
+            "season_type": self.season_type.to_nba_format(),
+            "min_average_minutes": self.min_average_minutes,
+            "min_total_minutes": self.min_total_minutes,
+            "top_n": self.top_n,
+            "min_games": self.min_games,
+            "ridge_alpha": self.ridge_alpha,
+        }
 
 
 @dataclass(frozen=True)
@@ -42,16 +98,16 @@ class RawrLeaderboardRowDTO:
     points: list[RawrSeriesPointDTO]
 
 
-def build_player_seasons_payload(
+def build_rawr_player_seasons_payload(
     rows: Sequence[RawrPlayerSeasonRecord],
-) -> dict[str, Any]:
+) -> JSONDict:
     return {
         "metric": "rawr",
         "rows": [asdict(_build_player_season_row_dto(row)) for row in rows],
     }
 
 
-def build_leaderboard_payload(
+def build_rawr_leaderboard_payload(
     *,
     metric: str,
     rows: Sequence[RawrPlayerSeasonRecord],
@@ -60,15 +116,18 @@ def build_leaderboard_payload(
     mode: str,
     available_seasons: list[Season] | None = None,
     available_teams: list[Team] | None = None,
-) -> dict[str, Any]:
+) -> JSONDict:
     table_rows = _build_ranked_table_rows(rows=rows, seasons=seasons, top_n=top_n)
-    payload = {
-        "mode": mode,
-        "metric": metric,
-        "span": build_span_payload(seasons=seasons, top_n=top_n),
-        "table_rows": [asdict(row) for row in table_rows],
-        "series": _build_series_from_table_rows(table_rows),
-    }
+    payload = cast(
+        JSONDict,
+        {
+            "mode": mode,
+            "metric": metric,
+            "span": build_span_payload(seasons=seasons, top_n=top_n),
+            "table_rows": [asdict(row) for row in table_rows],
+            "series": _build_series_from_table_rows(table_rows),
+        },
+    )
     if available_seasons is not None:
         payload["available_seasons"] = [season.id for season in available_seasons]
     if available_teams is not None:
@@ -76,7 +135,7 @@ def build_leaderboard_payload(
     return payload
 
 
-def build_export_table(
+def build_rawr_export_rows(
     *,
     rows: Sequence[RawrPlayerSeasonRecord],
     seasons: list[str],
@@ -114,8 +173,11 @@ def _build_ranked_table_rows(
     full_span_length = len(ordered_seasons) or 1
     ranked_rows: list[RawrLeaderboardRowDTO] = []
     for player_id, player_rows in rows_by_player.items():
-        total_minutes_values = [row.minutes.total_minutes for row in player_rows]
-        total_minutes = sum(minutes for minutes in total_minutes_values if minutes is not None)
+        total_minutes = sum(
+            minutes
+            for minutes in (row.minutes.total_minutes for row in player_rows)
+            if minutes is not None
+        )
         games = sum(row.games for row in player_rows)
         average_minutes = total_minutes / games if games > 0 else None
         ranked_rows.append(

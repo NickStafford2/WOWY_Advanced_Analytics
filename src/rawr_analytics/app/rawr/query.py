@@ -65,3 +65,4 @@ def build_rawr_query(
         min_total_minutes=normalized_query.min_total_minutes,
     )
     return normalized_query
+

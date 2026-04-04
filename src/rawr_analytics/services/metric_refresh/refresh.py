@@ -3,6 +3,7 @@ from __future__ import annotations
 from collections.abc import Callable
 from dataclasses import dataclass
 
+from rawr_analytics.app.rawr._store import build_rawr_store_row_from_record
 from rawr_analytics.data.game_cache import (
     NormalizedCacheLoadRow,
     build_normalized_cache_fingerprint,
@@ -40,7 +41,6 @@ from rawr_analytics.services._metric_inputs import (
     load_rawr_request,
     load_wowy_season_inputs,
 )
-from rawr_analytics.services._rawr_record_dto import build_rawr_store_row_from_record
 from rawr_analytics.shared.scope import TeamSeasonScope
 from rawr_analytics.shared.season import SeasonType
 from rawr_analytics.shared.team import Team, normalize_teams, to_team_ids
