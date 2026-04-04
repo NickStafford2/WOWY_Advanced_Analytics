@@ -5,6 +5,7 @@ from typing import cast
 from rawr_analytics.data.metric_store import (
     load_wowy_player_season_value_rows,
 )
+from rawr_analytics.metrics import MetricView
 from rawr_analytics.metrics.constants import Metric
 from rawr_analytics.metrics.wowy import (
     WowyCustomQueryResult,
@@ -26,23 +27,20 @@ from rawr_analytics.services._metric_scope import (
     season_ids,
     selected_seasons,
 )
+from rawr_analytics.shared import JSONDict
 from rawr_analytics.shared.player import PlayerMinutes, PlayerSummary
 
-type JSONScalar = None | bool | int | float | str
-type JSONValue = JSONScalar | list[JSONValue] | dict[str, JSONValue]
-
-MetricView = str
-MetricQueryExport = tuple[str, list[dict[str, JSONValue]]]
+type MetricQueryExport = tuple[str, list[JSONDict]]
 
 
 def build_wowy_options_payload(
     metric: Metric,
     query: WowyQuery,
-) -> dict[str, JSONValue]:
+) -> JSONDict:
     _require_wowy_metric(metric)
     filters = WowyQueryFilters.from_query(query).for_options()
     return cast(
-        dict[str, JSONValue],
+        JSONDict,
         build_metric_options_payload(
             metric=metric,
             teams=query.teams,
@@ -57,7 +55,7 @@ def build_wowy_query_view(
     query: WowyQuery,
     *,
     view: MetricView,
-) -> dict[str, JSONValue]:
+) -> JSONDict:
     _require_wowy_metric(metric)
     filters = WowyQueryFilters.from_query(query).to_payload()
     payload = _build_wowy_view_payload(metric, view=view, query=query)
@@ -104,14 +102,14 @@ def _build_wowy_view_payload(
     *,
     view: MetricView,
     query: WowyQuery,
-) -> dict[str, JSONValue]:
+) -> JSONDict:
     scope_key = build_metric_scope_key(query)
 
     match view:
         case "player-seasons":
             require_current_metric_scope(metric=metric, scope_key=scope_key)
             return cast(
-                dict[str, JSONValue],
+                JSONDict,
                 build_player_seasons_payload(
                     metric,
                     _load_wowy_store_values(metric, query, scope_key=scope_key),
@@ -120,7 +118,7 @@ def _build_wowy_view_payload(
         case "cached-leaderboard":
             catalog = require_current_metric_scope(metric=metric, scope_key=scope_key)
             return cast(
-                dict[str, JSONValue],
+                JSONDict,
                 build_leaderboard_payload(
                     metric=metric,
                     metric_label=catalog.metric_label,
@@ -135,7 +133,7 @@ def _build_wowy_view_payload(
         case "span-chart":
             catalog = require_current_metric_scope(metric=metric, scope_key=scope_key)
             return cast(
-                dict[str, JSONValue],
+                JSONDict,
                 build_metric_span_chart_payload(
                     metric=metric,
                     catalog=catalog,
@@ -146,7 +144,7 @@ def _build_wowy_view_payload(
         case "custom-query":
             result = _build_wowy_custom_query_result(metric, query)
             return cast(
-                dict[str, JSONValue],
+                JSONDict,
                 build_leaderboard_payload(
                     metric=metric.value,
                     metric_label=result.metric_label,

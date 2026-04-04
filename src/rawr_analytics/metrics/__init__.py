@@ -7,3 +7,14 @@ Examples:
 - metric-native derived records
 - metric-specific CLI/report orchestration
 """
+
+from typing import Literal
+
+type MetricView = Literal[
+    "player-seasons",
+    "span-chart",
+    "cached-leaderboard",
+    "custom-query",
+]
+
+__all__ = ["MetricView"]

@@ -6,6 +6,7 @@ from typing import cast
 from rawr_analytics.data.metric_store import (
     load_rawr_player_season_value_rows,
 )
+from rawr_analytics.metrics import MetricView
 from rawr_analytics.metrics.constants import Metric
 from rawr_analytics.metrics.rawr import (
     RawrCustomQueryResult,
@@ -27,21 +28,18 @@ from rawr_analytics.services._metric_scope import (
     season_ids,
     selected_seasons,
 )
+from rawr_analytics.shared import JSONDict
 from rawr_analytics.shared.player import PlayerMinutes, PlayerSummary
 from rawr_analytics.shared.season import Season
 
-type JSONScalar = None | bool | int | float | str
-type JSONValue = JSONScalar | list[JSONValue] | dict[str, JSONValue]
 type RawrProgressFn = Callable[[int, int, Season], None]
-
-MetricView = str
-MetricQueryExport = tuple[str, list[dict[str, JSONValue]]]
+type MetricQueryExport = tuple[str, list[JSONDict]]
 
 
-def build_rawr_options_payload(query: RawrQuery) -> dict[str, JSONValue]:
+def build_rawr_options_payload(query: RawrQuery) -> JSONDict:
     filters = RawrQueryFilters.from_query(query).for_options()
     return cast(
-        dict[str, JSONValue],
+        JSONDict,
         build_metric_options_payload(
             metric=Metric.RAWR,
             teams=query.teams,
@@ -55,7 +53,7 @@ def build_rawr_query_view(
     query: RawrQuery,
     *,
     view: MetricView,
-) -> dict[str, JSONValue]:
+) -> JSONDict:
     filters = RawrQueryFilters.from_query(query).to_payload()
     payload = _build_rawr_view_payload(view=view, query=query)
     payload["filters"] = filters
@@ -98,14 +96,14 @@ def _build_rawr_view_payload(
     *,
     view: MetricView,
     query: RawrQuery,
-) -> dict[str, JSONValue]:
+) -> JSONDict:
     scope_key = build_metric_scope_key(query)
 
     match view:
         case "player-seasons":
             require_current_metric_scope(metric=Metric.RAWR, scope_key=scope_key)
             return cast(
-                dict[str, JSONValue],
+                JSONDict,
                 build_player_seasons_payload(
                     _load_rawr_store_values(query, scope_key=scope_key)
                 ),
@@ -113,7 +111,7 @@ def _build_rawr_view_payload(
         case "cached-leaderboard":
             catalog = require_current_metric_scope(metric=Metric.RAWR, scope_key=scope_key)
             return cast(
-                dict[str, JSONValue],
+                JSONDict,
                 build_leaderboard_payload(
                     metric=Metric.RAWR.value,
                     metric_label=catalog.metric_label,
@@ -128,7 +126,7 @@ def _build_rawr_view_payload(
         case "span-chart":
             catalog = require_current_metric_scope(metric=Metric.RAWR, scope_key=scope_key)
             return cast(
-                dict[str, JSONValue],
+                JSONDict,
                 build_metric_span_chart_payload(
                     metric=Metric.RAWR,
                     catalog=catalog,
@@ -139,7 +137,7 @@ def _build_rawr_view_payload(
         case "custom-query":
             result = _build_rawr_custom_query_result(query)
             return cast(
-                dict[str, JSONValue],
+                JSONDict,
                 build_leaderboard_payload(
                     metric=Metric.RAWR.value,
                     metric_label=result.metric_label,

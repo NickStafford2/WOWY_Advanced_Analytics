@@ -3,6 +3,7 @@ from __future__ import annotations
 import json
 from typing import Any
 
+from rawr_analytics.metrics import MetricView
 from rawr_analytics.metrics.constants import Metric
 from rawr_analytics.metrics.rawr import RawrQuery, build_rawr_query
 from rawr_analytics.metrics.wowy import WowyQuery, build_wowy_query
@@ -73,7 +74,7 @@ def create_app():
     def _parse_metric(metric: str) -> Metric:
         return Metric.parse(metric)
 
-    def _json_metric_response(parsed_metric: Metric, view: str):
+    def _json_metric_response(parsed_metric: Metric, view: MetricView):
         if parsed_metric == Metric.RAWR:
             payload = build_rawr_query_view(_parse_rawr_query(), view=view)
         else:
@@ -86,7 +87,7 @@ def create_app():
         except ValueError as exc:
             return jsonify({"error": str(exc)}), 400
 
-    def _csv_metric_response(parsed_metric: Metric, view: str):
+    def _csv_metric_response(parsed_metric: Metric, view: MetricView):
         if parsed_metric == Metric.RAWR:
             metric_label, rows = build_rawr_query_export(_parse_rawr_query(), view=view)
         else:
