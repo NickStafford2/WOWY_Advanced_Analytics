@@ -148,7 +148,6 @@ __all__ = [
     "IngestEvent",
     "IngestEventFn",
     "IngestFailureLogEntry",
-    "IngestProgress",
     "IngestRequest",
     "IngestResult",
     "IngestSeasonStartedEvent",

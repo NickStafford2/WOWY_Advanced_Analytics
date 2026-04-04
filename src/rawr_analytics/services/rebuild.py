@@ -26,7 +26,6 @@ from rawr_analytics.shared.team import Team
 from rawr_analytics.sources.nba_api.ingest import (
     FailureLogFn,
     IngestEvent,
-    IngestFailureLogEntry,
     IngestSeasonStartedEvent,
     IngestTeamCompletedEvent,
     IngestTeamFailedEvent,
@@ -291,7 +290,6 @@ def _build_rebuild_team_failure_event(
 
 
 __all__ = [
-    "IngestFailureLogEntry",
     "RebuildEvent",
     "RebuildEventFn",
     "RebuildMetricRefreshProgressEvent",

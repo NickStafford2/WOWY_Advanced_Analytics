@@ -482,7 +482,5 @@ def _scope_sort_key(scope_key: tuple[int, str, str]) -> tuple[str, str, int]:
 
 
 __all__ = [
-    "KaggleIngestResult",
-    "KaggleIngestScopeSummary",
     "ingest_kaggle_dataset",
 ]

@@ -48,7 +48,6 @@ def render_rebuild_validation_summary(
 
 
 __all__ = [
-    "DatabaseValidationSummary",
     "ValidationProgressFn",
     "prepare_rebuild_storage",
     "render_rebuild_validation_summary",
