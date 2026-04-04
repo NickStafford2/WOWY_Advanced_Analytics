@@ -7,9 +7,7 @@ from typing import Literal
 from rawr_analytics.app.rawr._store import build_rawr_record_from_store_row
 from rawr_analytics.app.rawr.presenters import (
     RawrQueryFiltersDTO,
-)
-from rawr_analytics.app.rawr.presenters import (
-    build_rawr_export_rows as build_rawr_export_rows_from_records,
+    build_rawr_export_rows,
 )
 from rawr_analytics.app.rawr.presenters import (
     build_rawr_leaderboard_payload as build_rawr_leaderboard_payload_from_records,
@@ -116,7 +114,7 @@ def build_rawr_span_chart_payload(query: RawrQuery, result: ResolvedRawrResultDT
 
 
 def build_rawr_leaderboard_export(result: ResolvedRawrResultDTO) -> MetricQueryExport:
-    return build_rawr_export_rows_from_records(
+    return build_rawr_export_rows(
         rows=result.rows,
         seasons=result.seasons,
     )
