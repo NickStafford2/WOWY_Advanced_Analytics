@@ -1,5 +1,8 @@
 from __future__ import annotations
 
+from collections.abc import Callable
+from functools import wraps
+
 from rawr_analytics.app.rawr.query import RawrQuery, build_rawr_query
 from rawr_analytics.app.rawr.service import (
     build_rawr_leaderboard_export,
@@ -24,10 +27,30 @@ from rawr_analytics.shared.team import Team
 from rawr_analytics.web.csv import render_leaderboard_csv
 
 
+class _WebBadRequestError(ValueError):
+    pass
+
+
 def create_app():
     from flask import Flask, Response, jsonify, request
 
     app = Flask(__name__)
+
+    @app.errorhandler(_WebBadRequestError)
+    def _handle_bad_request(exc: _WebBadRequestError):
+        return jsonify({"error": str(exc)}), 400
+
+    def _web_route(
+        route_fn: Callable[..., Response | tuple[Response, int]],
+    ) -> Callable[..., Response | tuple[Response, int]]:
+        @wraps(route_fn)
+        def _wrapped(*args: object, **kwargs: object) -> Response | tuple[Response, int]:
+            try:
+                return route_fn(*args, **kwargs)
+            except ValueError as exc:
+                raise _WebBadRequestError(str(exc)) from exc
+
+        return _wrapped
 
     def _parse_season_type() -> SeasonType:
         return SeasonType.parse(request.args.get("season_type", "Regular Season"))
@@ -93,12 +116,6 @@ def create_app():
                 recalculate=rawr_recalculate,
             )
         return query
-
-    def run_json(handler):
-        try:
-            return handler()
-        except ValueError as exc:
-            return jsonify({"error": str(exc)}), 400
 
     def _json_rawr_leaderboard_response(
         *,
@@ -205,49 +222,58 @@ def create_app():
         return _csv_wowy_leaderboard_response(parsed_metric, recalculate=recalculate)
 
     @app.get("/api/metrics/<metric>/options")
+    @_web_route
     def get_metric_options(metric: str):
         parsed_metric = Metric.parse(metric)
-        return run_json(lambda: _json_metric_options_response(parsed_metric))
+        return _json_metric_options_response(parsed_metric)
 
     @app.get("/api/metrics/<metric>/player-seasons")
+    @_web_route
     def get_metric_player_seasons(metric: str):
         parsed_metric = Metric.parse(metric)
-        return run_json(lambda: _json_metric_player_seasons_response(parsed_metric))
+        return _json_metric_player_seasons_response(parsed_metric)
 
     @app.get("/api/metrics/<metric>/span-chart")
+    @_web_route
     def get_metric_span_chart(metric: str):
         parsed_metric = Metric.parse(metric)
-        return run_json(lambda: _json_metric_span_chart_response(parsed_metric))
+        return _json_metric_span_chart_response(parsed_metric)
 
     @app.get("/api/metrics/<metric>/cached-leaderboard")
+    @_web_route
     def get_metric_cached_leaderboard(metric: str):
         parsed_metric = Metric.parse(metric)
-        return run_json(lambda: _json_metric_leaderboard_response(parsed_metric, recalculate=False))
+        return _json_metric_leaderboard_response(parsed_metric, recalculate=False)
 
     @app.get("/api/metrics/<metric>/cached-leaderboard.csv")
+    @_web_route
     def export_metric_cached_leaderboard(metric: str):
         parsed_metric = Metric.parse(metric)
-        return run_json(lambda: _csv_metric_leaderboard_response(parsed_metric, recalculate=False))
+        return _csv_metric_leaderboard_response(parsed_metric, recalculate=False)
 
     @app.get("/api/metrics/<metric>/custom-query")
+    @_web_route
     def get_metric_custom_query(metric: str):
         parsed_metric = Metric.parse(metric)
-        return run_json(lambda: _json_metric_leaderboard_response(parsed_metric, recalculate=True))
+        return _json_metric_leaderboard_response(parsed_metric, recalculate=True)
 
     @app.get("/api/metrics/<metric>/custom-query.csv")
+    @_web_route
     def export_metric_custom_query(metric: str):
         parsed_metric = Metric.parse(metric)
-        return run_json(lambda: _csv_metric_leaderboard_response(parsed_metric, recalculate=True))
+        return _csv_metric_leaderboard_response(parsed_metric, recalculate=True)
 
     @app.get("/api/metrics/<metric>/leaderboard")
+    @_web_route
     def get_metric_leaderboard(metric: str):
         parsed_metric = Metric.parse(metric)
-        return run_json(lambda: _json_metric_leaderboard_response(parsed_metric, recalculate=False))
+        return _json_metric_leaderboard_response(parsed_metric, recalculate=False)
 
     @app.get("/api/metrics/<metric>/leaderboard.csv")
+    @_web_route
     def export_metric_leaderboard(metric: str):
         parsed_metric = Metric.parse(metric)
-        return run_json(lambda: _csv_metric_leaderboard_response(parsed_metric, recalculate=False))
+        return _csv_metric_leaderboard_response(parsed_metric, recalculate=False)
 
     return app
 
