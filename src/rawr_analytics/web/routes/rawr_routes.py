@@ -11,12 +11,12 @@ from rawr_analytics.app.rawr.service import (
     resolve_rawr_result,
 )
 from rawr_analytics.metrics.constants import Metric
+from rawr_analytics.web._csv import render_leaderboard_csv
 from rawr_analytics.web._errors import web_route
 from rawr_analytics.web._parse import (
     build_rawr_options_query_from_request,
     resolve_rawr_query_from_request,
 )
-from rawr_analytics.web.csv import render_leaderboard_csv
 
 
 def register_rawr_routes(app: Flask) -> None:

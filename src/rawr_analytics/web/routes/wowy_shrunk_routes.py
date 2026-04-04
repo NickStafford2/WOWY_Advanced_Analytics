@@ -4,7 +4,7 @@ from flask import Flask
 
 from rawr_analytics.metrics.constants import Metric
 from rawr_analytics.web._errors import web_route
-from rawr_analytics.web.wowy_routes import (
+from rawr_analytics.web.routes.wowy_routes import (
     csv_leaderboard_response,
     json_leaderboard_response,
     json_options_response,

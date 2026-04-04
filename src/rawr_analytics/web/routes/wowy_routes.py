@@ -11,12 +11,12 @@ from rawr_analytics.app.wowy.service import (
     resolve_wowy_result,
 )
 from rawr_analytics.metrics.constants import Metric
+from rawr_analytics.web._csv import render_leaderboard_csv
 from rawr_analytics.web._errors import web_route
 from rawr_analytics.web._parse import (
     build_wowy_options_query_from_request,
     build_wowy_query_from_request,
 )
-from rawr_analytics.web.csv import render_leaderboard_csv
 
 
 def register_wowy_routes(app: Flask) -> None:
