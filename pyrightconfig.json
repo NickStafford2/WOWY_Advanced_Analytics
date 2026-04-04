@@ -3,8 +3,6 @@
   "venv": ".venv",
   "include": [
     "src",
-    "tests",
-    "scripts"
   ],
   "executionEnvironments": [
     {
@@ -15,4 +13,14 @@
     }
   ],
   "pythonVersion": "3.12",
+  "typeCheckingMode": "standard",
+  "useLibraryCodeForTypes": true,
+  "reportImportCycles": "error",
+  "reportMissingImports": "error",
+  "reportMissingModuleSource": "warning",
+  "reportUnusedImport": "error",
+  "reportDuplicateImport": "error",
+  "reportUnnecessaryTypeIgnoreComment": "warning",
+  "reportPrivateLocalImportUsage": "error",
+  "reportUnsupportedDunderAll": "error"
 }
