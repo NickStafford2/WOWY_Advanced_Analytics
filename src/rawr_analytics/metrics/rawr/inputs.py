@@ -13,15 +13,15 @@ from rawr_analytics.shared.season import Season
 
 
 @dataclass(frozen=True)
-class _RawrSeasonInput:
+class RawrSeasonInputDTO:
     season: Season
     observations: list[RawrObservation]
     players_by_id: dict[int, PlayerSeasonContext]
 
 
 @dataclass(frozen=True)
-class RawrRequest:
-    season_inputs: list[_RawrSeasonInput]
+class RawrRequestDTO:
+    season_inputs: list[RawrSeasonInputDTO]
     min_games: int
     ridge_alpha: float
     shrinkage_mode: RawrShrinkageMode = RawrShrinkageMode.UNIFORM
@@ -42,8 +42,8 @@ def build_rawr_request(
     shrinkage_minute_scale: float = 48.0,
     min_average_minutes: float | None = None,
     min_total_minutes: float | None = None,
-) -> RawrRequest:
-    season_inputs: list[_RawrSeasonInput] = []
+) -> RawrRequestDTO:
+    season_inputs: list[RawrSeasonInputDTO] = []
     for season in sorted(season_games, key=lambda item: item.id):
         season_input = _build_rawr_season_input(
             season=season,
@@ -52,7 +52,7 @@ def build_rawr_request(
         )
         if season_input is not None:
             season_inputs.append(season_input)
-    return RawrRequest(
+    return RawrRequestDTO(
         season_inputs=season_inputs,
         min_games=min_games,
         ridge_alpha=ridge_alpha,
@@ -91,7 +91,7 @@ def validate_filters(
     )
 
 
-def validate_request(request: RawrRequest) -> None:
+def validate_request(request: RawrRequestDTO) -> None:
     validate_filters(
         request.min_games,
         request.ridge_alpha,
@@ -110,14 +110,14 @@ def _build_rawr_season_input(
     season: Season,
     games: list[NormalizedGameRecord],
     game_players: list[NormalizedGamePlayerRecord],
-) -> _RawrSeasonInput | None:
+) -> RawrSeasonInputDTO | None:
     observations = build_rawr_observations(games, game_players)
     if not observations:
         return None
     player_ids = sorted(
         {player_id for observation in observations for player_id in observation.player_weights}
     )
-    return _RawrSeasonInput(
+    return RawrSeasonInputDTO(
         season=season,
         observations=observations,
         players_by_id=_build_players_by_id(
@@ -127,7 +127,7 @@ def _build_rawr_season_input(
     )
 
 
-def _validate_season_input(season_input: _RawrSeasonInput) -> None:
+def _validate_season_input(season_input: RawrSeasonInputDTO) -> None:
     player_ids = set(season_input.players_by_id)
     for observation in season_input.observations:
         unknown_player_ids = sorted(

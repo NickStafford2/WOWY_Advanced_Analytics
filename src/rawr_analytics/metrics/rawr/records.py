@@ -5,7 +5,8 @@ from dataclasses import dataclass
 from rawr_analytics.metrics.rawr._analysis import fit_player_rawr
 from rawr_analytics.metrics.rawr._observations import count_player_season_games
 from rawr_analytics.metrics.rawr.inputs import (
-    RawrRequest,
+    RawrRequestDTO,
+    RawrSeasonInputDTO,
     validate_request,
 )
 from rawr_analytics.shared.player import PlayerMinutes, PlayerSummary
@@ -21,7 +22,7 @@ class RawrPlayerSeasonRecord:
     coefficient: float
 
 
-def build_player_season_records(request: RawrRequest) -> list[RawrPlayerSeasonRecord]:
+def build_player_season_records(request: RawrRequestDTO) -> list[RawrPlayerSeasonRecord]:
     validate_request(request)
     records: list[RawrPlayerSeasonRecord] = []
     for season_input in sorted(request.season_inputs, key=lambda item: item.season.id):
@@ -38,9 +39,9 @@ def build_player_season_records(request: RawrRequest) -> list[RawrPlayerSeasonRe
 
 
 def _build_season_records(
-    season_input,
+    season_input: RawrSeasonInputDTO,
     *,
-    request: RawrRequest,
+    request: RawrRequestDTO,
 ) -> list[RawrPlayerSeasonRecord]:
     player_contexts = season_input.players_by_id
     coefficients_by_player_id = fit_player_rawr(

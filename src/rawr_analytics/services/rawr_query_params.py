@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Any
 
 from rawr_analytics.metrics._query_normalization import (
     normalize_query_seasons,
@@ -29,33 +28,6 @@ class RawrQuery:
     min_total_minutes: float
     min_games: int
     ridge_alpha: float
-
-    def without_seasons(self) -> RawrQuery:
-        return RawrQuery(
-            season_type=self.season_type,
-            teams=self.teams,
-            seasons=None,
-            top_n=self.top_n,
-            min_average_minutes=self.min_average_minutes,
-            min_total_minutes=self.min_total_minutes,
-            min_games=self.min_games,
-            ridge_alpha=self.ridge_alpha,
-        )
-
-    def to_payload(self) -> dict[str, Any]:
-        return {
-            "team": (
-                None if self.teams is None else [team.current.abbreviation for team in self.teams]
-            ),
-            "team_id": None if self.teams is None else [team.team_id for team in self.teams],
-            "season": None if self.seasons is None else [season.id for season in self.seasons],
-            "season_type": self.season_type.to_nba_format(),
-            "min_average_minutes": self.min_average_minutes,
-            "min_total_minutes": self.min_total_minutes,
-            "top_n": self.top_n,
-            "min_games": self.min_games,
-            "ridge_alpha": self.ridge_alpha,
-        }
 
 
 def build_rawr_query(

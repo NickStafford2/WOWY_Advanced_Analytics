@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from collections.abc import Callable
+from dataclasses import dataclass
 from typing import cast
 
 from rawr_analytics.data.metric_store import (
@@ -27,23 +28,82 @@ from rawr_analytics.services._metric_scope import (
     season_ids,
     selected_seasons,
 )
+from rawr_analytics.services._rawr_record_dto import build_rawr_record_from_store_row
 from rawr_analytics.services.rawr_query_params import RawrQuery
 from rawr_analytics.shared import JSONDict
-from rawr_analytics.shared.player import PlayerMinutes, PlayerSummary
-from rawr_analytics.shared.season import Season
+from rawr_analytics.shared.season import Season, SeasonType
+from rawr_analytics.shared.team import Team
 
 type RawrProgressFn = Callable[[int, int, Season], None]
 type MetricQueryExport = list[JSONDict]
 
 
+@dataclass(frozen=True)
+class RawrQueryFiltersDTO:
+    teams: list[Team] | None
+    seasons: list[Season] | None
+    season_type: SeasonType
+    top_n: int
+    min_average_minutes: float
+    min_total_minutes: float
+    min_games: int
+    ridge_alpha: float
+
+    @classmethod
+    def from_query(cls, query: RawrQuery) -> RawrQueryFiltersDTO:
+        return cls(
+            teams=query.teams,
+            seasons=query.seasons,
+            season_type=query.season_type,
+            top_n=query.top_n,
+            min_average_minutes=query.min_average_minutes,
+            min_total_minutes=query.min_total_minutes,
+            min_games=query.min_games,
+            ridge_alpha=query.ridge_alpha,
+        )
+
+    def for_options(self) -> RawrQueryFiltersDTO:
+        return RawrQueryFiltersDTO(
+            teams=self.teams,
+            seasons=None,
+            season_type=self.season_type,
+            top_n=self.top_n,
+            min_average_minutes=self.min_average_minutes,
+            min_total_minutes=self.min_total_minutes,
+            min_games=self.min_games,
+            ridge_alpha=self.ridge_alpha,
+        )
+
+    def to_payload(self) -> JSONDict:
+        return cast(
+            JSONDict,
+            {
+                "team": (
+                    None
+                    if self.teams is None
+                    else [team.current.abbreviation for team in self.teams]
+                ),
+                "team_id": None if self.teams is None else [team.team_id for team in self.teams],
+                "season": None if self.seasons is None else [season.id for season in self.seasons],
+                "season_type": self.season_type.to_nba_format(),
+                "min_average_minutes": self.min_average_minutes,
+                "min_total_minutes": self.min_total_minutes,
+                "top_n": self.top_n,
+                "min_games": self.min_games,
+                "ridge_alpha": self.ridge_alpha,
+            },
+        )
+
+
 def build_rawr_options_payload(query: RawrQuery) -> JSONDict:
+    filters = RawrQueryFiltersDTO.from_query(query).for_options()
     return cast(
         JSONDict,
         build_metric_options_payload(
             metric=Metric.RAWR,
             teams=query.teams,
             season_type=query.season_type,
-            filters=query.without_seasons().to_payload(),
+            filters=filters.to_payload(),
         ),
     )
 
@@ -54,7 +114,7 @@ def build_rawr_query_view(
     view: MetricView,
 ) -> JSONDict:
     payload = _build_rawr_view_payload(view=view, query=query)
-    payload["filters"] = query.to_payload()
+    payload["filters"] = RawrQueryFiltersDTO.from_query(query).to_payload()
     return payload
 
 
@@ -171,19 +231,7 @@ def _load_rawr_store_values(
     scope_key: str,
 ) -> list[RawrPlayerSeasonRecord]:
     return [
-        RawrPlayerSeasonRecord(
-            season=Season.parse(row.season_id, query.season_type.value),
-            player=PlayerSummary(
-                player_id=row.player_id,
-                player_name=row.player_name,
-            ),
-            minutes=PlayerMinutes(
-                average_minutes=row.average_minutes,
-                total_minutes=row.total_minutes,
-            ),
-            games=row.games,
-            coefficient=row.coefficient,
-        )
+        build_rawr_record_from_store_row(row, season_type=query.season_type)
         for row in load_rawr_player_season_value_rows(
             scope_key=scope_key,
             seasons=season_ids(query.seasons),

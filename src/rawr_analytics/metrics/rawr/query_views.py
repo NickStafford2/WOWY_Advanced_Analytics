@@ -11,25 +11,35 @@ from rawr_analytics.shared.team import Team
 
 
 @dataclass(frozen=True)
-class _SeriesPoint:
+class RawrSeriesPointDTO:
     season: str
     value: float | None
 
 
 @dataclass(frozen=True)
-class _RankedTableRow:
+class RawrPlayerSeasonRowDTO:
+    season_id: str
+    player_id: int
+    player_name: str
+    value: float
+    sample_size: int
+    secondary_sample_size: None
+    games: int
+    average_minutes: float | None
+    total_minutes: float | None
+
+
+@dataclass(frozen=True)
+class RawrLeaderboardRowDTO:
     rank: int
     player_id: int
     player_name: str
     span_average_value: float
     average_minutes: float | None
-    total_minutes: float
-    games_with: int
-    games_without: int
-    avg_margin_with: float | None
-    avg_margin_without: float | None
+    total_minutes: float | None
+    games: int
     season_count: int
-    points: list[_SeriesPoint]
+    points: list[RawrSeriesPointDTO]
 
 
 def build_player_seasons_payload(
@@ -37,7 +47,7 @@ def build_player_seasons_payload(
 ) -> dict[str, Any]:
     return {
         "metric": "rawr",
-        "rows": [_serialize_player_season_row(row) for row in rows],
+        "rows": [asdict(_build_player_season_row_dto(row)) for row in rows],
     }
 
 
@@ -74,20 +84,20 @@ def build_export_table(
     return [asdict(row) for row in _build_ranked_table_rows(rows=rows, seasons=seasons, top_n=None)]
 
 
-def _serialize_player_season_row(
+def _build_player_season_row_dto(
     row: RawrPlayerSeasonRecord,
-) -> dict[str, Any]:
-    return {
-        "season_id": row.season.id,
-        "player_id": row.player.player_id,
-        "player_name": row.player.player_name,
-        "value": row.coefficient,
-        "sample_size": row.games,
-        "secondary_sample_size": None,
-        "games": row.games,
-        "average_minutes": row.minutes.average_minutes,
-        "total_minutes": row.minutes.total_minutes,
-    }
+) -> RawrPlayerSeasonRowDTO:
+    return RawrPlayerSeasonRowDTO(
+        season_id=row.season.id,
+        player_id=row.player.player_id,
+        player_name=row.player.player_name,
+        value=row.coefficient,
+        sample_size=row.games,
+        secondary_sample_size=None,
+        games=row.games,
+        average_minutes=row.minutes.average_minutes,
+        total_minutes=row.minutes.total_minutes,
+    )
 
 
 def _build_ranked_table_rows(
@@ -95,33 +105,31 @@ def _build_ranked_table_rows(
     rows: Sequence[RawrPlayerSeasonRecord],
     seasons: list[str],
     top_n: int | None,
-) -> list[_RankedTableRow]:
+) -> list[RawrLeaderboardRowDTO]:
     rows_by_player: dict[int, list[RawrPlayerSeasonRecord]] = {}
     for row in rows:
         rows_by_player.setdefault(row.player.player_id, []).append(row)
 
     ordered_seasons = sorted(dict.fromkeys(seasons))
     full_span_length = len(ordered_seasons) or 1
-    ranked_rows: list[_RankedTableRow] = []
+    ranked_rows: list[RawrLeaderboardRowDTO] = []
     for player_id, player_rows in rows_by_player.items():
-        total_minutes = sum((row.minutes.total_minutes or 0.0) for row in player_rows)
+        total_minutes_values = [row.minutes.total_minutes for row in player_rows]
+        total_minutes = sum(minutes for minutes in total_minutes_values if minutes is not None)
         games = sum(row.games for row in player_rows)
         average_minutes = total_minutes / games if games > 0 else None
         ranked_rows.append(
-            _RankedTableRow(
+            RawrLeaderboardRowDTO(
                 rank=0,
                 player_id=player_id,
                 player_name=player_rows[0].player.player_name,
                 span_average_value=sum(row.coefficient for row in player_rows) / full_span_length,
                 average_minutes=average_minutes,
                 total_minutes=total_minutes,
-                games_with=games,
-                games_without=0,
-                avg_margin_with=None,
-                avg_margin_without=None,
+                games=games,
                 season_count=len(player_rows),
                 points=[
-                    _SeriesPoint(
+                    RawrSeriesPointDTO(
                         season=season_id,
                         value=next(
                             (row.coefficient for row in player_rows if row.season.id == season_id),
@@ -139,17 +147,14 @@ def _build_ranked_table_rows(
     )
     limited_rows = ranked_rows if top_n is None else ranked_rows[:top_n]
     return [
-        _RankedTableRow(
+        RawrLeaderboardRowDTO(
             rank=index + 1,
             player_id=row.player_id,
             player_name=row.player_name,
             span_average_value=row.span_average_value,
             average_minutes=row.average_minutes,
             total_minutes=row.total_minutes,
-            games_with=row.games_with,
-            games_without=row.games_without,
-            avg_margin_with=row.avg_margin_with,
-            avg_margin_without=row.avg_margin_without,
+            games=row.games,
             season_count=row.season_count,
             points=row.points,
         )
@@ -158,7 +163,7 @@ def _build_ranked_table_rows(
 
 
 def _build_series_from_table_rows(
-    table_rows: list[_RankedTableRow],
+    table_rows: list[RawrLeaderboardRowDTO],
 ) -> list[dict[str, Any]]:
     return [
         {

@@ -6,7 +6,7 @@ from itertools import product
 
 import numpy as np
 
-from rawr_analytics.metrics.rawr._shrinkage import RawrShrinkageMode
+from rawr_analytics.metrics.rawr import RawrShrinkageMode
 from rawr_analytics.metrics.rawr.records import RawrPlayerSeasonRecord, build_player_season_records
 from rawr_analytics.metrics.wowy import prepare_wowy_player_season_records
 from rawr_analytics.metrics.wowy.records import WowyPlayerSeasonRecord

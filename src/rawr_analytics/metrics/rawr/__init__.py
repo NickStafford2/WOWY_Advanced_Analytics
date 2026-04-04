@@ -13,7 +13,8 @@ from rawr_analytics.metrics.rawr.defaults import (
     RAWR_METRIC_SUMMARY,
 )
 from rawr_analytics.metrics.rawr.inputs import (
-    RawrRequest,
+    RawrRequestDTO,
+    RawrSeasonInputDTO,
     build_rawr_request,
     validate_filters,
     validate_request,
@@ -36,7 +37,8 @@ __all__ = [
     "DEFAULT_RAWR_TOP_N",
     "RAWR_METRIC_SUMMARY",
     "RawrPlayerSeasonRecord",
-    "RawrRequest",
+    "RawrRequestDTO",
+    "RawrSeasonInputDTO",
     "RawrShrinkageMode",
     "build_export_table",
     "build_leaderboard_payload",

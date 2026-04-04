@@ -11,9 +11,12 @@ from rawr_analytics.data.game_cache import (
 from rawr_analytics.data.game_cache.rows import NormalizedGamePlayerRow, NormalizedGameRow
 from rawr_analytics.data.scope_resolver import resolve_team_seasons
 from rawr_analytics.metrics._player_context import PlayerSeasonContext
-from rawr_analytics.metrics.rawr import DEFAULT_RAWR_SHRINKAGE_MODE
-from rawr_analytics.metrics.rawr._shrinkage import RawrShrinkageMode
-from rawr_analytics.metrics.rawr.inputs import RawrRequest, build_rawr_request
+from rawr_analytics.metrics.rawr import (
+    DEFAULT_RAWR_SHRINKAGE_MODE,
+    RawrRequestDTO,
+    RawrShrinkageMode,
+    build_rawr_request,
+)
 from rawr_analytics.metrics.wowy.analysis import WowyGame
 from rawr_analytics.metrics.wowy.inputs import WowySeasonInput
 from rawr_analytics.shared.game import NormalizedGamePlayerRecord, NormalizedGameRecord
@@ -46,7 +49,7 @@ def load_rawr_request(
     min_average_minutes: float | None = None,
     min_total_minutes: float | None = None,
     progress_fn: RawrSeasonProgressFn | None = None,
-) -> RawrRequest:
+) -> RawrRequestDTO:
     requested_team_seasons = resolve_team_seasons(teams, seasons, season_type=season_type)
     if not requested_team_seasons:
         raise ValueError("No cached data matched the requested RAWR scope")
@@ -196,7 +199,12 @@ def _load_rawr_season_records(
     return games, game_players
 
 
-def _filter_rawr_scope(games, game_players, teams, seasons):
+def _filter_rawr_scope(
+    games: list[NormalizedGameRecord],
+    game_players: list[NormalizedGamePlayerRecord],
+    teams: list[Team] | None,
+    seasons: list[Season] | None,
+) -> tuple[list[NormalizedGameRecord], list[NormalizedGamePlayerRecord]]:
     if not teams and not seasons:
         return games, game_players
     normalized_team_ids = {team.team_id for team in teams or []}

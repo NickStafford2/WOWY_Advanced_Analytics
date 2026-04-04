@@ -40,6 +40,7 @@ from rawr_analytics.services._metric_inputs import (
     load_rawr_request,
     load_wowy_season_inputs,
 )
+from rawr_analytics.services._rawr_record_dto import build_rawr_store_row_from_record
 from rawr_analytics.shared.scope import TeamSeasonScope
 from rawr_analytics.shared.season import SeasonType
 from rawr_analytics.shared.team import Team, normalize_teams, to_team_ids
@@ -424,19 +425,11 @@ def _build_rawr_cached_rows(
     )
     records = build_player_season_records(request)
     return [
-        RawrPlayerSeasonValueRow(
-            snapshot_id=None,
-            metric_id="rawr",
+        build_rawr_store_row_from_record(
+            record,
             scope_key=scope_key,
             team_filter=team_filter,
-            season_type=season_type.value,
-            season_id=record.season.id,
-            player_id=record.player.player_id,
-            player_name=record.player.player_name,
-            games=record.games,
-            coefficient=record.coefficient,
-            average_minutes=record.minutes.average_minutes,
-            total_minutes=record.minutes.total_minutes,
+            season_type=season_type,
         )
         for record in records
     ]
