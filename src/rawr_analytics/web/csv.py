@@ -72,10 +72,12 @@ def _csv_header_label(column: str, *, metric: Metric) -> str:
 
 def _metric_column_label(metric: Metric) -> str:
     assert isinstance(metric, Metric)
-    if metric == Metric.RAWR:
-        return "RAWR"
-    if metric == Metric.WOWY:
-        return "WOWY"
-    if metric == Metric.WOWY_SHRUNK:
-        return "WOWY Shrunk"
-    raise ValueError(f"Unknown metric: {metric}")
+    match metric:
+        case Metric.RAWR:
+            return "RAWR"
+        case Metric.WOWY:
+            return "WOWY"
+        case Metric.WOWY_SHRUNK:
+            return "WOWY Shrunk"
+        case _:
+            raise ValueError(f"Unknown metric: {metric}")
