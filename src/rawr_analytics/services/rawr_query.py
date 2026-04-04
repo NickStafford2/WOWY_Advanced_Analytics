@@ -12,7 +12,6 @@ from rawr_analytics.metrics.rawr import (
     RawrCustomQueryResult,
     RawrPlayerSeasonValue,
     RawrQuery,
-    RawrQueryFilters,
     RawrValue,
     build_export_table,
     build_leaderboard_payload,
@@ -36,14 +35,13 @@ type MetricQueryExport = tuple[str, list[JSONDict]]
 
 
 def build_rawr_options_payload(query: RawrQuery) -> JSONDict:
-    filters = RawrQueryFilters.from_query(query).for_options()
     return cast(
         JSONDict,
         build_metric_options_payload(
             metric=Metric.RAWR,
             teams=query.teams,
             season_type=query.season_type,
-            filters=filters.to_payload(),
+            filters=query.without_seasons().to_payload(),
         ),
     )
 
@@ -53,9 +51,8 @@ def build_rawr_query_view(
     *,
     view: MetricView,
 ) -> JSONDict:
-    filters = RawrQueryFilters.from_query(query).to_payload()
     payload = _build_rawr_view_payload(view=view, query=query)
-    payload["filters"] = filters
+    payload["filters"] = query.to_payload()
     return payload
 
 
