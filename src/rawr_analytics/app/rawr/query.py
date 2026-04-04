@@ -28,6 +28,7 @@ class RawrQuery:
     min_total_minutes: float
     min_games: int
     ridge_alpha: float
+    recalculate: bool = False
 
 
 def build_rawr_query(
@@ -40,6 +41,7 @@ def build_rawr_query(
     min_total_minutes: float | None = None,
     min_games: int | None = None,
     ridge_alpha: float | None = None,
+    recalculate: bool = False,
 ) -> RawrQuery:
     normalized_query = RawrQuery(
         season_type=season_type,
@@ -56,6 +58,7 @@ def build_rawr_query(
         ),
         min_games=int(min_games if min_games is not None else DEFAULT_RAWR_MIN_GAMES),
         ridge_alpha=float(ridge_alpha if ridge_alpha is not None else DEFAULT_RAWR_RIDGE_ALPHA),
+        recalculate=recalculate,
     )
     validate_filters(
         normalized_query.min_games,
@@ -65,4 +68,3 @@ def build_rawr_query(
         min_total_minutes=normalized_query.min_total_minutes,
     )
     return normalized_query
-

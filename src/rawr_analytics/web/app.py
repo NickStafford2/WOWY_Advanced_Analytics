@@ -5,6 +5,7 @@ from typing import Any
 
 from rawr_analytics.app.rawr import (
     RawrQuery,
+    RawrView,
     build_rawr_options_payload,
     build_rawr_query,
     build_rawr_query_export,
@@ -43,6 +44,7 @@ def create_app():
             min_total_minutes=_parse_optional_float(request.args.get("min_total_minutes", None)),
             min_games=_parse_optional_int(request.args.get("min_games", None)),
             ridge_alpha=_parse_optional_float(request.args.get("ridge_alpha", None)),
+            recalculate=_parse_optional_bool(request.args.get("recalculate", None)) or False,
         )
 
     def _parse_wowy_query() -> WowyQuery:
@@ -75,11 +77,31 @@ def create_app():
     def _parse_metric(metric: str) -> Metric:
         return Metric.parse(metric)
 
+    def _json_rawr_response(
+        view: RawrView,
+        *,
+        rawr_recalculate: bool | None = None,
+    ):
+        query = _parse_rawr_query()
+        if rawr_recalculate is not None:
+            query = build_rawr_query(
+                season_type=query.season_type,
+                teams=query.teams,
+                seasons=query.seasons,
+                top_n=query.top_n,
+                min_average_minutes=query.min_average_minutes,
+                min_total_minutes=query.min_total_minutes,
+                min_games=query.min_games,
+                ridge_alpha=query.ridge_alpha,
+                recalculate=rawr_recalculate,
+            )
+        payload = build_rawr_query_view(query, view=view)
+        return jsonify(payload)
+
     def _json_metric_response(parsed_metric: Metric, view: MetricView):
         if parsed_metric == Metric.RAWR:
-            payload = build_rawr_query_view(_parse_rawr_query(), view=view)
-        else:
-            payload = build_wowy_query_view(parsed_metric, _parse_wowy_query(), view=view)
+            raise ValueError("RAWR uses _json_rawr_response")
+        payload = build_wowy_query_view(parsed_metric, _parse_wowy_query(), view=view)
         return jsonify(payload)
 
     def run_json(handler):
@@ -88,15 +110,40 @@ def create_app():
         except ValueError as exc:
             return jsonify({"error": str(exc)}), 400
 
+    def _csv_rawr_response(
+        view: RawrView,
+        *,
+        rawr_recalculate: bool | None = None,
+    ):
+        query = _parse_rawr_query()
+        if rawr_recalculate is not None:
+            query = build_rawr_query(
+                season_type=query.season_type,
+                teams=query.teams,
+                seasons=query.seasons,
+                top_n=query.top_n,
+                min_average_minutes=query.min_average_minutes,
+                min_total_minutes=query.min_total_minutes,
+                min_games=query.min_games,
+                ridge_alpha=query.ridge_alpha,
+                recalculate=rawr_recalculate,
+            )
+        rows = build_rawr_query_export(query, view=view)
+        filename = f"{Metric.RAWR.value}-all-players.csv"
+        return Response(
+            _render_leaderboard_csv(metric=Metric.RAWR, table_rows=rows),
+            mimetype="text/csv",
+            headers={"Content-Disposition": f'attachment; filename="{filename}"'},
+        )
+
     def _csv_metric_response(parsed_metric: Metric, view: MetricView):
         if parsed_metric == Metric.RAWR:
-            rows = build_rawr_query_export(_parse_rawr_query(), view=view)
-        else:
-            rows = build_wowy_query_export(
-                parsed_metric,
-                _parse_wowy_query(),
-                view=view,
-            )
+            raise ValueError("RAWR uses _csv_rawr_response")
+        rows = build_wowy_query_export(
+            parsed_metric,
+            _parse_wowy_query(),
+            view=view,
+        )
         filename = f"{parsed_metric.value}-all-players.csv"
         return Response(
             _render_leaderboard_csv(metric=parsed_metric, table_rows=rows),
@@ -121,32 +168,90 @@ def create_app():
     @app.get("/api/metrics/<metric>/player-seasons")
     def get_metric_player_seasons(metric: str):
         parsed_metric = _parse_metric(metric)
-        return run_json(lambda: _json_metric_response(parsed_metric, "player-seasons"))
+        return run_json(
+            lambda: (
+                _json_rawr_response("player-seasons")
+                if parsed_metric == Metric.RAWR
+                else _json_metric_response(parsed_metric, "player-seasons")
+            )
+        )
 
     @app.get("/api/metrics/<metric>/span-chart")
     def get_metric_span_chart(metric: str):
         parsed_metric = _parse_metric(metric)
-        return run_json(lambda: _json_metric_response(parsed_metric, "span-chart"))
+        return run_json(
+            lambda: (
+                _json_rawr_response("span-chart")
+                if parsed_metric == Metric.RAWR
+                else _json_metric_response(parsed_metric, "span-chart")
+            )
+        )
 
     @app.get("/api/metrics/<metric>/cached-leaderboard")
     def get_metric_cached_leaderboard(metric: str):
         parsed_metric = _parse_metric(metric)
-        return run_json(lambda: _json_metric_response(parsed_metric, "cached-leaderboard"))
+        return run_json(
+            lambda: (
+                _json_rawr_response("leaderboard", rawr_recalculate=False)
+                if parsed_metric == Metric.RAWR
+                else _json_metric_response(parsed_metric, "cached-leaderboard")
+            )
+        )
 
     @app.get("/api/metrics/<metric>/cached-leaderboard.csv")
     def export_metric_cached_leaderboard(metric: str):
         parsed_metric = _parse_metric(metric)
-        return run_json(lambda: _csv_metric_response(parsed_metric, "cached-leaderboard"))
+        return run_json(
+            lambda: (
+                _csv_rawr_response("leaderboard", rawr_recalculate=False)
+                if parsed_metric == Metric.RAWR
+                else _csv_metric_response(parsed_metric, "cached-leaderboard")
+            )
+        )
 
     @app.get("/api/metrics/<metric>/custom-query")
     def get_metric_custom_query(metric: str):
         parsed_metric = _parse_metric(metric)
-        return run_json(lambda: _json_metric_response(parsed_metric, "custom-query"))
+        return run_json(
+            lambda: (
+                _json_rawr_response("leaderboard", rawr_recalculate=True)
+                if parsed_metric == Metric.RAWR
+                else _json_metric_response(parsed_metric, "custom-query")
+            )
+        )
 
     @app.get("/api/metrics/<metric>/custom-query.csv")
     def export_metric_custom_query(metric: str):
         parsed_metric = _parse_metric(metric)
-        return run_json(lambda: _csv_metric_response(parsed_metric, "custom-query"))
+        return run_json(
+            lambda: (
+                _csv_rawr_response("leaderboard", rawr_recalculate=True)
+                if parsed_metric == Metric.RAWR
+                else _csv_metric_response(parsed_metric, "custom-query")
+            )
+        )
+
+    @app.get("/api/metrics/<metric>/leaderboard")
+    def get_metric_leaderboard(metric: str):
+        parsed_metric = _parse_metric(metric)
+        return run_json(
+            lambda: (
+                _json_rawr_response("leaderboard")
+                if parsed_metric == Metric.RAWR
+                else _json_metric_response(parsed_metric, "cached-leaderboard")
+            )
+        )
+
+    @app.get("/api/metrics/<metric>/leaderboard.csv")
+    def export_metric_leaderboard(metric: str):
+        parsed_metric = _parse_metric(metric)
+        return run_json(
+            lambda: (
+                _csv_rawr_response("leaderboard")
+                if parsed_metric == Metric.RAWR
+                else _csv_metric_response(parsed_metric, "cached-leaderboard")
+            )
+        )
 
     return app
 
@@ -234,6 +339,17 @@ def _parse_optional_int(raw_value: str | None) -> int | None:
 
 def _parse_optional_float(raw_value: str | None) -> float | None:
     return None if raw_value is None else float(raw_value)
+
+
+def _parse_optional_bool(raw_value: str | None) -> bool | None:
+    if raw_value is None:
+        return None
+    normalized = raw_value.strip().lower()
+    if normalized in {"1", "true", "yes", "on"}:
+        return True
+    if normalized in {"0", "false", "no", "off"}:
+        return False
+    raise ValueError(f"Invalid boolean value: {raw_value!r}")
 
 
 def _parse_positive_int_list(raw_values: list[str]) -> list[int] | None:

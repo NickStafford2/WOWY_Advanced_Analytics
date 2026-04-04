@@ -23,6 +23,7 @@ def _build_parser() -> argparse.ArgumentParser:
     add_metric_query_common_arguments(parser)
     parser.add_argument("--min-games", type=int, default=35)
     parser.add_argument("--ridge-alpha", type=float, default=10.0)
+    parser.add_argument("--recalculate", action="store_true")
     return parser
 
 
@@ -39,13 +40,14 @@ def main(argv: list[str] | None = None) -> int:
         min_total_minutes=args.min_total_minutes,
         min_games=args.min_games,
         ridge_alpha=args.ridge_alpha,
+        recalculate=args.recalculate,
     )
     print_status_box(
         "RAWR CLI",
         [
             f"Scope: {format_scope(args.team, args.season)}",
-            "Running the same custom-query service path used by the web app.",
-            "Output is a terminal leaderboard built from the shared service export rows.",
+            "Running the RAWR leaderboard service path used by the web app.",
+            "Cache is used when available unless --recalculate is set.",
         ],
     )
     total_seasons = len(query.seasons or [])
@@ -54,7 +56,7 @@ def main(argv: list[str] | None = None) -> int:
     progress_fn = _build_progress_updater(load_bar)
     rows = build_rawr_query_export(
         query,
-        view="custom-query",
+        view="leaderboard",
         progress_fn=progress_fn,
     )
     load_bar.finish(detail="season inputs ready")

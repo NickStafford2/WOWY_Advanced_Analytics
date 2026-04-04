@@ -22,6 +22,7 @@ class RawrQueryFiltersDTO:
     min_total_minutes: float
     min_games: int
     ridge_alpha: float
+    recalculate: bool
 
     @classmethod
     def from_query(cls, query: RawrQuery) -> RawrQueryFiltersDTO:
@@ -34,6 +35,7 @@ class RawrQueryFiltersDTO:
             min_total_minutes=query.min_total_minutes,
             min_games=query.min_games,
             ridge_alpha=query.ridge_alpha,
+            recalculate=query.recalculate,
         )
 
     def for_options(self) -> RawrQueryFiltersDTO:
@@ -46,6 +48,7 @@ class RawrQueryFiltersDTO:
             min_total_minutes=self.min_total_minutes,
             min_games=self.min_games,
             ridge_alpha=self.ridge_alpha,
+            recalculate=self.recalculate,
         )
 
     def to_payload(self) -> JSONDict:
@@ -63,6 +66,7 @@ class RawrQueryFiltersDTO:
             "top_n": self.top_n,
             "min_games": self.min_games,
             "ridge_alpha": self.ridge_alpha,
+            "recalculate": self.recalculate,
         }
 
 
@@ -141,6 +145,29 @@ def build_rawr_export_rows(
     seasons: list[str],
 ) -> list[dict[str, Any]]:
     return [asdict(row) for row in _build_ranked_table_rows(rows=rows, seasons=seasons, top_n=None)]
+
+
+def build_rawr_span_chart_payload(
+    *,
+    metric: str,
+    rows: Sequence[RawrPlayerSeasonRecord],
+    seasons: list[str],
+    top_n: int,
+) -> JSONDict:
+    table_rows = _build_ranked_table_rows(rows=rows, seasons=seasons, top_n=top_n)
+    return cast(
+        JSONDict,
+        {
+            "metric": metric,
+            "span": {
+                "start_season": seasons[0] if seasons else None,
+                "end_season": seasons[-1] if seasons else None,
+                "available_seasons": seasons,
+                "top_n": top_n,
+            },
+            "series": _build_series_from_table_rows(table_rows),
+        },
+    )
 
 
 def _build_player_season_row_dto(
