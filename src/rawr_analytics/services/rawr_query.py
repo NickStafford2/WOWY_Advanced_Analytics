@@ -42,7 +42,18 @@ MetricQueryExport = tuple[str, list[dict[str, JSONValue]]]
 
 
 def build_rawr_options_payload(query: RawrQuery) -> dict[str, JSONValue]:
-    filters = build_options_filters_payload(_build_rawr_filters_payload(query))
+    filters = build_options_filters_payload(
+        RawrQueryFilters.build_payload(
+            teams=query.teams,
+            seasons=query.seasons,
+            season_type=query.season_type,
+            min_average_minutes=query.min_average_minutes,
+            min_total_minutes=query.min_total_minutes,
+            top_n=query.top_n,
+            min_games=query.min_games,
+            ridge_alpha=query.ridge_alpha,
+        )
+    )
     return cast(
         dict[str, JSONValue],
         build_metric_options_payload(
@@ -60,7 +71,18 @@ def build_rawr_query_view(
     view: MetricView,
 ) -> dict[str, JSONValue]:
     payload = _build_rawr_view_payload(view=view, query=query)
-    payload["filters"] = _serialize_rawr_filters(_build_rawr_filters_payload(query))
+    payload["filters"] = _serialize_rawr_filters(
+        RawrQueryFilters.build_payload(
+            teams=query.teams,
+            seasons=query.seasons,
+            season_type=query.season_type,
+            min_average_minutes=query.min_average_minutes,
+            min_total_minutes=query.min_total_minutes,
+            top_n=query.top_n,
+            min_games=query.min_games,
+            ridge_alpha=query.ridge_alpha,
+        )
+    )
     return payload
 
 
@@ -216,19 +238,6 @@ def _build_rawr_store_values(
         )
         for row in rows
     ]
-
-
-def _build_rawr_filters_payload(query: RawrQuery) -> RawrQueryFilters:
-    return RawrQueryFilters.build_payload(
-        teams=query.teams,
-        seasons=query.seasons,
-        season_type=query.season_type,
-        min_average_minutes=query.min_average_minutes,
-        min_total_minutes=query.min_total_minutes,
-        top_n=query.top_n,
-        min_games=query.min_games,
-        ridge_alpha=query.ridge_alpha,
-    )
 
 
 def _serialize_rawr_filters(filters: RawrQueryFilters) -> dict[str, JSONValue]:
