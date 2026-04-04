@@ -7,12 +7,11 @@ from itertools import product
 import numpy as np
 
 from rawr_analytics.metrics.rawr._shrinkage import RawrShrinkageMode
-from rawr_analytics.metrics.rawr.inputs import RawrRequest
 from rawr_analytics.metrics.rawr.records import RawrPlayerSeasonRecord, build_player_season_records
 from rawr_analytics.metrics.wowy import prepare_wowy_player_season_records
 from rawr_analytics.metrics.wowy.records import WowyPlayerSeasonRecord
 from rawr_analytics.services._metric_inputs import (
-    load_rawr_season_inputs,
+    load_rawr_request,
     load_wowy_season_inputs,
 )
 from rawr_analytics.shared.season import Season, SeasonType
@@ -166,23 +165,19 @@ def compare_rawr_configs(
             detail = f"alpha={ridge_alpha:.2f} mode={shrinkage_mode}"
             if shrinkage_mode == RawrShrinkageMode.MINUTES:
                 detail += f" min_scale={minute_scale:.1f}"
-            rawr_season_inputs = load_rawr_season_inputs(
+            rawr_request = load_rawr_request(
                 teams=teams,
                 seasons=train_seasons,
                 season_type=season_type,
+                min_games=rawr_min_games,
+                ridge_alpha=ridge_alpha,
+                shrinkage_mode=shrinkage_mode,
+                shrinkage_strength=shrinkage_strength,
+                shrinkage_minute_scale=minute_scale,
+                min_average_minutes=min_average_minutes,
+                min_total_minutes=min_total_minutes,
             )
-            rawr_records = build_player_season_records(
-                RawrRequest(
-                    season_inputs=rawr_season_inputs,
-                    min_games=rawr_min_games,
-                    ridge_alpha=ridge_alpha,
-                    shrinkage_mode=shrinkage_mode,
-                    shrinkage_strength=shrinkage_strength,
-                    shrinkage_minute_scale=minute_scale,
-                    min_average_minutes=min_average_minutes,
-                    min_total_minutes=min_total_minutes,
-                )
-            )
+            rawr_records = build_player_season_records(rawr_request)
             completed_steps += 1
             _emit_progress(
                 event_fn,

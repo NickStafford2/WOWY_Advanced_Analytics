@@ -6,7 +6,6 @@ from rawr_analytics.metrics.rawr._analysis import fit_player_rawr
 from rawr_analytics.metrics.rawr._observations import count_player_season_games
 from rawr_analytics.metrics.rawr.inputs import (
     RawrRequest,
-    RawrSeasonInput,
     validate_request,
 )
 from rawr_analytics.shared.player import PlayerMinutes, PlayerSummary
@@ -39,7 +38,7 @@ def build_player_season_records(request: RawrRequest) -> list[RawrPlayerSeasonRe
 
 
 def _build_season_records(
-    season_input: RawrSeasonInput,
+    season_input,
     *,
     request: RawrRequest,
 ) -> list[RawrPlayerSeasonRecord]:

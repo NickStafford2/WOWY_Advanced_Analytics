@@ -19,8 +19,7 @@ from rawr_analytics.metrics.rawr import (
     build_player_season_records,
     build_player_seasons_payload,
 )
-from rawr_analytics.metrics.rawr.inputs import RawrRequest
-from rawr_analytics.services._metric_inputs import load_rawr_season_inputs
+from rawr_analytics.services._metric_inputs import load_rawr_request
 from rawr_analytics.services._metric_scope import (
     build_metric_options_payload,
     build_metric_scope_key,
@@ -150,24 +149,20 @@ def _build_rawr_custom_query_result(
     *,
     progress_fn: RawrProgressFn | None = None,
 ) -> list[RawrPlayerSeasonRecord]:
-    season_inputs = load_rawr_season_inputs(
+    request = load_rawr_request(
         teams=query.teams,
         seasons=query.seasons,
         season_type=query.season_type,
+        min_games=query.min_games,
+        ridge_alpha=query.ridge_alpha,
+        shrinkage_mode=DEFAULT_RAWR_SHRINKAGE_MODE,
+        shrinkage_strength=DEFAULT_RAWR_SHRINKAGE_STRENGTH,
+        shrinkage_minute_scale=DEFAULT_RAWR_SHRINKAGE_MINUTE_SCALE,
+        min_average_minutes=query.min_average_minutes,
+        min_total_minutes=query.min_total_minutes,
         progress_fn=progress_fn,
     )
-    return build_player_season_records(
-        RawrRequest(
-            season_inputs=season_inputs,
-            min_games=query.min_games,
-            ridge_alpha=query.ridge_alpha,
-            shrinkage_mode=DEFAULT_RAWR_SHRINKAGE_MODE,
-            shrinkage_strength=DEFAULT_RAWR_SHRINKAGE_STRENGTH,
-            shrinkage_minute_scale=DEFAULT_RAWR_SHRINKAGE_MINUTE_SCALE,
-            min_average_minutes=query.min_average_minutes,
-            min_total_minutes=query.min_total_minutes,
-        )
-    )
+    return build_player_season_records(request)
 
 
 def _load_rawr_store_values(

@@ -14,8 +14,7 @@ from rawr_analytics.metrics.rawr.defaults import (
 )
 from rawr_analytics.metrics.rawr.inputs import (
     RawrRequest,
-    RawrSeasonInput,
-    build_rawr_season_input,
+    build_rawr_request,
     validate_filters,
     validate_request,
 )
@@ -40,14 +39,13 @@ __all__ = [
     "RawrPlayerSeasonRecord",
     "RawrQuery",
     "RawrRequest",
-    "RawrSeasonInput",
     "RawrShrinkageMode",
     "build_export_table",
     "build_leaderboard_payload",
     "build_player_season_records",
     "build_player_seasons_payload",
     "build_rawr_query",
-    "build_rawr_season_input",
+    "build_rawr_request",
     "validate_filters",
     "validate_request",
 ]

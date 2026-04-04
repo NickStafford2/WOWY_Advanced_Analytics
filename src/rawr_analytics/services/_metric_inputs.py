@@ -11,7 +11,9 @@ from rawr_analytics.data.game_cache import (
 from rawr_analytics.data.game_cache.rows import NormalizedGamePlayerRow, NormalizedGameRow
 from rawr_analytics.data.scope_resolver import resolve_team_seasons
 from rawr_analytics.metrics._player_context import PlayerSeasonContext
-from rawr_analytics.metrics.rawr.inputs import RawrSeasonInput, build_rawr_season_input
+from rawr_analytics.metrics.rawr import DEFAULT_RAWR_SHRINKAGE_MODE
+from rawr_analytics.metrics.rawr._shrinkage import RawrShrinkageMode
+from rawr_analytics.metrics.rawr.inputs import RawrRequest, build_rawr_request
 from rawr_analytics.metrics.wowy.analysis import WowyGame
 from rawr_analytics.metrics.wowy.inputs import WowySeasonInput
 from rawr_analytics.shared.game import NormalizedGamePlayerRecord, NormalizedGameRecord
@@ -31,13 +33,20 @@ class _SeasonCacheSummary:
     skipped_teams: dict[str, int]
 
 
-def load_rawr_season_inputs(
+def load_rawr_request(
     *,
     teams: list[Team] | None,
     seasons: list[Season] | None,
     season_type: SeasonType,
+    min_games: int,
+    ridge_alpha: float,
+    shrinkage_mode: RawrShrinkageMode = DEFAULT_RAWR_SHRINKAGE_MODE,
+    shrinkage_strength: float = 1.0,
+    shrinkage_minute_scale: float = 48.0,
+    min_average_minutes: float | None = None,
+    min_total_minutes: float | None = None,
     progress_fn: RawrSeasonProgressFn | None = None,
-) -> list[RawrSeasonInput]:
+) -> RawrRequest:
     requested_team_seasons = resolve_team_seasons(teams, seasons, season_type=season_type)
     if not requested_team_seasons:
         raise ValueError("No cached data matched the requested RAWR scope")
@@ -54,7 +63,8 @@ def load_rawr_season_inputs(
     )
     if not complete_seasons:
         raise ValueError("No complete cached seasons matched the requested RAWR scope")
-    season_inputs: list[RawrSeasonInput] = []
+    season_games: dict[Season, list[NormalizedGameRecord]] = {}
+    season_game_players: dict[Season, list[NormalizedGamePlayerRecord]] = {}
     sorted_seasons = sorted(teams_by_season, key=lambda item: item.id)
     total_seasons = len(sorted_seasons)
     for season_index, season in enumerate(sorted_seasons, start=1):
@@ -62,14 +72,27 @@ def load_rawr_season_inputs(
             progress_fn(season_index, total_seasons, season)
         if season.id not in complete_seasons:
             continue
-        season_input = _load_rawr_season_input(
+        season_records = _load_rawr_season_records(
             teams=teams_by_season[season],
             season=season,
             season_type=season_type,
         )
-        if season_input is not None:
-            season_inputs.append(season_input)
-    return season_inputs
+        if season_records is None:
+            continue
+        games, game_players = season_records
+        season_games[season] = games
+        season_game_players[season] = game_players
+    return build_rawr_request(
+        season_games=season_games,
+        season_game_players=season_game_players,
+        min_games=min_games,
+        ridge_alpha=ridge_alpha,
+        shrinkage_mode=shrinkage_mode,
+        shrinkage_strength=shrinkage_strength,
+        shrinkage_minute_scale=shrinkage_minute_scale,
+        min_average_minutes=min_average_minutes,
+        min_total_minutes=min_total_minutes,
+    )
 
 
 def load_wowy_season_inputs(
@@ -130,12 +153,12 @@ def list_incomplete_rawr_season_warnings(
     return warnings
 
 
-def _load_rawr_season_input(
+def _load_rawr_season_records(
     *,
     teams: list[Team],
     season: Season,
     season_type: SeasonType,
-) -> RawrSeasonInput | None:
+) -> tuple[list[NormalizedGameRecord], list[NormalizedGamePlayerRecord]] | None:
     requested_team_seasons = resolve_team_seasons(teams, [season], season_type=season_type)
     if not requested_team_seasons:
         return None
@@ -168,11 +191,9 @@ def _load_rawr_season_input(
         seasons=[season],
     )
     games, game_players = _exclude_rawr_games_without_positive_minutes(games, game_players)
-    return build_rawr_season_input(
-        season=season,
-        games=games,
-        game_players=game_players,
-    )
+    if not games:
+        return None
+    return games, game_players
 
 
 def _filter_rawr_scope(games, game_players, teams, seasons):
