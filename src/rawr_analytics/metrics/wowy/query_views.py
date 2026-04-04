@@ -7,7 +7,7 @@ from typing import Any
 from rawr_analytics.metrics._span import build_span_payload
 from rawr_analytics.metrics.constants import Metric
 from rawr_analytics.metrics.wowy.defaults import describe_metric
-from rawr_analytics.metrics.wowy.models import WowyCustomQueryResult, WowyPlayerSeasonValue
+from rawr_analytics.metrics.wowy.models import WowyPlayerSeasonValue
 from rawr_analytics.metrics.wowy.query import WowyQuery
 from rawr_analytics.shared.season import Season, SeasonType
 from rawr_analytics.shared.team import Team
@@ -78,45 +78,33 @@ def build_player_seasons_payload(
     }
 
 
-def build_cached_leaderboard_payload(
-    metric: Metric,
+def build_leaderboard_payload(
     *,
+    metric: Metric | str,
     metric_label: str,
-    available_seasons: list[Season],
-    available_teams: list[Team],
     rows: Sequence[WowyPlayerSeasonValue],
     seasons: list[str],
     top_n: int,
+    mode: str,
+    available_seasons: list[Season] | None = None,
+    available_teams: list[Team] | None = None,
 ) -> dict[str, Any]:
     table_rows = _build_ranked_table_rows(rows=rows, seasons=seasons, top_n=top_n)
-    return {
-        "mode": "cached",
+    payload = {
+        "mode": mode,
         "metric": metric,
         "metric_label": metric_label,
         "span": build_span_payload(seasons=seasons, top_n=top_n),
         "table_rows": table_rows,
         "series": _build_series_from_table_rows(table_rows),
-        "available_seasons": [season.id for season in available_seasons],
-        "available_teams": [team.current.abbreviation for team in available_teams],
     }
-
-
-def build_custom_leaderboard_payload(
-    metric: Metric,
-    result: WowyCustomQueryResult,
-    *,
-    top_n: int,
-) -> dict[str, Any]:
-    seasons = sorted({row.season_id for row in result.rows})
-    table_rows = _build_ranked_table_rows(rows=result.rows, seasons=seasons, top_n=top_n)
-    return {
-        "mode": "custom",
-        "metric": metric.value,
-        "metric_label": result.metric_label,
-        "span": build_span_payload(seasons=seasons, top_n=top_n),
-        "table_rows": table_rows,
-        "series": _build_series_from_table_rows(table_rows),
-    }
+    if available_seasons is not None:
+        payload["available_seasons"] = [season.id for season in available_seasons]
+    if available_teams is not None:
+        payload["available_teams"] = [
+            team.current.abbreviation for team in available_teams
+        ]
+    return payload
 
 
 def build_export_table(

@@ -3,7 +3,6 @@ from __future__ import annotations
 from typing import cast
 
 from rawr_analytics.data.metric_store import (
-    WowyPlayerSeasonValueRow,
     load_wowy_player_season_value_rows,
 )
 from rawr_analytics.metrics.constants import Metric
@@ -13,9 +12,8 @@ from rawr_analytics.metrics.wowy import (
     WowyPlayerValue,
     WowyQuery,
     WowyQueryFilters,
-    build_cached_leaderboard_payload,
-    build_custom_leaderboard_payload,
     build_export_table,
+    build_leaderboard_payload,
     build_player_seasons_payload,
     build_wowy_custom_query,
 )
@@ -61,8 +59,9 @@ def build_wowy_query_view(
     view: MetricView,
 ) -> dict[str, JSONValue]:
     _require_wowy_metric(metric)
+    filters = WowyQueryFilters.from_query(query).to_payload()
     payload = _build_wowy_view_payload(metric, view=view, query=query)
-    payload["filters"] = WowyQueryFilters.from_query(query).to_payload()
+    payload["filters"] = filters
     return payload
 
 
@@ -74,31 +73,30 @@ def build_wowy_query_export(
     _require_wowy_metric(metric)
     scope_key = build_metric_scope_key(query)
 
-    if view == "cached-leaderboard":
-        catalog = require_current_metric_scope(metric=metric, scope_key=scope_key)
-        values = _load_wowy_store_values(metric, query, scope_key=scope_key)
-        return cast(
-            MetricQueryExport,
-            build_export_table(
-                metric,
-                rows=values,
-                seasons=selected_seasons(query.seasons, catalog),
-            ),
-        )
-
-    if view == "custom-query":
-        result = _build_wowy_custom_query_result(metric, query)
-        return cast(
-            MetricQueryExport,
-            build_export_table(
-                metric,
-                rows=result.rows,
-                seasons=sorted({row.season_id for row in result.rows}),
-                metric_label=result.metric_label,
-            ),
-        )
-
-    raise ValueError(f"Metric view {view!r} does not support CSV export")
+    match view:
+        case "cached-leaderboard":
+            catalog = require_current_metric_scope(metric=metric, scope_key=scope_key)
+            return cast(
+                MetricQueryExport,
+                build_export_table(
+                    metric,
+                    rows=_load_wowy_store_values(metric, query, scope_key=scope_key),
+                    seasons=selected_seasons(query.seasons, catalog),
+                ),
+            )
+        case "custom-query":
+            result = _build_wowy_custom_query_result(metric, query)
+            return cast(
+                MetricQueryExport,
+                build_export_table(
+                    metric,
+                    rows=result.rows,
+                    seasons=sorted({row.season_id for row in result.rows}),
+                    metric_label=result.metric_label,
+                ),
+            )
+        case _:
+            raise ValueError(f"Metric view {view!r} does not support CSV export")
 
 
 def _build_wowy_view_payload(
@@ -109,51 +107,57 @@ def _build_wowy_view_payload(
 ) -> dict[str, JSONValue]:
     scope_key = build_metric_scope_key(query)
 
-    if view == "player-seasons":
-        require_current_metric_scope(metric=metric, scope_key=scope_key)
-        return cast(
-            dict[str, JSONValue],
-            build_player_seasons_payload(
-                metric,
-                _load_wowy_store_values(metric, query, scope_key=scope_key),
-            ),
-        )
-
-    if view == "cached-leaderboard":
-        catalog = require_current_metric_scope(metric=metric, scope_key=scope_key)
-        return cast(
-            dict[str, JSONValue],
-            build_cached_leaderboard_payload(
-                metric,
-                metric_label=catalog.metric_label,
-                available_seasons=catalog.availability.seasons,
-                available_teams=catalog.availability.teams,
-                rows=_load_wowy_store_values(metric, query, scope_key=scope_key),
-                seasons=selected_seasons(query.seasons, catalog),
-                top_n=query.top_n,
-            ),
-        )
-
-    if view == "span-chart":
-        catalog = require_current_metric_scope(metric=metric, scope_key=scope_key)
-        return cast(
-            dict[str, JSONValue],
-            build_metric_span_chart_payload(
-                metric=metric,
-                catalog=catalog,
-                scope_key=scope_key,
-                top_n=query.top_n,
-            ),
-        )
-
-    if view == "custom-query":
-        result = _build_wowy_custom_query_result(metric, query)
-        return cast(
-            dict[str, JSONValue],
-            build_custom_leaderboard_payload(metric, result, top_n=query.top_n),
-        )
-
-    raise ValueError(f"Unknown metric view: {view}")
+    match view:
+        case "player-seasons":
+            require_current_metric_scope(metric=metric, scope_key=scope_key)
+            return cast(
+                dict[str, JSONValue],
+                build_player_seasons_payload(
+                    metric,
+                    _load_wowy_store_values(metric, query, scope_key=scope_key),
+                ),
+            )
+        case "cached-leaderboard":
+            catalog = require_current_metric_scope(metric=metric, scope_key=scope_key)
+            return cast(
+                dict[str, JSONValue],
+                build_leaderboard_payload(
+                    metric=metric,
+                    metric_label=catalog.metric_label,
+                    rows=_load_wowy_store_values(metric, query, scope_key=scope_key),
+                    seasons=selected_seasons(query.seasons, catalog),
+                    top_n=query.top_n,
+                    mode="cached",
+                    available_seasons=catalog.availability.seasons,
+                    available_teams=catalog.availability.teams,
+                ),
+            )
+        case "span-chart":
+            catalog = require_current_metric_scope(metric=metric, scope_key=scope_key)
+            return cast(
+                dict[str, JSONValue],
+                build_metric_span_chart_payload(
+                    metric=metric,
+                    catalog=catalog,
+                    scope_key=scope_key,
+                    top_n=query.top_n,
+                ),
+            )
+        case "custom-query":
+            result = _build_wowy_custom_query_result(metric, query)
+            return cast(
+                dict[str, JSONValue],
+                build_leaderboard_payload(
+                    metric=metric.value,
+                    metric_label=result.metric_label,
+                    rows=result.rows,
+                    seasons=sorted({row.season_id for row in result.rows}),
+                    top_n=query.top_n,
+                    mode="custom",
+                ),
+            )
+        case _:
+            raise ValueError(f"Unknown metric view: {view}")
 
 
 def _build_wowy_custom_query_result(
@@ -175,8 +179,11 @@ def _build_wowy_custom_query_result(
     )
 
 
-def _build_wowy_store_values(
-    rows: list[WowyPlayerSeasonValueRow],
+def _load_wowy_store_values(
+    metric: Metric,
+    query: WowyQuery,
+    *,
+    scope_key: str,
 ) -> list[WowyPlayerSeasonValue]:
     return [
         WowyPlayerSeasonValue(
@@ -198,18 +205,7 @@ def _build_wowy_store_values(
                 raw_value=row.raw_wowy_score,
             ),
         )
-        for row in rows
-    ]
-
-
-def _load_wowy_store_values(
-    metric: Metric,
-    query: WowyQuery,
-    *,
-    scope_key: str,
-) -> list[WowyPlayerSeasonValue]:
-    return _build_wowy_store_values(
-        load_wowy_player_season_value_rows(
+        for row in load_wowy_player_season_value_rows(
             metric_id=metric.value,
             scope_key=scope_key,
             seasons=season_ids(query.seasons),
@@ -218,7 +214,7 @@ def _load_wowy_store_values(
             min_games_with=query.min_games_with,
             min_games_without=query.min_games_without,
         )
-    )
+    ]
 
 
 def _require_wowy_metric(metric: Metric) -> None:

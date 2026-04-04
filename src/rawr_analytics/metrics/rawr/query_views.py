@@ -6,7 +6,7 @@ from typing import Any
 
 from rawr_analytics.metrics._span import build_span_payload
 from rawr_analytics.metrics.rawr.defaults import describe_metric
-from rawr_analytics.metrics.rawr.models import RawrCustomQueryResult, RawrPlayerSeasonValue
+from rawr_analytics.metrics.rawr.models import RawrPlayerSeasonValue
 from rawr_analytics.metrics.rawr.query import RawrQuery
 from rawr_analytics.shared.season import Season, SeasonType
 from rawr_analytics.shared.team import Team
@@ -76,41 +76,33 @@ def build_player_seasons_payload(
     }
 
 
-def build_cached_leaderboard_payload(
+def build_leaderboard_payload(
     *,
+    metric: str,
     metric_label: str,
-    available_seasons: list[Season],
-    available_teams: list[Team],
     rows: Sequence[RawrPlayerSeasonValue],
     seasons: list[str],
     top_n: int,
+    mode: str,
+    available_seasons: list[Season] | None = None,
+    available_teams: list[Team] | None = None,
 ) -> dict[str, Any]:
-    payload = _build_leaderboard_payload(
-        metric="rawr",
-        metric_label=metric_label,
-        rows=rows,
-        seasons=seasons,
-        top_n=top_n,
-        mode="cached",
-    )
-    payload["available_seasons"] = [season.id for season in available_seasons]
-    payload["available_teams"] = [team.current.abbreviation for team in available_teams]
+    table_rows = _build_ranked_table_rows(rows=rows, seasons=seasons, top_n=top_n)
+    payload = {
+        "mode": mode,
+        "metric": metric,
+        "metric_label": metric_label,
+        "span": build_span_payload(seasons=seasons, top_n=top_n),
+        "table_rows": table_rows,
+        "series": _build_series_from_table_rows(table_rows),
+    }
+    if available_seasons is not None:
+        payload["available_seasons"] = [season.id for season in available_seasons]
+    if available_teams is not None:
+        payload["available_teams"] = [
+            team.current.abbreviation for team in available_teams
+        ]
     return payload
-
-
-def build_custom_leaderboard_payload(
-    result: RawrCustomQueryResult,
-    *,
-    top_n: int,
-) -> dict[str, Any]:
-    return _build_leaderboard_payload(
-        metric=result.metric,
-        metric_label=result.metric_label,
-        rows=result.rows,
-        seasons=sorted({row.season_id for row in result.rows}),
-        top_n=top_n,
-        mode="custom",
-    )
 
 
 def build_export_table(
@@ -138,26 +130,6 @@ def _serialize_player_season_row(
         "games": row.result.games,
         "average_minutes": row.minutes.average_minutes,
         "total_minutes": row.minutes.total_minutes,
-    }
-
-
-def _build_leaderboard_payload(
-    *,
-    metric: str,
-    metric_label: str,
-    rows: Sequence[RawrPlayerSeasonValue],
-    seasons: list[str],
-    top_n: int,
-    mode: str,
-) -> dict[str, Any]:
-    table_rows = _build_ranked_table_rows(rows=rows, seasons=seasons, top_n=top_n)
-    return {
-        "mode": mode,
-        "metric": metric,
-        "metric_label": metric_label,
-        "span": build_span_payload(seasons=seasons, top_n=top_n),
-        "table_rows": table_rows,
-        "series": _build_series_from_table_rows(table_rows),
     }
 
 

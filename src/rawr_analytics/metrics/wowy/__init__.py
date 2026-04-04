@@ -28,9 +28,8 @@ from rawr_analytics.metrics.wowy.models import (
 from rawr_analytics.metrics.wowy.query import WowyQuery, build_wowy_query
 from rawr_analytics.metrics.wowy.query_views import (
     WowyQueryFilters,
-    build_cached_leaderboard_payload,
-    build_custom_leaderboard_payload,
     build_export_table,
+    build_leaderboard_payload,
     build_player_seasons_payload,
 )
 from rawr_analytics.metrics.wowy.records import build_player_season_records
@@ -47,9 +46,8 @@ __all__ = [
     "WowyQueryFilters",
     "WowyRequest",
     "WowySeasonInput",
-    "build_cached_leaderboard_payload",
-    "build_custom_leaderboard_payload",
     "build_export_table",
+    "build_leaderboard_payload",
     "build_player_season_records",
     "build_player_seasons_payload",
     "build_wowy_custom_query",
