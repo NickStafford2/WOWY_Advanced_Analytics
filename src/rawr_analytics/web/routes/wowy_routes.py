@@ -1,8 +1,6 @@
 from __future__ import annotations
 
-from functools import partial
-
-from flask import Response, jsonify, request
+from flask import Flask, Response, jsonify, request
 
 from rawr_analytics.app.wowy.service import (
     build_wowy_leaderboard_export,
@@ -13,7 +11,7 @@ from rawr_analytics.app.wowy.service import (
     resolve_wowy_result,
 )
 from rawr_analytics.metrics.constants import Metric
-from rawr_analytics.web._metric_handlers import MetricWebHandlers
+from rawr_analytics.web._errors import web_route
 from rawr_analytics.web._parse import (
     build_wowy_options_query_from_request,
     build_wowy_query_from_request,
@@ -21,15 +19,43 @@ from rawr_analytics.web._parse import (
 from rawr_analytics.web.csv import render_leaderboard_csv
 
 
-def build_metric_handlers(metric: Metric) -> MetricWebHandlers:
-    assert metric in {Metric.WOWY, Metric.WOWY_SHRUNK}
-    return MetricWebHandlers(
-        json_options_response=partial(json_options_response, metric),
-        json_player_seasons_response=partial(json_player_seasons_response, metric),
-        json_span_chart_response=partial(json_span_chart_response, metric),
-        json_leaderboard_response=partial(json_leaderboard_response, metric),
-        csv_leaderboard_response=partial(csv_leaderboard_response, metric),
-    )
+def register_wowy_routes(app: Flask) -> None:
+    @app.get("/api/metrics/wowy/options")
+    @web_route
+    def get_wowy_options():
+        return json_options_response(Metric.WOWY)
+
+    @app.get("/api/metrics/wowy/player-seasons")
+    @web_route
+    def get_wowy_player_seasons():
+        return json_player_seasons_response(Metric.WOWY)
+
+    @app.get("/api/metrics/wowy/span-chart")
+    @web_route
+    def get_wowy_span_chart():
+        return json_span_chart_response(Metric.WOWY)
+
+    @app.get("/api/metrics/wowy/leaderboard")
+    @app.get("/api/metrics/wowy/cached-leaderboard")
+    @web_route
+    def get_wowy_cached_leaderboard():
+        return json_leaderboard_response(Metric.WOWY, recalculate=False)
+
+    @app.get("/api/metrics/wowy/leaderboard.csv")
+    @app.get("/api/metrics/wowy/cached-leaderboard.csv")
+    @web_route
+    def export_wowy_cached_leaderboard():
+        return csv_leaderboard_response(Metric.WOWY, recalculate=False)
+
+    @app.get("/api/metrics/wowy/custom-query")
+    @web_route
+    def get_wowy_custom_query():
+        return json_leaderboard_response(Metric.WOWY, recalculate=True)
+
+    @app.get("/api/metrics/wowy/custom-query.csv")
+    @web_route
+    def export_wowy_custom_query():
+        return csv_leaderboard_response(Metric.WOWY, recalculate=True)
 
 
 def json_options_response(metric: Metric) -> Response:
@@ -55,6 +81,7 @@ def json_span_chart_response(metric: Metric) -> Response:
 
 def json_leaderboard_response(
     metric: Metric,
+    *,
     recalculate: bool = False,
 ) -> Response:
     query = build_wowy_query_from_request(request)
@@ -64,6 +91,7 @@ def json_leaderboard_response(
 
 def csv_leaderboard_response(
     metric: Metric,
+    *,
     recalculate: bool = False,
 ) -> Response:
     query = build_wowy_query_from_request(request)
