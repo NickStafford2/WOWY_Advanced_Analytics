@@ -1,7 +1,33 @@
 from __future__ import annotations
 
+from dataclasses import dataclass
+
 from rawr_analytics.metrics._validation import validate_top_n_and_minutes
-from rawr_analytics.metrics.wowy.models import WowyPlayerContext, WowyRequest, WowySeasonInput
+from rawr_analytics.metrics.wowy.analysis import WowyGame
+from rawr_analytics.shared.player import PlayerMinutes, PlayerSummary
+from rawr_analytics.shared.season import Season
+
+
+@dataclass(frozen=True)
+class WowyPlayerContext:
+    player: PlayerSummary
+    minutes: PlayerMinutes
+
+
+@dataclass(frozen=True)
+class WowySeasonInput:
+    season: Season
+    games: list[WowyGame]
+    players: list[WowyPlayerContext]
+
+
+@dataclass(frozen=True)
+class WowyRequest:
+    season_inputs: list[WowySeasonInput]
+    min_games_with: int
+    min_games_without: int
+    min_average_minutes: float | None = None
+    min_total_minutes: float | None = None
 
 
 def validate_filters(

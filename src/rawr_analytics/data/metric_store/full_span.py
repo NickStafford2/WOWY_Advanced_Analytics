@@ -2,12 +2,40 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
-from rawr_analytics.data.metric_store.models import (
-    MetricFullSpanPointRow,
-    MetricFullSpanSeriesRow,
-)
 from rawr_analytics.data.metric_store.rawr import RawrPlayerSeasonValueRow
 from rawr_analytics.data.metric_store.wowy import WowyPlayerSeasonValueRow
+from rawr_analytics.shared.player import PlayerSummary
+
+
+@dataclass(frozen=True)
+class MetricFullSpanSeriesRow:
+    snapshot_id: int | None
+    metric_id: str
+    scope_key: str
+    player_id: int
+    player_name: str
+    span_average_value: float
+    season_count: int
+    rank_order: int
+
+
+@dataclass(frozen=True)
+class MetricFullSpanPointRow:
+    snapshot_id: int | None
+    metric_id: str
+    scope_key: str
+    player_id: int
+    season_id: str
+    value: float
+
+
+@dataclass(frozen=True)
+class MetricFullSpanSeries:
+    player: PlayerSummary
+    span_average_value: float
+    season_count: int
+    rank_order: int
+    points_by_season: dict[str, float]
 
 
 @dataclass(frozen=True)

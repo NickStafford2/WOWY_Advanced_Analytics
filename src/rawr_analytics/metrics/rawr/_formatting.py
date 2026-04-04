@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from rawr_analytics.metrics.rawr.models import RawrPlayerSeasonRecord
+from rawr_analytics.metrics.rawr.records import RawrPlayerSeasonRecord
 
 
 def format_rawr_records(

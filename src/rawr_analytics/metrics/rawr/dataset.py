@@ -1,20 +1,34 @@
 from __future__ import annotations
 
+from dataclasses import dataclass
+
 from rawr_analytics.metrics.constants import Metric
+from rawr_analytics.metrics.rawr.analysis import RawrValue
 from rawr_analytics.metrics.rawr.defaults import (
     DEFAULT_RAWR_SHRINKAGE_MINUTE_SCALE,
     DEFAULT_RAWR_SHRINKAGE_MODE,
     DEFAULT_RAWR_SHRINKAGE_STRENGTH,
     describe_metric,
 )
-from rawr_analytics.metrics.rawr.models import (
-    RawrCustomQueryResult,
-    RawrPlayerSeasonRecord,
-    RawrPlayerSeasonValue,
-    RawrRequest,
-    RawrSeasonInput,
-)
+from rawr_analytics.metrics.rawr.inputs import RawrRequest, RawrSeasonInput
 from rawr_analytics.metrics.rawr.records import build_player_season_records
+from rawr_analytics.metrics.rawr.records import RawrPlayerSeasonRecord
+from rawr_analytics.shared.player import PlayerMinutes, PlayerSummary
+
+
+@dataclass(frozen=True)
+class RawrPlayerSeasonValue:
+    season_id: str
+    player: PlayerSummary
+    minutes: PlayerMinutes
+    result: RawrValue
+
+
+@dataclass(frozen=True)
+class RawrCustomQueryResult:
+    metric: str
+    metric_label: str
+    rows: list[RawrPlayerSeasonValue]
 
 
 def prepare_rawr_player_season_records(

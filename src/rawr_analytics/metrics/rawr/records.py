@@ -1,13 +1,21 @@
 from __future__ import annotations
 
+from dataclasses import dataclass
+
 from rawr_analytics.metrics.rawr._observations import count_player_season_games
-from rawr_analytics.metrics.rawr.analysis import fit_player_rawr
+from rawr_analytics.metrics.rawr.analysis import RawrValue, fit_player_rawr
 from rawr_analytics.metrics.rawr.inputs import passes_minute_filters, validate_request
-from rawr_analytics.metrics.rawr.models import (
-    RawrPlayerSeasonRecord,
-    RawrRequest,
-    RawrSeasonInput,
-)
+from rawr_analytics.metrics.rawr.inputs import RawrRequest, RawrSeasonInput
+from rawr_analytics.shared.player import PlayerMinutes, PlayerSummary
+from rawr_analytics.shared.season import Season
+
+
+@dataclass(frozen=True)
+class RawrPlayerSeasonRecord:
+    season: Season
+    player: PlayerSummary
+    minutes: PlayerMinutes
+    result: RawrValue
 
 
 def build_player_season_records(request: RawrRequest) -> list[RawrPlayerSeasonRecord]:

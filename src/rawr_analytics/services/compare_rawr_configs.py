@@ -7,9 +7,9 @@ from itertools import product
 import numpy as np
 
 from rawr_analytics.metrics.rawr import prepare_rawr_player_season_records
-from rawr_analytics.metrics.rawr.models import RawrPlayerSeasonRecord
+from rawr_analytics.metrics.rawr.records import RawrPlayerSeasonRecord
 from rawr_analytics.metrics.wowy import prepare_wowy_player_season_records
-from rawr_analytics.metrics.wowy.models import WowyPlayerSeasonRecord
+from rawr_analytics.metrics.wowy.records import WowyPlayerSeasonRecord
 from rawr_analytics.services._metric_inputs import (
     load_rawr_season_inputs,
     load_wowy_season_inputs,

@@ -14,15 +14,9 @@ from rawr_analytics.metrics.rawr._observations import (
     build_rawr_observations,
     build_rawr_player_season_minute_stats,
 )
-from rawr_analytics.metrics.rawr.models import (
-    RawrPlayerContext,
-    RawrSeasonInput,
-)
-from rawr_analytics.metrics.wowy.models import (
-    WowyGame,
-    WowyPlayerContext,
-    WowySeasonInput,
-)
+from rawr_analytics.metrics.rawr.inputs import RawrPlayerContext, RawrSeasonInput
+from rawr_analytics.metrics.wowy.analysis import WowyGame
+from rawr_analytics.metrics.wowy.inputs import WowyPlayerContext, WowySeasonInput
 from rawr_analytics.shared.game import NormalizedGamePlayerRecord, NormalizedGameRecord
 from rawr_analytics.shared.player import PlayerMinutes, PlayerSummary
 from rawr_analytics.shared.scope import TeamSeasonScope

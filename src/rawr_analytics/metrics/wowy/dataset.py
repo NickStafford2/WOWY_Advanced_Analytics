@@ -1,20 +1,33 @@
 from __future__ import annotations
 
+from dataclasses import dataclass
+
 from rawr_analytics.metrics.constants import Metric
 from rawr_analytics.metrics.wowy.analysis import (
     DEFAULT_WOWY_SHRINKAGE_PRIOR_GAMES,
+    WowyPlayerValue,
     compute_wowy_shrinkage_score,
 )
 from rawr_analytics.metrics.wowy.defaults import describe_metric
-from rawr_analytics.metrics.wowy.models import (
-    WowyCustomQueryResult,
-    WowyPlayerSeasonRecord,
-    WowyPlayerSeasonValue,
-    WowyPlayerValue,
-    WowyRequest,
-    WowySeasonInput,
-)
+from rawr_analytics.metrics.wowy.inputs import WowyRequest, WowySeasonInput
 from rawr_analytics.metrics.wowy.records import build_player_season_records
+from rawr_analytics.metrics.wowy.records import WowyPlayerSeasonRecord
+from rawr_analytics.shared.player import PlayerMinutes, PlayerSummary
+
+
+@dataclass(frozen=True)
+class WowyPlayerSeasonValue:
+    season_id: str
+    player: PlayerSummary
+    minutes: PlayerMinutes
+    result: WowyPlayerValue
+
+
+@dataclass(frozen=True)
+class WowyCustomQueryResult:
+    metric: str
+    metric_label: str
+    rows: list[WowyPlayerSeasonValue]
 
 
 def prepare_wowy_player_season_records(

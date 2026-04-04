@@ -6,7 +6,7 @@ from typing import Any
 
 from rawr_analytics.metrics._span import build_span_payload
 from rawr_analytics.metrics.rawr.defaults import describe_metric
-from rawr_analytics.metrics.rawr.models import RawrPlayerSeasonValue
+from rawr_analytics.metrics.rawr.dataset import RawrPlayerSeasonValue
 from rawr_analytics.metrics.rawr.query import RawrQuery
 from rawr_analytics.shared.season import Season, SeasonType
 from rawr_analytics.shared.team import Team

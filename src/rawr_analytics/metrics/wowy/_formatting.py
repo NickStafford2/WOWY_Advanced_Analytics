@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from rawr_analytics.metrics.wowy.models import WowyPlayerSeasonRecord
+from rawr_analytics.metrics.wowy.records import WowyPlayerSeasonRecord
 
 
 def format_results_table(

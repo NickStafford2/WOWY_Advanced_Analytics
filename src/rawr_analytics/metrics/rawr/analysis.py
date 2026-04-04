@@ -1,22 +1,15 @@
 from __future__ import annotations
 
 from collections.abc import Callable
+from dataclasses import dataclass
 from statistics import mean
 
 import numpy as np
 
 from rawr_analytics.metrics.rawr._observations import (
+    RawrObservation,
     count_player_season_games,
     count_player_season_minutes,
-)
-from rawr_analytics.metrics.rawr.models import (
-    RawrModel,
-    RawrObservation,
-    RawrPlayerEstimate,
-    RawrResult,
-    RawrValue,
-    RidgeTuningResult,
-    RidgeTuningSummary,
 )
 from rawr_analytics.shared.player import PlayerSummary
 from rawr_analytics.shared.season import Season
@@ -24,6 +17,47 @@ from rawr_analytics.shared.team import Team
 
 ProgressFn = Callable[[int, int, str | None], None]
 ShrinkageMode = str
+
+
+@dataclass(frozen=True)
+class RawrValue:
+    games: int
+    coefficient: float
+
+
+@dataclass(frozen=True)
+class RawrPlayerEstimate:
+    season: Season
+    player: PlayerSummary
+    result: RawrValue
+
+
+@dataclass(frozen=True)
+class RawrResult:
+    observations: int
+    players: int
+    intercept: float
+    home_court_advantage: float
+    estimates: list[RawrPlayerEstimate]
+
+
+@dataclass(frozen=True)
+class RawrModel:
+    player_keys: list[tuple[Season, int]]
+    team_seasons: list[tuple[int, Season]]
+    coefficients: list[float]
+
+
+@dataclass(frozen=True)
+class RidgeTuningResult:
+    alpha: float
+    validation_mse: float
+
+
+@dataclass(frozen=True)
+class RidgeTuningSummary:
+    best_alpha: float
+    results: list[RidgeTuningResult]
 
 
 def fit_player_rawr(

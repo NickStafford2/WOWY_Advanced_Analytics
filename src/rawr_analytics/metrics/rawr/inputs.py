@@ -1,7 +1,37 @@
 from __future__ import annotations
 
+from dataclasses import dataclass
+
 from rawr_analytics.metrics._validation import validate_top_n_and_minutes
-from rawr_analytics.metrics.rawr.models import RawrPlayerContext, RawrRequest, RawrSeasonInput
+from rawr_analytics.metrics.rawr._observations import RawrObservation
+from rawr_analytics.shared.player import PlayerMinutes, PlayerSummary
+from rawr_analytics.shared.season import Season
+
+
+@dataclass(frozen=True)
+class RawrPlayerContext:
+    season: Season
+    player: PlayerSummary
+    minutes: PlayerMinutes
+
+
+@dataclass(frozen=True)
+class RawrSeasonInput:
+    season: Season
+    observations: list[RawrObservation]
+    players: list[RawrPlayerContext]
+
+
+@dataclass(frozen=True)
+class RawrRequest:
+    season_inputs: list[RawrSeasonInput]
+    min_games: int
+    ridge_alpha: float
+    shrinkage_mode: str = "uniform"
+    shrinkage_strength: float = 1.0
+    shrinkage_minute_scale: float = 48.0
+    min_average_minutes: float | None = None
+    min_total_minutes: float | None = None
 
 
 def validate_filters(

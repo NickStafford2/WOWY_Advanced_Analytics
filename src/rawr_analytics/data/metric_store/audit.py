@@ -11,12 +11,12 @@ from rawr_analytics.data.metric_store._validation import (
     validate_rawr_rows,
     validate_wowy_rows,
 )
-from rawr_analytics.data.metric_store.models import (
+from rawr_analytics.data.metric_store.full_span import (
     MetricFullSpanPointRow,
     MetricFullSpanSeriesRow,
-    MetricScopeCatalogRow,
 )
 from rawr_analytics.data.metric_store.rawr import RawrPlayerSeasonValueRow
+from rawr_analytics.data.metric_store.store import MetricScopeCatalogRow
 from rawr_analytics.data.metric_store.wowy import WowyPlayerSeasonValueRow
 
 

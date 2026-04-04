@@ -1,12 +1,31 @@
 from __future__ import annotations
 
 from collections.abc import Callable
+from dataclasses import dataclass
 from typing import overload
 
-from rawr_analytics.metrics.wowy.models import WowyGame, WowyPlayerValue
+from rawr_analytics.shared.team import Team
 
 ProgressFn = Callable[[int, int, str | None], None]
 DEFAULT_WOWY_SHRINKAGE_PRIOR_GAMES = 10.0
+
+
+@dataclass(frozen=True)
+class WowyGame:
+    game_id: str
+    margin: float
+    players: frozenset[int]
+    team: Team
+
+
+@dataclass(frozen=True)
+class WowyPlayerValue:
+    games_with: int
+    games_without: int
+    avg_margin_with: float | None
+    avg_margin_without: float | None
+    value: float | None
+    raw_value: float | None = None
 
 
 def compute_wowy(

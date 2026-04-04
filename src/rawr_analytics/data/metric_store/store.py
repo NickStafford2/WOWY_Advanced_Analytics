@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import sqlite3
 from collections.abc import Callable
+from dataclasses import dataclass
 from datetime import UTC, datetime
 from typing import Any
 
@@ -14,18 +15,49 @@ from rawr_analytics.data.metric_store._validation import (
     validate_wowy_rows,
 )
 from rawr_analytics.data.metric_store.full_span import (
-    build_rawr_full_span_rows,
-    build_wowy_full_span_rows,
-)
-from rawr_analytics.data.metric_store.models import (
     MetricFullSpanPointRow,
     MetricFullSpanSeriesRow,
-    MetricScopeCatalog,
-    MetricScopeCatalogRow,
+    build_rawr_full_span_rows,
+    build_wowy_full_span_rows,
 )
 from rawr_analytics.data.metric_store.rawr import RawrPlayerSeasonValueRow
 from rawr_analytics.data.metric_store.schema import connect, initialize_player_metrics_db
 from rawr_analytics.data.metric_store.wowy import WowyPlayerSeasonValueRow
+
+
+@dataclass(frozen=True)
+class MetricScopeAvailability:
+    season_ids: list[str]
+    team_ids: list[int]
+
+
+@dataclass(frozen=True)
+class MetricSeasonSpanIds:
+    start_season_id: str
+    end_season_id: str
+
+
+@dataclass(frozen=True)
+class MetricScopeCatalog:
+    label: str
+    team_filter: str
+    season_type: str
+    availability: MetricScopeAvailability
+    full_span: MetricSeasonSpanIds | None
+
+
+@dataclass(frozen=True)
+class MetricScopeCatalogRow:
+    metric_id: str
+    scope_key: str
+    label: str
+    team_filter: str
+    season_type: str
+    available_season_ids: list[str]
+    available_team_ids: list[int]
+    full_span_start_season_id: str | None
+    full_span_end_season_id: str | None
+    updated_at: str
 
 
 def replace_rawr_scope_snapshot(

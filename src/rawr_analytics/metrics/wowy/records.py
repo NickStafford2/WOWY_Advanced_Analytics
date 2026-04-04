@@ -1,8 +1,20 @@
 from __future__ import annotations
 
-from rawr_analytics.metrics.wowy.analysis import compute_wowy, filter_results
+from dataclasses import dataclass
+
+from rawr_analytics.metrics.wowy.analysis import WowyPlayerValue, compute_wowy, filter_results
 from rawr_analytics.metrics.wowy.inputs import passes_minute_filters, validate_request
-from rawr_analytics.metrics.wowy.models import WowyPlayerSeasonRecord, WowyRequest, WowySeasonInput
+from rawr_analytics.metrics.wowy.inputs import WowyRequest, WowySeasonInput
+from rawr_analytics.shared.player import PlayerMinutes, PlayerSummary
+from rawr_analytics.shared.season import Season
+
+
+@dataclass(frozen=True)
+class WowyPlayerSeasonRecord:
+    season: Season
+    player: PlayerSummary
+    minutes: PlayerMinutes
+    result: WowyPlayerValue
 
 
 def build_player_season_records(request: WowyRequest) -> list[WowyPlayerSeasonRecord]:

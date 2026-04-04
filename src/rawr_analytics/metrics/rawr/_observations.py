@@ -1,10 +1,22 @@
 from __future__ import annotations
 
 from collections import defaultdict
+from dataclasses import dataclass
 
-from rawr_analytics.metrics.rawr.models import RawrObservation
 from rawr_analytics.shared.game import NormalizedGamePlayerRecord, NormalizedGameRecord
 from rawr_analytics.shared.season import Season
+from rawr_analytics.shared.team import Team
+
+
+@dataclass(frozen=True)
+class RawrObservation:
+    game_id: str
+    game_date: str
+    margin: float
+    home_team: Team
+    away_team: Team
+    player_weights: dict[int, float]
+    player_minutes: dict[int, float] | None = None
 
 _LINEUP_WEIGHT_SUM = 5.0
 

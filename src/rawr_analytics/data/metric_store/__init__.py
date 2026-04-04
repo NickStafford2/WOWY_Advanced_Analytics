@@ -5,6 +5,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 
 from rawr_analytics.data.metric_store._queries import (
+    MetricSnapshotState,
     load_metric_full_span_points_map,
     load_metric_full_span_series_rows,
     load_metric_scope_catalog_row,
@@ -14,13 +15,14 @@ from rawr_analytics.data.metric_store.audit import (
     MetricStoreAuditMetadata,
     audit_metric_store_tables,
 )
-from rawr_analytics.data.metric_store.models import (
+from rawr_analytics.data.metric_store.full_span import (
     MetricFullSpanPointRow,
     MetricFullSpanSeries,
     MetricFullSpanSeriesRow,
+)
+from rawr_analytics.data.metric_store.store import (
     MetricScopeCatalog,
     MetricScopeCatalogRow,
-    MetricSnapshotState,
 )
 from rawr_analytics.data.metric_store.rawr import (
     RawrPlayerSeasonValueRow,
@@ -28,6 +30,8 @@ from rawr_analytics.data.metric_store.rawr import (
 )
 from rawr_analytics.data.metric_store.schema import initialize_player_metrics_db
 from rawr_analytics.data.metric_store.store import (
+    MetricSeasonSpanIds,
+    MetricScopeAvailability,
     clear_metric_scope_store,
     replace_rawr_scope_snapshot,
     replace_wowy_scope_snapshot,
@@ -102,9 +106,12 @@ __all__ = [
     "MetricFullSpanSeriesRow",
     "MetricScopeCatalog",
     "MetricScopeCatalogRow",
+    "MetricScopeAvailability",
+    "MetricSeasonSpanIds",
     "MetricScopeStoreState",
     "MetricSpanStoreRows",
     "MetricStoreAuditMetadata",
+    "MetricSnapshotState",
     "RawrPlayerSeasonValueRow",
     "WowyPlayerSeasonValueRow",
     "audit_metric_store_tables",

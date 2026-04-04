@@ -1,14 +1,23 @@
 from __future__ import annotations
 
+from dataclasses import dataclass
 from typing import Any
 
 from rawr_analytics.data._paths import METRIC_STORE_DB_PATH
-from rawr_analytics.data.metric_store.models import (
-    MetricFullSpanSeriesRow,
-    MetricScopeCatalogRow,
-    MetricSnapshotState,
-)
+from rawr_analytics.data.metric_store.full_span import MetricFullSpanSeriesRow
+from rawr_analytics.data.metric_store.store import MetricScopeCatalogRow
 from rawr_analytics.data.metric_store.schema import connect, initialize_player_metrics_db
+
+
+@dataclass(frozen=True)
+class MetricSnapshotState:
+    snapshot_id: int | None
+    metric_id: str
+    scope_key: str
+    build_version: str
+    source_fingerprint: str
+    row_count: int
+    updated_at: str
 
 
 def load_metric_snapshot_state(
