@@ -13,7 +13,6 @@ from rawr_analytics.metrics.wowy.defaults import (
     describe_wowy_shrunk_metric,
 )
 from rawr_analytics.metrics.wowy.inputs import (
-    WowyPlayerContext,
     WowyRequest,
     WowySeasonInput,
     validate_filters,
@@ -35,7 +34,6 @@ from rawr_analytics.metrics.wowy.records import (
 __all__ = [
     "DEFAULT_WOWY_SHRINKAGE_PRIOR_GAMES",
     "WowyGame",
-    "WowyPlayerContext",
     "WowyPlayerSeasonRecord",
     "WowyPlayerSeasonValue",
     "WowyPlayerValue",

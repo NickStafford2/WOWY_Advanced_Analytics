@@ -13,7 +13,6 @@ from rawr_analytics.metrics.wowy.analysis import (
 from rawr_analytics.metrics.wowy.inputs import (
     WowyRequest,
     WowySeasonInput,
-    passes_minute_filters,
     validate_request,
 )
 from rawr_analytics.shared.player import PlayerMinutes, PlayerSummary
@@ -65,8 +64,7 @@ def _build_season_records(
     )
     for player_id, value in ranked_results:
         player = player_contexts[player_id]
-        if not passes_minute_filters(
-            player,
+        if not player.passes_minute_filters(
             min_average_minutes=request.min_average_minutes,
             min_total_minutes=request.min_total_minutes,
         ):

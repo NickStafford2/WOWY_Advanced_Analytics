@@ -6,7 +6,6 @@ from rawr_analytics.metrics.rawr.analysis import fit_player_rawr
 from rawr_analytics.metrics.rawr.inputs import (
     RawrRequest,
     RawrSeasonInput,
-    passes_minute_filters,
     validate_request,
 )
 from rawr_analytics.shared.player import PlayerMinutes, PlayerSummary
@@ -57,8 +56,7 @@ def _build_season_records(
     records: list[RawrPlayerSeasonRecord] = []
     for player_id, rawr_value in result.values_by_player_id.items():
         player = player_contexts[player_id]
-        if not passes_minute_filters(
-            player,
+        if not player.passes_minute_filters(
             min_average_minutes=request.min_average_minutes,
             min_total_minutes=request.min_total_minutes,
         ):

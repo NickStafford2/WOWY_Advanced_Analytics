@@ -14,9 +14,10 @@ from rawr_analytics.metrics.rawr._observations import (
     build_rawr_observations,
     build_rawr_player_season_minute_stats,
 )
-from rawr_analytics.metrics.rawr.inputs import RawrPlayerContext, RawrSeasonInput
+from rawr_analytics.metrics._player_context import PlayerSeasonContext
+from rawr_analytics.metrics.rawr.inputs import RawrSeasonInput
 from rawr_analytics.metrics.wowy.analysis import WowyGame
-from rawr_analytics.metrics.wowy.inputs import WowyPlayerContext, WowySeasonInput
+from rawr_analytics.metrics.wowy.inputs import WowySeasonInput
 from rawr_analytics.shared.game import NormalizedGamePlayerRecord, NormalizedGameRecord
 from rawr_analytics.shared.player import PlayerMinutes, PlayerSummary
 from rawr_analytics.shared.scope import TeamSeasonScope
@@ -102,7 +103,7 @@ def load_wowy_season_inputs(
                 season=season,
                 games=games_by_season[season],
                 players=[
-                    WowyPlayerContext(
+                    PlayerSeasonContext(
                         player=PlayerSummary(
                             player_id=player_id,
                             player_name=player_names.get(player_id, str(player_id)),
@@ -182,7 +183,7 @@ def _load_rawr_season_input(
         season=season,
         observations=observations,
         players=[
-            RawrPlayerContext(
+            PlayerSeasonContext(
                 player=PlayerSummary(
                     player_id=player_id,
                     player_name=player_names.get(player_id, str(player_id)),
