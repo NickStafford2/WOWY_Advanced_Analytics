@@ -22,30 +22,29 @@ class RawrQueryFilters:
     min_games: int
     ridge_alpha: float
 
-
-def build_query_filters_payload(
-    *,
-    teams: list[Team] | None,
-    seasons: list[Season] | None,
-    season_type: SeasonType,
-    min_average_minutes: float,
-    min_total_minutes: float,
-    top_n: int,
-    min_games: int | None,
-    ridge_alpha: float | None,
-) -> RawrQueryFilters:
-    assert min_games is not None
-    assert ridge_alpha is not None
-    return RawrQueryFilters(
-        teams=teams,
-        seasons=seasons,
-        season_type=season_type,
-        min_average_minutes=min_average_minutes,
-        min_total_minutes=min_total_minutes,
-        top_n=top_n,
-        min_games=min_games,
-        ridge_alpha=ridge_alpha,
-    )
+    def build_payload(
+        *,
+        teams: list[Team] | None,
+        seasons: list[Season] | None,
+        season_type: SeasonType,
+        min_average_minutes: float,
+        min_total_minutes: float,
+        top_n: int,
+        min_games: int | None,
+        ridge_alpha: float | None,
+    ) -> RawrQueryFilters:
+        assert min_games is not None
+        assert ridge_alpha is not None
+        return RawrQueryFilters(
+            teams=teams,
+            seasons=seasons,
+            season_type=season_type,
+            min_average_minutes=min_average_minutes,
+            min_total_minutes=min_total_minutes,
+            top_n=top_n,
+            min_games=min_games,
+            ridge_alpha=ridge_alpha,
+        )
 
 
 def build_options_filters_payload(filters: RawrQueryFilters) -> RawrQueryFilters:

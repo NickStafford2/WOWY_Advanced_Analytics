@@ -23,30 +23,29 @@ class WowyQueryFilters:
     min_games_with: int
     min_games_without: int
 
-
-def build_query_filters_payload(
-    *,
-    teams: list[Team] | None,
-    seasons: list[Season] | None,
-    season_type: SeasonType,
-    min_average_minutes: float,
-    min_total_minutes: float,
-    top_n: int,
-    min_games_with: int | None,
-    min_games_without: int | None,
-) -> WowyQueryFilters:
-    assert min_games_with is not None
-    assert min_games_without is not None
-    return WowyQueryFilters(
-        teams=teams,
-        seasons=seasons,
-        season_type=season_type,
-        min_average_minutes=min_average_minutes,
-        min_total_minutes=min_total_minutes,
-        top_n=top_n,
-        min_games_with=min_games_with,
-        min_games_without=min_games_without,
-    )
+    def build_payload(
+        *,
+        teams: list[Team] | None,
+        seasons: list[Season] | None,
+        season_type: SeasonType,
+        min_average_minutes: float,
+        min_total_minutes: float,
+        top_n: int,
+        min_games_with: int | None,
+        min_games_without: int | None,
+    ) -> WowyQueryFilters:
+        assert min_games_with is not None
+        assert min_games_without is not None
+        return WowyQueryFilters(
+            teams=teams,
+            seasons=seasons,
+            season_type=season_type,
+            min_average_minutes=min_average_minutes,
+            min_total_minutes=min_total_minutes,
+            top_n=top_n,
+            min_games_with=min_games_with,
+            min_games_without=min_games_without,
+        )
 
 
 def build_options_filters_payload(filters: WowyQueryFilters) -> WowyQueryFilters:

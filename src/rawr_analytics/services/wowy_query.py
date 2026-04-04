@@ -18,7 +18,6 @@ from rawr_analytics.metrics.wowy import (
     build_export_table,
     build_options_filters_payload,
     build_player_seasons_payload,
-    build_query_filters_payload,
     build_wowy_custom_query,
 )
 from rawr_analytics.services._metric_inputs import load_wowy_season_inputs
@@ -236,7 +235,7 @@ def _build_wowy_store_values(
 
 
 def _build_wowy_filters_payload(query: WowyQuery) -> WowyQueryFilters:
-    return build_query_filters_payload(
+    return WowyQueryFilters.build_payload(
         teams=query.teams,
         seasons=query.seasons,
         season_type=query.season_type,
