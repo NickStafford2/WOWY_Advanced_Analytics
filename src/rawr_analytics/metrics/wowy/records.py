@@ -11,8 +11,9 @@ from rawr_analytics.metrics.wowy.analysis import (
     filter_results,
 )
 from rawr_analytics.metrics.wowy.inputs import (
-    WowyRequest,
-    WowySeasonInput,
+    WowyRequestDTO,
+    WowySeasonInputDTO,
+    build_wowy_request,
     validate_request,
 )
 from rawr_analytics.shared.player import PlayerMinutes, PlayerSummary
@@ -34,21 +35,28 @@ class WowyPlayerSeasonRecord:
     minutes: PlayerMinutes
     result: WowyPlayerValue
 
-    @staticmethod
-    def build_player_season_records(request: WowyRequest) -> list[WowyPlayerSeasonRecord]:
-        validate_request(request)
-        records: list[WowyPlayerSeasonRecord] = []
-        for season_input in sorted(request.season_inputs, key=lambda item: item.season.id):
-            records.extend(_build_season_records(season_input, request=request))
-        return records
+
+def build_player_season_records(request: WowyRequestDTO) -> list[WowyPlayerSeasonRecord]:
+    validate_request(request)
+    records: list[WowyPlayerSeasonRecord] = []
+    for season_input in sorted(request.season_inputs, key=lambda item: item.season.id):
+        records.extend(_build_season_records(season_input, request=request))
+    records.sort(
+        key=lambda record: (
+            record.season.id,
+            record.result.value if record.result.value is not None else float("-inf"),
+            record.player.player_name,
+        ),
+        reverse=True,
+    )
+    return records
 
 
 def _build_season_records(
-    season_input: WowySeasonInput,
+    season_input: WowySeasonInputDTO,
     *,
-    request: WowyRequest,
+    request: WowyRequestDTO,
 ) -> list[WowyPlayerSeasonRecord]:
-    player_contexts = {player.player.player_id: player for player in season_input.players}
     results = compute_wowy(season_input.games)
     filtered_results = filter_results(
         results,
@@ -63,7 +71,7 @@ def _build_season_records(
         reverse=True,
     )
     for player_id, value in ranked_results:
-        player = player_contexts[player_id]
+        player = season_input.players_by_id[player_id]
         if not player.passes_minute_filters(
             min_average_minutes=request.min_average_minutes,
             min_total_minutes=request.min_total_minutes,
@@ -85,14 +93,14 @@ def _build_season_records(
 
 def prepare_wowy_player_season_records(
     *,
-    season_inputs: list[WowySeasonInput],
+    season_inputs: list[WowySeasonInputDTO],
     min_games_with: int,
     min_games_without: int,
     min_average_minutes: float | None = None,
     min_total_minutes: float | None = None,
 ) -> list[WowyPlayerSeasonRecord]:
-    return WowyPlayerSeasonRecord.build_player_season_records(
-        WowyRequest(
+    return build_player_season_records(
+        build_wowy_request(
             season_inputs=season_inputs,
             min_games_with=min_games_with,
             min_games_without=min_games_without,
@@ -105,7 +113,7 @@ def prepare_wowy_player_season_records(
 def build_wowy_custom_query(
     metric: Metric,
     *,
-    season_inputs: list[WowySeasonInput],
+    season_inputs: list[WowySeasonInputDTO],
     min_games_with: int,
     min_games_without: int,
     min_average_minutes: float | None,

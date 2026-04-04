@@ -9,19 +9,36 @@ from rawr_analytics.shared.season import Season
 
 
 @dataclass(frozen=True)
-class WowySeasonInput:
+class WowySeasonInputDTO:
     season: Season
     games: list[WowyGame]
-    players: list[PlayerSeasonContext]
+    players_by_id: dict[int, PlayerSeasonContext]
 
 
 @dataclass(frozen=True)
-class WowyRequest:
-    season_inputs: list[WowySeasonInput]
+class WowyRequestDTO:
+    season_inputs: list[WowySeasonInputDTO]
     min_games_with: int
     min_games_without: int
     min_average_minutes: float | None = None
     min_total_minutes: float | None = None
+
+
+def build_wowy_request(
+    *,
+    season_inputs: list[WowySeasonInputDTO],
+    min_games_with: int,
+    min_games_without: int,
+    min_average_minutes: float | None = None,
+    min_total_minutes: float | None = None,
+) -> WowyRequestDTO:
+    return WowyRequestDTO(
+        season_inputs=season_inputs,
+        min_games_with=min_games_with,
+        min_games_without=min_games_without,
+        min_average_minutes=min_average_minutes,
+        min_total_minutes=min_total_minutes,
+    )
 
 
 def validate_filters(
@@ -41,7 +58,7 @@ def validate_filters(
     )
 
 
-def validate_request(request: WowyRequest) -> None:
+def validate_request(request: WowyRequestDTO) -> None:
     validate_filters(
         request.min_games_with,
         request.min_games_without,
@@ -52,10 +69,8 @@ def validate_request(request: WowyRequest) -> None:
         _validate_season_input(season_input)
 
 
-def _validate_season_input(season_input: WowySeasonInput) -> None:
-    player_ids = {player.player.player_id for player in season_input.players}
-    if len(player_ids) != len(season_input.players):
-        raise ValueError(f"WOWY season {season_input.season!r} has duplicate player contexts")
+def _validate_season_input(season_input: WowySeasonInputDTO) -> None:
+    player_ids = set(season_input.players_by_id)
     for game in season_input.games:
         unknown_player_ids = sorted(game.players - player_ids)
         if unknown_player_ids:

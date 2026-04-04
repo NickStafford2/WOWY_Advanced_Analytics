@@ -15,7 +15,7 @@ from rawr_analytics.metrics.rawr._shrinkage import RawrShrinkageMode
 from rawr_analytics.metrics.rawr.defaults import DEFAULT_RAWR_SHRINKAGE_MODE
 from rawr_analytics.metrics.rawr.inputs import RawrRequestDTO, build_rawr_request
 from rawr_analytics.metrics.wowy.analysis import WowyGame
-from rawr_analytics.metrics.wowy.inputs import WowySeasonInput
+from rawr_analytics.metrics.wowy.inputs import WowySeasonInputDTO
 from rawr_analytics.shared.game import NormalizedGamePlayerRecord, NormalizedGameRecord
 from rawr_analytics.shared.player import PlayerMinutes, PlayerSummary
 from rawr_analytics.shared.scope import TeamSeasonScope
@@ -100,7 +100,7 @@ def load_wowy_season_inputs(
     teams: list[Team] | None,
     seasons: list[Season] | None,
     season_type: SeasonType,
-) -> list[WowySeasonInput]:
+) -> list[WowySeasonInputDTO]:
     team_seasons = resolve_team_seasons(teams, seasons, season_type=season_type)
     if not team_seasons:
         raise ValueError("No cached data matched the requested scope")
@@ -112,17 +112,17 @@ def load_wowy_season_inputs(
     minute_stats = _build_wowy_player_season_minute_stats(games, game_players)
     games_by_season = _derive_wowy_games_by_season(games, game_players)
 
-    season_inputs: list[WowySeasonInput] = []
+    season_inputs: list[WowySeasonInputDTO] = []
     for season in sorted(games_by_season, key=lambda item: item.id):
         player_ids = sorted(
             {player_id for game in games_by_season[season] for player_id in game.players}
         )
         season_inputs.append(
-            WowySeasonInput(
+            WowySeasonInputDTO(
                 season=season,
                 games=games_by_season[season],
-                players=[
-                    PlayerSeasonContext(
+                players_by_id={
+                    player_id: PlayerSeasonContext(
                         player=PlayerSummary(
                             player_id=player_id,
                             player_name=player_names.get(player_id, str(player_id)),
@@ -130,7 +130,7 @@ def load_wowy_season_inputs(
                         minutes=_player_minutes(minute_stats, season, player_id),
                     )
                     for player_id in player_ids
-                ],
+                },
             )
         )
     return season_inputs
