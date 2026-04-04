@@ -31,10 +31,7 @@ from rawr_analytics.metrics.wowy.query_views import (
     build_leaderboard_payload,
     build_player_seasons_payload,
 )
-from rawr_analytics.metrics.wowy.records import (
-    WowyPlayerSeasonRecord,
-    build_player_season_records,
-)
+from rawr_analytics.metrics.wowy.records import WowyPlayerSeasonRecord
 
 __all__ = [
     "DEFAULT_WOWY_SHRINKAGE_PRIOR_GAMES",
@@ -50,7 +47,6 @@ __all__ = [
     "WowySeasonInput",
     "build_export_table",
     "build_leaderboard_payload",
-    "build_player_season_records",
     "build_player_seasons_payload",
     "build_wowy_custom_query",
     "build_wowy_query",

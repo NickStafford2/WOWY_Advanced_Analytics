@@ -10,7 +10,6 @@ from rawr_analytics.metrics.wowy.analysis import (
 )
 from rawr_analytics.metrics.wowy.defaults import describe_metric
 from rawr_analytics.metrics.wowy.inputs import WowyRequest, WowySeasonInput
-from rawr_analytics.metrics.wowy.records import build_player_season_records
 from rawr_analytics.metrics.wowy.records import WowyPlayerSeasonRecord
 from rawr_analytics.shared.player import PlayerMinutes, PlayerSummary
 
@@ -38,7 +37,7 @@ def prepare_wowy_player_season_records(
     min_average_minutes: float | None = None,
     min_total_minutes: float | None = None,
 ) -> list[WowyPlayerSeasonRecord]:
-    return build_player_season_records(
+    return WowyPlayerSeasonRecord.build_player_season_records(
         WowyRequest(
             season_inputs=season_inputs,
             min_games_with=min_games_with,

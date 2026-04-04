@@ -11,7 +11,6 @@ from rawr_analytics.metrics.rawr.defaults import (
     describe_metric,
 )
 from rawr_analytics.metrics.rawr.inputs import RawrRequest, RawrSeasonInput
-from rawr_analytics.metrics.rawr.records import build_player_season_records
 from rawr_analytics.metrics.rawr.records import RawrPlayerSeasonRecord
 from rawr_analytics.shared.player import PlayerMinutes, PlayerSummary
 
@@ -42,7 +41,7 @@ def prepare_rawr_player_season_records(
     min_average_minutes: float | None = None,
     min_total_minutes: float | None = None,
 ) -> list[RawrPlayerSeasonRecord]:
-    return build_player_season_records(
+    return RawrPlayerSeasonRecord.build_player_season_records(
         RawrRequest(
             season_inputs=season_inputs,
             min_games=min_games,

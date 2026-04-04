@@ -4,8 +4,12 @@ from dataclasses import dataclass
 
 from rawr_analytics.metrics.rawr._observations import count_player_season_games
 from rawr_analytics.metrics.rawr.analysis import RawrValue, fit_player_rawr
-from rawr_analytics.metrics.rawr.inputs import passes_minute_filters, validate_request
-from rawr_analytics.metrics.rawr.inputs import RawrRequest, RawrSeasonInput
+from rawr_analytics.metrics.rawr.inputs import (
+    RawrRequest,
+    RawrSeasonInput,
+    passes_minute_filters,
+    validate_request,
+)
 from rawr_analytics.shared.player import PlayerMinutes, PlayerSummary
 from rawr_analytics.shared.season import Season
 
@@ -17,21 +21,21 @@ class RawrPlayerSeasonRecord:
     minutes: PlayerMinutes
     result: RawrValue
 
-
-def build_player_season_records(request: RawrRequest) -> list[RawrPlayerSeasonRecord]:
-    validate_request(request)
-    records: list[RawrPlayerSeasonRecord] = []
-    for season_input in sorted(request.season_inputs, key=lambda item: item.season.id):
-        records.extend(_build_season_records(season_input, request=request))
-    records.sort(
-        key=lambda record: (
-            record.season.id,
-            record.result.coefficient,
-            record.player.player_name,
-        ),
-        reverse=True,
-    )
-    return records
+    @staticmethod
+    def build_player_season_records(request: RawrRequest) -> list[RawrPlayerSeasonRecord]:
+        validate_request(request)
+        records: list[RawrPlayerSeasonRecord] = []
+        for season_input in sorted(request.season_inputs, key=lambda item: item.season.id):
+            records.extend(_build_season_records(season_input, request=request))
+        records.sort(
+            key=lambda record: (
+                record.season.id,
+                record.result.coefficient,
+                record.player.player_name,
+            ),
+            reverse=True,
+        )
+        return records
 
 
 def _build_season_records(

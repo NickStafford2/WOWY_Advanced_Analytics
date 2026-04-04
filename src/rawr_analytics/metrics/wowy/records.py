@@ -3,8 +3,12 @@ from __future__ import annotations
 from dataclasses import dataclass
 
 from rawr_analytics.metrics.wowy.analysis import WowyPlayerValue, compute_wowy, filter_results
-from rawr_analytics.metrics.wowy.inputs import passes_minute_filters, validate_request
-from rawr_analytics.metrics.wowy.inputs import WowyRequest, WowySeasonInput
+from rawr_analytics.metrics.wowy.inputs import (
+    WowyRequest,
+    WowySeasonInput,
+    passes_minute_filters,
+    validate_request,
+)
 from rawr_analytics.shared.player import PlayerMinutes, PlayerSummary
 from rawr_analytics.shared.season import Season
 
@@ -16,13 +20,13 @@ class WowyPlayerSeasonRecord:
     minutes: PlayerMinutes
     result: WowyPlayerValue
 
-
-def build_player_season_records(request: WowyRequest) -> list[WowyPlayerSeasonRecord]:
-    validate_request(request)
-    records: list[WowyPlayerSeasonRecord] = []
-    for season_input in sorted(request.season_inputs, key=lambda item: item.season.id):
-        records.extend(_build_season_records(season_input, request=request))
-    return records
+    @staticmethod
+    def build_player_season_records(request: WowyRequest) -> list[WowyPlayerSeasonRecord]:
+        validate_request(request)
+        records: list[WowyPlayerSeasonRecord] = []
+        for season_input in sorted(request.season_inputs, key=lambda item: item.season.id):
+            records.extend(_build_season_records(season_input, request=request))
+        return records
 
 
 def _build_season_records(
