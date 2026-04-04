@@ -82,17 +82,17 @@ def build_cached_leaderboard_payload(
     seasons: list[str],
     top_n: int,
 ) -> dict[str, Any]:
-    payload = _build_leaderboard_payload(
-        metric=metric.value,
-        metric_label=metric_label,
-        rows=rows,
-        seasons=seasons,
-        top_n=top_n,
-        mode="cached",
-    )
-    payload["available_seasons"] = available_seasons
-    payload["available_teams"] = available_teams
-    return payload
+    table_rows = _build_ranked_table_rows(rows=rows, seasons=seasons, top_n=top_n)
+    return {
+        "mode": "cached",
+        "metric": metric,
+        "metric_label": metric_label,
+        "span": _build_span_payload(seasons=seasons, top_n=top_n),
+        "table_rows": table_rows,
+        "series": _build_series_from_table_rows(table_rows),
+        "available_seasons": available_seasons,
+        "available_teams": available_teams,
+    }
 
 
 def build_custom_leaderboard_payload(
@@ -101,14 +101,16 @@ def build_custom_leaderboard_payload(
     *,
     top_n: int,
 ) -> dict[str, Any]:
-    return _build_leaderboard_payload(
-        metric=metric.value,
-        metric_label=result.metric_label,
-        rows=result.rows,
-        seasons=sorted({row.season_id for row in result.rows}),
-        top_n=top_n,
-        mode="custom",
-    )
+    seasons = sorted({row.season_id for row in result.rows})
+    table_rows = _build_ranked_table_rows(rows=result.rows, seasons=seasons, top_n=top_n)
+    return {
+        "mode": "custom",
+        "metric": metric.value,
+        "metric_label": result.metric_label,
+        "span": _build_span_payload(seasons=seasons, top_n=top_n),
+        "table_rows": table_rows,
+        "series": _build_series_from_table_rows(table_rows),
+    }
 
 
 def build_export_table(
@@ -141,26 +143,6 @@ def _serialize_player_season_row(
         "average_minutes": row.minutes.average_minutes,
         "total_minutes": row.minutes.total_minutes,
         "raw_wowy_score": row.result.raw_value,
-    }
-
-
-def _build_leaderboard_payload(
-    *,
-    metric: str,
-    metric_label: str,
-    rows: Sequence[WowyPlayerSeasonValue],
-    seasons: list[str],
-    top_n: int,
-    mode: str,
-) -> dict[str, Any]:
-    table_rows = _build_ranked_table_rows(rows=rows, seasons=seasons, top_n=top_n)
-    return {
-        "mode": mode,
-        "metric": metric,
-        "metric_label": metric_label,
-        "span": _build_span_payload(seasons=seasons, top_n=top_n),
-        "table_rows": table_rows,
-        "series": _build_series_from_table_rows(table_rows),
     }
 
 
@@ -210,11 +192,7 @@ def _build_ranked_table_rows(
                     {
                         "season": season_id,
                         "value": next(
-                            (
-                                row.result.value
-                                for row in player_rows
-                                if row.season_id == season_id
-                            ),
+                            (row.result.value for row in player_rows if row.season_id == season_id),
                             None,
                         ),
                     }
