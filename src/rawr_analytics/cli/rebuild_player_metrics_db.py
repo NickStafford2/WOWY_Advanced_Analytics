@@ -21,7 +21,7 @@ _DEFAULT_START_YEAR = 2025
 _DEFAULT_END_YEAR = 1998
 
 
-def build_parser() -> argparse.ArgumentParser:
+def _build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
         description=(
             "Rebuild the full player metrics SQLite database from scratch: "
@@ -66,7 +66,7 @@ def build_parser() -> argparse.ArgumentParser:
 
 
 def main(argv: list[str] | None = None) -> int:
-    parser = build_parser()
+    parser = _build_parser()
     args = parser.parse_args(argv)
 
     result = rebuild_player_metrics_db(
@@ -121,7 +121,7 @@ def _render_failure_summary(failures: Sequence[SeasonRangeFailure]) -> None:
     )
 
 
-def run(argv: list[str] | None = None) -> int:
+def _run(argv: list[str] | None = None) -> int:
     try:
         return main(argv)
     except KeyboardInterrupt:
@@ -131,4 +131,4 @@ def run(argv: list[str] | None = None) -> int:
 
 
 if __name__ == "__main__":
-    raise SystemExit(run())
+    raise SystemExit(_run())
