@@ -26,8 +26,8 @@ from rawr_analytics.metrics.rawr import (
     DEFAULT_RAWR_SHRINKAGE_MINUTE_SCALE,
     DEFAULT_RAWR_SHRINKAGE_MODE,
     DEFAULT_RAWR_SHRINKAGE_STRENGTH,
+    describe_rawr_metric,
 )
-from rawr_analytics.metrics.rawr import describe_metric as describe_rawr_metric
 from rawr_analytics.metrics.rawr.inputs import RawrRequest
 from rawr_analytics.metrics.rawr.records import build_player_season_records
 from rawr_analytics.metrics.wowy import (

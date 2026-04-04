@@ -173,7 +173,7 @@ def _load_rawr_store_values(
 ) -> list[RawrPlayerSeasonRecord]:
     return [
         RawrPlayerSeasonRecord(
-            season=Season.parse(row.season_id),
+            season=Season.parse(row.season_id, query.season_type.value),
             player=PlayerSummary(
                 player_id=row.player_id,
                 player_name=row.player_name,
