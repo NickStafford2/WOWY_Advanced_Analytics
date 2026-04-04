@@ -9,18 +9,6 @@ from rawr_analytics.data import (
     render_rebuild_validation_summary,
     validate_rebuild_storage,
 )
-from rawr_analytics.sources.nba_api.ingest import (
-    FailureLogFn,
-    IngestEvent,
-    IngestFailureLogEntry,
-    IngestSeasonStartedEvent,
-    IngestTeamCompletedEvent,
-    IngestTeamFailedEvent,
-    IngestTeamProgressEvent,
-    SeasonRangeFailure,
-    SeasonRangeResult,
-    refresh_season_range,
-)
 from rawr_analytics.metrics.constants import Metric
 from rawr_analytics.services.metric_refresh import (
     DEFAULT_RAWR_RIDGE_ALPHA,
@@ -35,6 +23,18 @@ from rawr_analytics.shared.ingest import (
 )
 from rawr_analytics.shared.season import Season, SeasonType
 from rawr_analytics.shared.team import Team
+from rawr_analytics.sources.nba_api.ingest import (
+    FailureLogFn,
+    IngestEvent,
+    IngestFailureLogEntry,
+    IngestSeasonStartedEvent,
+    IngestTeamCompletedEvent,
+    IngestTeamFailedEvent,
+    IngestTeamProgressEvent,
+    SeasonRangeFailure,
+    SeasonRangeResult,
+    refresh_season_range,
+)
 
 RebuildEventFn = Callable[["RebuildEvent"], None]
 
