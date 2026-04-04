@@ -7,6 +7,7 @@ from typing import Any
 from rawr_analytics.metrics._span import build_span_payload
 from rawr_analytics.metrics.rawr.defaults import describe_metric
 from rawr_analytics.metrics.rawr.models import RawrCustomQueryResult, RawrPlayerSeasonValue
+from rawr_analytics.metrics.rawr.query import RawrQuery
 from rawr_analytics.shared.season import Season, SeasonType
 from rawr_analytics.shared.team import Team
 
@@ -22,42 +23,47 @@ class RawrQueryFilters:
     min_games: int
     ridge_alpha: float
 
-    def build_payload(
-        *,
-        teams: list[Team] | None,
-        seasons: list[Season] | None,
-        season_type: SeasonType,
-        min_average_minutes: float,
-        min_total_minutes: float,
-        top_n: int,
-        min_games: int | None,
-        ridge_alpha: float | None,
-    ) -> RawrQueryFilters:
-        assert min_games is not None
-        assert ridge_alpha is not None
-        return RawrQueryFilters(
-            teams=teams,
-            seasons=seasons,
-            season_type=season_type,
-            min_average_minutes=min_average_minutes,
-            min_total_minutes=min_total_minutes,
-            top_n=top_n,
-            min_games=min_games,
-            ridge_alpha=ridge_alpha,
+    @classmethod
+    def from_query(cls, query: RawrQuery) -> RawrQueryFilters:
+        return cls(
+            teams=query.teams,
+            seasons=query.seasons,
+            season_type=query.season_type,
+            min_average_minutes=query.min_average_minutes,
+            min_total_minutes=query.min_total_minutes,
+            top_n=query.top_n,
+            min_games=query.min_games,
+            ridge_alpha=query.ridge_alpha,
         )
 
+    def for_options(self) -> RawrQueryFilters:
+        return RawrQueryFilters(
+            teams=self.teams,
+            seasons=None,
+            season_type=self.season_type,
+            min_average_minutes=self.min_average_minutes,
+            min_total_minutes=self.min_total_minutes,
+            top_n=self.top_n,
+            min_games=self.min_games,
+            ridge_alpha=self.ridge_alpha,
+        )
 
-def build_options_filters_payload(filters: RawrQueryFilters) -> RawrQueryFilters:
-    return RawrQueryFilters(
-        teams=filters.teams,
-        seasons=None,
-        season_type=filters.season_type,
-        min_average_minutes=filters.min_average_minutes,
-        min_total_minutes=filters.min_total_minutes,
-        top_n=filters.top_n,
-        min_games=filters.min_games,
-        ridge_alpha=filters.ridge_alpha,
-    )
+    def to_payload(self) -> dict[str, Any]:
+        return {
+            "team": (
+                None
+                if self.teams is None
+                else [team.current.abbreviation for team in self.teams]
+            ),
+            "team_id": None if self.teams is None else [team.team_id for team in self.teams],
+            "season": None if self.seasons is None else [season.id for season in self.seasons],
+            "season_type": self.season_type.to_nba_format(),
+            "min_average_minutes": self.min_average_minutes,
+            "min_total_minutes": self.min_total_minutes,
+            "top_n": self.top_n,
+            "min_games": self.min_games,
+            "ridge_alpha": self.ridge_alpha,
+        }
 
 
 def build_player_seasons_payload(
@@ -87,8 +93,8 @@ def build_cached_leaderboard_payload(
         top_n=top_n,
         mode="cached",
     )
-    payload["available_seasons"] = available_seasons
-    payload["available_teams"] = available_teams
+    payload["available_seasons"] = [season.id for season in available_seasons]
+    payload["available_teams"] = [team.current.abbreviation for team in available_teams]
     return payload
 
 

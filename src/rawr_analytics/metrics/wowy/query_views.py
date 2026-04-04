@@ -8,6 +8,7 @@ from rawr_analytics.metrics._span import build_span_payload
 from rawr_analytics.metrics.constants import Metric
 from rawr_analytics.metrics.wowy.defaults import describe_metric
 from rawr_analytics.metrics.wowy.models import WowyCustomQueryResult, WowyPlayerSeasonValue
+from rawr_analytics.metrics.wowy.query import WowyQuery
 from rawr_analytics.shared.season import Season, SeasonType
 from rawr_analytics.shared.team import Team
 
@@ -23,42 +24,47 @@ class WowyQueryFilters:
     min_games_with: int
     min_games_without: int
 
-    def build_payload(
-        *,
-        teams: list[Team] | None,
-        seasons: list[Season] | None,
-        season_type: SeasonType,
-        min_average_minutes: float,
-        min_total_minutes: float,
-        top_n: int,
-        min_games_with: int | None,
-        min_games_without: int | None,
-    ) -> WowyQueryFilters:
-        assert min_games_with is not None
-        assert min_games_without is not None
-        return WowyQueryFilters(
-            teams=teams,
-            seasons=seasons,
-            season_type=season_type,
-            min_average_minutes=min_average_minutes,
-            min_total_minutes=min_total_minutes,
-            top_n=top_n,
-            min_games_with=min_games_with,
-            min_games_without=min_games_without,
+    @classmethod
+    def from_query(cls, query: WowyQuery) -> WowyQueryFilters:
+        return cls(
+            teams=query.teams,
+            seasons=query.seasons,
+            season_type=query.season_type,
+            min_average_minutes=query.min_average_minutes,
+            min_total_minutes=query.min_total_minutes,
+            top_n=query.top_n,
+            min_games_with=query.min_games_with,
+            min_games_without=query.min_games_without,
         )
 
+    def for_options(self) -> WowyQueryFilters:
+        return WowyQueryFilters(
+            teams=self.teams,
+            seasons=None,
+            season_type=self.season_type,
+            min_average_minutes=self.min_average_minutes,
+            min_total_minutes=self.min_total_minutes,
+            top_n=self.top_n,
+            min_games_with=self.min_games_with,
+            min_games_without=self.min_games_without,
+        )
 
-def build_options_filters_payload(filters: WowyQueryFilters) -> WowyQueryFilters:
-    return WowyQueryFilters(
-        teams=filters.teams,
-        seasons=None,
-        season_type=filters.season_type,
-        min_average_minutes=filters.min_average_minutes,
-        min_total_minutes=filters.min_total_minutes,
-        top_n=filters.top_n,
-        min_games_with=filters.min_games_with,
-        min_games_without=filters.min_games_without,
-    )
+    def to_payload(self) -> dict[str, Any]:
+        return {
+            "team": (
+                None
+                if self.teams is None
+                else [team.current.abbreviation for team in self.teams]
+            ),
+            "team_id": None if self.teams is None else [team.team_id for team in self.teams],
+            "season": None if self.seasons is None else [season.id for season in self.seasons],
+            "season_type": self.season_type.to_nba_format(),
+            "min_average_minutes": self.min_average_minutes,
+            "min_total_minutes": self.min_total_minutes,
+            "top_n": self.top_n,
+            "min_games_with": self.min_games_with,
+            "min_games_without": self.min_games_without,
+        }
 
 
 def build_player_seasons_payload(
@@ -90,8 +96,8 @@ def build_cached_leaderboard_payload(
         "span": build_span_payload(seasons=seasons, top_n=top_n),
         "table_rows": table_rows,
         "series": _build_series_from_table_rows(table_rows),
-        "available_seasons": available_seasons,
-        "available_teams": available_teams,
+        "available_seasons": [season.id for season in available_seasons],
+        "available_teams": [team.current.abbreviation for team in available_teams],
     }
 
 

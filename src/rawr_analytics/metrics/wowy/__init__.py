@@ -31,7 +31,6 @@ from rawr_analytics.metrics.wowy.query_views import (
     build_cached_leaderboard_payload,
     build_custom_leaderboard_payload,
     build_export_table,
-    build_options_filters_payload,
     build_player_seasons_payload,
 )
 from rawr_analytics.metrics.wowy.records import build_player_season_records
@@ -51,7 +50,6 @@ __all__ = [
     "build_cached_leaderboard_payload",
     "build_custom_leaderboard_payload",
     "build_export_table",
-    "build_options_filters_payload",
     "build_player_season_records",
     "build_player_seasons_payload",
     "build_wowy_custom_query",

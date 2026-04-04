@@ -17,7 +17,6 @@ from rawr_analytics.metrics.rawr import (
     build_cached_leaderboard_payload,
     build_custom_leaderboard_payload,
     build_export_table,
-    build_options_filters_payload,
     build_player_seasons_payload,
     build_rawr_custom_query,
 )
@@ -42,25 +41,14 @@ MetricQueryExport = tuple[str, list[dict[str, JSONValue]]]
 
 
 def build_rawr_options_payload(query: RawrQuery) -> dict[str, JSONValue]:
-    filters = build_options_filters_payload(
-        RawrQueryFilters.build_payload(
-            teams=query.teams,
-            seasons=query.seasons,
-            season_type=query.season_type,
-            min_average_minutes=query.min_average_minutes,
-            min_total_minutes=query.min_total_minutes,
-            top_n=query.top_n,
-            min_games=query.min_games,
-            ridge_alpha=query.ridge_alpha,
-        )
-    )
+    filters = RawrQueryFilters.from_query(query).for_options()
     return cast(
         dict[str, JSONValue],
         build_metric_options_payload(
             metric=Metric.RAWR,
             teams=query.teams,
             season_type=query.season_type,
-            filters=_serialize_rawr_filters(filters),
+            filters=filters.to_payload(),
         ),
     )
 
@@ -71,18 +59,7 @@ def build_rawr_query_view(
     view: MetricView,
 ) -> dict[str, JSONValue]:
     payload = _build_rawr_view_payload(view=view, query=query)
-    payload["filters"] = _serialize_rawr_filters(
-        RawrQueryFilters.build_payload(
-            teams=query.teams,
-            seasons=query.seasons,
-            season_type=query.season_type,
-            min_average_minutes=query.min_average_minutes,
-            min_total_minutes=query.min_total_minutes,
-            top_n=query.top_n,
-            min_games=query.min_games,
-            ridge_alpha=query.ridge_alpha,
-        )
-    )
+    payload["filters"] = RawrQueryFilters.from_query(query).to_payload()
     return payload
 
 
@@ -96,14 +73,7 @@ def build_rawr_query_export(
 
     if view == "cached-leaderboard":
         catalog = require_current_metric_scope(metric=Metric.RAWR, scope_key=scope_key)
-        store_rows = load_rawr_player_season_value_rows(
-            scope_key=scope_key,
-            seasons=season_ids(query.seasons),
-            min_average_minutes=query.min_average_minutes,
-            min_total_minutes=query.min_total_minutes,
-            min_games=query.min_games,
-        )
-        values = _build_rawr_store_values(store_rows)
+        values = _load_rawr_store_values(query, scope_key=scope_key)
         return cast(
             MetricQueryExport,
             build_export_table(
@@ -135,14 +105,7 @@ def _build_rawr_view_payload(
 
     if view == "player-seasons":
         require_current_metric_scope(metric=Metric.RAWR, scope_key=scope_key)
-        store_rows = load_rawr_player_season_value_rows(
-            scope_key=scope_key,
-            seasons=season_ids(query.seasons),
-            min_average_minutes=query.min_average_minutes,
-            min_total_minutes=query.min_total_minutes,
-            min_games=query.min_games,
-        )
-        values = _build_rawr_store_values(store_rows)
+        values = _load_rawr_store_values(query, scope_key=scope_key)
         return cast(
             dict[str, JSONValue],
             build_player_seasons_payload(values),
@@ -150,30 +113,17 @@ def _build_rawr_view_payload(
 
     if view == "cached-leaderboard":
         catalog = require_current_metric_scope(metric=Metric.RAWR, scope_key=scope_key)
-        store_rows = load_rawr_player_season_value_rows(
-            scope_key=scope_key,
-            seasons=season_ids(query.seasons),
-            min_average_minutes=query.min_average_minutes,
-            min_total_minutes=query.min_total_minutes,
-            min_games=query.min_games,
-        )
-        values = _build_rawr_store_values(store_rows)
-        payload = cast(
+        return cast(
             dict[str, JSONValue],
             build_cached_leaderboard_payload(
                 metric_label=catalog.metric_label,
                 available_seasons=catalog.availability.seasons,
                 available_teams=catalog.availability.teams,
-                rows=values,
+                rows=_load_rawr_store_values(query, scope_key=scope_key),
                 seasons=selected_seasons(query.seasons, catalog),
                 top_n=query.top_n,
             ),
         )
-        payload["available_seasons"] = [season.id for season in catalog.availability.seasons]
-        payload["available_teams"] = [
-            team.current.abbreviation for team in catalog.availability.teams
-        ]
-        return payload
 
     if view == "span-chart":
         catalog = require_current_metric_scope(metric=Metric.RAWR, scope_key=scope_key)
@@ -239,18 +189,17 @@ def _build_rawr_store_values(
         for row in rows
     ]
 
-
-def _serialize_rawr_filters(filters: RawrQueryFilters) -> dict[str, JSONValue]:
-    return {
-        "team": (
-            None if filters.teams is None else [team.current.abbreviation for team in filters.teams]
-        ),
-        "team_id": None if filters.teams is None else [team.team_id for team in filters.teams],
-        "season": None if filters.seasons is None else [season.id for season in filters.seasons],
-        "season_type": filters.season_type.to_nba_format(),
-        "min_average_minutes": filters.min_average_minutes,
-        "min_total_minutes": filters.min_total_minutes,
-        "top_n": filters.top_n,
-        "min_games": filters.min_games,
-        "ridge_alpha": filters.ridge_alpha,
-    }
+def _load_rawr_store_values(
+    query: RawrQuery,
+    *,
+    scope_key: str,
+) -> list[RawrPlayerSeasonValue]:
+    return _build_rawr_store_values(
+        load_rawr_player_season_value_rows(
+            scope_key=scope_key,
+            seasons=season_ids(query.seasons),
+            min_average_minutes=query.min_average_minutes,
+            min_total_minutes=query.min_total_minutes,
+            min_games=query.min_games,
+        )
+    )

@@ -16,7 +16,6 @@ from rawr_analytics.metrics.wowy import (
     build_cached_leaderboard_payload,
     build_custom_leaderboard_payload,
     build_export_table,
-    build_options_filters_payload,
     build_player_seasons_payload,
     build_wowy_custom_query,
 )
@@ -43,25 +42,14 @@ def build_wowy_options_payload(
     query: WowyQuery,
 ) -> dict[str, JSONValue]:
     _require_wowy_metric(metric)
-    filters = build_options_filters_payload(
-        WowyQueryFilters.build_payload(
-            teams=query.teams,
-            seasons=query.seasons,
-            season_type=query.season_type,
-            min_average_minutes=query.min_average_minutes,
-            min_total_minutes=query.min_total_minutes,
-            top_n=query.top_n,
-            min_games_with=query.min_games_with,
-            min_games_without=query.min_games_without,
-        )
-    )
+    filters = WowyQueryFilters.from_query(query).for_options()
     return cast(
         dict[str, JSONValue],
         build_metric_options_payload(
             metric=metric,
             teams=query.teams,
             season_type=query.season_type,
-            filters=_serialize_wowy_filters(filters),
+            filters=filters.to_payload(),
         ),
     )
 
@@ -74,18 +62,7 @@ def build_wowy_query_view(
 ) -> dict[str, JSONValue]:
     _require_wowy_metric(metric)
     payload = _build_wowy_view_payload(metric, view=view, query=query)
-    payload["filters"] = _serialize_wowy_filters(
-        WowyQueryFilters.build_payload(
-            teams=query.teams,
-            seasons=query.seasons,
-            season_type=query.season_type,
-            min_average_minutes=query.min_average_minutes,
-            min_total_minutes=query.min_total_minutes,
-            top_n=query.top_n,
-            min_games_with=query.min_games_with,
-            min_games_without=query.min_games_without,
-        )
-    )
+    payload["filters"] = WowyQueryFilters.from_query(query).to_payload()
     return payload
 
 
@@ -99,16 +76,7 @@ def build_wowy_query_export(
 
     if view == "cached-leaderboard":
         catalog = require_current_metric_scope(metric=metric, scope_key=scope_key)
-        store_rows = load_wowy_player_season_value_rows(
-            metric_id=metric.value,
-            scope_key=scope_key,
-            seasons=season_ids(query.seasons),
-            min_average_minutes=query.min_average_minutes,
-            min_total_minutes=query.min_total_minutes,
-            min_games_with=query.min_games_with,
-            min_games_without=query.min_games_without,
-        )
-        values = _build_wowy_store_values(store_rows)
+        values = _load_wowy_store_values(metric, query, scope_key=scope_key)
         return cast(
             MetricQueryExport,
             build_export_table(
@@ -143,50 +111,28 @@ def _build_wowy_view_payload(
 
     if view == "player-seasons":
         require_current_metric_scope(metric=metric, scope_key=scope_key)
-        store_rows = load_wowy_player_season_value_rows(
-            metric_id=metric.value,
-            scope_key=scope_key,
-            seasons=season_ids(query.seasons),
-            min_average_minutes=query.min_average_minutes,
-            min_total_minutes=query.min_total_minutes,
-            min_games_with=query.min_games_with,
-            min_games_without=query.min_games_without,
-        )
-        values = _build_wowy_store_values(store_rows)
         return cast(
             dict[str, JSONValue],
-            build_player_seasons_payload(metric, values),
+            build_player_seasons_payload(
+                metric,
+                _load_wowy_store_values(metric, query, scope_key=scope_key),
+            ),
         )
 
     if view == "cached-leaderboard":
         catalog = require_current_metric_scope(metric=metric, scope_key=scope_key)
-        store_rows = load_wowy_player_season_value_rows(
-            metric_id=metric.value,
-            scope_key=scope_key,
-            seasons=season_ids(query.seasons),
-            min_average_minutes=query.min_average_minutes,
-            min_total_minutes=query.min_total_minutes,
-            min_games_with=query.min_games_with,
-            min_games_without=query.min_games_without,
-        )
-        values = _build_wowy_store_values(store_rows)
-        payload = cast(
+        return cast(
             dict[str, JSONValue],
             build_cached_leaderboard_payload(
                 metric,
                 metric_label=catalog.metric_label,
                 available_seasons=catalog.availability.seasons,
                 available_teams=catalog.availability.teams,
-                rows=values,
+                rows=_load_wowy_store_values(metric, query, scope_key=scope_key),
                 seasons=selected_seasons(query.seasons, catalog),
                 top_n=query.top_n,
             ),
         )
-        payload["available_seasons"] = [season.id for season in catalog.availability.seasons]
-        payload["available_teams"] = [
-            team.current.abbreviation for team in catalog.availability.teams
-        ]
-        return payload
 
     if view == "span-chart":
         catalog = require_current_metric_scope(metric=metric, scope_key=scope_key)
@@ -256,20 +202,23 @@ def _build_wowy_store_values(
     ]
 
 
-def _serialize_wowy_filters(filters: WowyQueryFilters) -> dict[str, JSONValue]:
-    return {
-        "team": (
-            None if filters.teams is None else [team.current.abbreviation for team in filters.teams]
-        ),
-        "team_id": None if filters.teams is None else [team.team_id for team in filters.teams],
-        "season": None if filters.seasons is None else [season.id for season in filters.seasons],
-        "season_type": filters.season_type.to_nba_format(),
-        "min_average_minutes": filters.min_average_minutes,
-        "min_total_minutes": filters.min_total_minutes,
-        "top_n": filters.top_n,
-        "min_games_with": filters.min_games_with,
-        "min_games_without": filters.min_games_without,
-    }
+def _load_wowy_store_values(
+    metric: Metric,
+    query: WowyQuery,
+    *,
+    scope_key: str,
+) -> list[WowyPlayerSeasonValue]:
+    return _build_wowy_store_values(
+        load_wowy_player_season_value_rows(
+            metric_id=metric.value,
+            scope_key=scope_key,
+            seasons=season_ids(query.seasons),
+            min_average_minutes=query.min_average_minutes,
+            min_total_minutes=query.min_total_minutes,
+            min_games_with=query.min_games_with,
+            min_games_without=query.min_games_without,
+        )
+    )
 
 
 def _require_wowy_metric(metric: Metric) -> None:
