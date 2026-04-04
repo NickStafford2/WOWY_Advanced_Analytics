@@ -19,13 +19,13 @@ from rawr_analytics.data.game_cache import (
 from rawr_analytics.data.metric_store import (
     MetricFullSpanPointRow,
     MetricFullSpanSeriesRow,
-    MetricScopeCatalogRow,
     MetricStoreAuditMetadata,
     RawrPlayerSeasonValueRow,
     WowyPlayerSeasonValueRow,
     audit_metric_store_tables,
     initialize_player_metrics_db,
 )
+from rawr_analytics.data.metric_store._catalog import MetricScopeCatalogRow
 
 
 @dataclass(frozen=True)
@@ -263,9 +263,7 @@ def _validate_metric_store_relations(
         season_set = set(seasons)
         metadata_row = metadata_rows.get(key)
         metadata_table = (
-            metadata_row.source_table
-            if metadata_row is not None
-            else "metric_snapshot"
+            metadata_row.source_table if metadata_row is not None else "metric_snapshot"
         )
         if metadata_row is None:
             issues.append(
@@ -355,9 +353,7 @@ def _validate_metric_store_relations(
         metric, scope_key = key
         metadata_row = metadata_rows.get(key)
         metadata_table = (
-            metadata_row.source_table
-            if metadata_row is not None
-            else "metric_snapshot"
+            metadata_row.source_table if metadata_row is not None else "metric_snapshot"
         )
         catalog_row = catalog_rows.get(key)
         group_rows = metric_row_groups.get(key, [])
@@ -457,8 +453,7 @@ def _validate_metric_store_relations(
                         table="metric_full_span",
                         key=f"metric={metric!r},scope_key={scope_key!r}",
                         message=(
-                            "full-span rows point at a different snapshot_id than "
-                            "metric_snapshot"
+                            "full-span rows point at a different snapshot_id than metric_snapshot"
                         ),
                     )
                 )
@@ -523,7 +518,7 @@ def _load_normalized_cache_state() -> tuple[dict[str, int], dict[str, str]]:
     with sqlite3.connect(NORMALIZED_CACHE_DB_PATH) as connection:
         connection.row_factory = sqlite3.Row
         rows = connection.execute(
-        """
+            """
         SELECT
             load.team_id,
             load.season,
