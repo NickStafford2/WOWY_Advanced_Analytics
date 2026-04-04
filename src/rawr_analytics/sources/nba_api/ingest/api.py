@@ -3,6 +3,7 @@ from __future__ import annotations
 from rawr_analytics.shared.common import LogFn
 from rawr_analytics.shared.ingest import (
     FetchError,
+    IngestProgress,
     IngestUpdateFn,
     PartialTeamSeasonError,
 )
@@ -13,8 +14,6 @@ from rawr_analytics.sources.nba_api.ingest._models import (
     FailureLogFn,
     IngestEvent,
     IngestEventFn,
-    IngestFailureLogEntry,
-    IngestProgress,
     IngestRequest,
     IngestResult,
     IngestSeasonStartedEvent,
