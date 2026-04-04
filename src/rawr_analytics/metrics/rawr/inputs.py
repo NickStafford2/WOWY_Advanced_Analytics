@@ -1,11 +1,14 @@
 from __future__ import annotations
 
+from collections import defaultdict
 from dataclasses import dataclass
 
 from rawr_analytics.metrics._player_context import PlayerSeasonContext
 from rawr_analytics.metrics._validation import validate_top_n_and_minutes
-from rawr_analytics.metrics.rawr._observations import RawrObservation
+from rawr_analytics.metrics.rawr._observations import RawrObservation, build_rawr_observations
 from rawr_analytics.metrics.rawr._shrinkage import RawrShrinkageMode
+from rawr_analytics.shared.game import NormalizedGamePlayerRecord, NormalizedGameRecord
+from rawr_analytics.shared.player import PlayerMinutes, PlayerSummary
 from rawr_analytics.shared.season import Season
 
 
@@ -13,7 +16,7 @@ from rawr_analytics.shared.season import Season
 class RawrSeasonInput:
     season: Season
     observations: list[RawrObservation]
-    players: list[PlayerSeasonContext]
+    players_by_id: dict[int, PlayerSeasonContext]
 
 
 @dataclass(frozen=True)
@@ -69,10 +72,30 @@ def validate_request(request: RawrRequest) -> None:
         _validate_season_input(season_input)
 
 
+def build_rawr_season_input(
+    *,
+    season: Season,
+    games: list[NormalizedGameRecord],
+    game_players: list[NormalizedGamePlayerRecord],
+) -> RawrSeasonInput | None:
+    observations = build_rawr_observations(games, game_players)
+    if not observations:
+        return None
+    player_ids = sorted(
+        {player_id for observation in observations for player_id in observation.player_weights}
+    )
+    return RawrSeasonInput(
+        season=season,
+        observations=observations,
+        players_by_id=_build_players_by_id(
+            game_players=game_players,
+            player_ids=player_ids,
+        ),
+    )
+
+
 def _validate_season_input(season_input: RawrSeasonInput) -> None:
-    player_ids = {player.player.player_id for player in season_input.players}
-    if len(player_ids) != len(season_input.players):
-        raise ValueError(f"RAWR season {season_input.season!r} has duplicate player contexts")
+    player_ids = set(season_input.players_by_id)
     for observation in season_input.observations:
         unknown_player_ids = sorted(
             player_id
@@ -84,3 +107,39 @@ def _validate_season_input(season_input: RawrSeasonInput) -> None:
                 f"RAWR season {season_input.season!r} references unknown players "
                 f"{unknown_player_ids!r}"
             )
+
+
+def _build_players_by_id(
+    *,
+    game_players: list[NormalizedGamePlayerRecord],
+    player_ids: list[int],
+) -> dict[int, PlayerSeasonContext]:
+    totals_by_player_id: dict[int, float] = defaultdict(float)
+    games_by_player_id: dict[int, int] = defaultdict(int)
+    players_by_id: dict[int, PlayerSummary] = {}
+
+    for game_player in game_players:
+        player_id = game_player.player.player_id
+        players_by_id[player_id] = game_player.player
+        if not game_player.has_positive_minutes():
+            continue
+        assert game_player.minutes is not None
+        totals_by_player_id[player_id] += game_player.minutes
+        games_by_player_id[player_id] += 1
+
+    season_players: dict[int, PlayerSeasonContext] = {}
+    for player_id in player_ids:
+        total_minutes = totals_by_player_id.get(player_id)
+        games = games_by_player_id.get(player_id, 0)
+        average_minutes = None if total_minutes is None or games == 0 else total_minutes / games
+        season_players[player_id] = PlayerSeasonContext(
+            player=players_by_id.get(
+                player_id,
+                PlayerSummary(player_id=player_id, player_name=str(player_id)),
+            ),
+            minutes=PlayerMinutes(
+                average_minutes=average_minutes,
+                total_minutes=total_minutes,
+            ),
+        )
+    return season_players

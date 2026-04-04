@@ -1,9 +1,9 @@
 from __future__ import annotations
 
-from enum import Enum
+from enum import StrEnum
 
 
-class RawrShrinkageMode(str, Enum):
+class RawrShrinkageMode(StrEnum):
     UNIFORM = "uniform"
     GAME_COUNT = "game-count"
     MINUTES = "minutes"

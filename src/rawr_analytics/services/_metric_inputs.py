@@ -10,12 +10,8 @@ from rawr_analytics.data.game_cache import (
 )
 from rawr_analytics.data.game_cache.rows import NormalizedGamePlayerRow, NormalizedGameRow
 from rawr_analytics.data.scope_resolver import resolve_team_seasons
-from rawr_analytics.metrics.rawr._observations import (
-    build_rawr_observations,
-    build_rawr_player_season_minute_stats,
-)
 from rawr_analytics.metrics._player_context import PlayerSeasonContext
-from rawr_analytics.metrics.rawr.inputs import RawrSeasonInput
+from rawr_analytics.metrics.rawr.inputs import RawrSeasonInput, build_rawr_season_input
 from rawr_analytics.metrics.wowy.analysis import WowyGame
 from rawr_analytics.metrics.wowy.inputs import WowySeasonInput
 from rawr_analytics.shared.game import NormalizedGamePlayerRecord, NormalizedGameRecord
@@ -172,26 +168,10 @@ def _load_rawr_season_input(
         seasons=[season],
     )
     games, game_players = _exclude_rawr_games_without_positive_minutes(games, game_players)
-    player_minute_stats = build_rawr_player_season_minute_stats(games, game_players)
-    observations, player_names = build_rawr_observations(games, game_players)
-    if not observations:
-        return None
-    player_ids = sorted(
-        {player_id for observation in observations for player_id in observation.player_weights}
-    )
-    return RawrSeasonInput(
+    return build_rawr_season_input(
         season=season,
-        observations=observations,
-        players=[
-            PlayerSeasonContext(
-                player=PlayerSummary(
-                    player_id=player_id,
-                    player_name=player_names.get(player_id, str(player_id)),
-                ),
-                minutes=_player_minutes(player_minute_stats, season, player_id),
-            )
-            for player_id in player_ids
-        ],
+        games=games,
+        game_players=game_players,
     )
 
 

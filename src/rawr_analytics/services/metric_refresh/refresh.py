@@ -26,7 +26,7 @@ from rawr_analytics.metrics.rawr import (
     DEFAULT_RAWR_SHRINKAGE_MINUTE_SCALE,
     DEFAULT_RAWR_SHRINKAGE_MODE,
     DEFAULT_RAWR_SHRINKAGE_STRENGTH,
-    describe_rawr_metric,
+    RAWR_METRIC_SUMMARY,
 )
 from rawr_analytics.metrics.rawr.inputs import RawrRequest
 from rawr_analytics.metrics.rawr.records import build_player_season_records
@@ -514,7 +514,7 @@ def _build_wowy_cached_rows(
 
 def _describe_metric(metric: Metric) -> MetricSummary:
     if metric == Metric.RAWR:
-        return describe_rawr_metric()
+        return RAWR_METRIC_SUMMARY
     return describe_wowy_metric(metric)
 
 

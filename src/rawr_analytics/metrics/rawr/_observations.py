@@ -4,7 +4,6 @@ from collections import defaultdict
 from dataclasses import dataclass
 
 from rawr_analytics.shared.game import NormalizedGamePlayerRecord, NormalizedGameRecord
-from rawr_analytics.shared.season import Season
 from rawr_analytics.shared.team import Team
 
 
@@ -58,12 +57,10 @@ def count_player_season_minutes(
 def build_rawr_observations(
     games: list[NormalizedGameRecord],
     game_players: list[NormalizedGamePlayerRecord],
-) -> tuple[list[RawrObservation], dict[int, str]]:
+) -> list[RawrObservation]:
     player_minutes_by_game_team: dict[tuple[str, int], dict[int, float]] = defaultdict(dict)
-    player_names: dict[int, str] = {}
 
     for player in game_players:
-        player_names[player.player.player_id] = player.player.player_name
         if not player.has_positive_minutes():
             continue
         minutes = player.minutes
@@ -119,24 +116,4 @@ def build_rawr_observations(
                 away_team=away_game.team,
             )
         )
-    return observations, player_names
-
-
-def build_rawr_player_season_minute_stats(
-    games: list[NormalizedGameRecord],
-    game_players: list[NormalizedGamePlayerRecord],
-) -> dict[tuple[Season, int], tuple[float, float]]:
-    season_by_game_id = {game.game_id: game.season for game in games}
-    totals: dict[tuple[Season, int], float] = {}
-    counts: dict[tuple[Season, int], int] = {}
-
-    for player in game_players:
-        season = season_by_game_id.get(player.game_id)
-        if season is None or not player.has_positive_minutes():
-            continue
-        assert player.minutes is not None
-        key = (season, player.player.player_id)
-        totals[key] = totals.get(key, 0.0) + player.minutes
-        counts[key] = counts.get(key, 0) + 1
-
-    return {key: (totals[key] / counts[key], totals[key]) for key in totals}
+    return observations
