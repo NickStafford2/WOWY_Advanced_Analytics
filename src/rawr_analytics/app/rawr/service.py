@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from collections.abc import Callable
+from dataclasses import dataclass
 
 from rawr_analytics.app.rawr._store import build_rawr_record_from_store_row
 from rawr_analytics.app.rawr.presenters import (
@@ -30,6 +31,7 @@ from rawr_analytics.metrics.rawr import (
 )
 from rawr_analytics.services._metric_inputs import load_rawr_request
 from rawr_analytics.services._metric_scope import (
+    MetricStoreCatalog,
     build_metric_options_payload,
     build_metric_scope_key,
     require_current_metric_scope,
@@ -42,6 +44,14 @@ type RawrProgressFn = Callable[[int, int, Season], None]
 type MetricQueryExport = list[JSONDict]
 
 
+@dataclass(frozen=True)
+class ResolvedRawrResultDTO:
+    rows: list[RawrPlayerSeasonRecord]
+    seasons: list[str]
+    source: str
+    catalog: MetricStoreCatalog | None
+
+
 def build_rawr_options_payload(query: RawrQuery) -> JSONDict:
     filters = RawrQueryFiltersDTO.from_query(query).for_options()
     return build_metric_options_payload(
@@ -52,67 +62,59 @@ def build_rawr_options_payload(query: RawrQuery) -> JSONDict:
     )
 
 
-def resolve_rawr_rows(
+def resolve_rawr_result(
     query: RawrQuery,
     *,
     progress_fn: RawrProgressFn | None = None,
-) -> list[RawrPlayerSeasonRecord]:
+) -> ResolvedRawrResultDTO:
     if not query.recalculate:
-        cached_rows = _try_load_rawr_store_values(query)
-        if cached_rows is not None:
-            return cached_rows
-    return _build_live_rawr_query_result(query, progress_fn=progress_fn)
+        cached_result = _try_load_rawr_store_result(query)
+        if cached_result is not None:
+            return cached_result
+    live_rows = _build_live_rawr_query_result(query, progress_fn=progress_fn)
+    return ResolvedRawrResultDTO(
+        rows=live_rows,
+        seasons=_selected_rawr_seasons(query, live_rows),
+        source="live",
+        catalog=None,
+    )
 
 
-def build_rawr_leaderboard_payload(
-    query: RawrQuery,
-    rows: list[RawrPlayerSeasonRecord],
-) -> JSONDict:
-    seasons = _selected_rawr_seasons(query, rows)
-    catalog = _try_require_current_metric_scope(query)
+def build_rawr_leaderboard_payload(query: RawrQuery, result: ResolvedRawrResultDTO) -> JSONDict:
     payload = build_rawr_leaderboard_payload_from_records(
         metric=Metric.RAWR.value,
-        rows=rows,
-        seasons=seasons,
+        rows=result.rows,
+        seasons=result.seasons,
         top_n=query.top_n,
-        mode="recalculated" if query.recalculate else "resolved",
-        available_seasons=None if catalog is None else catalog.availability.seasons,
-        available_teams=None if catalog is None else catalog.availability.teams,
+        mode=result.source,
+        available_seasons=None if result.catalog is None else result.catalog.availability.seasons,
+        available_teams=None if result.catalog is None else result.catalog.availability.teams,
     )
     payload["filters"] = RawrQueryFiltersDTO.from_query(query).to_payload()
     return payload
 
 
-def build_rawr_player_seasons_payload(
-    query: RawrQuery,
-    rows: list[RawrPlayerSeasonRecord],
-) -> JSONDict:
-    payload = build_rawr_player_seasons_payload_from_records(rows)
+def build_rawr_player_seasons_payload(query: RawrQuery, result: ResolvedRawrResultDTO) -> JSONDict:
+    payload = build_rawr_player_seasons_payload_from_records(result.rows)
     payload["filters"] = RawrQueryFiltersDTO.from_query(query).to_payload()
     return payload
 
 
-def build_rawr_span_chart_payload(
-    query: RawrQuery,
-    rows: list[RawrPlayerSeasonRecord],
-) -> JSONDict:
+def build_rawr_span_chart_payload(query: RawrQuery, result: ResolvedRawrResultDTO) -> JSONDict:
     payload = build_rawr_span_chart_payload_from_records(
         metric=Metric.RAWR.value,
-        rows=rows,
-        seasons=_selected_rawr_seasons(query, rows),
+        rows=result.rows,
+        seasons=result.seasons,
         top_n=query.top_n,
     )
     payload["filters"] = RawrQueryFiltersDTO.from_query(query).to_payload()
     return payload
 
 
-def build_rawr_leaderboard_export(
-    query: RawrQuery,
-    rows: list[RawrPlayerSeasonRecord],
-) -> MetricQueryExport:
+def build_rawr_leaderboard_export(result: ResolvedRawrResultDTO) -> MetricQueryExport:
     return build_rawr_export_rows_from_records(
-        rows=rows,
-        seasons=_selected_rawr_seasons(query, rows),
+        rows=result.rows,
+        seasons=result.seasons,
     )
 
 
@@ -137,15 +139,13 @@ def _build_live_rawr_query_result(
     return build_player_season_records(request)
 
 
-def _try_load_rawr_store_values(
-    query: RawrQuery,
- ) -> list[RawrPlayerSeasonRecord] | None:
+def _try_load_rawr_store_result(query: RawrQuery) -> ResolvedRawrResultDTO | None:
     scope_key = build_metric_scope_key(query)
     try:
-        require_current_metric_scope(metric=Metric.RAWR, scope_key=scope_key)
+        catalog = require_current_metric_scope(metric=Metric.RAWR, scope_key=scope_key)
     except ValueError:
         return None
-    return [
+    rows = [
         build_rawr_record_from_store_row(row, season_type=query.season_type)
         for row in load_rawr_player_season_value_rows(
             scope_key=scope_key,
@@ -155,20 +155,15 @@ def _try_load_rawr_store_values(
             min_games=query.min_games,
         )
     ]
+    return ResolvedRawrResultDTO(
+        rows=rows,
+        seasons=_selected_rawr_seasons(query, rows),
+        source="cache",
+        catalog=catalog,
+    )
 
 
-def _selected_rawr_seasons(
-    query: RawrQuery,
-    rows: list[RawrPlayerSeasonRecord],
-) -> list[str]:
+def _selected_rawr_seasons(query: RawrQuery, rows: list[RawrPlayerSeasonRecord]) -> list[str]:
     if query.seasons is not None:
         return sorted({season.id for season in query.seasons})
     return sorted({row.season.id for row in rows})
-
-
-def _try_require_current_metric_scope(query: RawrQuery):
-    scope_key = build_metric_scope_key(query)
-    try:
-        return require_current_metric_scope(metric=Metric.RAWR, scope_key=scope_key)
-    except ValueError:
-        return None

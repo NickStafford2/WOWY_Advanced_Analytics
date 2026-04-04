@@ -11,7 +11,7 @@ from rawr_analytics.app.rawr import (
     build_rawr_player_seasons_payload,
     build_rawr_query,
     build_rawr_span_chart_payload,
-    resolve_rawr_rows,
+    resolve_rawr_result,
 )
 from rawr_analytics.metrics import MetricView
 from rawr_analytics.metrics.constants import Metric
@@ -115,26 +115,26 @@ def create_app():
         rawr_recalculate: bool | None = None,
     ):
         query = _resolve_rawr_query(rawr_recalculate=rawr_recalculate)
-        rows = resolve_rawr_rows(query)
-        return jsonify(build_rawr_leaderboard_payload(query, rows))
+        result = resolve_rawr_result(query)
+        return jsonify(build_rawr_leaderboard_payload(query, result))
 
     def _json_rawr_player_seasons_response():
         query = _resolve_rawr_query()
-        rows = resolve_rawr_rows(query)
-        return jsonify(build_rawr_player_seasons_payload(query, rows))
+        result = resolve_rawr_result(query)
+        return jsonify(build_rawr_player_seasons_payload(query, result))
 
     def _json_rawr_span_chart_response():
         query = _resolve_rawr_query()
-        rows = resolve_rawr_rows(query)
-        return jsonify(build_rawr_span_chart_payload(query, rows))
+        result = resolve_rawr_result(query)
+        return jsonify(build_rawr_span_chart_payload(query, result))
 
     def _csv_rawr_leaderboard_response(
         *,
         rawr_recalculate: bool | None = None,
     ):
         query = _resolve_rawr_query(rawr_recalculate=rawr_recalculate)
-        rows = resolve_rawr_rows(query)
-        table_rows = build_rawr_leaderboard_export(query, rows)
+        result = resolve_rawr_result(query)
+        table_rows = build_rawr_leaderboard_export(result)
         filename = f"{Metric.RAWR.value}-all-players.csv"
         return Response(
             _render_leaderboard_csv(metric=Metric.RAWR, table_rows=table_rows),
