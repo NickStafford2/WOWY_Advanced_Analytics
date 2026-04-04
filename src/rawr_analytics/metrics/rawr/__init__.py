@@ -2,10 +2,7 @@
 
 from rawr_analytics.metrics.rawr._shrinkage import RawrShrinkageMode
 from rawr_analytics.metrics.rawr.analysis import RawrValue
-from rawr_analytics.metrics.rawr.dataset import (
-    RawrCustomQueryResult,
-    build_rawr_custom_query_result,
-)
+from rawr_analytics.metrics.rawr.dataset import build_rawr_custom_query_result
 from rawr_analytics.metrics.rawr.defaults import (
     DEFAULT_RAWR_FILTERS,
     DEFAULT_RAWR_SHRINKAGE_MINUTE_SCALE,
@@ -26,7 +23,6 @@ __all__ = [
     "DEFAULT_RAWR_SHRINKAGE_MINUTE_SCALE",
     "DEFAULT_RAWR_SHRINKAGE_MODE",
     "DEFAULT_RAWR_SHRINKAGE_STRENGTH",
-    "RawrCustomQueryResult",
     "RawrPlayerSeasonRecord",
     "RawrQuery",
     "RawrShrinkageMode",

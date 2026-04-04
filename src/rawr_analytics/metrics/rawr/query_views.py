@@ -4,7 +4,6 @@ from collections.abc import Sequence
 from typing import Any
 
 from rawr_analytics.metrics._span import build_span_payload
-from rawr_analytics.metrics.rawr.defaults import describe_rawr_metric
 from rawr_analytics.metrics.rawr.records import RawrPlayerSeasonRecord
 from rawr_analytics.shared.season import Season, SeasonType
 from rawr_analytics.shared.team import Team
@@ -15,7 +14,6 @@ def build_player_seasons_payload(
 ) -> dict[str, Any]:
     return {
         "metric": "rawr",
-        "metric_label": describe_rawr_metric().label,
         "rows": [_serialize_player_season_row(row) for row in rows],
     }
 
@@ -23,7 +21,6 @@ def build_player_seasons_payload(
 def build_leaderboard_payload(
     *,
     metric: str,
-    metric_label: str,
     rows: Sequence[RawrPlayerSeasonRecord],
     seasons: list[str],
     top_n: int,
@@ -35,7 +32,6 @@ def build_leaderboard_payload(
     payload = {
         "mode": mode,
         "metric": metric,
-        "metric_label": metric_label,
         "span": build_span_payload(seasons=seasons, top_n=top_n),
         "table_rows": table_rows,
         "series": _build_series_from_table_rows(table_rows),
@@ -51,12 +47,8 @@ def build_export_table(
     *,
     rows: Sequence[RawrPlayerSeasonRecord],
     seasons: list[str],
-    metric_label: str | None = None,
-) -> tuple[str, list[dict[str, Any]]]:
-    return (
-        metric_label or describe_rawr_metric().label,
-        _build_ranked_table_rows(rows=rows, seasons=seasons, top_n=None),
-    )
+) -> list[dict[str, Any]]:
+    return _build_ranked_table_rows(rows=rows, seasons=seasons, top_n=None)
 
 
 def _serialize_player_season_row(

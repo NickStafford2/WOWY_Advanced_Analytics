@@ -9,7 +9,6 @@ from rawr_analytics.data.metric_store import (
 from rawr_analytics.metrics import MetricView
 from rawr_analytics.metrics.constants import Metric
 from rawr_analytics.metrics.rawr import (
-    RawrCustomQueryResult,
     RawrPlayerSeasonRecord,
     RawrQuery,
     RawrValue,
@@ -32,7 +31,7 @@ from rawr_analytics.shared.player import PlayerMinutes, PlayerSummary
 from rawr_analytics.shared.season import Season
 
 type RawrProgressFn = Callable[[int, int, Season], None]
-type MetricQueryExport = tuple[str, list[JSONDict]]
+type MetricQueryExport = list[JSONDict]
 
 
 def build_rawr_options_payload(query: RawrQuery) -> JSONDict:
@@ -76,13 +75,12 @@ def build_rawr_query_export(
                 ),
             )
         case "custom-query":
-            result = _build_rawr_custom_query_result(query, progress_fn=progress_fn)
+            rows = _build_rawr_custom_query_result(query, progress_fn=progress_fn)
             return cast(
                 MetricQueryExport,
                 build_export_table(
-                    rows=result.rows,
-                    seasons=sorted({row.season.id for row in result.rows}),
-                    metric_label=result.metric_label,
+                    rows=rows,
+                    seasons=sorted({row.season.id for row in rows}),
                 ),
             )
         case _:
@@ -109,7 +107,6 @@ def _build_rawr_view_payload(
                 JSONDict,
                 build_leaderboard_payload(
                     metric=Metric.RAWR.value,
-                    metric_label=catalog.metric_label,
                     rows=_load_rawr_store_values(query, scope_key=scope_key),
                     seasons=selected_seasons(query.seasons, catalog),
                     top_n=query.top_n,
@@ -130,14 +127,13 @@ def _build_rawr_view_payload(
                 ),
             )
         case "custom-query":
-            result = _build_rawr_custom_query_result(query)
+            rows = _build_rawr_custom_query_result(query)
             return cast(
                 JSONDict,
                 build_leaderboard_payload(
                     metric=Metric.RAWR.value,
-                    metric_label=result.metric_label,
-                    rows=result.rows,
-                    seasons=sorted({row.season.id for row in result.rows}),
+                    rows=rows,
+                    seasons=sorted({row.season.id for row in rows}),
                     top_n=query.top_n,
                     mode="custom",
                 ),
@@ -150,7 +146,7 @@ def _build_rawr_custom_query_result(
     query: RawrQuery,
     *,
     progress_fn: RawrProgressFn | None = None,
-) -> RawrCustomQueryResult:
+) -> list[RawrPlayerSeasonRecord]:
     season_inputs = load_rawr_season_inputs(
         teams=query.teams,
         seasons=query.seasons,

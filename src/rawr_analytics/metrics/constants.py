@@ -28,5 +28,4 @@ class Metric(Enum):
 @dataclass(frozen=True)
 class MetricSummary:
     metric: Metric
-    label: str
     build_version: str

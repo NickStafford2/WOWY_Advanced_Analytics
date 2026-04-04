@@ -7,7 +7,6 @@ from rawr_analytics.metrics.wowy.analysis import (
     compute_wowy_shrinkage_score,
 )
 from rawr_analytics.metrics.wowy.dataset import (
-    WowyCustomQueryResult,
     WowyPlayerSeasonValue,
     build_wowy_custom_query,
     prepare_wowy_player_season_records,
@@ -35,7 +34,6 @@ from rawr_analytics.metrics.wowy.records import WowyPlayerSeasonRecord
 
 __all__ = [
     "DEFAULT_WOWY_SHRINKAGE_PRIOR_GAMES",
-    "WowyCustomQueryResult",
     "WowyGame",
     "WowyPlayerContext",
     "WowyPlayerSeasonRecord",

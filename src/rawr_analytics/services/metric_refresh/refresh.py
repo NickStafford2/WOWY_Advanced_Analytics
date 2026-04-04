@@ -82,7 +82,6 @@ class RefreshMetricStoreResult:
 
 @dataclass(frozen=True)
 class _MetricStoreRefreshPlan:
-    metric_label: str
     build_version: str
     source_fingerprint: str
     warnings: list[str]
@@ -139,7 +138,6 @@ def refresh_metric_store(
 
         scope_result, should_fail_empty_rawr_scope = _refresh_metric_store_scope(
             metric=normalized_metric,
-            metric_label=plan.metric_label,
             scope=scope,
             season_type=normalized_season_type,
             rawr_ridge_alpha=rawr_ridge_alpha,
@@ -199,7 +197,6 @@ def _prepare_metric_store_refresh(
     cache_load_rows = _list_cache_load_rows_for_season_type(season_type)
     if not cache_load_rows:
         return _MetricStoreRefreshPlan(
-            metric_label=_describe_metric(metric).label,
             build_version="",
             source_fingerprint="",
             warnings=[],
@@ -238,7 +235,6 @@ def _prepare_metric_store_refresh(
         for teams in team_scopes
     ]
     return _MetricStoreRefreshPlan(
-        metric_label=metric_info.label,
         build_version=build_version,
         source_fingerprint=source_fingerprint,
         warnings=warnings,
@@ -250,7 +246,6 @@ def _prepare_metric_store_refresh(
 def _refresh_metric_store_scope(
     *,
     metric: Metric,
-    metric_label: str,
     scope: _MetricStoreRefreshScope,
     season_type: SeasonType,
     rawr_ridge_alpha: float,
@@ -276,7 +271,7 @@ def _refresh_metric_store_scope(
         )
 
     catalog = _build_scope_catalog(
-        metric_label=metric_label,
+        metric=metric,
         scope=scope,
         season_type=season_type,
         available_teams=available_teams,
@@ -383,14 +378,14 @@ def _build_refresh_scope(
 
 def _build_scope_catalog(
     *,
-    metric_label: str,
+    metric: Metric,
     scope: _MetricStoreRefreshScope,
     season_type: SeasonType,
     available_teams: list[Team],
 ) -> MetricScopeCatalog:
     season_ids = scope.catalog.availability.season_ids
     return MetricScopeCatalog(
-        label=metric_label,
+        label=metric.value,
         team_filter=scope.catalog.team_filter,
         season_type=season_type.to_nba_format(),
         availability=MetricScopeAvailability(

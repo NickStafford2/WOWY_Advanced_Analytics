@@ -23,4 +23,4 @@ DEFAULT_RAWR_FILTERS = RawrDefaultFilters()
 
 
 def describe_rawr_metric() -> MetricSummary:
-    return MetricSummary(Metric.RAWR, "RAWR", "rawr-player-season-v3")
+    return MetricSummary(Metric.RAWR, "rawr-player-season-v3")

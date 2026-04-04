@@ -89,16 +89,16 @@ def create_app():
 
     def _csv_metric_response(parsed_metric: Metric, view: MetricView):
         if parsed_metric == Metric.RAWR:
-            metric_label, rows = build_rawr_query_export(_parse_rawr_query(), view=view)
+            rows = build_rawr_query_export(_parse_rawr_query(), view=view)
         else:
-            metric_label, rows = build_wowy_query_export(
+            rows = build_wowy_query_export(
                 parsed_metric,
                 _parse_wowy_query(),
                 view=view,
             )
         filename = f"{parsed_metric.value}-all-players.csv"
         return Response(
-            _render_leaderboard_csv(metric_label=metric_label, table_rows=rows),
+            _render_leaderboard_csv(metric=parsed_metric, table_rows=rows),
             mimetype="text/csv",
             headers={"Content-Disposition": f'attachment; filename="{filename}"'},
         )
@@ -152,7 +152,7 @@ def create_app():
 
 def _render_leaderboard_csv(
     *,
-    metric_label: str,
+    metric: Metric,
     table_rows: list[dict[str, Any]],
 ) -> str:
     import csv
@@ -161,9 +161,7 @@ def _render_leaderboard_csv(
     output = StringIO()
     writer = csv.writer(output)
     column_order = _build_csv_column_order(table_rows)
-    writer.writerow(
-        [_csv_header_label(column, metric_label=metric_label) for column in column_order]
-    )
+    writer.writerow([_csv_header_label(column, metric=metric) for column in column_order])
     for row in table_rows:
         writer.writerow([_format_csv_value(row.get(column)) for column in column_order])
     return output.getvalue()
@@ -190,12 +188,12 @@ def _build_csv_column_order(table_rows: list[dict[str, Any]]) -> list[str]:
     return ordered_columns
 
 
-def _csv_header_label(column: str, *, metric_label: str) -> str:
+def _csv_header_label(column: str, *, metric: Metric) -> str:
     return {
         "rank": "Rank",
         "player_id": "Player ID",
         "player_name": "Player",
-        "span_average_value": metric_label,
+        "span_average_value": _metric_column_label(metric),
         "average_minutes": "Avg Min",
         "total_minutes": "Tot Min",
         "games_with": "With",
@@ -205,6 +203,16 @@ def _csv_header_label(column: str, *, metric_label: str) -> str:
         "season_count": "Seasons",
         "points": "Points",
     }.get(column, column)
+
+
+def _metric_column_label(metric: Metric) -> str:
+    if metric == Metric.RAWR:
+        return "RAWR"
+    if metric == Metric.WOWY:
+        return "WOWY"
+    if metric == Metric.WOWY_SHRUNK:
+        return "WOWY Shrunk"
+    raise ValueError(f"Unknown metric: {metric}")
 
 
 def _format_csv_value(value: Any) -> str:

@@ -8,7 +8,6 @@ from rawr_analytics.metrics.wowy.analysis import (
     WowyPlayerValue,
     compute_wowy_shrinkage_score,
 )
-from rawr_analytics.metrics.wowy.defaults import describe_metric
 from rawr_analytics.metrics.wowy.inputs import WowyRequest, WowySeasonInput
 from rawr_analytics.metrics.wowy.records import WowyPlayerSeasonRecord
 from rawr_analytics.shared.player import PlayerMinutes, PlayerSummary
@@ -20,13 +19,6 @@ class WowyPlayerSeasonValue:
     player: PlayerSummary
     minutes: PlayerMinutes
     result: WowyPlayerValue
-
-
-@dataclass(frozen=True)
-class WowyCustomQueryResult:
-    metric: str
-    metric_label: str
-    rows: list[WowyPlayerSeasonValue]
 
 
 def prepare_wowy_player_season_records(
@@ -56,7 +48,7 @@ def build_wowy_custom_query(
     min_games_without: int,
     min_average_minutes: float | None,
     min_total_minutes: float | None,
-) -> WowyCustomQueryResult:
+) -> list[WowyPlayerSeasonValue]:
     records = prepare_wowy_player_season_records(
         season_inputs=season_inputs,
         min_games_with=min_games_with,
@@ -64,11 +56,7 @@ def build_wowy_custom_query(
         min_average_minutes=min_average_minutes,
         min_total_minutes=min_total_minutes,
     )
-    return WowyCustomQueryResult(
-        metric=metric.value,
-        metric_label=describe_metric(metric).label,
-        rows=[_build_wowy_query_row(metric, record) for record in records],
-    )
+    return [_build_wowy_query_row(metric, record) for record in records]
 
 
 def _build_wowy_query_row(

@@ -3,6 +3,7 @@ from __future__ import annotations
 import argparse
 from typing import Any
 
+from rawr_analytics.metrics.constants import Metric
 from rawr_analytics.shared.season import Season, SeasonType
 from rawr_analytics.shared.team import Team
 
@@ -39,18 +40,14 @@ def parse_metric_query_seasons(
 
 
 def render_metric_query_table(
-    metric_label: str,
+    metric: Metric,
     rows: list[dict[str, Any]],
 ) -> str:
     column_order = _build_column_order(rows)
     display_rows = [
-        [
-            _format_cell(row.get(column), metric_label=metric_label, column=column)
-            for column in column_order
-        ]
-        for row in rows
+        [_format_cell(row.get(column), column=column) for column in column_order] for row in rows
     ]
-    headers = [_header_label(column, metric_label=metric_label) for column in column_order]
+    headers = [_header_label(column, metric=metric) for column in column_order]
     widths = [
         max(len(header), *(len(display_row[index]) for display_row in display_rows))
         for index, header in enumerate(headers)
@@ -90,11 +87,11 @@ def _build_column_order(rows: list[dict[str, Any]]) -> list[str]:
     return [column for column in preferred_order if column in available_columns]
 
 
-def _header_label(column: str, *, metric_label: str) -> str:
+def _header_label(column: str, *, metric: Metric) -> str:
     return {
         "rank": "Rank",
         "player_name": "Player",
-        "span_average_value": metric_label,
+        "span_average_value": _metric_column_label(metric),
         "average_minutes": "Avg Min",
         "total_minutes": "Tot Min",
         "games_with": "With",
@@ -105,8 +102,7 @@ def _header_label(column: str, *, metric_label: str) -> str:
     }[column]
 
 
-def _format_cell(value: Any, *, metric_label: str, column: str) -> str:
-    del metric_label
+def _format_cell(value: Any, column: str) -> str:
     if value is None:
         return "—"
     if column == "player_name":
@@ -116,6 +112,16 @@ def _format_cell(value: Any, *, metric_label: str, column: str) -> str:
             return f"{value:.3f}"
         return f"{value:.1f}"
     return str(value)
+
+
+def _metric_column_label(metric: Metric) -> str:
+    if metric == Metric.RAWR:
+        return "RAWR"
+    if metric == Metric.WOWY:
+        return "WOWY"
+    if metric == Metric.WOWY_SHRUNK:
+        return "WOWY Shrunk"
+    raise ValueError(f"Unknown metric: {metric}")
 
 
 __all__ = [

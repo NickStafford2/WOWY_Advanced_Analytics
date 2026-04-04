@@ -16,7 +16,6 @@ def default_filters() -> dict[str, int | float]:
 def describe_wowy_metric() -> MetricSummary:
     return MetricSummary(
         metric=Metric.WOWY,
-        label="WOWY",
         build_version="wowy-player-season-v3",
     )
 
@@ -24,7 +23,6 @@ def describe_wowy_metric() -> MetricSummary:
 def describe_wowy_shrunk_metric() -> MetricSummary:
     return MetricSummary(
         metric=Metric.WOWY_SHRUNK,
-        label="WOWY Shrunk",
         build_version="wowy-shrunk-player-season-v1",
     )
 

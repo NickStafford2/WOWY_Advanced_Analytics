@@ -147,7 +147,6 @@ def _fit_regression_model(
     player_penalties = _build_player_penalties(
         observations=observations,
         player_ids=player_ids,
-        season=season,
         ridge_alpha=ridge_alpha,
         shrinkage_mode=shrinkage_mode,
         shrinkage_strength=shrinkage_strength,
@@ -171,7 +170,6 @@ def _fit_regression_model(
                 player_index=player_index,
                 team_effect_index=team_effect_index,
                 opponent_effect_index=opponent_effect_index,
-                season=season,
                 player_weights=observation.player_weights,
                 home_court_sign=1.0,
                 team_effect_key=home_team_season,
@@ -190,7 +188,6 @@ def _fit_regression_model(
                 player_index=player_index,
                 team_effect_index=team_effect_index,
                 opponent_effect_index=opponent_effect_index,
-                season=season,
                 player_weights={
                     player_id: -weight for player_id, weight in observation.player_weights.items()
                 },
@@ -246,7 +243,6 @@ def _predict_margin(
             team_season: len(model.player_ids) + 2 + len(model.team_seasons) + index
             for index, team_season in enumerate(model.team_seasons)
         },
-        season=season,
         player_weights=observation.player_weights,
         home_court_sign=1.0,
         team_effect_key=_team_season_key(observation.home_team, season),
@@ -257,6 +253,7 @@ def _predict_margin(
     )
 
 
+# this will be used later. keep it.
 def _tune_ridge_alpha(
     observations: list[RawrObservation],
     player_names: dict[int, str],
@@ -326,7 +323,6 @@ def _build_feature_row(
     player_index: dict[int, int],
     team_effect_index: dict[tuple[int, Season], int],
     opponent_effect_index: dict[tuple[int, Season], int],
-    season: Season,
     player_weights: dict[int, float],
     home_court_sign: float,
     team_effect_key: tuple[int, Season],
@@ -348,7 +344,6 @@ def _build_player_penalties(
     *,
     observations: list[RawrObservation],
     player_ids: list[int],
-    season: Season,
     ridge_alpha: float,
     shrinkage_mode: RawrShrinkageMode,
     shrinkage_strength: float,
@@ -370,8 +365,7 @@ def _build_player_penalties(
     for player_id in player_ids:
         if player_id not in minutes_by_player:
             raise ValueError(
-                "Minute-aware shrinkage requires player minute totals for every included "
-                "player"
+                "Minute-aware shrinkage requires player minute totals for every included player"
             )
         scaled_minutes = minutes_by_player[player_id] / shrinkage_minute_scale
         penalties[player_id] = ridge_alpha / (scaled_minutes**shrinkage_strength)

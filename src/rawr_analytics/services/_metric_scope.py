@@ -15,9 +15,7 @@ from rawr_analytics.data.metric_store import (
 from rawr_analytics.data.metric_store_scope import build_scope_key, build_team_filter
 from rawr_analytics.metrics.constants import Metric
 from rawr_analytics.metrics.rawr import RawrQuery
-from rawr_analytics.metrics.rawr.defaults import describe_rawr_metric
 from rawr_analytics.metrics.wowy import WowyQuery
-from rawr_analytics.metrics.wowy.defaults import describe_metric as describe_wowy_metric
 from rawr_analytics.shared.season import Season, SeasonType
 from rawr_analytics.shared.team import Team
 
@@ -38,7 +36,6 @@ class MetricSeasonSpan:
 
 @dataclass(frozen=True)
 class MetricStoreCatalog:
-    metric_label: str
     season_type: SeasonType
     availability: MetricCatalogAvailability
     full_span: MetricSeasonSpan | None
@@ -69,7 +66,6 @@ def build_metric_options_payload(
     )
     return {
         "metric": metric.value,
-        "metric_label": catalog.metric_label,
         "available_teams": [team.current.abbreviation for team in catalog.availability.teams],
         "team_options": _build_team_options(catalog),
         "available_seasons": [season.id for season in catalog.availability.seasons],
@@ -93,7 +89,6 @@ def build_metric_span_chart_payload(
     available_season_ids = [season.id for season in catalog.availability.seasons]
     return {
         "metric": metric.value,
-        "metric_label": catalog.metric_label,
         "span": {
             "start_season": (
                 None if catalog.full_span is None else catalog.full_span.start_season.id
@@ -157,7 +152,6 @@ def require_current_metric_scope(
         for season_id in catalog_row.available_season_ids
     ]
     return MetricStoreCatalog(
-        metric_label=catalog_row.label,
         season_type=season_type,
         availability=MetricCatalogAvailability(
             teams=[Team.from_id(team_id) for team_id in catalog_row.available_team_ids],
@@ -207,6 +201,7 @@ def _build_metric_options_catalog_from_cache(
     teams: list[Team] | None,
     season_type: SeasonType,
 ) -> MetricStoreCatalog:
+    del metric
     cached_team_seasons = [
         team_season
         for team_season in list_cached_team_seasons(teams=teams)
@@ -221,7 +216,6 @@ def _build_metric_options_catalog_from_cache(
     available_team_ids = sorted({team_season.team.team_id for team_season in cached_team_seasons})
     available_season_ids = sorted({team_season.season.id for team_season in cached_team_seasons})
     return MetricStoreCatalog(
-        metric_label=_metric_label(metric),
         season_type=season_type,
         availability=MetricCatalogAvailability(
             teams=[Team.from_id(team_id) for team_id in available_team_ids],
@@ -307,9 +301,3 @@ def _build_metric_season_span(
         start_season=Season.parse(start_season_id, season_type.to_nba_format()),
         end_season=Season.parse(end_season_id, season_type.to_nba_format()),
     )
-
-
-def _metric_label(metric: Metric) -> str:
-    if metric == Metric.RAWR:
-        return describe_rawr_metric().label
-    return describe_wowy_metric(metric).label

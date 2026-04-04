@@ -12,6 +12,7 @@ from rawr_analytics.cli._metric_query_cli import (
     render_metric_query_table,
 )
 from rawr_analytics.cli._progress_bar import TerminalProgressBar, print_status_box
+from rawr_analytics.metrics.constants import Metric
 from rawr_analytics.metrics.rawr import build_rawr_query
 from rawr_analytics.services.rawr_query import build_rawr_query_export
 from rawr_analytics.shared.season import Season
@@ -51,7 +52,7 @@ def main(argv: list[str] | None = None) -> int:
     load_bar = TerminalProgressBar("Season load", total=max(1, total_seasons))
     print("[1/3] loading season inputs", flush=True)
     progress_fn = _build_progress_updater(load_bar)
-    metric_label, rows = build_rawr_query_export(
+    rows = build_rawr_query_export(
         query,
         view="custom-query",
         progress_fn=progress_fn,
@@ -59,7 +60,7 @@ def main(argv: list[str] | None = None) -> int:
     load_bar.finish(detail="season inputs ready")
     print("[2/3] computed rawr rankings", flush=True)
     print(f"[3/3] rendering {len(rows)} leaderboard rows", flush=True)
-    print(render_metric_query_table(metric_label, rows))
+    print(render_metric_query_table(Metric.RAWR, rows))
     return 0
 
 

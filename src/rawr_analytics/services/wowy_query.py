@@ -8,7 +8,6 @@ from rawr_analytics.data.metric_store import (
 from rawr_analytics.metrics import MetricView
 from rawr_analytics.metrics.constants import Metric
 from rawr_analytics.metrics.wowy import (
-    WowyCustomQueryResult,
     WowyPlayerSeasonValue,
     WowyPlayerValue,
     WowyQuery,
@@ -30,7 +29,7 @@ from rawr_analytics.services._metric_scope import (
 from rawr_analytics.shared import JSONDict
 from rawr_analytics.shared.player import PlayerMinutes, PlayerSummary
 
-type MetricQueryExport = tuple[str, list[JSONDict]]
+type MetricQueryExport = list[JSONDict]
 
 
 def build_wowy_options_payload(
@@ -77,20 +76,17 @@ def build_wowy_query_export(
             return cast(
                 MetricQueryExport,
                 build_export_table(
-                    metric,
                     rows=_load_wowy_store_values(metric, query, scope_key=scope_key),
                     seasons=selected_seasons(query.seasons, catalog),
                 ),
             )
         case "custom-query":
-            result = _build_wowy_custom_query_result(metric, query)
+            rows = _build_wowy_custom_query_result(metric, query)
             return cast(
                 MetricQueryExport,
                 build_export_table(
-                    metric,
-                    rows=result.rows,
-                    seasons=sorted({row.season_id for row in result.rows}),
-                    metric_label=result.metric_label,
+                    rows=rows,
+                    seasons=sorted({row.season_id for row in rows}),
                 ),
             )
         case _:
@@ -121,7 +117,6 @@ def _build_wowy_view_payload(
                 JSONDict,
                 build_leaderboard_payload(
                     metric=metric,
-                    metric_label=catalog.metric_label,
                     rows=_load_wowy_store_values(metric, query, scope_key=scope_key),
                     seasons=selected_seasons(query.seasons, catalog),
                     top_n=query.top_n,
@@ -142,14 +137,13 @@ def _build_wowy_view_payload(
                 ),
             )
         case "custom-query":
-            result = _build_wowy_custom_query_result(metric, query)
+            rows = _build_wowy_custom_query_result(metric, query)
             return cast(
                 JSONDict,
                 build_leaderboard_payload(
                     metric=metric.value,
-                    metric_label=result.metric_label,
-                    rows=result.rows,
-                    seasons=sorted({row.season_id for row in result.rows}),
+                    rows=rows,
+                    seasons=sorted({row.season_id for row in rows}),
                     top_n=query.top_n,
                     mode="custom",
                 ),
@@ -161,7 +155,7 @@ def _build_wowy_view_payload(
 def _build_wowy_custom_query_result(
     metric: Metric,
     query: WowyQuery,
-) -> WowyCustomQueryResult:
+) -> list[WowyPlayerSeasonValue]:
     season_inputs = load_wowy_season_inputs(
         teams=query.teams,
         seasons=query.seasons,
