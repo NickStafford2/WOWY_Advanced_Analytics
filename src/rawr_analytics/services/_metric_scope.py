@@ -14,8 +14,8 @@ from rawr_analytics.data.metric_store import (
 )
 from rawr_analytics.data.metric_store_scope import build_scope_key, build_team_filter
 from rawr_analytics.metrics.constants import Metric
-from rawr_analytics.metrics.rawr import RawrQuery
 from rawr_analytics.metrics.wowy import WowyQuery
+from rawr_analytics.services.rawr_query_params import RawrQuery
 from rawr_analytics.shared.season import Season, SeasonType
 from rawr_analytics.shared.team import Team
 

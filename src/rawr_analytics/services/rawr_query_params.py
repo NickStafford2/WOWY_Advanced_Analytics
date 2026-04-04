@@ -7,14 +7,14 @@ from rawr_analytics.metrics._query_normalization import (
     normalize_query_seasons,
     normalize_query_teams,
 )
-from rawr_analytics.metrics.rawr.defaults import (
+from rawr_analytics.metrics.rawr import (
     DEFAULT_RAWR_MIN_AVERAGE_MINUTES,
     DEFAULT_RAWR_MIN_GAMES,
     DEFAULT_RAWR_MIN_TOTAL_MINUTES,
     DEFAULT_RAWR_RIDGE_ALPHA,
     DEFAULT_RAWR_TOP_N,
+    validate_filters,
 )
-from rawr_analytics.metrics.rawr.inputs import validate_filters
 from rawr_analytics.shared.season import Season, SeasonType
 from rawr_analytics.shared.team import Team
 

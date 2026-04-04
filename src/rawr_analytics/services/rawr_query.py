@@ -13,7 +13,6 @@ from rawr_analytics.metrics.rawr import (
     DEFAULT_RAWR_SHRINKAGE_MODE,
     DEFAULT_RAWR_SHRINKAGE_STRENGTH,
     RawrPlayerSeasonRecord,
-    RawrQuery,
     build_export_table,
     build_leaderboard_payload,
     build_player_season_records,
@@ -28,6 +27,7 @@ from rawr_analytics.services._metric_scope import (
     season_ids,
     selected_seasons,
 )
+from rawr_analytics.services.rawr_query_params import RawrQuery
 from rawr_analytics.shared import JSONDict
 from rawr_analytics.shared.player import PlayerMinutes, PlayerSummary
 from rawr_analytics.shared.season import Season
