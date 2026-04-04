@@ -11,16 +11,18 @@ from rawr_analytics.data.game_cache import (
     list_cached_team_seasons,
 )
 from rawr_analytics.data.metric_store import (
+    clear_metric_scope_store,
+    load_metric_scope_store_state,
+)
+from rawr_analytics.data.metric_store._catalog import (
     MetricScopeAvailability,
     MetricScopeCatalog,
     MetricSeasonSpanIds,
-    RawrPlayerSeasonValueRow,
-    WowyPlayerSeasonValueRow,
-    clear_metric_scope_store,
-    load_metric_scope_store_state,
-    replace_rawr_scope_snapshot,
-    replace_wowy_scope_snapshot,
 )
+from rawr_analytics.data.metric_store._rawr_store import replace_rawr_scope_snapshot
+from rawr_analytics.data.metric_store._wowy_store import replace_wowy_scope_snapshot
+from rawr_analytics.data.metric_store.rawr import RawrPlayerSeasonValueRow
+from rawr_analytics.data.metric_store.wowy import WowyPlayerSeasonValueRow
 from rawr_analytics.data.metric_store_scope import build_scope_key, build_team_filter
 from rawr_analytics.metrics.constants import Metric, MetricSummary
 from rawr_analytics.metrics.rawr.defaults import (

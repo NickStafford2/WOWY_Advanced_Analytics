@@ -17,15 +17,17 @@ from rawr_analytics.data.game_cache import (
     validate_normalized_games_table,
 )
 from rawr_analytics.data.metric_store import (
-    MetricFullSpanPointRow,
-    MetricFullSpanSeriesRow,
-    MetricStoreAuditMetadata,
-    RawrPlayerSeasonValueRow,
-    WowyPlayerSeasonValueRow,
     audit_metric_store_tables,
     initialize_player_metrics_db,
 )
 from rawr_analytics.data.metric_store._catalog import MetricScopeCatalogRow
+from rawr_analytics.data.metric_store.audit import MetricStoreAuditMetadata
+from rawr_analytics.data.metric_store.full_span import (
+    MetricFullSpanPointRow,
+    MetricFullSpanSeriesRow,
+)
+from rawr_analytics.data.metric_store.rawr import RawrPlayerSeasonValueRow
+from rawr_analytics.data.metric_store.wowy import WowyPlayerSeasonValueRow
 
 
 @dataclass(frozen=True)
