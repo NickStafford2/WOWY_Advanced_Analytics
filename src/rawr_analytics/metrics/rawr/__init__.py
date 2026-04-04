@@ -1,5 +1,6 @@
 """RAWR metric package."""
 
+from rawr_analytics.metrics.rawr._shrinkage import RawrShrinkageMode
 from rawr_analytics.metrics.rawr.analysis import RawrValue
 from rawr_analytics.metrics.rawr.dataset import (
     RawrCustomQueryResult,
@@ -29,6 +30,7 @@ __all__ = [
     "RawrPlayerSeasonRecord",
     "RawrPlayerSeasonValue",
     "RawrQuery",
+    "RawrShrinkageMode",
     "RawrValue",
     "build_export_table",
     "build_leaderboard_payload",

@@ -4,6 +4,7 @@ from dataclasses import dataclass
 
 from rawr_analytics.metrics._validation import validate_top_n_and_minutes
 from rawr_analytics.metrics.rawr._observations import RawrObservation
+from rawr_analytics.metrics.rawr._shrinkage import RawrShrinkageMode
 from rawr_analytics.shared.player import PlayerMinutes, PlayerSummary
 from rawr_analytics.shared.season import Season
 
@@ -27,7 +28,7 @@ class RawrRequest:
     season_inputs: list[RawrSeasonInput]
     min_games: int
     ridge_alpha: float
-    shrinkage_mode: str = "uniform"
+    shrinkage_mode: RawrShrinkageMode = RawrShrinkageMode.UNIFORM
     shrinkage_strength: float = 1.0
     shrinkage_minute_scale: float = 48.0
     min_average_minutes: float | None = None
@@ -38,7 +39,7 @@ def validate_filters(
     min_games: int,
     ridge_alpha: float,
     *,
-    shrinkage_mode: str = "uniform",
+    shrinkage_mode: RawrShrinkageMode = RawrShrinkageMode.UNIFORM,
     shrinkage_strength: float = 1.0,
     shrinkage_minute_scale: float = 48.0,
     top_n: int | None = None,
@@ -49,12 +50,11 @@ def validate_filters(
         raise ValueError("Minimum games filter must be non-negative")
     if ridge_alpha < 0:
         raise ValueError("Ridge alpha must be non-negative")
-    if shrinkage_mode not in {"uniform", "game-count", "minutes"}:
-        raise ValueError("Shrinkage mode must be 'uniform', 'game-count', or 'minutes'")
-    if shrinkage_strength < 0:
-        raise ValueError("Shrinkage strength must be non-negative")
-    if shrinkage_minute_scale <= 0:
-        raise ValueError("Shrinkage minute scale must be positive")
+    RawrShrinkageMode.validate(
+        shrinkage_mode,
+        shrinkage_strength,
+        shrinkage_minute_scale,
+    )
     validate_top_n_and_minutes(
         top_n=top_n,
         min_average_minutes=min_average_minutes,

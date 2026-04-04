@@ -6,6 +6,7 @@ from itertools import product
 
 import numpy as np
 
+from rawr_analytics.metrics.rawr._shrinkage import RawrShrinkageMode
 from rawr_analytics.metrics.rawr.records import RawrPlayerSeasonRecord
 from rawr_analytics.metrics.wowy import prepare_wowy_player_season_records
 from rawr_analytics.metrics.wowy.records import WowyPlayerSeasonRecord
@@ -16,7 +17,11 @@ from rawr_analytics.services._metric_inputs import (
 from rawr_analytics.shared.season import Season, SeasonType
 from rawr_analytics.shared.team import Team
 
-_DEFAULT_SHRINKAGE_MODES = ("uniform", "game-count", "minutes")
+_DEFAULT_SHRINKAGE_MODES = (
+    RawrShrinkageMode.UNIFORM,
+    RawrShrinkageMode.GAME_COUNT,
+    RawrShrinkageMode.MINUTES,
+)
 
 
 @dataclass(frozen=True)
@@ -31,7 +36,7 @@ class _AggregatedPlayerValue:
 class ComparisonResult:
     model: str
     ridge_alpha: float | None
-    shrinkage_mode: str | None
+    shrinkage_mode: RawrShrinkageMode | None
     shrinkage_strength: float | None
     shrinkage_minute_scale: float | None
     players: int
@@ -85,6 +90,7 @@ def compare_rawr_configs(
         shrinkage_minute_scale_values=shrinkage_minute_scale_values,
     )
     completed_steps = 0
+    normalized_shrinkage_modes = _normalize_shrinkage_modes(shrinkage_modes)
 
     holdout_season_inputs = load_wowy_season_inputs(
         teams=teams,
@@ -147,17 +153,17 @@ def compare_rawr_configs(
 
     for ridge_alpha, shrinkage_mode, shrinkage_strength in product(
         rawr_ridge_values or [],
-        shrinkage_modes or _DEFAULT_SHRINKAGE_MODES,
+        normalized_shrinkage_modes,
         shrinkage_strength_values or [],
     ):
         minute_scales = (
             shrinkage_minute_scale_values or []
-            if shrinkage_mode == "minutes"
+            if shrinkage_mode == RawrShrinkageMode.MINUTES
             else [(shrinkage_minute_scale_values or [48.0])[0]]
         )
         for minute_scale in minute_scales:
             detail = f"alpha={ridge_alpha:.2f} mode={shrinkage_mode}"
-            if shrinkage_mode == "minutes":
+            if shrinkage_mode == RawrShrinkageMode.MINUTES:
                 detail += f" min_scale={minute_scale:.1f}"
             rawr_season_inputs = load_rawr_season_inputs(
                 teams=teams,
@@ -193,7 +199,9 @@ def compare_rawr_configs(
                     ridge_alpha=ridge_alpha,
                     shrinkage_mode=shrinkage_mode,
                     shrinkage_strength=shrinkage_strength,
-                    shrinkage_minute_scale=(minute_scale if shrinkage_mode == "minutes" else None),
+                    shrinkage_minute_scale=(
+                        minute_scale if shrinkage_mode == RawrShrinkageMode.MINUTES else None
+                    ),
                 )
             )
 
@@ -238,6 +246,14 @@ def _emit_progress(
     if event_fn is None:
         return
     event_fn(CompareRawrConfigsProgress(current=current, total=total, detail=detail))
+
+
+def _normalize_shrinkage_modes(
+    shrinkage_modes: list[str] | None,
+) -> list[RawrShrinkageMode]:
+    if shrinkage_modes is None:
+        return list(_DEFAULT_SHRINKAGE_MODES)
+    return [RawrShrinkageMode.parse(mode) for mode in shrinkage_modes]
 
 
 def _aggregate_wowy_training_records(
@@ -329,7 +345,7 @@ def _build_comparison_result(
     holdout_targets: dict[int, _AggregatedPlayerValue],
     top_n: int,
     ridge_alpha: float | None = None,
-    shrinkage_mode: str | None = None,
+    shrinkage_mode: RawrShrinkageMode | None = None,
     shrinkage_strength: float | None = None,
     shrinkage_minute_scale: float | None = None,
 ) -> ComparisonResult:
@@ -422,10 +438,10 @@ def _count_evaluation_steps(
     rawr_configs = 0
     for _, shrinkage_mode, _ in product(
         rawr_ridge_values or [],
-        shrinkage_modes or _DEFAULT_SHRINKAGE_MODES,
+        _normalize_shrinkage_modes(shrinkage_modes),
         shrinkage_strength_values or [],
     ):
-        if shrinkage_mode == "minutes":
+        if shrinkage_mode == RawrShrinkageMode.MINUTES:
             rawr_configs += len(shrinkage_minute_scale_values or [])
             continue
         rawr_configs += 1

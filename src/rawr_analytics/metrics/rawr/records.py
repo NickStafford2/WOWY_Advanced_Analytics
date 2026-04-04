@@ -3,6 +3,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 
 from rawr_analytics.metrics.rawr._observations import count_player_season_games
+from rawr_analytics.metrics.rawr._shrinkage import RawrShrinkageMode
 from rawr_analytics.metrics.rawr.analysis import RawrValue, fit_player_rawr
 from rawr_analytics.metrics.rawr.inputs import (
     RawrRequest,
@@ -43,7 +44,7 @@ class RawrPlayerSeasonRecord:
         season_inputs: list[RawrSeasonInput],
         min_games: int,
         ridge_alpha: float,
-        shrinkage_mode: str,
+        shrinkage_mode: RawrShrinkageMode,
         shrinkage_strength: float,
         shrinkage_minute_scale: float,
         min_average_minutes: float | None = None,

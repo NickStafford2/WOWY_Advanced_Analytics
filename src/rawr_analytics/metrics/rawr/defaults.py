@@ -1,8 +1,9 @@
 from __future__ import annotations
 
 from rawr_analytics.metrics.constants import Metric, MetricSummary
+from rawr_analytics.metrics.rawr._shrinkage import RawrShrinkageMode
 
-DEFAULT_RAWR_SHRINKAGE_MODE = "uniform"
+DEFAULT_RAWR_SHRINKAGE_MODE = RawrShrinkageMode.UNIFORM
 DEFAULT_RAWR_SHRINKAGE_STRENGTH = 1.0
 DEFAULT_RAWR_SHRINKAGE_MINUTE_SCALE = 48.0
 
