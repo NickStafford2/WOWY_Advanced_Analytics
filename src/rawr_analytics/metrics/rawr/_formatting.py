@@ -58,10 +58,10 @@ def format_rawr_records(
             f"{record.season:<{season_width}} "
             f"{record.player.player_name:<{name_width}} "
             f"{record.player.player_id:<{player_id_width}} "
-            f"{record.result.games:>6} "
+            f"{record.games:>6} "
             f"{_format_minutes_value(record.minutes.average_minutes):>{avg_minutes_width}} "
             f"{_format_minutes_value(record.minutes.total_minutes):>{total_minutes_width}} "
-            f"{record.result.coefficient:>10.4f}"
+            f"{record.coefficient:>10.4f}"
         )
     return "\n".join(lines)
 

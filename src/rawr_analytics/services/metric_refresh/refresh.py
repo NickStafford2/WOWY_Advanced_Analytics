@@ -440,8 +440,8 @@ def _build_rawr_cached_rows(
             season_id=record.season.id,
             player_id=record.player.player_id,
             player_name=record.player.player_name,
-            games=record.result.games,
-            coefficient=record.result.coefficient,
+            games=record.games,
+            coefficient=record.coefficient,
             average_minutes=record.minutes.average_minutes,
             total_minutes=record.minutes.total_minutes,
         )

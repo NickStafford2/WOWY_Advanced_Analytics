@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
-from rawr_analytics.metrics.rawr.analysis import RawrValue, fit_player_rawr
+from rawr_analytics.metrics.rawr.analysis import fit_player_rawr
 from rawr_analytics.metrics.rawr.inputs import (
     RawrRequest,
     RawrSeasonInput,
@@ -18,7 +18,8 @@ class RawrPlayerSeasonRecord:
     season: Season
     player: PlayerSummary
     minutes: PlayerMinutes
-    result: RawrValue
+    games: int
+    coefficient: float
 
 
 def build_player_season_records(request: RawrRequest) -> list[RawrPlayerSeasonRecord]:
@@ -29,7 +30,7 @@ def build_player_season_records(request: RawrRequest) -> list[RawrPlayerSeasonRe
     records.sort(
         key=lambda record: (
             record.season.id,
-            record.result.coefficient,
+            record.coefficient,
             record.player.player_name,
         ),
         reverse=True,
@@ -67,7 +68,8 @@ def _build_season_records(
                 season=season_input.season,
                 player=player.player,
                 minutes=player.minutes,
-                result=rawr_value,
+                games=rawr_value.games,
+                coefficient=rawr_value.coefficient,
             )
         )
     return records

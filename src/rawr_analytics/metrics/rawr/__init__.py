@@ -1,7 +1,6 @@
 """RAWR metric package."""
 
 from rawr_analytics.metrics.rawr._shrinkage import RawrShrinkageMode
-from rawr_analytics.metrics.rawr.analysis import RawrValue
 from rawr_analytics.metrics.rawr.defaults import (
     DEFAULT_RAWR_FILTERS,
     DEFAULT_RAWR_SHRINKAGE_MINUTE_SCALE,
@@ -26,7 +25,6 @@ __all__ = [
     "RawrPlayerSeasonRecord",
     "RawrQuery",
     "RawrShrinkageMode",
-    "RawrValue",
     "build_export_table",
     "build_leaderboard_payload",
     "build_player_season_records",

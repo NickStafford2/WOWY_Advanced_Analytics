@@ -14,7 +14,6 @@ from rawr_analytics.metrics.rawr import (
     DEFAULT_RAWR_SHRINKAGE_STRENGTH,
     RawrPlayerSeasonRecord,
     RawrQuery,
-    RawrValue,
     build_export_table,
     build_leaderboard_payload,
     build_player_season_records,
@@ -187,10 +186,8 @@ def _load_rawr_store_values(
                 average_minutes=row.average_minutes,
                 total_minutes=row.total_minutes,
             ),
-            result=RawrValue(
-                games=row.games,
-                coefficient=row.coefficient,
-            ),
+            games=row.games,
+            coefficient=row.coefficient,
         )
         for row in load_rawr_player_season_value_rows(
             scope_key=scope_key,

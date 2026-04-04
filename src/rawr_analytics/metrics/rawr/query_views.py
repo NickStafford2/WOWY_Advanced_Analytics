@@ -58,10 +58,10 @@ def _serialize_player_season_row(
         "season_id": row.season.id,
         "player_id": row.player.player_id,
         "player_name": row.player.player_name,
-        "value": row.result.coefficient,
-        "sample_size": row.result.games,
+        "value": row.coefficient,
+        "sample_size": row.games,
         "secondary_sample_size": None,
-        "games": row.result.games,
+        "games": row.games,
         "average_minutes": row.minutes.average_minutes,
         "total_minutes": row.minutes.total_minutes,
     }
@@ -82,15 +82,14 @@ def _build_ranked_table_rows(
     ranked_rows: list[dict[str, Any]] = []
     for player_id, player_rows in rows_by_player.items():
         total_minutes = sum((row.minutes.total_minutes or 0.0) for row in player_rows)
-        games = sum(row.result.games for row in player_rows)
+        games = sum(row.games for row in player_rows)
         average_minutes = total_minutes / games if games > 0 else None
         ranked_rows.append(
             {
                 "rank": 0,
                 "player_id": player_id,
                 "player_name": player_rows[0].player.player_name,
-                "span_average_value": sum(row.result.coefficient for row in player_rows)
-                / full_span_length,
+                "span_average_value": sum(row.coefficient for row in player_rows) / full_span_length,
                 "average_minutes": average_minutes,
                 "total_minutes": total_minutes,
                 "games_with": games,
@@ -102,11 +101,7 @@ def _build_ranked_table_rows(
                     {
                         "season": season_id,
                         "value": next(
-                            (
-                                row.result.coefficient
-                                for row in player_rows
-                                if row.season.id == season_id
-                            ),
+                            (row.coefficient for row in player_rows if row.season.id == season_id),
                             None,
                         ),
                     }

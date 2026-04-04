@@ -297,7 +297,7 @@ def _aggregate_rawr_training_records(
             player_id=player_id,
             player_name=player_records[0].player.player_name,
             value=_aggregate_values(
-                [record.result.coefficient for record in player_records],
+                [record.coefficient for record in player_records],
                 [record.season for record in player_records],
                 aggregation,
             ),
