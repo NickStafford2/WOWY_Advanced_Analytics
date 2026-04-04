@@ -11,11 +11,22 @@ from rawr_analytics.app.rawr.service import (
     resolve_rawr_result,
 )
 from rawr_analytics.metrics.constants import Metric
+from rawr_analytics.web._metric_handlers import MetricWebHandlers
 from rawr_analytics.web._parse import (
     build_rawr_options_query_from_request,
     resolve_rawr_query_from_request,
 )
 from rawr_analytics.web.csv import render_leaderboard_csv
+
+
+def build_metric_handlers() -> MetricWebHandlers:
+    return MetricWebHandlers(
+        json_options_response=json_options_response,
+        json_player_seasons_response=json_player_seasons_response,
+        json_span_chart_response=json_span_chart_response,
+        json_leaderboard_response=json_leaderboard_response,
+        csv_leaderboard_response=csv_leaderboard_response,
+    )
 
 
 def json_options_response() -> Response:
@@ -35,7 +46,6 @@ def json_span_chart_response() -> Response:
 
 
 def json_leaderboard_response(
-    *,
     recalculate: bool = False,
 ) -> Response:
     query = resolve_rawr_query_from_request(request, recalculate=recalculate)
@@ -44,7 +54,6 @@ def json_leaderboard_response(
 
 
 def csv_leaderboard_response(
-    *,
     recalculate: bool = False,
 ) -> Response:
     query = resolve_rawr_query_from_request(request, recalculate=recalculate)
