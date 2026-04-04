@@ -17,7 +17,6 @@ from rawr_analytics.metrics.rawr import (
     build_export_table,
     build_leaderboard_payload,
     build_player_seasons_payload,
-    build_rawr_custom_query,
 )
 from rawr_analytics.services._metric_inputs import load_rawr_season_inputs
 from rawr_analytics.services._metric_scope import (
@@ -104,9 +103,7 @@ def _build_rawr_view_payload(
             require_current_metric_scope(metric=Metric.RAWR, scope_key=scope_key)
             return cast(
                 JSONDict,
-                build_player_seasons_payload(
-                    _load_rawr_store_values(query, scope_key=scope_key)
-                ),
+                build_player_seasons_payload(_load_rawr_store_values(query, scope_key=scope_key)),
             )
         case "cached-leaderboard":
             catalog = require_current_metric_scope(metric=Metric.RAWR, scope_key=scope_key)
@@ -162,7 +159,7 @@ def _build_rawr_custom_query_result(
         season_type=query.season_type,
         progress_fn=progress_fn,
     )
-    return build_rawr_custom_query(
+    return RawrCustomQueryResult.build_rawr_custom_query(
         season_inputs=season_inputs,
         min_games=query.min_games,
         ridge_alpha=query.ridge_alpha,

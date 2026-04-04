@@ -5,8 +5,8 @@ from dataclasses import dataclass
 from typing import Any
 
 from rawr_analytics.metrics._span import build_span_payload
-from rawr_analytics.metrics.rawr.defaults import describe_metric
 from rawr_analytics.metrics.rawr.dataset import RawrPlayerSeasonValue
+from rawr_analytics.metrics.rawr.defaults import describe_metric
 from rawr_analytics.metrics.rawr.query import RawrQuery
 from rawr_analytics.shared.season import Season, SeasonType
 from rawr_analytics.shared.team import Team
@@ -51,9 +51,7 @@ class RawrQueryFilters:
     def to_payload(self) -> dict[str, Any]:
         return {
             "team": (
-                None
-                if self.teams is None
-                else [team.current.abbreviation for team in self.teams]
+                None if self.teams is None else [team.current.abbreviation for team in self.teams]
             ),
             "team_id": None if self.teams is None else [team.team_id for team in self.teams],
             "season": None if self.seasons is None else [season.id for season in self.seasons],
@@ -99,9 +97,7 @@ def build_leaderboard_payload(
     if available_seasons is not None:
         payload["available_seasons"] = [season.id for season in available_seasons]
     if available_teams is not None:
-        payload["available_teams"] = [
-            team.current.abbreviation for team in available_teams
-        ]
+        payload["available_teams"] = [team.current.abbreviation for team in available_teams]
     return payload
 
 

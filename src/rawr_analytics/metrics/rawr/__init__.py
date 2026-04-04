@@ -4,7 +4,6 @@ from rawr_analytics.metrics.rawr.analysis import RawrValue
 from rawr_analytics.metrics.rawr.dataset import (
     RawrCustomQueryResult,
     RawrPlayerSeasonValue,
-    build_rawr_custom_query,
     prepare_rawr_player_season_records,
 )
 from rawr_analytics.metrics.rawr.defaults import (
@@ -37,7 +36,6 @@ __all__ = [
     "build_export_table",
     "build_leaderboard_payload",
     "build_player_seasons_payload",
-    "build_rawr_custom_query",
     "build_rawr_query",
     "default_filters",
     "describe_metric",
