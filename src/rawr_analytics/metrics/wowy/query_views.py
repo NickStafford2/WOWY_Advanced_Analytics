@@ -4,6 +4,7 @@ from collections.abc import Sequence
 from dataclasses import dataclass
 from typing import Any
 
+from rawr_analytics.metrics._span import build_span_payload
 from rawr_analytics.metrics.constants import Metric
 from rawr_analytics.metrics.wowy.defaults import describe_metric
 from rawr_analytics.metrics.wowy.models import WowyCustomQueryResult, WowyPlayerSeasonValue
@@ -87,7 +88,7 @@ def build_cached_leaderboard_payload(
         "mode": "cached",
         "metric": metric,
         "metric_label": metric_label,
-        "span": _build_span_payload(seasons=seasons, top_n=top_n),
+        "span": build_span_payload(seasons=seasons, top_n=top_n),
         "table_rows": table_rows,
         "series": _build_series_from_table_rows(table_rows),
         "available_seasons": available_seasons,
@@ -107,7 +108,7 @@ def build_custom_leaderboard_payload(
         "mode": "custom",
         "metric": metric.value,
         "metric_label": result.metric_label,
-        "span": _build_span_payload(seasons=seasons, top_n=top_n),
+        "span": build_span_payload(seasons=seasons, top_n=top_n),
         "table_rows": table_rows,
         "series": _build_series_from_table_rows(table_rows),
     }
@@ -207,20 +208,6 @@ def _build_ranked_table_rows(
     )
     limited_rows = ranked_rows if top_n is None else ranked_rows[:top_n]
     return [{**row, "rank": index + 1} for index, row in enumerate(limited_rows)]
-
-
-def _build_span_payload(
-    *,
-    seasons: list[str],
-    top_n: int,
-) -> dict[str, Any]:
-    ordered_seasons = sorted(dict.fromkeys(seasons))
-    return {
-        "start_season": ordered_seasons[0] if ordered_seasons else None,
-        "end_season": ordered_seasons[-1] if ordered_seasons else None,
-        "available_seasons": ordered_seasons,
-        "top_n": top_n,
-    }
 
 
 def _build_series_from_table_rows(
