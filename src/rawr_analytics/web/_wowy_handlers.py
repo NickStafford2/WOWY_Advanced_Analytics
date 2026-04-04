@@ -13,11 +13,11 @@ from rawr_analytics.app.wowy.service import (
     resolve_wowy_result,
 )
 from rawr_analytics.metrics.constants import Metric
+from rawr_analytics.web._metric_handlers import MetricWebHandlers
 from rawr_analytics.web._parse import (
     build_wowy_options_query_from_request,
     build_wowy_query_from_request,
 )
-from rawr_analytics.web._metric_handlers import MetricWebHandlers
 from rawr_analytics.web.csv import render_leaderboard_csv
 
 
