@@ -18,6 +18,7 @@ class RawrObservation:
     player_weights: dict[int, float]
     player_minutes: dict[int, float] | None = None
 
+
 _LINEUP_WEIGHT_SUM = 5.0
 
 
@@ -30,14 +31,6 @@ def _build_minute_weights(player_minutes: dict[int, float]) -> dict[int, float]:
         player_id: (minutes / total_minutes) * _LINEUP_WEIGHT_SUM
         for player_id, minutes in player_minutes.items()
     }
-
-
-def _count_player_games(observations: list[RawrObservation]) -> dict[int, int]:
-    games_by_player: dict[int, int] = defaultdict(int)
-    for observation in observations:
-        for player_id in observation.player_weights:
-            games_by_player[player_id] += 1
-    return dict(games_by_player)
 
 
 def count_player_season_games(
