@@ -9,7 +9,10 @@ from rawr_analytics.data.metric_store._catalog import (
 from rawr_analytics.data.metric_store._replace import replace_metric_scope_snapshot
 from rawr_analytics.data.metric_store._sql_writes import insert_wowy_rows
 from rawr_analytics.data.metric_store._validation import validate_wowy_rows
-from rawr_analytics.data.metric_store.full_span import build_wowy_full_span_rows
+from rawr_analytics.data.metric_store.full_span import (
+    MetricStorePlayerSeasonValue,
+    build_metric_full_span_rows,
+)
 from rawr_analytics.data.metric_store.wowy import WowyPlayerSeasonValueRow
 
 
@@ -30,11 +33,11 @@ def replace_wowy_scope_snapshot(
         source_fingerprint=source_fingerprint,
         rows=rows,
     )
-    series_rows, point_rows = build_wowy_full_span_rows(
+    series_rows, point_rows = build_metric_full_span_rows(
         metric_id=metric_id,
-        rows=rows,
         scope_key=scope_key,
         season_ids=catalog.availability.season_ids,
+        player_season_values=_build_player_season_values(rows),
     )
     replace_metric_scope_snapshot(
         metric_id=metric_id,
@@ -56,3 +59,21 @@ def replace_wowy_scope_snapshot(
         ),
         row_count=len(rows),
     )
+
+
+def _build_player_season_values(
+    rows: list[WowyPlayerSeasonValueRow],
+) -> list[MetricStorePlayerSeasonValue]:
+    player_season_values: list[MetricStorePlayerSeasonValue] = []
+    for row in rows:
+        if row.value is None:
+            continue
+        player_season_values.append(
+            MetricStorePlayerSeasonValue(
+                player_id=row.player_id,
+                player_name=row.player_name,
+                season_id=row.season_id,
+                value=row.value,
+            )
+        )
+    return player_season_values

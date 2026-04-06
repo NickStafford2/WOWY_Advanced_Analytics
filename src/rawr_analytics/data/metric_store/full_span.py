@@ -2,8 +2,6 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
-from rawr_analytics.data.metric_store.rawr import RawrPlayerSeasonValueRow
-from rawr_analytics.data.metric_store.wowy import WowyPlayerSeasonValueRow
 from rawr_analytics.shared.player import PlayerSummary
 
 
@@ -39,68 +37,19 @@ class MetricFullSpanSeries:
 
 
 @dataclass(frozen=True)
-class _PlayerSeasonValue:
+class MetricStorePlayerSeasonValue:
     player_id: int
     player_name: str
     season_id: str
     value: float
 
 
-def build_rawr_full_span_rows(
-    *,
-    rows: list[RawrPlayerSeasonValueRow],
-    scope_key: str,
-    season_ids: list[str],
-) -> tuple[list[MetricFullSpanSeriesRow], list[MetricFullSpanPointRow]]:
-    return _build_metric_full_span_rows(
-        metric_id="rawr",
-        scope_key=scope_key,
-        season_ids=season_ids,
-        player_season_values=[
-            _PlayerSeasonValue(
-                player_id=row.player_id,
-                player_name=row.player_name,
-                season_id=row.season_id,
-                value=row.coefficient,
-            )
-            for row in rows
-        ],
-    )
-
-
-def build_wowy_full_span_rows(
-    *,
-    metric_id: str,
-    rows: list[WowyPlayerSeasonValueRow],
-    scope_key: str,
-    season_ids: list[str],
-) -> tuple[list[MetricFullSpanSeriesRow], list[MetricFullSpanPointRow]]:
-    player_season_values: list[_PlayerSeasonValue] = []
-    for row in rows:
-        if row.value is None:
-            continue
-        player_season_values.append(
-            _PlayerSeasonValue(
-                player_id=row.player_id,
-                player_name=row.player_name,
-                season_id=row.season_id,
-                value=row.value,
-            )
-        )
-    return _build_metric_full_span_rows(
-        metric_id=metric_id,
-        scope_key=scope_key,
-        season_ids=season_ids,
-        player_season_values=player_season_values,
-    )
-
-
-def _build_metric_full_span_rows(
+def build_metric_full_span_rows(
     *,
     metric_id: str,
     scope_key: str,
     season_ids: list[str],
-    player_season_values: list[_PlayerSeasonValue],
+    player_season_values: list[MetricStorePlayerSeasonValue],
 ) -> tuple[list[MetricFullSpanSeriesRow], list[MetricFullSpanPointRow]]:
     totals: dict[int, float] = {}
     counts: dict[int, int] = {}
@@ -151,3 +100,12 @@ def _build_metric_full_span_rows(
                 )
             )
     return series_rows, point_rows
+
+
+__all__ = [
+    "MetricFullSpanPointRow",
+    "MetricFullSpanSeries",
+    "MetricFullSpanSeriesRow",
+    "MetricStorePlayerSeasonValue",
+    "build_metric_full_span_rows",
+]
