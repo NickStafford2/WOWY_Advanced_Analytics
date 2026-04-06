@@ -4,7 +4,6 @@ from collections.abc import Callable
 from dataclasses import dataclass
 from typing import Literal
 
-from rawr_analytics.app.rawr._store import build_rawr_record_from_store_row
 from rawr_analytics.app.rawr.presenters import (
     RawrQueryFiltersDTO,
     build_rawr_export_rows,
@@ -21,17 +20,18 @@ from rawr_analytics.app.rawr.presenters import (
 from rawr_analytics.app.rawr.query import RawrQuery
 from rawr_analytics.data.metric_store import load_rawr_player_season_value_rows
 from rawr_analytics.metrics.constants import Metric
-from rawr_analytics.metrics.rawr.defaults import (
+from rawr_analytics.metrics.rawr import (
     DEFAULT_RAWR_SHRINKAGE_MINUTE_SCALE,
     DEFAULT_RAWR_SHRINKAGE_MODE,
     DEFAULT_RAWR_SHRINKAGE_STRENGTH,
+    build_rawr_record_from_store_row,
+    load_rawr_records,
 )
 from rawr_analytics.metrics.rawr.inputs import build_rawr_request
 from rawr_analytics.metrics.rawr.records import (
     RawrPlayerSeasonRecord,
     build_player_season_records,
 )
-from rawr_analytics.services._metric_inputs import load_rawr_records
 from rawr_analytics.services._metric_scope import (
     MetricStoreCatalog,
     build_metric_options_payload,

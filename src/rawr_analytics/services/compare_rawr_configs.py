@@ -6,16 +6,12 @@ from itertools import product
 
 import numpy as np
 
-from rawr_analytics.metrics.rawr import RawrShrinkageMode
+from rawr_analytics.metrics.rawr import RawrShrinkageMode, load_rawr_records
 from rawr_analytics.metrics.rawr.inputs import build_rawr_request
 from rawr_analytics.metrics.rawr.records import RawrPlayerSeasonRecord, build_player_season_records
-from rawr_analytics.metrics.wowy import prepare_wowy_player_season_records
+from rawr_analytics.metrics.wowy import load_wowy_records, prepare_wowy_player_season_records
 from rawr_analytics.metrics.wowy.inputs import build_wowy_season_inputs
 from rawr_analytics.metrics.wowy.records import WowyPlayerSeasonRecord
-from rawr_analytics.services._metric_inputs import (
-    load_rawr_records,
-    load_wowy_records,
-)
 from rawr_analytics.shared.season import Season, SeasonType
 from rawr_analytics.shared.team import Team
 

@@ -9,8 +9,17 @@ from rawr_analytics.data.game_cache import (
     load_normalized_scope_records_from_db,
 )
 from rawr_analytics.data.game_cache.rows import NormalizedGamePlayerRow, NormalizedGameRow
+from rawr_analytics.data.metric_store.rawr import RawrPlayerSeasonValueRow
 from rawr_analytics.data.scope_resolver import resolve_team_seasons
+from rawr_analytics.metrics.rawr.defaults import (
+    DEFAULT_RAWR_SHRINKAGE_MINUTE_SCALE,
+    DEFAULT_RAWR_SHRINKAGE_MODE,
+    DEFAULT_RAWR_SHRINKAGE_STRENGTH,
+)
+from rawr_analytics.metrics.rawr.inputs import build_rawr_request
+from rawr_analytics.metrics.rawr.records import RawrPlayerSeasonRecord, build_player_season_records
 from rawr_analytics.shared.game import NormalizedGamePlayerRecord, NormalizedGameRecord
+from rawr_analytics.shared.player import PlayerMinutes, PlayerSummary
 from rawr_analytics.shared.scope import TeamSeasonScope
 from rawr_analytics.shared.season import Season, SeasonType
 from rawr_analytics.shared.team import Team
@@ -74,22 +83,6 @@ def load_rawr_records(
     return season_games, season_game_players
 
 
-def load_wowy_records(
-    *,
-    teams: list[Team] | None,
-    seasons: list[Season] | None,
-    season_type: SeasonType,
-) -> tuple[list[NormalizedGameRecord], list[NormalizedGamePlayerRecord]]:
-    team_seasons = resolve_team_seasons(teams, seasons, season_type=season_type)
-    if not team_seasons:
-        raise ValueError("No cached data matched the requested scope")
-
-    game_rows, game_player_rows = load_normalized_scope_records_from_db(team_seasons)
-    games = [_build_normalized_game_record(row) for row in game_rows]
-    game_players = [_build_normalized_game_player_record(row) for row in game_player_rows]
-    return games, game_players
-
-
 def list_incomplete_rawr_season_warnings(
     *,
     seasons: list[str] | None = None,
@@ -105,6 +98,83 @@ def list_incomplete_rawr_season_warnings(
             continue
         warnings.extend(_build_rawr_warning_messages(season=season, summary=summary))
     return warnings
+
+
+def build_rawr_store_rows(
+    *,
+    scope_key: str,
+    team_filter: str,
+    season_type: SeasonType,
+    teams: list[Team] | None,
+    ridge_alpha: float,
+) -> list[RawrPlayerSeasonValueRow]:
+    season_games, season_game_players = load_rawr_records(
+        teams=teams,
+        seasons=None,
+        season_type=season_type,
+    )
+    request = build_rawr_request(
+        season_games=season_games,
+        season_game_players=season_game_players,
+        min_games=1,
+        ridge_alpha=ridge_alpha,
+        shrinkage_mode=DEFAULT_RAWR_SHRINKAGE_MODE,
+        shrinkage_strength=DEFAULT_RAWR_SHRINKAGE_STRENGTH,
+        shrinkage_minute_scale=DEFAULT_RAWR_SHRINKAGE_MINUTE_SCALE,
+    )
+    records = build_player_season_records(request)
+    return [
+        build_rawr_store_row_from_record(
+            record,
+            scope_key=scope_key,
+            team_filter=team_filter,
+            season_type=season_type,
+        )
+        for record in records
+    ]
+
+
+def build_rawr_record_from_store_row(
+    row: RawrPlayerSeasonValueRow,
+    *,
+    season_type: SeasonType,
+) -> RawrPlayerSeasonRecord:
+    return RawrPlayerSeasonRecord(
+        season=Season.parse(row.season_id, season_type.value),
+        player=PlayerSummary(
+            player_id=row.player_id,
+            player_name=row.player_name,
+        ),
+        minutes=PlayerMinutes(
+            average_minutes=row.average_minutes,
+            total_minutes=row.total_minutes,
+        ),
+        games=row.games,
+        coefficient=row.coefficient,
+    )
+
+
+def build_rawr_store_row_from_record(
+    record: RawrPlayerSeasonRecord,
+    *,
+    scope_key: str,
+    team_filter: str,
+    season_type: SeasonType,
+) -> RawrPlayerSeasonValueRow:
+    return RawrPlayerSeasonValueRow(
+        snapshot_id=None,
+        metric_id="rawr",
+        scope_key=scope_key,
+        team_filter=team_filter,
+        season_type=season_type.value,
+        season_id=record.season.id,
+        player_id=record.player.player_id,
+        player_name=record.player.player_name,
+        games=record.games,
+        coefficient=record.coefficient,
+        average_minutes=record.minutes.average_minutes,
+        total_minutes=record.minutes.total_minutes,
+    )
 
 
 def _load_rawr_season_records(

@@ -3,7 +3,6 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Literal
 
-from rawr_analytics.app.wowy._store import build_wowy_value_from_store_row
 from rawr_analytics.app.wowy.presenters import WowyQueryFiltersDTO
 from rawr_analytics.app.wowy.presenters import (
     build_wowy_export_rows as build_wowy_export_rows_from_values,
@@ -20,9 +19,9 @@ from rawr_analytics.app.wowy.presenters import (
 from rawr_analytics.app.wowy.query import WowyQuery
 from rawr_analytics.data.metric_store import load_wowy_player_season_value_rows
 from rawr_analytics.metrics.constants import Metric
+from rawr_analytics.metrics.wowy import build_wowy_value_from_store_row, load_wowy_records
 from rawr_analytics.metrics.wowy.inputs import build_wowy_season_inputs
 from rawr_analytics.metrics.wowy.records import WowyPlayerSeasonValue, build_wowy_custom_query
-from rawr_analytics.services._metric_inputs import load_wowy_records
 from rawr_analytics.services._metric_scope import (
     MetricStoreCatalog,
     build_metric_options_payload,

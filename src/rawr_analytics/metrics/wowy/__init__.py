@@ -1,5 +1,10 @@
 """WOWY metric package."""
 
+from rawr_analytics.metrics.wowy._store import (
+    build_wowy_store_rows,
+    build_wowy_value_from_store_row,
+    load_wowy_records,
+)
 from rawr_analytics.metrics.wowy.analysis import (
     DEFAULT_WOWY_SHRINKAGE_PRIOR_GAMES,
     WowyGame,
@@ -37,11 +42,14 @@ __all__ = [
     "build_player_season_records",
     "build_wowy_custom_query",
     "build_wowy_request",
+    "build_wowy_store_rows",
+    "build_wowy_value_from_store_row",
     "compute_wowy_shrinkage_score",
     "default_filters",
     "describe_metric",
     "describe_wowy_metric",
     "describe_wowy_shrunk_metric",
+    "load_wowy_records",
     "prepare_wowy_player_season_records",
     "validate_filters",
 ]
