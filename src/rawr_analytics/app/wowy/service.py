@@ -3,6 +3,11 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Literal
 
+from rawr_analytics.app.metric_store import (
+    MetricStoreCatalog,
+    build_metric_options_payload,
+    require_current_metric_scope,
+)
 from rawr_analytics.app.wowy.presenters import WowyQueryFiltersDTO
 from rawr_analytics.app.wowy.presenters import (
     build_wowy_export_rows as build_wowy_export_rows_from_values,
@@ -18,17 +23,11 @@ from rawr_analytics.app.wowy.presenters import (
 )
 from rawr_analytics.app.wowy.query import WowyQuery
 from rawr_analytics.data.metric_store import load_wowy_player_season_value_rows
+from rawr_analytics.data.metric_store_scope import build_scope_key, season_ids
 from rawr_analytics.metrics.constants import Metric
 from rawr_analytics.metrics.wowy import build_wowy_value_from_store_row, load_wowy_records
 from rawr_analytics.metrics.wowy.inputs import build_wowy_season_inputs
 from rawr_analytics.metrics.wowy.records import WowyPlayerSeasonValue, build_wowy_custom_query
-from rawr_analytics.services._metric_scope import (
-    MetricStoreCatalog,
-    build_metric_options_payload,
-    build_metric_scope_key,
-    require_current_metric_scope,
-    season_ids,
-)
 from rawr_analytics.shared import JSONDict
 
 type WowyResultSource = Literal["cache", "live"]
@@ -159,7 +158,10 @@ def _try_load_wowy_store_result(
     metric: Metric,
     query: WowyQuery,
 ) -> ResolvedWowyResultDTO | None:
-    scope_key = build_metric_scope_key(query)
+    scope_key = build_scope_key(
+        season_type=query.season_type,
+        teams=query.teams,
+    )
     try:
         catalog = require_current_metric_scope(metric=metric, scope_key=scope_key)
     except ValueError:

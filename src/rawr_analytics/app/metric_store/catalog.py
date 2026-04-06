@@ -3,23 +3,16 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Any
 
-from rawr_analytics.app.rawr.query import RawrQuery
-from rawr_analytics.app.wowy.query import WowyQuery
 from rawr_analytics.data.game_cache import (
     build_normalized_cache_fingerprint,
     list_cache_load_rows,
     list_cached_team_seasons,
 )
-from rawr_analytics.data.metric_store import (
-    load_metric_scope_store_state,
-    load_metric_span_store_rows,
-)
+from rawr_analytics.data.metric_store import load_metric_scope_store_state
 from rawr_analytics.data.metric_store_scope import build_scope_key, build_team_filter
 from rawr_analytics.metrics.constants import Metric
 from rawr_analytics.shared.season import Season, SeasonType
 from rawr_analytics.shared.team import Team
-
-MetricQuery = RawrQuery | WowyQuery
 
 
 @dataclass(frozen=True)
@@ -39,13 +32,6 @@ class MetricStoreCatalog:
     season_type: SeasonType
     availability: MetricCatalogAvailability
     full_span: MetricSeasonSpan | None
-
-
-def build_metric_scope_key(query: MetricQuery) -> str:
-    return build_scope_key(
-        season_type=query.season_type,
-        team_filter=build_team_filter(query.teams),
-    )
 
 
 def build_metric_options_payload(
@@ -71,48 +57,6 @@ def build_metric_options_payload(
         "available_seasons": [season.id for season in catalog.availability.seasons],
         "available_teams_by_season": _build_available_teams_by_season(catalog),
         "filters": filters,
-    }
-
-
-def build_metric_span_chart_payload(
-    *,
-    metric: Metric,
-    catalog: MetricStoreCatalog,
-    scope_key: str,
-    top_n: int,
-) -> dict[str, Any]:
-    span_rows = load_metric_span_store_rows(
-        metric=metric.value,
-        scope_key=scope_key,
-        top_n=top_n,
-    )
-    available_season_ids = [season.id for season in catalog.availability.seasons]
-    return {
-        "metric": metric.value,
-        "span": {
-            "start_season": (
-                None if catalog.full_span is None else catalog.full_span.start_season.id
-            ),
-            "end_season": None if catalog.full_span is None else catalog.full_span.end_season.id,
-            "available_seasons": available_season_ids,
-            "top_n": top_n,
-        },
-        "series": [
-            {
-                "player_id": row.player.player_id,
-                "player_name": row.player.player_name,
-                "span_average_value": row.span_average_value,
-                "season_count": row.season_count,
-                "points": [
-                    {
-                        "season": season_id,
-                        "value": row.points_by_season.get(season_id),
-                    }
-                    for season_id in available_season_ids
-                ],
-            }
-            for row in span_rows.series[:top_n]
-        ],
     }
 
 
@@ -176,32 +120,16 @@ def load_metric_scope_catalog_for_options(
         return require_current_metric_scope(metric=metric, scope_key=scope_key)
     except ValueError:
         return _build_metric_options_catalog_from_cache(
-            metric=metric,
             teams=teams,
             season_type=season_type,
         )
 
 
-def selected_seasons(
-    seasons: list[Season] | None,
-    catalog: MetricStoreCatalog,
-) -> list[str]:
-    return season_ids(seasons) or [season.id for season in catalog.availability.seasons]
-
-
-def season_ids(seasons: list[Season] | None) -> list[str] | None:
-    if seasons is None:
-        return None
-    return [season.id for season in seasons]
-
-
 def _build_metric_options_catalog_from_cache(
     *,
-    metric: Metric,
     teams: list[Team] | None,
     season_type: SeasonType,
 ) -> MetricStoreCatalog:
-    del metric
     cached_team_seasons = [
         team_season
         for team_season in list_cached_team_seasons(teams=teams)
