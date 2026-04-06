@@ -3,6 +3,12 @@ from __future__ import annotations
 from collections.abc import Callable
 from dataclasses import dataclass
 
+from rawr_analytics.app.metric_store import (
+    DEFAULT_RAWR_RIDGE_ALPHA,
+    MetricStoreRefreshProgressEvent,
+    RefreshMetricStoreResult,
+    refresh_metric_store,
+)
 from rawr_analytics.data import (
     DatabaseValidationSummary,
     prepare_rebuild_storage,
@@ -10,12 +16,6 @@ from rawr_analytics.data import (
     validate_rebuild_storage,
 )
 from rawr_analytics.metrics.constants import Metric
-from rawr_analytics.services.metric_refresh import (
-    DEFAULT_RAWR_RIDGE_ALPHA,
-    MetricStoreRefreshProgressEvent,
-    RefreshMetricStoreResult,
-    refresh_metric_store,
-)
 from rawr_analytics.shared.ingest import (
     FetchError,
     GameNormalizationFailure,
