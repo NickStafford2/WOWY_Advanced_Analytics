@@ -4,16 +4,16 @@ import argparse
 import sys
 from collections.abc import Sequence
 
+from rawr_analytics.app.rebuild import (
+    format_rebuild_validation_summary,
+    rebuild_player_metrics_db,
+)
 from rawr_analytics.cli._failure_logging import append_failure_log_entry
 from rawr_analytics.cli._ingest_terminal import (
     render_failure_summary,
 )
 from rawr_analytics.cli._rebuild_terminal import (
     render_rebuild_event,
-)
-from rawr_analytics.services.rebuild import (
-    format_rebuild_validation_summary,
-    rebuild_player_metrics_db,
 )
 from rawr_analytics.sources.nba_api.ingest import SeasonRangeFailure
 

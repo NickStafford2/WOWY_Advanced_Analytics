@@ -2,6 +2,12 @@ from __future__ import annotations
 
 import sys
 
+from rawr_analytics.app.rebuild import (
+    RebuildEvent,
+    RebuildMetricRefreshProgressEvent,
+    RebuildTeamFailureEvent,
+    RebuildValidationProgressEvent,
+)
 from rawr_analytics.cli._ingest_terminal import (
     format_partial_failure_details,
     render_progress_line,
@@ -15,12 +21,6 @@ from rawr_analytics.sources.nba_api.ingest import (
     IngestSeasonStartedEvent,
     IngestTeamCompletedEvent,
     IngestTeamProgressEvent,
-)
-from rawr_analytics.services.rebuild import (
-    RebuildEvent,
-    RebuildMetricRefreshProgressEvent,
-    RebuildTeamFailureEvent,
-    RebuildValidationProgressEvent,
 )
 
 _METRIC_PROGRESS_BARS: dict[str, TerminalProgressBar] = {}
