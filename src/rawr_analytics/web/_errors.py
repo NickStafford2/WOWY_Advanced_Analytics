@@ -16,14 +16,15 @@ def register_error_handlers(app: Flask) -> None:
         return jsonify({"error": str(exc)}), 400
 
 
+def bad_request(message: str) -> None:
+    raise _WebBadRequestError(message)
+
+
 def web_route[**P, R: Response | tuple[Response, int]](
     route_fn: Callable[P, R],
 ) -> Callable[P, R]:
     @wraps(route_fn)
     def _wrapped(*args: P.args, **kwargs: P.kwargs) -> R:
-        try:
-            return route_fn(*args, **kwargs)
-        except ValueError as exc:
-            raise _WebBadRequestError(str(exc)) from exc
+        return route_fn(*args, **kwargs)
 
     return _wrapped
