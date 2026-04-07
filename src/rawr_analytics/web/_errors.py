@@ -6,13 +6,13 @@ from functools import wraps
 from flask import Flask, Response, jsonify
 
 
-class WebBadRequestError(ValueError):
+class _WebBadRequestError(ValueError):
     pass
 
 
 def register_error_handlers(app: Flask) -> None:
-    @app.errorhandler(WebBadRequestError)
-    def _handle_bad_request(exc: WebBadRequestError) -> tuple[Response, int]:
+    @app.errorhandler(_WebBadRequestError)
+    def _handle_bad_request(exc: _WebBadRequestError) -> tuple[Response, int]:
         return jsonify({"error": str(exc)}), 400
 
 
@@ -24,6 +24,6 @@ def web_route[**P, R: Response | tuple[Response, int]](
         try:
             return route_fn(*args, **kwargs)
         except ValueError as exc:
-            raise WebBadRequestError(str(exc)) from exc
+            raise _WebBadRequestError(str(exc)) from exc
 
     return _wrapped
