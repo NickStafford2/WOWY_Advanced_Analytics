@@ -4,17 +4,6 @@ import csv
 from io import StringIO
 from pathlib import Path
 
-from rawr_analytics.web.metric_store import (
-    RAWR_METRIC,
-    WOWY_METRIC,
-    WOWY_SHRUNK_METRIC,
-    RefreshMetricStoreResult,
-    RefreshScopeResult,
-    build_scope_key,
-    refresh_metric_store,
-)
-
-from rawr_analytics.data.game_cache.fingerprints import build_normalized_cache_fingerprint
 from rawr_analytics.data.player_metrics_db.models import (
     MetricFullSpanPointRow,
     MetricFullSpanSeriesRow,
@@ -28,8 +17,19 @@ from rawr_analytics.data.player_metrics_db.queries import (
 from rawr_analytics.data.player_metrics_db.store import (
     replace_metric_scope_store,
 )
-from rawr_analytics.web.app import create_app
+from rawr_analytics.web.metric_store import (
+    RAWR_METRIC,
+    WOWY_METRIC,
+    WOWY_SHRUNK_METRIC,
+    RefreshMetricStoreResult,
+    RefreshScopeResult,
+    build_scope_key,
+    refresh_metric_store,
+)
 from rawr_analytics.web.refresh_cli import main as refresh_cli_main
+
+from rawr_analytics.data.game_cache.fingerprints import build_normalized_cache_fingerprint
+from rawr_analytics.web.app import create_app
 from tests.support import (
     TeamSeasonSeed,
     game,
