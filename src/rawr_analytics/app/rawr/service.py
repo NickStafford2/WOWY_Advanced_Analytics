@@ -67,9 +67,10 @@ def build_rawr_options_payload(query: RawrQuery) -> JSONDict:
 def resolve_rawr_result(
     query: RawrQuery,
     *,
+    recalculate: bool = False,
     progress_fn: RawrProgressFn | None = None,
 ) -> ResolvedRawrResultDTO:
-    if not query.recalculate:
+    if not recalculate:
         cached_result = _try_load_rawr_store_result(query)
         if cached_result is not None:
             return cached_result
@@ -82,7 +83,12 @@ def resolve_rawr_result(
     )
 
 
-def build_rawr_leaderboard_payload(query: RawrQuery, result: ResolvedRawrResultDTO) -> JSONDict:
+def build_rawr_leaderboard_payload(
+    query: RawrQuery,
+    result: ResolvedRawrResultDTO,
+    *,
+    recalculate: bool = False,
+) -> JSONDict:
     payload = build_rawr_leaderboard_payload_from_records(
         metric=Metric.RAWR.value,
         rows=result.rows,
@@ -92,24 +98,43 @@ def build_rawr_leaderboard_payload(query: RawrQuery, result: ResolvedRawrResultD
         available_seasons=None if result.catalog is None else result.catalog.availability.seasons,
         available_teams=None if result.catalog is None else result.catalog.availability.teams,
     )
-    payload["filters"] = RawrQueryFiltersDTO.from_query(query).to_payload()
+    payload["filters"] = RawrQueryFiltersDTO.from_query(
+        query,
+        recalculate=recalculate,
+    ).to_payload()
     return payload
 
 
-def build_rawr_player_seasons_payload(query: RawrQuery, result: ResolvedRawrResultDTO) -> JSONDict:
+def build_rawr_player_seasons_payload(
+    query: RawrQuery,
+    result: ResolvedRawrResultDTO,
+    *,
+    recalculate: bool = False,
+) -> JSONDict:
     payload = build_rawr_player_seasons_payload_from_records(result.rows)
-    payload["filters"] = RawrQueryFiltersDTO.from_query(query).to_payload()
+    payload["filters"] = RawrQueryFiltersDTO.from_query(
+        query,
+        recalculate=recalculate,
+    ).to_payload()
     return payload
 
 
-def build_rawr_span_chart_payload(query: RawrQuery, result: ResolvedRawrResultDTO) -> JSONDict:
+def build_rawr_span_chart_payload(
+    query: RawrQuery,
+    result: ResolvedRawrResultDTO,
+    *,
+    recalculate: bool = False,
+) -> JSONDict:
     payload = build_rawr_span_chart_payload_from_records(
         metric=Metric.RAWR.value,
         rows=result.rows,
         seasons=result.seasons,
         top_n=query.top_n,
     )
-    payload["filters"] = RawrQueryFiltersDTO.from_query(query).to_payload()
+    payload["filters"] = RawrQueryFiltersDTO.from_query(
+        query,
+        recalculate=recalculate,
+    ).to_payload()
     return payload
 
 

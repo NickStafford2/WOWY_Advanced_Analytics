@@ -19,7 +19,6 @@ def build_rawr_query_from_request(request: Request) -> RawrQuery:
         min_total_minutes=_parse_optional_float(request.args.get("min_total_minutes", None)),
         min_games=_parse_optional_int(request.args.get("min_games", None)),
         ridge_alpha=_parse_optional_float(request.args.get("ridge_alpha", None)),
-        recalculate=_parse_optional_bool(request.args.get("recalculate", None)) or False,
     )
 
 
@@ -27,27 +26,6 @@ def build_rawr_options_query_from_request(request: Request) -> RawrQuery:
     return build_rawr_query(
         season_type=_parse_season_type(request),
         teams=_parse_team_list(request.args.getlist("team_id")),
-    )
-
-
-def resolve_rawr_query_from_request(
-    request: Request,
-    *,
-    recalculate: bool | None = None,
-) -> RawrQuery:
-    query = build_rawr_query_from_request(request)
-    if recalculate is None:
-        return query
-    return build_rawr_query(
-        season_type=query.season_type,
-        teams=query.teams,
-        seasons=query.seasons,
-        top_n=query.top_n,
-        min_average_minutes=query.min_average_minutes,
-        min_total_minutes=query.min_total_minutes,
-        min_games=query.min_games,
-        ridge_alpha=query.ridge_alpha,
-        recalculate=recalculate,
     )
 
 
@@ -82,17 +60,6 @@ def _parse_optional_int(raw_value: str | None) -> int | None:
 
 def _parse_optional_float(raw_value: str | None) -> float | None:
     return None if raw_value is None else float(raw_value)
-
-
-def _parse_optional_bool(raw_value: str | None) -> bool | None:
-    if raw_value is None:
-        return None
-    normalized = raw_value.strip().lower()
-    if normalized in {"1", "true", "yes", "on"}:
-        return True
-    if normalized in {"0", "false", "no", "off"}:
-        return False
-    raise ValueError(f"Invalid boolean value: {raw_value!r}")
 
 
 def _parse_positive_int_list(raw_values: list[str]) -> list[int] | None:

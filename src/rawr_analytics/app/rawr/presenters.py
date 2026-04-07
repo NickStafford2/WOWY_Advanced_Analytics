@@ -25,7 +25,12 @@ class RawrQueryFiltersDTO:
     recalculate: bool
 
     @classmethod
-    def from_query(cls, query: RawrQuery) -> RawrQueryFiltersDTO:
+    def from_query(
+        cls,
+        query: RawrQuery,
+        *,
+        recalculate: bool = False,
+    ) -> RawrQueryFiltersDTO:
         return cls(
             teams=query.teams,
             seasons=query.seasons,
@@ -35,7 +40,7 @@ class RawrQueryFiltersDTO:
             min_total_minutes=query.min_total_minutes,
             min_games=query.min_games,
             ridge_alpha=query.ridge_alpha,
-            recalculate=query.recalculate,
+            recalculate=recalculate,
         )
 
     def for_options(self) -> RawrQueryFiltersDTO:
