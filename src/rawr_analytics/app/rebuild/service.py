@@ -10,7 +10,7 @@ from rawr_analytics.app.rebuild._validation import validate_rebuild_result
 from rawr_analytics.data import prepare_rebuild_storage
 from rawr_analytics.metrics.constants import Metric
 from rawr_analytics.shared.season import SeasonType
-from rawr_analytics.sources.nba_api.ingest import FailureLogFn
+from rawr_analytics.sources.nba_api.ingest._models import FailureLogFn
 
 
 def rebuild_player_metrics_db(

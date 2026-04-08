@@ -43,7 +43,6 @@ def main(argv: list[str] | None = None) -> int:
         min_total_minutes=args.min_total_minutes,
         min_games=args.min_games,
         ridge_alpha=args.ridge_alpha,
-        recalculate=args.recalculate,
     )
     print_status_box(
         "RAWR CLI",
@@ -57,7 +56,7 @@ def main(argv: list[str] | None = None) -> int:
     load_bar = TerminalProgressBar("Season load", total=max(1, total_seasons))
     print("[1/3] loading season inputs", flush=True)
     progress_fn = _build_progress_updater(load_bar)
-    result = resolve_rawr_result(query, progress_fn=progress_fn)
+    result = resolve_rawr_result(query, progress_fn=progress_fn, recalculate=args.recalculate)
     rows = build_rawr_leaderboard_export(result=result)
     load_bar.finish(detail="season inputs ready")
     print("[2/3] computed rawr rankings", flush=True)

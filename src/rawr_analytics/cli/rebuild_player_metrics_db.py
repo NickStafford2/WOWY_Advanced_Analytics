@@ -15,7 +15,7 @@ from rawr_analytics.cli._ingest_terminal import (
 from rawr_analytics.cli._rebuild_terminal import (
     render_rebuild_event,
 )
-from rawr_analytics.sources.nba_api.ingest import SeasonRangeFailure
+from rawr_analytics.sources.nba_api.ingest._models import SeasonRangeFailure
 
 _DEFAULT_START_YEAR = 2025
 _DEFAULT_END_YEAR = 1998
