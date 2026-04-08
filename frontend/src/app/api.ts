@@ -8,22 +8,28 @@ import type {
   TeamOption,
 } from './types'
 
-export async function fetchMetricOptions(metric: MetricId): Promise<MetricOptionsPayload> {
-  return (await fetchJson(`/api/metrics/${metric}/options`)) as MetricOptionsPayload
-}
-
 export async function fetchLeaderboard(
   metric: MetricId,
   filters: LeaderboardFilters,
   availableSeasons: string[],
   availableTeams: TeamOption[],
+  signal?: AbortSignal,
 ): Promise<LeaderboardPayload> {
   const params = buildLeaderboardParams(metric, filters, availableSeasons, availableTeams)
-  return (await fetchJson(`/api/metrics/${metric}/leaderboard?${params.toString()}`)) as LeaderboardPayload
+  return (
+    await _fetchJson(`/api/metrics/${metric}/leaderboard?${params.toString()}`, signal)
+  ) as LeaderboardPayload
 }
 
-async function fetchJson(url: string): Promise<unknown> {
-  const response = await fetch(url)
+export async function fetchMetricOptions(
+  metric: MetricId,
+  signal?: AbortSignal,
+): Promise<MetricOptionsPayload> {
+  return (await _fetchJson(`/api/metrics/${metric}/options`, signal)) as MetricOptionsPayload
+}
+
+async function _fetchJson(url: string, signal?: AbortSignal): Promise<unknown> {
+  const response = await fetch(url, { signal })
   const contentType = response.headers.get('content-type') ?? ''
   const bodyText = await response.text()
 

@@ -4,7 +4,7 @@ export function About() {
       title: 'WOWY',
       subtitle: 'With Or Without You',
       body: [
-        'WOWY is the fast, intuitive view in the platform. It shows how team outcomes move when a player is on the floor versus off it, which makes lineup context easy to explain.',
+        'WOWY shows how team outcomes move when a player playes in a game, vs when he sits.',
         'It answers practical questions quickly: how the team played with the player, what changed without them, and where those shifts appear across a larger sample.',
       ],
     },
