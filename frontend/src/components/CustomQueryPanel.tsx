@@ -1,32 +1,12 @@
-import type { ChangeEvent } from 'react'
+import type { CustomFilters, CustomNumberField, TeamOption } from '../app/types'
+import { NumericField } from './NumericField'
 
-export type TeamOption = {
-  team_id: number
+type CustomFieldConfig = {
+  key: CustomNumberField
   label: string
-  available_seasons: string[]
+  value: number
+  step?: string
 }
-
-export type CustomFilters = {
-  startSeason: string
-  endSeason: string
-  teams: number[]
-  topN: number
-  minGames: number
-  ridgeAlpha: number
-  minGamesWith: number
-  minGamesWithout: number
-  minAverageMinutes: number
-  minTotalMinutes: number
-}
-
-export type CustomNumberField =
-  | 'topN'
-  | 'minGames'
-  | 'ridgeAlpha'
-  | 'minGamesWith'
-  | 'minGamesWithout'
-  | 'minAverageMinutes'
-  | 'minTotalMinutes'
 
 type CustomQueryPanelProps = {
   customFilters: CustomFilters
@@ -40,7 +20,7 @@ type CustomQueryPanelProps = {
   onEndSeasonChange: (season: string) => void
   onToggleAllTeams: () => void
   onToggleTeam: (teamId: number) => void
-  onNumberChange: (field: CustomNumberField, event: ChangeEvent<HTMLInputElement>) => void
+  onNumberChange: (field: CustomNumberField, value: number) => void
   onRunQuery: () => void
 }
 
@@ -60,170 +40,161 @@ export function CustomQueryPanel({
   onRunQuery,
 }: CustomQueryPanelProps) {
   const hasSelectedTeams = customFilters.teams.length > 0
+  const queryFields: CustomFieldConfig[] = isRawrMetric
+    ? [
+        {
+          key: 'minGames',
+          label: 'Min games',
+          value: customFilters.minGames,
+        },
+        {
+          key: 'ridgeAlpha',
+          label: 'Ridge alpha',
+          value: customFilters.ridgeAlpha,
+          step: '0.5',
+        },
+      ]
+    : [
+        {
+          key: 'minGamesWith',
+          label: 'Min games with',
+          value: customFilters.minGamesWith,
+        },
+        {
+          key: 'minGamesWithout',
+          label: 'Min games without',
+          value: customFilters.minGamesWithout,
+        },
+      ]
 
   return (
-    <section className="query-panel">
-      <div className="query-options-row">
-        <div className="query-card query-card--scope">
-          <div className="query-card-header">
-            <p className="panel-label">Scope</p>
-          </div>
-          <div className="query-compact-grid">
-            <label>
-              <span>Start season</span>
-              <select
-                value={customFilters.startSeason}
-                onChange={(event) => onStartSeasonChange(event.target.value)}
-                disabled={isBootstrapping || isLoading}
-              >
-                {availableSeasons.map((season) => (
-                  <option key={season} value={season}>
-                    {season}
-                  </option>
-                ))}
-              </select>
-            </label>
-
-            <label>
-              <span>End season</span>
-              <select
-                value={customFilters.endSeason}
-                onChange={(event) => onEndSeasonChange(event.target.value)}
-                disabled={isBootstrapping || isLoading}
-              >
-                {availableSeasons.map((season) => (
-                  <option key={season} value={season}>
-                    {season}
-                  </option>
-                ))}
-              </select>
-            </label>
-
-            <label>
-              <span>Top players</span>
-              <input
-                type="number"
-                min="1"
-                max="50"
-                value={customFilters.topN}
-                onChange={(event) => onNumberChange('topN', event)}
-              />
-            </label>
-          </div>
+    <aside className="sidebar-panel">
+      <div className="sidebar-panel__section">
+        <div>
+          <p className="panel-label">Custom query</p>
+          <h2>Live slice builder</h2>
         </div>
-
-        <div className="query-card query-card--filters">
-          <div className="query-card-header">
-            <p className="panel-label">{isRawrMetric ? 'Model filters' : 'Query filters'}</p>
-            <p className="query-section-note">
-              {isRawrMetric
-                ? 'Model entry and output thresholds are combined here to keep the query compact.'
-                : 'Set minimum on and off samples plus minute thresholds for the result set.'}
-            </p>
-          </div>
-          <div className="query-compact-grid">
-            <label>
-              <span>{isRawrMetric ? 'Min games' : 'Min games with'}</span>
-              <input
-                type="number"
-                min="0"
-                value={isRawrMetric ? customFilters.minGames : customFilters.minGamesWith}
-                onChange={(event) =>
-                  onNumberChange(isRawrMetric ? 'minGames' : 'minGamesWith', event)
-                }
-              />
-            </label>
-
-            {isRawrMetric ? (
-              <label>
-                <span>Ridge alpha</span>
-                <input
-                  type="number"
-                  min="0"
-                  step="0.5"
-                  value={customFilters.ridgeAlpha}
-                  onChange={(event) => onNumberChange('ridgeAlpha', event)}
-                />
-              </label>
-            ) : (
-              <label>
-                <span>Min games without</span>
-                <input
-                  type="number"
-                  min="0"
-                  value={customFilters.minGamesWithout}
-                  onChange={(event) => onNumberChange('minGamesWithout', event)}
-                />
-              </label>
-            )}
-
-            <label>
-              <span>Min average minutes</span>
-              <input
-                type="number"
-                min="0"
-                step="0.5"
-                value={customFilters.minAverageMinutes}
-                onChange={(event) => onNumberChange('minAverageMinutes', event)}
-              />
-            </label>
-
-            <label>
-              <span>Min total minutes</span>
-              <input
-                type="number"
-                min="0"
-                step="10"
-                value={customFilters.minTotalMinutes}
-                onChange={(event) => onNumberChange('minTotalMinutes', event)}
-              />
-            </label>
-          </div>
-          {!hasSelectedTeams ? (
-            <p className="query-section-note">Select at least one team to run a custom query.</p>
-          ) : null}
-        </div>
-
-        <fieldset className="query-card query-card--teams query-multi">
-          <legend>Teams</legend>
-          <div className="query-team-grid">
-            <button
-              type="button"
-              className={
-                allTeamsSelected
-                  ? 'team-toggle-button team-toggle-button--all is-selected'
-                  : 'team-toggle-button team-toggle-button--all'
-              }
-              onClick={onToggleAllTeams}
-              disabled={isBootstrapping || isLoading || availableTeams.length === 0}
-            >
-              All
-            </button>
-            {availableTeams.map((team) => {
-              const isSelected = customFilters.teams.includes(team.team_id)
-              return (
-                <label
-                  key={team.team_id}
-                  className={isSelected ? 'team-chip is-selected' : 'team-chip'}
-                >
-                  <input
-                    type="checkbox"
-                    checked={isSelected}
-                    onChange={() => onToggleTeam(team.team_id)}
-                    disabled={isBootstrapping || isLoading}
-                  />
-                  <span>{team.label}</span>
-                </label>
-              )
-            })}
-          </div>
-        </fieldset>
+        <p className="sidebar-note">
+          Choose a season span, restrict the team pool, and rerun the metric on demand.
+        </p>
       </div>
 
-      <div className="query-actions-row">
+      <div className="sidebar-panel__section">
+        <p className="section-title">Scope</p>
+        <div className="field-grid">
+          <label className="field">
+            <span>Start season</span>
+            <select
+              value={customFilters.startSeason}
+              onChange={(event) => onStartSeasonChange(event.target.value)}
+              disabled={isBootstrapping || isLoading}
+            >
+              {availableSeasons.map((season) => (
+                <option key={season} value={season}>
+                  {season}
+                </option>
+              ))}
+            </select>
+          </label>
+
+          <label className="field">
+            <span>End season</span>
+            <select
+              value={customFilters.endSeason}
+              onChange={(event) => onEndSeasonChange(event.target.value)}
+              disabled={isBootstrapping || isLoading}
+            >
+              {availableSeasons.map((season) => (
+                <option key={season} value={season}>
+                  {season}
+                </option>
+              ))}
+            </select>
+          </label>
+
+          <NumericField
+            label="Top players"
+            min="1"
+            max="100"
+            value={customFilters.topN}
+            disabled={isBootstrapping || isLoading}
+            onChange={(value) => onNumberChange('topN', value)}
+          />
+        </div>
+      </div>
+
+      <div className="sidebar-panel__section">
+        <p className="section-title">{isRawrMetric ? 'Model filters' : 'Query filters'}</p>
+        <div className="field-grid">
+          {queryFields.map((field) => (
+            <NumericField
+              key={field.key}
+              label={field.label}
+              min="0"
+              step={field.step}
+              value={field.value}
+              disabled={isBootstrapping || isLoading}
+              onChange={(value) => onNumberChange(field.key, value)}
+            />
+          ))}
+
+          <NumericField
+            label="Min average minutes"
+            min="0"
+            step="0.5"
+            value={customFilters.minAverageMinutes}
+            disabled={isBootstrapping || isLoading}
+            onChange={(value) => onNumberChange('minAverageMinutes', value)}
+          />
+
+          <NumericField
+            label="Min total minutes"
+            min="0"
+            step="10"
+            value={customFilters.minTotalMinutes}
+            disabled={isBootstrapping || isLoading}
+            onChange={(value) => onNumberChange('minTotalMinutes', value)}
+          />
+        </div>
+      </div>
+
+      <fieldset className="sidebar-panel__section team-fieldset">
+        <legend className="section-title">Teams</legend>
+        <div className="team-grid">
+          <button
+            type="button"
+            className={allTeamsSelected ? 'team-toggle is-selected' : 'team-toggle'}
+            onClick={onToggleAllTeams}
+            disabled={isBootstrapping || isLoading || availableTeams.length === 0}
+          >
+            All
+          </button>
+
+          {availableTeams.map((team) => {
+            const isSelected = customFilters.teams.includes(team.team_id)
+            return (
+              <label key={team.team_id} className={isSelected ? 'team-chip is-selected' : 'team-chip'}>
+                <input
+                  type="checkbox"
+                  checked={isSelected}
+                  onChange={() => onToggleTeam(team.team_id)}
+                  disabled={isBootstrapping || isLoading}
+                />
+                <span>{team.label}</span>
+              </label>
+            )
+          })}
+        </div>
+
+        {!hasSelectedTeams ? (
+          <p className="sidebar-note">Select at least one team to run a custom query.</p>
+        ) : null}
+      </fieldset>
+
+      <div className="sidebar-panel__footer">
         <button
           type="button"
-          className="run-button query-run"
+          className="primary-button"
           onClick={onRunQuery}
           disabled={
             isBootstrapping ||
@@ -236,6 +207,6 @@ export function CustomQueryPanel({
           {isLoading ? 'Running...' : 'Run query'}
         </button>
       </div>
-    </section>
+    </aside>
   )
 }

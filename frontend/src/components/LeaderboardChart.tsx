@@ -1,4 +1,5 @@
 import { useMemo, useState } from 'react'
+import type { SpanSeries } from '../app/types'
 
 const CHART_WIDTH = 920
 const CHART_HEIGHT = 420
@@ -17,19 +18,6 @@ const SERIES_COLORS = [
   '#bc6c25',
   '#7f5539',
 ] as const
-
-export type SpanPoint = {
-  season: string
-  value: number | null
-}
-
-export type SpanSeries = {
-  player_id: number
-  player_name: string
-  span_average_value: number
-  season_count: number
-  points: SpanPoint[]
-}
 
 type ChartGridLine = {
   isZero: boolean
@@ -320,9 +308,6 @@ function startYearLabel(season: string): string {
   return startYear || season
 }
 
-function formatNumber(value: number | null, decimals: number): string {
-  if (value === null) {
-    return '-'
-  }
+function formatNumber(value: number, decimals: number): string {
   return value.toFixed(decimals)
 }

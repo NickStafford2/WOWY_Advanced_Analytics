@@ -1,17 +1,4 @@
-export type ResultsTableRow = {
-  rank: number
-  player_id: number
-  player_name: string
-  span_average_value: number
-  average_minutes: number | null | undefined
-  total_minutes: number | null | undefined
-  games?: number
-  games_with?: number
-  games_without?: number
-  avg_margin_with?: number | null
-  avg_margin_without?: number | null
-  season_count: number
-}
+import type { ResultsTableRow } from '../app/types'
 
 type ResultsTableProps = {
   metricLabel: string
@@ -75,15 +62,9 @@ export function ResultsTable({
         </table>
       </div>
       <div className="results-table-actions">
-        <button
-          type="button"
-          className="results-export-button"
-          onClick={() => {
-            window.location.assign(exportUrl)
-          }}
-        >
+        <a className="results-export-link" href={exportUrl}>
           Export Full CSV
-        </button>
+        </a>
       </div>
     </div>
   )
