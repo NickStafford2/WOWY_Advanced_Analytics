@@ -54,14 +54,6 @@ export function AppHeader({
           </div>
         </section>
 
-        <section className="header-card">
-          <p className="panel-label">Execution</p>
-          <p className="sidebar-note">
-            Each request hits one leaderboard endpoint. The backend returns cached results when the
-            scope is already materialized and computes live results otherwise.
-          </p>
-        </section>
-
         <button type="button" className="theme-toggle-button" onClick={onThemeToggle}>
           {theme === 'dark' ? 'Light mode' : 'Dark mode'}
         </button>
