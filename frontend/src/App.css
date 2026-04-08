@@ -231,12 +231,10 @@
   gap: 10px;
 }
 
-.team-selector__all-row {
-  display: flex;
-}
-
-.team-selector__all-row .team-toggle {
-  width: 100%;
+.team-selector__mode-row {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
 }
 
 .team-grid {
@@ -246,7 +244,8 @@
 }
 
 .team-toggle {
-  min-width: 92px;
+  width: 100%;
+  min-width: 0;
   padding: 0 18px;
 }
 
