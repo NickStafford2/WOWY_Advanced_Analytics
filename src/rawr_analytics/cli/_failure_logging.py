@@ -1,7 +1,7 @@
 from __future__ import annotations
 
-from rawr_analytics.sources.nba_api.ingest import IngestFailureLogEntry
 from rawr_analytics.services._ingest_failure_log import append_ingest_failure_log
+from rawr_analytics.sources.nba_api.ingest._models import IngestFailureLogEntry
 
 
 def append_failure_log_entry(entry: IngestFailureLogEntry) -> None:

@@ -9,7 +9,7 @@ from rawr_analytics.shared.ingest import (
     IngestProgress,
     PartialTeamSeasonError,
 )
-from rawr_analytics.sources.nba_api.ingest import (
+from rawr_analytics.sources.nba_api.ingest._models import (
     IngestEvent,
     IngestResult,
     IngestSeasonStartedEvent,

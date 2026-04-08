@@ -4,7 +4,7 @@ from collections.abc import Callable
 from dataclasses import dataclass
 
 from rawr_analytics.app.metric_store import RefreshMetricStoreResult
-from rawr_analytics.data import DatabaseValidationSummary
+from rawr_analytics.data.db_validation import DatabaseValidationSummary
 from rawr_analytics.shared.ingest import (
     FetchError,
     GameNormalizationFailure,
@@ -12,7 +12,7 @@ from rawr_analytics.shared.ingest import (
 )
 from rawr_analytics.shared.season import Season
 from rawr_analytics.shared.team import Team
-from rawr_analytics.sources.nba_api.ingest import (
+from rawr_analytics.sources.nba_api.ingest._models import (
     IngestSeasonStartedEvent,
     IngestTeamCompletedEvent,
     IngestTeamProgressEvent,

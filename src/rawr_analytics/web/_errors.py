@@ -5,6 +5,8 @@ from functools import wraps
 
 from flask import Flask, Response, jsonify
 
+from rawr_analytics.metrics.constants import Metric
+
 
 class _WebBadRequestError(ValueError):
     pass
@@ -16,8 +18,10 @@ def register_error_handlers(app: Flask) -> None:
         return jsonify({"error": str(exc)}), 400
 
 
-def bad_request(message: str) -> None:
-    raise _WebBadRequestError(message)
+def require_metric[T](metric: T) -> T:
+    if not isinstance(metric, Metric):
+        raise _WebBadRequestError("invalid metric")
+    return metric
 
 
 def web_route[**P, R: Response | tuple[Response, int]](

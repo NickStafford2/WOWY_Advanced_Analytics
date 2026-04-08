@@ -4,8 +4,8 @@ from dataclasses import dataclass
 from typing import Any
 
 from rawr_analytics.data._paths import METRIC_STORE_DB_PATH
+from rawr_analytics.data.metric_store._catalog import MetricScopeCatalogRow
 from rawr_analytics.data.metric_store.full_span import MetricFullSpanSeriesRow
-from rawr_analytics.data.metric_store.store import MetricScopeCatalogRow
 from rawr_analytics.data.metric_store.schema import connect, initialize_player_metrics_db
 
 

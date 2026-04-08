@@ -5,10 +5,10 @@ from rawr_analytics.app.rebuild._events import (
     RebuildValidationProgressEvent,
 )
 from rawr_analytics.data import (
-    DatabaseValidationSummary,
     render_rebuild_validation_summary,
     validate_rebuild_storage,
 )
+from rawr_analytics.data.db_validation import DatabaseValidationSummary
 
 
 def format_rebuild_validation_summary(
