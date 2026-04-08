@@ -5,6 +5,7 @@ import type { SpanSeries } from './components/LeaderboardChart'
 import { CustomQueryPanel } from './components/CustomQueryPanel'
 import type { CustomFilters, CustomNumberField, TeamOption } from './components/CustomQueryPanel'
 import { ResultsTable } from './components/ResultsTable'
+import { About } from './components/About'
 import type { ResultsTableRow } from './components/ResultsTable'
 import './App.css'
 
@@ -562,6 +563,8 @@ function App() {
             </>
           ) : null}
         </section>
+
+        <About />
 
         <footer className="page-footer">
           <span className="footer-name">Nicholas Stafford</span>
