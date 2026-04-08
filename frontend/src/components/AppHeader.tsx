@@ -33,7 +33,6 @@ export function AppHeader({
         <div className="app-header__meta" aria-label="Dataset summary">
           <span>{seasonCount || 'No'} seasons loaded</span>
           <span>{teamCount || 'No'} teams in scope</span>
-          <span>Unified leaderboard query</span>
         </div>
       </div>
 

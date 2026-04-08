@@ -588,8 +588,14 @@
   text-decoration: none;
 }
 
-.about-section {
+.about-stack {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
   margin-top: 20px;
+}
+
+.about-section {
   padding: 24px;
   background: var(--panel-soft-background);
 }
