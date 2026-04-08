@@ -74,11 +74,7 @@ function App() {
           />
         </section>
 
-        <About
-          metric={metric}
-          metricLabel={metricLabel}
-          metricDescription={metricDescription}
-        />
+        <About metric={metric} />
 
         <footer className="page-footer">
           <span className="footer-name">Nicholas Stafford</span>

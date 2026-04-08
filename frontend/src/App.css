@@ -618,6 +618,10 @@
   margin-top: 20px;
 }
 
+.about-grid--triple {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
 .about-card,
 .about-callout {
   padding: 20px;
