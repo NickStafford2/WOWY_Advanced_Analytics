@@ -58,6 +58,31 @@ export function AboutWowyShrunk() {
           </p>
         </article>
       </div>
+
+      <section className="about-math">
+        <h2>Math</h2>
+        <p>
+          WOWY Shrinkage starts from the plain WOWY score, then multiplies it by a shrinkage factor
+          based on the harmonic mean of the with and without sample sizes.
+        </p>
+        <pre className="about-equation">
+{`wowy_score = avg_with - avg_without
+
+effective_games =
+  (2 * games_with * games_without) / (games_with + games_without)
+
+shrinkage_factor =
+  effective_games / (effective_games + prior_games)
+
+shrunk_score = wowy_score * shrinkage_factor`}
+        </pre>
+        <p>
+          In the current backend, <code>prior_games</code> defaults to <code>10</code>. If the with
+          and without samples are both large, the shrinkage factor moves toward <code>1</code> and
+          the result stays close to plain WOWY. If either side is small, the factor drops and the
+          score is pulled toward zero.
+        </p>
+      </section>
     </section>
   )
 }

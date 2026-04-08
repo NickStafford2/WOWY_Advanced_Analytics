@@ -646,6 +646,35 @@
   margin-top: 12px;
 }
 
+.about-math {
+  margin-top: 20px;
+  padding-top: 20px;
+  border-top: 1px solid var(--panel-border-soft);
+}
+
+.about-math h2 {
+  margin: 0;
+}
+
+.about-math p {
+  margin: 12px 0 0;
+  color: var(--text-muted);
+  line-height: 1.65;
+}
+
+.about-equation {
+  margin: 14px 0 0;
+  padding: 16px 18px;
+  overflow-x: auto;
+  border: 1px solid var(--panel-border-soft);
+  border-radius: 18px;
+  background: var(--chart-frame-background);
+  color: var(--text-primary);
+  font-size: 0.92rem;
+  line-height: 1.6;
+  white-space: pre-wrap;
+}
+
 .about-callout {
   margin-top: 16px;
 }

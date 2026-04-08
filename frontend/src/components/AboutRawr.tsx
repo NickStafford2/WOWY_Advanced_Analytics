@@ -60,6 +60,40 @@ export function AboutRawr() {
           </p>
         </article>
       </div>
+
+      <section className="about-math">
+        <h2>Math</h2>
+        <p>
+          RAWR is a ridge regression on game-level margin. For each observation, the model builds a
+          feature row with an intercept, a home-court term, player weights, a team-season effect,
+          and an opponent-season effect.
+        </p>
+        <pre className="about-equation">
+{`predicted_margin_i =
+  beta_0
+  + beta_home * home_sign_i
+  + sum(x_i,p * beta_p for players p)
+  + gamma_team(i)
+  + delta_opponent(i)`}
+        </pre>
+        <p>
+          The fitted coefficients are the values that minimize squared error plus a ridge penalty.
+          In the current frontend path, the user-controlled knob is <strong>Ridge alpha</strong>,
+          which acts as the penalty strength.
+        </p>
+        <pre className="about-equation">
+{`beta_hat = argmin over beta:
+  sum((margin_i - predicted_margin_i)^2 over observations i)
+  + ridge_alpha * sum(beta_p^2 over player terms p)
+  + ridge_alpha * sum(gamma_t^2 over team-season terms t)
+  + ridge_alpha * sum(delta_t^2 over opponent terms t)`}
+        </pre>
+        <p>
+          Bigger <strong>Ridge alpha</strong> means more shrinkage toward zero and therefore more
+          conservative player estimates. Smaller values let the model follow the sample more
+          aggressively. The leaderboard value for a player is that player&apos;s fitted coefficient.
+        </p>
+      </section>
     </section>
   )
 }

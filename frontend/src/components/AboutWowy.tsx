@@ -58,6 +58,28 @@ export function AboutWowy() {
           </p>
         </article>
       </div>
+
+      <section className="about-math">
+        <h2>Math</h2>
+        <p>
+          WOWY is the direct difference between team margin with a player in the sample and team
+          margin without that player, restricted to teams that actually used the player in the
+          filtered games.
+        </p>
+        <pre className="about-equation">
+{`avg_with =
+  (1 / games_with) * sum(margin_g for games g where player appears)
+
+avg_without =
+  (1 / games_without) * sum(margin_g for games g where player does not appear)
+
+wowy_score = avg_with - avg_without`}
+        </pre>
+        <p>
+          That is why <strong>Min games with</strong> and <strong>Min games without</strong> matter
+          so much. The metric is only as stable as the two sample means it is subtracting.
+        </p>
+      </section>
     </section>
   )
 }
