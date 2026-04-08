@@ -1,5 +1,6 @@
 import type { LeaderboardFilters, LeaderboardNumberField, TeamOption } from '../app/types'
 import { NumericField } from './NumericField'
+import { TeamSelector } from './TeamSelector'
 
 type FilterFieldConfig = {
   key: LeaderboardNumberField
@@ -15,10 +16,9 @@ type LeaderboardFiltersPanelProps = {
   isBootstrapping: boolean
   isLoading: boolean
   isRawrMetric: boolean
-  allTeamsSelected: boolean
   onStartSeasonChange: (season: string) => void
   onEndSeasonChange: (season: string) => void
-  onToggleAllTeams: () => void
+  onSelectAllTeams: () => void
   onToggleTeam: (teamId: number) => void
   onNumberChange: (field: LeaderboardNumberField, value: number) => void
   onRefresh: () => void
@@ -31,16 +31,15 @@ export function LeaderboardFiltersPanel({
   isBootstrapping,
   isLoading,
   isRawrMetric,
-  allTeamsSelected,
   onStartSeasonChange,
   onEndSeasonChange,
-  onToggleAllTeams,
+  onSelectAllTeams,
   onToggleTeam,
   onNumberChange,
   onRefresh,
 }: LeaderboardFiltersPanelProps) {
   const isDisabled = isBootstrapping || isLoading
-  const hasSelectedTeams = filters.teamIds.length > 0
+  const hasSelectedTeams = availableTeams.length > 0
   const metricFields: FilterFieldConfig[] = isRawrMetric
     ? [
       {
@@ -156,34 +155,16 @@ export function LeaderboardFiltersPanel({
 
       <fieldset className="sidebar-panel__section team-fieldset">
         <legend className="section-title">Teams</legend>
-        <div className="team-grid">
-          <button
-            type="button"
-            className={allTeamsSelected ? 'team-toggle is-selected' : 'team-toggle'}
-            onClick={onToggleAllTeams}
-            disabled={isDisabled || availableTeams.length === 0}
-          >
-            All
-          </button>
-
-          {availableTeams.map((team) => {
-            const isSelected = filters.teamIds.includes(team.team_id)
-            return (
-              <label key={team.team_id} className={isSelected ? 'team-chip is-selected' : 'team-chip'}>
-                <input
-                  type="checkbox"
-                  checked={isSelected}
-                  onChange={() => onToggleTeam(team.team_id)}
-                  disabled={isDisabled}
-                />
-                <span>{team.label}</span>
-              </label>
-            )
-          })}
-        </div>
+        <TeamSelector
+          availableTeams={availableTeams}
+          selectedTeamIds={filters.teamIds}
+          disabled={isDisabled}
+          onSelectAll={onSelectAllTeams}
+          onToggleTeam={onToggleTeam}
+        />
 
         {!hasSelectedTeams ? (
-          <p className="sidebar-note">Select at least one team active across the full season span.</p>
+          <p className="sidebar-note">No teams are available for the current season span.</p>
         ) : null}
       </fieldset>
 

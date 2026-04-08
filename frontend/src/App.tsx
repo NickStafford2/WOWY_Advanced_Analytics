@@ -6,11 +6,12 @@ import {
   buildExportUrl,
   defaultLeaderboardFilters,
   filterSelectedTeamIdsForAvailableTeams,
+  isAllTeamsSelection,
   metricDescriptionFor,
   metricLabelFor,
+  selectAllTeams,
   syncLeaderboardFiltersWithOptions,
   syncSelectedTeamIds,
-  toggleAllSelectedTeams,
   toggleSelectedTeam,
   updateLeaderboardFilterValue,
 } from './app/query'
@@ -57,8 +58,6 @@ function App() {
       }),
     [availableSeasons, filters.endSeason, filters.startSeason, teamOptions],
   )
-  const allTeamsSelected =
-    availableTeams.length > 0 && filters.teamIds.length === availableTeams.length
   const isRawrMetric = metric === 'rawr'
   const exportUrl = buildExportUrl({
     metric,
@@ -145,8 +144,11 @@ function App() {
       teamOptions: teams,
     })
     const selectedTeamIds = filterSelectedTeamIdsForAvailableTeams(nextFilters.teamIds, scopedTeams)
+    const hasSelectedTeams =
+      scopedTeams.length > 0 &&
+      (isAllTeamsSelection(nextFilters.teamIds, scopedTeams) || selectedTeamIds.length > 0)
 
-    if (selectedTeamIds.length === 0) {
+    if (!hasSelectedTeams) {
       setError('Select at least one team active across the full season span.')
       setLeaderboard(null)
       return null
@@ -244,23 +246,22 @@ function App() {
             isBootstrapping={isBootstrapping}
             isLoading={isLoading}
             isRawrMetric={isRawrMetric}
-            allTeamsSelected={allTeamsSelected}
             onStartSeasonChange={(season) =>
               setFilters((current) => ({ ...current, startSeason: season }))
             }
             onEndSeasonChange={(season) =>
               setFilters((current) => ({ ...current, endSeason: season }))
             }
-            onToggleAllTeams={() =>
+            onSelectAllTeams={() =>
               setFilters((current) => ({
                 ...current,
-                teamIds: toggleAllSelectedTeams(current.teamIds, availableTeams),
+                teamIds: selectAllTeams(),
               }))
             }
             onToggleTeam={(teamId) =>
               setFilters((current) => ({
                 ...current,
-                teamIds: toggleSelectedTeam(current.teamIds, teamId),
+                teamIds: toggleSelectedTeam(current.teamIds, teamId, availableTeams),
               }))
             }
             onNumberChange={(field, value) =>
