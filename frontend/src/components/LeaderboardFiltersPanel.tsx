@@ -72,12 +72,8 @@ export function LeaderboardFiltersPanel({
     <aside className="sidebar-panel">
       <div className="sidebar-panel__section">
         <div>
-          <p className="panel-label">Leaderboard query</p>
+          <p className="panel-label">Query</p>
         </div>
-        <p className="sidebar-note">
-          Select the seasons, teams, and thresholds you want. The backend serves cached rows when
-          it can and computes live results when it has to.
-        </p>
       </div>
 
       <div className="sidebar-panel__section">
