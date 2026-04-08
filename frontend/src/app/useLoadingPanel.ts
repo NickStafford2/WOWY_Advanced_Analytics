@@ -1,13 +1,12 @@
 import { useEffect, useState } from 'react'
 import { buildLoadingPanelModel } from './loading'
-import type { AppMode, LoadingPanelModel, MetricId } from './types'
+import type { LoadingPanelModel, MetricId } from './types'
 
 const LOADING_PANEL_DELAY_MS = 250
 
 type UseLoadingPanelOptions = {
   metric: MetricId
   metricLabel: string
-  mode: AppMode
   isBootstrapping: boolean
   isLoading: boolean
 }
@@ -20,7 +19,6 @@ type UseLoadingPanelValue = {
 export function useLoadingPanel({
   metric,
   metricLabel,
-  mode,
   isBootstrapping,
   isLoading,
 }: UseLoadingPanelOptions): UseLoadingPanelValue {
@@ -59,7 +57,6 @@ export function useLoadingPanel({
       : buildLoadingPanelModel({
           metric,
           metricLabel,
-          mode,
           isBootstrapping,
           elapsedMs,
         })

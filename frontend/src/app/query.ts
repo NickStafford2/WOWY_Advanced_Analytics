@@ -1,46 +1,16 @@
 import type {
-  CachedFilters,
-  CustomFilters,
-  MetricFilters,
+  LeaderboardFilters,
+  LeaderboardNumberField,
   MetricId,
-  MetricNumberField,
   MetricOptionsPayload,
-  RawrMetricFilters,
   TeamOption,
-  WowyMetricFilters,
 } from './types'
 
-export function defaultMetricFilters(metric: MetricId): MetricFilters {
-  if (metric === 'rawr') {
-    return {
-      team: null,
-      team_id: null,
-      season_type: 'Regular Season',
-      min_games: 35,
-      ridge_alpha: 10,
-      min_average_minutes: 30,
-      min_total_minutes: 600,
-      top_n: 30,
-    }
-  }
-
-  return {
-    team: null,
-    team_id: null,
-    season_type: 'Regular Season',
-    min_games_with: 15,
-    min_games_without: 2,
-    min_average_minutes: 30,
-    min_total_minutes: 600,
-    top_n: 30,
-  }
-}
-
-export function defaultCustomFilters(): CustomFilters {
+export function defaultLeaderboardFilters(): LeaderboardFilters {
   return {
     startSeason: '',
     endSeason: '',
-    teams: [],
+    teamIds: [],
     topN: 12,
     minGames: 35,
     ridgeAlpha: 10,
@@ -71,15 +41,14 @@ export function metricDescriptionFor(metric: MetricId): string {
   return 'Game-level ridge model of player impact across the cached history.'
 }
 
-export function syncCustomFiltersWithOptions(
-  current: CustomFilters,
+export function syncLeaderboardFiltersWithOptions(
+  current: LeaderboardFilters,
   payload: MetricOptionsPayload,
-): CustomFilters {
+): LeaderboardFilters {
   const defaultStartSeason = payload.available_seasons[0] || ''
   const defaultEndSeason = payload.available_seasons[payload.available_seasons.length - 1] || ''
-  const nextTeams = current.teams.filter((teamId) =>
-    payload.team_options.some((teamOption) => teamOption.team_id === teamId),
-  )
+  const validTeamIds = new Set(payload.team_options.map((teamOption) => teamOption.team_id))
+  const selectedTeamIds = current.teamIds.filter((teamId) => validTeamIds.has(teamId))
 
   return {
     ...current,
@@ -89,9 +58,9 @@ export function syncCustomFiltersWithOptions(
     endSeason: payload.available_seasons.includes(current.endSeason)
       ? current.endSeason
       : defaultEndSeason,
-    teams:
-      nextTeams.length > 0
-        ? nextTeams
+    teamIds:
+      selectedTeamIds.length > 0
+        ? selectedTeamIds
         : payload.team_options.map((teamOption) => teamOption.team_id),
     topN: current.topN || payload.filters.top_n,
     minGames: payload.metric === 'rawr' ? payload.filters.min_games : current.minGames,
@@ -141,7 +110,7 @@ export function buildAvailableTeamsForSeasonSpan({
   }
 
   return teamOptions.filter((teamOption) =>
-    seasonsInScope.every((season) => teamOption.available_seasons.includes(season)),
+    seasonsInScope.some((season) => teamOption.available_seasons.includes(season)),
   )
 }
 
@@ -177,117 +146,77 @@ export function toggleAllSelectedTeams(
   return availableTeams.map((team) => team.team_id)
 }
 
-export function updateMetricFilterValue(
-  filters: MetricFilters,
-  field: MetricNumberField,
-  value: number,
-): MetricFilters {
-  const nextValue = sanitizeNumber(value)
-
-  if (field === 'minAverageMinutes') {
-    return { ...filters, min_average_minutes: nextValue }
-  }
-  if (field === 'minTotalMinutes') {
-    return { ...filters, min_total_minutes: nextValue }
-  }
-  if (field === 'minGames' && 'min_games' in filters) {
-    return { ...filters, min_games: nextValue }
-  }
-  if (field === 'ridgeAlpha' && 'ridge_alpha' in filters) {
-    return { ...filters, ridge_alpha: nextValue }
-  }
-  if (field === 'minGamesWith' && 'min_games_with' in filters) {
-    return { ...filters, min_games_with: nextValue }
-  }
-  if (field === 'minGamesWithout' && 'min_games_without' in filters) {
-    return { ...filters, min_games_without: nextValue }
-  }
-
-  return filters
-}
-
 export function buildExportUrl({
   metric,
-  mode,
-  cachedFilters,
-  customFilters,
+  filters,
   availableSeasons,
-  availableCustomTeams,
-  metricFilters,
+  availableTeams,
 }: {
   metric: MetricId
-  mode: 'cached' | 'custom'
-  cachedFilters: CachedFilters
-  customFilters: CustomFilters
+  filters: LeaderboardFilters
   availableSeasons: string[]
-  availableCustomTeams: TeamOption[]
-  metricFilters: MetricFilters
+  availableTeams: TeamOption[]
 }): string {
-  if (mode === 'cached') {
-    return `/api/metrics/${metric}/cached-leaderboard.csv?${buildCachedLeaderboardParams(
-      metric,
-      cachedFilters,
-      metricFilters,
-    ).toString()}`
-  }
-
-  return `/api/metrics/${metric}/custom-query.csv?${buildCustomQueryParams(
+  return `/api/metrics/${metric}/leaderboard.csv?${buildLeaderboardParams(
     metric,
-    customFilters,
+    filters,
     availableSeasons,
-    availableCustomTeams,
+    availableTeams,
   ).toString()}`
 }
 
-export function buildCachedLeaderboardParams(
+export function buildLeaderboardParams(
   metric: MetricId,
-  cachedFilters: CachedFilters,
-  filters: MetricFilters,
+  filters: LeaderboardFilters,
+  availableSeasons: string[],
+  availableTeams: TeamOption[],
 ): URLSearchParams {
+  const selectedSeasonSpan = seasonSpan(filters.startSeason, filters.endSeason, availableSeasons)
+  const selectedTeamIds = filterSelectedTeamIdsForAvailableTeams(filters.teamIds, availableTeams)
   const params = new URLSearchParams({
-    top_n: String(cachedFilters.topN),
-    min_average_minutes: String(filters.min_average_minutes),
-    min_total_minutes: String(filters.min_total_minutes),
+    top_n: String(filters.topN),
+    min_average_minutes: String(filters.minAverageMinutes),
+    min_total_minutes: String(filters.minTotalMinutes),
   })
 
-  appendMetricSpecificParams(params, metric, filters)
+  if (metric === 'rawr') {
+    params.set('min_games', String(filters.minGames))
+    params.set('ridge_alpha', String(filters.ridgeAlpha))
+  } else {
+    params.set('min_games_with', String(filters.minGamesWith))
+    params.set('min_games_without', String(filters.minGamesWithout))
+  }
 
-  if (cachedFilters.teamId !== null) {
-    params.set('team_id', String(cachedFilters.teamId))
+  const isFullSeasonSpan =
+    selectedSeasonSpan.length === availableSeasons.length &&
+    selectedSeasonSpan.every((season, index) => season === availableSeasons[index])
+  const isAllTeamsSelected =
+    availableTeams.length > 0 && selectedTeamIds.length === availableTeams.length
+
+  if (!isAllTeamsSelected) {
+    for (const teamId of selectedTeamIds) {
+      params.append('team_id', String(teamId))
+    }
+  }
+
+  if (!isFullSeasonSpan) {
+    for (const season of selectedSeasonSpan) {
+      params.append('season', season)
+    }
   }
 
   return params
 }
 
-export function buildCustomQueryParams(
-  metric: MetricId,
-  customFilters: CustomFilters,
-  availableSeasons: string[],
-  availableCustomTeams: TeamOption[],
-): URLSearchParams {
-  const params = new URLSearchParams({
-    top_n: String(customFilters.topN),
-    min_average_minutes: String(customFilters.minAverageMinutes),
-    min_total_minutes: String(customFilters.minTotalMinutes),
-  })
-
-  if (metric === 'rawr') {
-    params.set('min_games', String(customFilters.minGames))
-    params.set('ridge_alpha', String(customFilters.ridgeAlpha))
-  } else {
-    params.set('min_games_with', String(customFilters.minGamesWith))
-    params.set('min_games_without', String(customFilters.minGamesWithout))
+export function updateLeaderboardFilterValue(
+  filters: LeaderboardFilters,
+  field: LeaderboardNumberField,
+  value: number,
+): LeaderboardFilters {
+  return {
+    ...filters,
+    [field]: sanitizeNumber(value),
   }
-
-  for (const teamId of filterSelectedTeamIdsForAvailableTeams(customFilters.teams, availableCustomTeams)) {
-    params.append('team_id', String(teamId))
-  }
-
-  for (const season of seasonSpan(customFilters.startSeason, customFilters.endSeason, availableSeasons)) {
-    params.append('season', season)
-  }
-
-  return params
 }
 
 export function sanitizeNumber(value: number): number {
@@ -296,21 +225,4 @@ export function sanitizeNumber(value: number): number {
 
 export function readNumberValue(rawValue: string): number {
   return sanitizeNumber(Number(rawValue))
-}
-
-function appendMetricSpecificParams(
-  params: URLSearchParams,
-  metric: MetricId,
-  filters: MetricFilters,
-): void {
-  if (metric === 'rawr') {
-    const rawrFilters = filters as RawrMetricFilters
-    params.set('min_games', String(rawrFilters.min_games))
-    params.set('ridge_alpha', String(rawrFilters.ridge_alpha))
-    return
-  }
-
-  const wowyFilters = filters as WowyMetricFilters
-  params.set('min_games_with', String(wowyFilters.min_games_with))
-  params.set('min_games_without', String(wowyFilters.min_games_without))
 }

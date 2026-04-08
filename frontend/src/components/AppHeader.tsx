@@ -1,4 +1,4 @@
-import type { AppMode, MetricId, ThemeMode } from '../app/types'
+import type { MetricId, ThemeMode } from '../app/types'
 
 const METRIC_OPTIONS: { id: MetricId; label: string }[] = [
   { id: 'rawr', label: 'RAWR' },
@@ -6,34 +6,25 @@ const METRIC_OPTIONS: { id: MetricId; label: string }[] = [
   { id: 'wowy', label: 'WOWY' },
 ]
 
-const MODE_OPTIONS: { id: AppMode; label: string }[] = [
-  { id: 'cached', label: 'All-Time Leaders' },
-  { id: 'custom', label: 'Custom Query' },
-]
-
 type AppHeaderProps = {
   metric: MetricId
-  mode: AppMode
   metricLabel: string
   metricDescription: string
   seasonCount: number
   teamCount: number
   theme: ThemeMode
   onMetricChange: (metric: MetricId) => void
-  onModeChange: (mode: AppMode) => void
   onThemeToggle: () => void
 }
 
 export function AppHeader({
   metric,
-  mode,
   metricLabel,
   metricDescription,
   seasonCount,
   teamCount,
   theme,
   onMetricChange,
-  onModeChange,
   onThemeToggle,
 }: AppHeaderProps) {
   return (
@@ -45,7 +36,7 @@ export function AppHeader({
         <div className="app-header__meta" aria-label="Dataset summary">
           <span>{seasonCount || 'No'} seasons loaded</span>
           <span>{teamCount || 'No'} teams in scope</span>
-          <span>{mode === 'cached' ? 'Cached leaderboard' : 'Live custom query'}</span>
+          <span>Unified leaderboard query</span>
         </div>
       </div>
 
@@ -67,19 +58,11 @@ export function AppHeader({
         </section>
 
         <section className="header-card">
-          <p className="panel-label">View</p>
-          <div className="segmented-control" role="tablist" aria-label="Query mode">
-            {MODE_OPTIONS.map((option) => (
-              <button
-                key={option.id}
-                type="button"
-                className={mode === option.id ? 'segment is-active' : 'segment'}
-                onClick={() => onModeChange(option.id)}
-              >
-                {option.label}
-              </button>
-            ))}
-          </div>
+          <p className="panel-label">Execution</p>
+          <p className="sidebar-note">
+            Each request hits one leaderboard endpoint. The backend returns cached results when the
+            scope is already materialized and computes live results otherwise.
+          </p>
         </section>
 
         <button type="button" className="theme-toggle-button" onClick={onThemeToggle}>

@@ -1,13 +1,8 @@
-import {
-  buildCachedLeaderboardParams,
-  buildCustomQueryParams,
-} from './query'
+import { buildLeaderboardParams } from './query'
 import type {
-  CachedFilters,
   ErrorPayload,
-  CustomFilters,
+  LeaderboardFilters,
   LeaderboardPayload,
-  MetricFilters,
   MetricId,
   MetricOptionsPayload,
   TeamOption,
@@ -17,32 +12,14 @@ export async function fetchMetricOptions(metric: MetricId): Promise<MetricOption
   return (await fetchJson(`/api/metrics/${metric}/options`)) as MetricOptionsPayload
 }
 
-export async function fetchCachedLeaderboard(
+export async function fetchLeaderboard(
   metric: MetricId,
-  cachedFilters: CachedFilters,
-  filters: MetricFilters,
-): Promise<LeaderboardPayload> {
-  const params = buildCachedLeaderboardParams(metric, cachedFilters, filters)
-  return (await fetchJson(
-    `/api/metrics/${metric}/cached-leaderboard?${params.toString()}`,
-  )) as LeaderboardPayload
-}
-
-export async function fetchCustomLeaderboard(
-  metric: MetricId,
-  customFilters: CustomFilters,
+  filters: LeaderboardFilters,
   availableSeasons: string[],
-  availableCustomTeams: TeamOption[],
+  availableTeams: TeamOption[],
 ): Promise<LeaderboardPayload> {
-  const params = buildCustomQueryParams(
-    metric,
-    customFilters,
-    availableSeasons,
-    availableCustomTeams,
-  )
-  return (await fetchJson(
-    `/api/metrics/${metric}/custom-query?${params.toString()}`,
-  )) as LeaderboardPayload
+  const params = buildLeaderboardParams(metric, filters, availableSeasons, availableTeams)
+  return (await fetchJson(`/api/metrics/${metric}/leaderboard?${params.toString()}`)) as LeaderboardPayload
 }
 
 async function fetchJson(url: string): Promise<unknown> {

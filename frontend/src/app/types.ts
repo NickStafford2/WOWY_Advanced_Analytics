@@ -1,6 +1,6 @@
-export type AppMode = 'cached' | 'custom'
 export type MetricId = 'wowy' | 'wowy_shrunk' | 'rawr'
 export type ThemeMode = 'light' | 'dark'
+export type LeaderboardResultSource = 'cache' | 'live'
 
 export type TeamOption = {
   team_id: number
@@ -29,6 +29,28 @@ export type WowyMetricFilters = BaseMetricFilters & {
 }
 
 export type MetricFilters = RawrMetricFilters | WowyMetricFilters
+
+export type LeaderboardFilters = {
+  startSeason: string
+  endSeason: string
+  teamIds: number[]
+  topN: number
+  minGames: number
+  ridgeAlpha: number
+  minGamesWith: number
+  minGamesWithout: number
+  minAverageMinutes: number
+  minTotalMinutes: number
+}
+
+export type LeaderboardNumberField =
+  | 'topN'
+  | 'minGames'
+  | 'ridgeAlpha'
+  | 'minGamesWith'
+  | 'minGamesWithout'
+  | 'minAverageMinutes'
+  | 'minTotalMinutes'
 
 export type SpanPoint = {
   season: string
@@ -59,7 +81,7 @@ export type ResultsTableRow = {
 }
 
 export type LeaderboardPayload = {
-  mode: AppMode
+  mode: LeaderboardResultSource
   metric: MetricId
   span: {
     start_season: string | null
@@ -96,41 +118,6 @@ export type MetricOptionsPayload = RawrMetricOptionsPayload | WowyMetricOptionsP
 export type ErrorPayload = {
   error?: string
 }
-
-export type CachedFilters = {
-  teamId: number | null
-  topN: number
-}
-
-export type CustomFilters = {
-  startSeason: string
-  endSeason: string
-  teams: number[]
-  topN: number
-  minGames: number
-  ridgeAlpha: number
-  minGamesWith: number
-  minGamesWithout: number
-  minAverageMinutes: number
-  minTotalMinutes: number
-}
-
-export type CustomNumberField =
-  | 'topN'
-  | 'minGames'
-  | 'ridgeAlpha'
-  | 'minGamesWith'
-  | 'minGamesWithout'
-  | 'minAverageMinutes'
-  | 'minTotalMinutes'
-
-export type MetricNumberField =
-  | 'minAverageMinutes'
-  | 'minTotalMinutes'
-  | 'minGames'
-  | 'ridgeAlpha'
-  | 'minGamesWith'
-  | 'minGamesWithout'
 
 export type LoadingPhase = {
   label: string

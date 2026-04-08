@@ -6,7 +6,6 @@ import type { LeaderboardPayload, LoadingPanelModel, MetricId } from '../app/typ
 type ResultsPanelProps = {
   metric: MetricId
   metricLabel: string
-  mode: 'cached' | 'custom'
   leaderboard: LeaderboardPayload | null
   exportUrl: string
   error: string
@@ -18,7 +17,6 @@ type ResultsPanelProps = {
 export function ResultsPanel({
   metric,
   metricLabel,
-  mode,
   leaderboard,
   exportUrl,
   error,
@@ -36,7 +34,7 @@ export function ResultsPanel({
     <section className="results-panel">
       <header className="results-panel__header">
         <div>
-          <p className="panel-label">{mode === 'cached' ? 'Cached board' : 'Custom run'}</p>
+          <p className="panel-label">Leaderboard</p>
           <h2>{leaderboard?.span.start_season ? seasonSummary : `${metricLabel} results`}</h2>
         </div>
 
@@ -44,7 +42,7 @@ export function ResultsPanel({
           <div className="results-panel__meta">
             <span>{leaderboard.table_rows.length} players</span>
             <span>{leaderboard.span.available_seasons.length} seasons</span>
-            <span>{leaderboard.mode === 'cached' ? 'Cached' : 'Recalculated live'}</span>
+            <span>{leaderboard.mode === 'cache' ? 'Served from cache' : 'Calculated live'}</span>
           </div>
         ) : null}
       </header>
@@ -54,11 +52,7 @@ export function ResultsPanel({
       {!error && loadingPanel ? <LoadingStatus model={loadingPanel} /> : null}
 
       {!error && !loadingPanel && (isBootstrapping || isLoading) ? (
-        <p className="status-card">
-          {mode === 'cached'
-            ? `Loading cached ${metricLabel} leaders...`
-            : `Running ${metricLabel} query...`}
-        </p>
+        <p className="status-card">{`Loading ${metricLabel} leaderboard...`}</p>
       ) : null}
 
       {!error && !isLoading && !leaderboard ? (

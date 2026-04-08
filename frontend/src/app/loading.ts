@@ -1,19 +1,17 @@
-import type { AppMode, LoadingPanelModel, LoadingPhase, MetricId } from './types'
+import type { LoadingPanelModel, LoadingPhase, MetricId } from './types'
 
 export function buildLoadingPanelModel({
   metric,
   metricLabel,
-  mode,
   isBootstrapping,
   elapsedMs,
 }: {
   metric: MetricId
   metricLabel: string
-  mode: AppMode
   isBootstrapping: boolean
   elapsedMs: number
 }): LoadingPanelModel {
-  const phases = buildLoadingPhases(metric, mode, isBootstrapping)
+  const phases = buildLoadingPhases(metric, isBootstrapping)
   const cappedProgress = isBootstrapping
     ? Math.min(72, 14 + Math.floor(elapsedMs / 180))
     : Math.min(92, 22 + Math.floor(elapsedMs / 220))
@@ -21,17 +19,14 @@ export function buildLoadingPanelModel({
     phases.length - 1,
     Math.floor((cappedProgress / 100) * phases.length),
   )
-  const title = isBootstrapping
-    ? `Opening ${metricLabel} data pipeline`
-    : mode === 'custom'
-      ? `Running ${metricLabel} custom query`
-      : `Refreshing cached ${metricLabel} leaderboard`
 
   return {
-    title,
+    title: isBootstrapping
+      ? `Opening ${metricLabel} leaderboard`
+      : `Loading ${metricLabel} leaderboard`,
     summary:
       phases[activePhaseIndex]?.detail ??
-      `Loading ${metricLabel} data from the backend and rebuilding the chart payload.`,
+      `Loading ${metricLabel} data from the backend and rebuilding the leaderboard view.`,
     progressLabel: `${cappedProgress}% complete`,
     progressPercent: cappedProgress,
     phases,
@@ -39,100 +34,42 @@ export function buildLoadingPanelModel({
   }
 }
 
-function buildLoadingPhases(
-  metric: MetricId,
-  mode: AppMode,
-  isBootstrapping: boolean,
-): LoadingPhase[] {
+function buildLoadingPhases(metric: MetricId, isBootstrapping: boolean): LoadingPhase[] {
   if (isBootstrapping) {
     return [
       {
-        label: 'Inspecting scope',
-        detail: `Checking which cached teams and seasons are available for ${metric.toUpperCase()}.`,
+        label: 'Reading options',
+        detail: `Loading the available teams, seasons, and default filters for ${metric.toUpperCase()}.`,
       },
       {
-        label: 'Reading defaults',
-        detail: 'Loading the recommended filters so the first render matches the current metric store.',
+        label: 'Checking scope',
+        detail: 'Matching the current leaderboard scope against the metric store.',
       },
       {
         label: 'Preparing board',
-        detail: 'Requesting the first leaderboard payload and translating it into chart-ready series.',
-      },
-    ]
-  }
-
-  if (metric === 'rawr') {
-    if (mode === 'custom') {
-      return [
-        {
-          label: 'Gathering sample',
-          detail: 'Collecting the requested team and season slice from the normalized RAWR inputs.',
-        },
-        {
-          label: 'Fitting ridge',
-          detail: 'Running the game-level ridge regression with the selected alpha and minimum games threshold.',
-        },
-        {
-          label: 'Ranking span',
-          detail: 'Aggregating the player-season coefficients into the final span leaderboard and chart points.',
-        },
-      ]
-    }
-
-    return [
-      {
-        label: 'Loading scope',
-        detail: 'Reading the prebuilt RAWR regression store for the selected team scope and season type.',
-      },
-      {
-        label: 'Filtering rows',
-        detail: 'Applying the minimum games and minute thresholds before ranking the remaining player seasons.',
-      },
-      {
-        label: 'Rendering chart',
-        detail: 'Rebuilding the multi-season series and ranked table for the frontend.',
-      },
-    ]
-  }
-
-  if (mode === 'custom') {
-    return [
-      {
-        label: 'Gathering sample',
-        detail:
-          metric === 'wowy_shrunk'
-            ? 'Collecting the requested team and season slice from cached WOWY inputs before shrinkage is applied.'
-            : 'Collecting the requested team and season slice from cached WOWY inputs.',
-      },
-      {
-        label: metric === 'wowy_shrunk' ? 'Applying shrinkage' : 'Running WOWY',
-        detail:
-          metric === 'wowy_shrunk'
-            ? 'Computing with/without impact and shrinking each player-season toward the prior based on sample balance.'
-            : 'Computing with/without impact for each player across the selected game sample.',
-      },
-      {
-        label: 'Ranking span',
-        detail: 'Aggregating the player-season results into the final span leaderboard and chart points.',
+        detail: 'Requesting the first leaderboard payload and translating it into chart and table rows.',
       },
     ]
   }
 
   return [
     {
-      label: 'Loading cache',
+      label: 'Resolving scope',
+      detail: 'Applying the selected seasons, teams, and thresholds to the leaderboard request.',
+    },
+    {
+      label: 'Checking store',
       detail:
-        metric === 'wowy_shrunk'
-          ? 'Reading cached WOWY shrinkage player-season rows for the selected scope.'
-          : 'Reading cached WOWY player-season rows for the selected scope.',
+        metric === 'rawr'
+          ? 'Loading cached RAWR rows when the requested scope is already materialized.'
+          : 'Loading cached WOWY rows when the requested scope is already materialized.',
     },
     {
-      label: 'Applying filters',
-      detail: 'Filtering by minutes and sample sizes before ranking the strongest multi-season profiles.',
-    },
-    {
-      label: 'Rendering board',
-      detail: 'Building the chart series and leaderboard table for the current span.',
+      label: 'Building result',
+      detail:
+        metric === 'rawr'
+          ? 'Computing the live RAWR leaderboard only when cached rows are unavailable.'
+          : 'Computing the live WOWY leaderboard only when cached rows are unavailable.',
     },
   ]
 }

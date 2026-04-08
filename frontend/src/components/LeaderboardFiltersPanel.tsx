@@ -1,15 +1,15 @@
-import type { CustomFilters, CustomNumberField, TeamOption } from '../app/types'
+import type { LeaderboardFilters, LeaderboardNumberField, TeamOption } from '../app/types'
 import { NumericField } from './NumericField'
 
-type CustomFieldConfig = {
-  key: CustomNumberField
+type FilterFieldConfig = {
+  key: LeaderboardNumberField
   label: string
   value: number
   step?: string
 }
 
-type CustomQueryPanelProps = {
-  customFilters: CustomFilters
+type LeaderboardFiltersPanelProps = {
+  filters: LeaderboardFilters
   availableSeasons: string[]
   availableTeams: TeamOption[]
   isBootstrapping: boolean
@@ -20,12 +20,12 @@ type CustomQueryPanelProps = {
   onEndSeasonChange: (season: string) => void
   onToggleAllTeams: () => void
   onToggleTeam: (teamId: number) => void
-  onNumberChange: (field: CustomNumberField, value: number) => void
-  onRunQuery: () => void
+  onNumberChange: (field: LeaderboardNumberField, value: number) => void
+  onRefresh: () => void
 }
 
-export function CustomQueryPanel({
-  customFilters,
+export function LeaderboardFiltersPanel({
+  filters,
   availableSeasons,
   availableTeams,
   isBootstrapping,
@@ -37,45 +37,46 @@ export function CustomQueryPanel({
   onToggleAllTeams,
   onToggleTeam,
   onNumberChange,
-  onRunQuery,
-}: CustomQueryPanelProps) {
-  const hasSelectedTeams = customFilters.teams.length > 0
-  const queryFields: CustomFieldConfig[] = isRawrMetric
+  onRefresh,
+}: LeaderboardFiltersPanelProps) {
+  const isDisabled = isBootstrapping || isLoading
+  const hasSelectedTeams = filters.teamIds.length > 0
+  const metricFields: FilterFieldConfig[] = isRawrMetric
     ? [
-        {
-          key: 'minGames',
-          label: 'Min games',
-          value: customFilters.minGames,
-        },
-        {
-          key: 'ridgeAlpha',
-          label: 'Ridge alpha',
-          value: customFilters.ridgeAlpha,
-          step: '0.5',
-        },
-      ]
+      {
+        key: 'minGames',
+        label: 'Min games',
+        value: filters.minGames,
+      },
+      {
+        key: 'ridgeAlpha',
+        label: 'Ridge alpha',
+        value: filters.ridgeAlpha,
+        step: '0.5',
+      },
+    ]
     : [
-        {
-          key: 'minGamesWith',
-          label: 'Min games with',
-          value: customFilters.minGamesWith,
-        },
-        {
-          key: 'minGamesWithout',
-          label: 'Min games without',
-          value: customFilters.minGamesWithout,
-        },
-      ]
+      {
+        key: 'minGamesWith',
+        label: 'Min games with',
+        value: filters.minGamesWith,
+      },
+      {
+        key: 'minGamesWithout',
+        label: 'Min games without',
+        value: filters.minGamesWithout,
+      },
+    ]
 
   return (
     <aside className="sidebar-panel">
       <div className="sidebar-panel__section">
         <div>
-          <p className="panel-label">Custom query</p>
-          <h2>Live slice builder</h2>
+          <p className="panel-label">Leaderboard query</p>
         </div>
         <p className="sidebar-note">
-          Choose a season span, restrict the team pool, and rerun the metric on demand.
+          Select the seasons, teams, and thresholds you want. The backend serves cached rows when
+          it can and computes live results when it has to.
         </p>
       </div>
 
@@ -85,9 +86,9 @@ export function CustomQueryPanel({
           <label className="field">
             <span>Start season</span>
             <select
-              value={customFilters.startSeason}
+              value={filters.startSeason}
               onChange={(event) => onStartSeasonChange(event.target.value)}
-              disabled={isBootstrapping || isLoading}
+              disabled={isDisabled}
             >
               {availableSeasons.map((season) => (
                 <option key={season} value={season}>
@@ -100,9 +101,9 @@ export function CustomQueryPanel({
           <label className="field">
             <span>End season</span>
             <select
-              value={customFilters.endSeason}
+              value={filters.endSeason}
               onChange={(event) => onEndSeasonChange(event.target.value)}
-              disabled={isBootstrapping || isLoading}
+              disabled={isDisabled}
             >
               {availableSeasons.map((season) => (
                 <option key={season} value={season}>
@@ -116,34 +117,17 @@ export function CustomQueryPanel({
             label="Top players"
             min="1"
             max="100"
-            value={customFilters.topN}
-            disabled={isBootstrapping || isLoading}
+            value={filters.topN}
+            disabled={isDisabled}
             onChange={(value) => onNumberChange('topN', value)}
           />
-        </div>
-      </div>
-
-      <div className="sidebar-panel__section">
-        <p className="section-title">{isRawrMetric ? 'Model filters' : 'Query filters'}</p>
-        <div className="field-grid">
-          {queryFields.map((field) => (
-            <NumericField
-              key={field.key}
-              label={field.label}
-              min="0"
-              step={field.step}
-              value={field.value}
-              disabled={isBootstrapping || isLoading}
-              onChange={(value) => onNumberChange(field.key, value)}
-            />
-          ))}
 
           <NumericField
             label="Min average minutes"
             min="0"
             step="0.5"
-            value={customFilters.minAverageMinutes}
-            disabled={isBootstrapping || isLoading}
+            value={filters.minAverageMinutes}
+            disabled={isDisabled}
             onChange={(value) => onNumberChange('minAverageMinutes', value)}
           />
 
@@ -151,10 +135,22 @@ export function CustomQueryPanel({
             label="Min total minutes"
             min="0"
             step="10"
-            value={customFilters.minTotalMinutes}
-            disabled={isBootstrapping || isLoading}
+            value={filters.minTotalMinutes}
+            disabled={isDisabled}
             onChange={(value) => onNumberChange('minTotalMinutes', value)}
           />
+
+          {metricFields.map((field) => (
+            <NumericField
+              key={field.key}
+              label={field.label}
+              min="0"
+              step={field.step}
+              value={field.value}
+              disabled={isDisabled}
+              onChange={(value) => onNumberChange(field.key, value)}
+            />
+          ))}
         </div>
       </div>
 
@@ -165,20 +161,20 @@ export function CustomQueryPanel({
             type="button"
             className={allTeamsSelected ? 'team-toggle is-selected' : 'team-toggle'}
             onClick={onToggleAllTeams}
-            disabled={isBootstrapping || isLoading || availableTeams.length === 0}
+            disabled={isDisabled || availableTeams.length === 0}
           >
             All
           </button>
 
           {availableTeams.map((team) => {
-            const isSelected = customFilters.teams.includes(team.team_id)
+            const isSelected = filters.teamIds.includes(team.team_id)
             return (
               <label key={team.team_id} className={isSelected ? 'team-chip is-selected' : 'team-chip'}>
                 <input
                   type="checkbox"
                   checked={isSelected}
                   onChange={() => onToggleTeam(team.team_id)}
-                  disabled={isBootstrapping || isLoading}
+                  disabled={isDisabled}
                 />
                 <span>{team.label}</span>
               </label>
@@ -187,7 +183,7 @@ export function CustomQueryPanel({
         </div>
 
         {!hasSelectedTeams ? (
-          <p className="sidebar-note">Select at least one team to run a custom query.</p>
+          <p className="sidebar-note">Select at least one team active across the full season span.</p>
         ) : null}
       </fieldset>
 
@@ -195,16 +191,10 @@ export function CustomQueryPanel({
         <button
           type="button"
           className="primary-button"
-          onClick={onRunQuery}
-          disabled={
-            isBootstrapping ||
-            isLoading ||
-            !customFilters.startSeason ||
-            !customFilters.endSeason ||
-            !hasSelectedTeams
-          }
+          onClick={onRefresh}
+          disabled={isDisabled || !filters.startSeason || !filters.endSeason || !hasSelectedTeams}
         >
-          {isLoading ? 'Running...' : 'Run query'}
+          {isLoading ? 'Refreshing...' : 'Refresh leaderboard'}
         </button>
       </div>
     </aside>
