@@ -41,7 +41,6 @@ type MetricFilters = RawrMetricFilters | WowyMetricFilters
 type LeaderboardPayload = {
   mode: AppMode
   metric: MetricId
-  metric_label: string
   span: {
     start_season: string | null
     end_season: string | null
@@ -56,7 +55,6 @@ type LeaderboardPayload = {
 }
 
 type BaseMetricOptionsPayload = {
-  metric_label: string
   available_teams: string[]
   team_options: TeamOption[]
   available_seasons: string[]
@@ -100,11 +98,11 @@ type LoadingPanelModel = {
 
 function App() {
   const headerRef = useRef<HTMLElement | null>(null)
+  const metricRef = useRef<MetricId>('wowy')
   const [headerHeight, setHeaderHeight] = useState(0)
   const [theme, setTheme] = useState<ThemeMode>(resolveInitialTheme)
   const [metric, setMetric] = useState<MetricId>('wowy')
   const [mode, setMode] = useState<AppMode>('cached')
-  const [metricLabel, setMetricLabel] = useState('WOWY')
   const [metricFilters, setMetricFilters] = useState<MetricFilters>(defaultMetricFilters('wowy'))
   const [teamOptions, setTeamOptions] = useState<TeamOption[]>([])
   const [availableSeasons, setAvailableSeasons] = useState<string[]>([])
@@ -131,6 +129,7 @@ function App() {
   const [loadingStartedAt, setLoadingStartedAt] = useState<number | null>(Date.now())
   const [loadingTick, setLoadingTick] = useState(0)
   const [showLoadingPanel, setShowLoadingPanel] = useState(false)
+  const metricLabel = metricLabelFor(metric)
 
   const loadingPanel = useMemo<LoadingPanelModel | null>(() => {
     if ((!isBootstrapping && !isLoading) || !showLoadingPanel) {
@@ -197,6 +196,10 @@ function App() {
   }, [])
 
   useEffect(() => {
+    metricRef.current = metric
+  }, [metric])
+
+  useEffect(() => {
     document.documentElement.dataset.theme = theme
     window.localStorage.setItem(THEME_STORAGE_KEY, theme)
   }, [theme])
@@ -207,9 +210,11 @@ function App() {
     setLoadingStartedAt(Date.now())
     try {
       const payload = (await fetchJson(`/api/metrics/${nextMetric}/options`)) as MetricOptionsPayload
+      if (metricRef.current !== nextMetric) {
+        return null
+      }
       const defaultStartSeason = payload.available_seasons[0] || ''
       const defaultEndSeason = payload.available_seasons[payload.available_seasons.length - 1] || ''
-      setMetricLabel(payload.metric_label)
       setMetricFilters(payload.filters)
       setTeamOptions(payload.team_options)
       setAvailableSeasons(payload.available_seasons)
@@ -281,9 +286,14 @@ function App() {
         const payload = (await fetchJson(
           `/api/metrics/${nextMetric}/cached-leaderboard?${params.toString()}`,
         )) as LeaderboardPayload
-        setMetricLabel(payload.metric_label)
+        if (metricRef.current !== nextMetric) {
+          return
+        }
         setLeaderboard(payload)
       } catch (caughtError) {
+        if (metricRef.current !== nextMetric) {
+          return
+        }
         const message = caughtError instanceof Error ? caughtError.message : 'Request failed'
         setError(message)
         setLeaderboard(null)
@@ -331,9 +341,14 @@ function App() {
       const payload = (await fetchJson(
         `/api/metrics/${metric}/custom-query?${params.toString()}`,
       )) as LeaderboardPayload
-      setMetricLabel(payload.metric_label)
+      if (metricRef.current !== metric) {
+        return
+      }
       setLeaderboard(payload)
     } catch (caughtError) {
+      if (metricRef.current !== metric) {
+        return
+      }
       const message = caughtError instanceof Error ? caughtError.message : 'Request failed'
       setError(message)
       setLeaderboard(null)
@@ -343,8 +358,12 @@ function App() {
   })
 
   useEffect(() => {
+    setLeaderboard(null)
     void (async () => {
       const options = await loadOptions(metric)
+      if (options === null) {
+        return
+      }
       await loadCachedLeaderboard(metric, options.filters)
     })()
   }, [metric])
@@ -352,8 +371,9 @@ function App() {
   const seasonSummary = leaderboard?.span.available_seasons.length
     ? `${leaderboard.span.available_seasons[0]} to ${leaderboard.span.available_seasons.at(-1)}`
     : 'No seasons loaded'
+  const displayedMetric = leaderboard?.metric ?? metric
   const isRawrMetric = metric === 'rawr'
-  const isWowyStyleMetric = !isRawrMetric
+  const isWowyStyleMetric = displayedMetric !== 'rawr'
   const availableCustomTeams = useMemo(
     () =>
       buildAvailableTeamsForSeasonSpan({
@@ -604,6 +624,16 @@ function defaultMetricFilters(metric: MetricId): MetricFilters {
     min_total_minutes: 600,
     top_n: 30,
   }
+}
+
+function metricLabelFor(metric: MetricId): string {
+  if (metric === 'rawr') {
+    return 'RAWR'
+  }
+  if (metric === 'wowy_shrunk') {
+    return 'WOWY Shrinkage'
+  }
+  return 'WOWY'
 }
 
 function buildLoadingPanelModel({

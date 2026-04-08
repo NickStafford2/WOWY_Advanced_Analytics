@@ -382,9 +382,10 @@
 .query-actions-row {
   display: flex;
   justify-content: flex-end;
-  Button {
-    width: 100%;
-  }
+}
+
+.query-actions-row button {
+  width: 100%;
 }
 
 @media (min-width: 1180px) {

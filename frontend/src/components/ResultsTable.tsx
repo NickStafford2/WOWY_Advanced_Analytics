@@ -3,12 +3,13 @@ export type ResultsTableRow = {
   player_id: number
   player_name: string
   span_average_value: number
-  average_minutes: number | null
-  total_minutes: number
-  games_with: number
-  games_without: number
-  avg_margin_with: number | null
-  avg_margin_without: number | null
+  average_minutes: number | null | undefined
+  total_minutes: number | null | undefined
+  games?: number
+  games_with?: number
+  games_without?: number
+  avg_margin_with?: number | null
+  avg_margin_without?: number | null
   season_count: number
 }
 
@@ -60,13 +61,13 @@ export function ResultsTable({
                 <td>{formatNumber(row.total_minutes, 1)}</td>
                 {isWowyStyleMetric ? (
                   <>
-                    <td>{row.games_with}</td>
-                    <td>{row.games_without}</td>
+                    <td>{formatInteger(row.games_with)}</td>
+                    <td>{formatInteger(row.games_without)}</td>
                     <td>{formatNumber(row.avg_margin_with, 2)}</td>
                     <td>{formatNumber(row.avg_margin_without, 2)}</td>
                   </>
                 ) : (
-                  <td>{row.games_with}</td>
+                  <td>{formatInteger(row.games)}</td>
                 )}
               </tr>
             ))}
@@ -88,6 +89,10 @@ export function ResultsTable({
   )
 }
 
-function formatNumber(value: number | null, decimals: number): string {
-  return value === null ? '—' : value.toFixed(decimals)
+function formatNumber(value: number | null | undefined, decimals: number): string {
+  return value == null ? '—' : value.toFixed(decimals)
+}
+
+function formatInteger(value: number | null | undefined): string {
+  return value == null ? '—' : String(value)
 }
