@@ -1,4 +1,4 @@
-import { isAllTeamsSelection } from '../app/query'
+import { isAllTeamsSelection } from '../app/leaderboardQuery'
 import type { TeamOption } from '../app/types'
 
 type TeamSelectorProps = {

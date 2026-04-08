@@ -6,14 +6,13 @@ import {
   defaultLeaderboardFilters,
   filterSelectedTeamIdsForAvailableTeams,
   isAllTeamsSelection,
-  metricDescriptionFor,
-  metricLabelFor,
   selectAllTeams,
   syncLeaderboardFiltersWithOptions,
   syncSelectedTeamIds,
   toggleSelectedTeam,
   updateLeaderboardFilterValue,
-} from './query'
+} from './leaderboardQuery'
+import { metricDescriptionFor, metricLabelFor } from './metric'
 import type {
   LeaderboardFilters,
   LeaderboardNumberField,

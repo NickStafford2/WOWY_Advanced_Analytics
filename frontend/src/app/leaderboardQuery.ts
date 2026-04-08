@@ -21,33 +21,13 @@ export function defaultLeaderboardFilters(): LeaderboardFilters {
   }
 }
 
-export function metricLabelFor(metric: MetricId): string {
-  if (metric === 'rawr') {
-    return 'RAWR'
-  }
-  if (metric === 'wowy_shrunk') {
-    return 'WOWY Shrinkage'
-  }
-  return 'WOWY'
-}
-
-export function metricDescriptionFor(metric: MetricId): string {
-  if (metric === 'wowy') {
-    return 'Cross-season on and off impact from with-and-without samples.'
-  }
-  if (metric === 'wowy_shrunk') {
-    return 'WOWY impact with shrinkage applied so smaller samples pull toward the prior.'
-  }
-  return 'Game-level ridge model of player impact across the cached history.'
-}
-
 export function syncLeaderboardFiltersWithOptions(
   current: LeaderboardFilters,
   payload: MetricOptionsPayload,
 ): LeaderboardFilters {
   const defaultStartSeason = payload.available_seasons[0] || ''
   const defaultEndSeason = payload.available_seasons[payload.available_seasons.length - 1] || ''
-  const selectedTeamIds = normalizeSelectedTeamIds(current.teamIds, payload.team_options)
+  const selectedTeamIds = _normalizeSelectedTeamIds(current.teamIds, payload.team_options)
 
   return {
     ...current,
@@ -126,7 +106,7 @@ export function syncSelectedTeamIds(
   selectedTeamIds: number[],
   availableTeams: TeamOption[],
 ): number[] {
-  return normalizeSelectedTeamIds(selectedTeamIds, availableTeams)
+  return _normalizeSelectedTeamIds(selectedTeamIds, availableTeams)
 }
 
 export function isAllTeamsSelection(
@@ -137,7 +117,7 @@ export function isAllTeamsSelection(
     return false
   }
 
-  return normalizeSelectedTeamIds(selectedTeamIds, availableTeams).length === 0
+  return _normalizeSelectedTeamIds(selectedTeamIds, availableTeams).length === 0
 }
 
 export function toggleSelectedTeam(
@@ -145,7 +125,7 @@ export function toggleSelectedTeam(
   teamId: number,
   availableTeams: TeamOption[],
 ): number[] {
-  const normalizedTeamIds = normalizeSelectedTeamIds(selectedTeamIds, availableTeams)
+  const normalizedTeamIds = _normalizeSelectedTeamIds(selectedTeamIds, availableTeams)
 
   if (normalizedTeamIds.length === 0) {
     return availableTeams
@@ -154,13 +134,13 @@ export function toggleSelectedTeam(
   }
 
   if (normalizedTeamIds.includes(teamId)) {
-    return normalizeSelectedTeamIds(
+    return _normalizeSelectedTeamIds(
       normalizedTeamIds.filter((selectedTeamId) => selectedTeamId !== teamId),
       availableTeams,
     )
   }
 
-  return normalizeSelectedTeamIds([...normalizedTeamIds, teamId], availableTeams)
+  return _normalizeSelectedTeamIds([...normalizedTeamIds, teamId], availableTeams)
 }
 
 export function selectAllTeams(): number[] {
@@ -193,7 +173,7 @@ export function buildLeaderboardParams(
   availableTeams: TeamOption[],
 ): URLSearchParams {
   const selectedSeasonSpan = seasonSpan(filters.startSeason, filters.endSeason, availableSeasons)
-  const selectedTeamIds = normalizeSelectedTeamIds(filters.teamIds, availableTeams)
+  const selectedTeamIds = _normalizeSelectedTeamIds(filters.teamIds, availableTeams)
   const params = new URLSearchParams({
     top_n: String(filters.topN),
     min_average_minutes: String(filters.minAverageMinutes),
@@ -247,7 +227,7 @@ export function readNumberValue(rawValue: string): number {
   return sanitizeNumber(Number(rawValue))
 }
 
-function normalizeSelectedTeamIds(
+function _normalizeSelectedTeamIds(
   selectedTeamIds: number[],
   availableTeams: TeamOption[],
 ): number[] {

@@ -1,10 +1,5 @@
+import { metricOptions } from '../app/metric'
 import type { MetricId, ThemeMode } from '../app/types'
-
-const METRIC_OPTIONS: { id: MetricId; label: string }[] = [
-  { id: 'rawr', label: 'RAWR' },
-  { id: 'wowy_shrunk', label: 'WOWY Shrinkage' },
-  { id: 'wowy', label: 'WOWY' },
-]
 
 type AppHeaderProps = {
   metric: MetricId
@@ -27,6 +22,8 @@ export function AppHeader({
   onMetricChange,
   onThemeToggle,
 }: AppHeaderProps) {
+  const metricChoices = metricOptions()
+
   return (
     <header className="app-header">
       <div className="app-header__intro">
@@ -44,7 +41,7 @@ export function AppHeader({
         <section className="header-card">
           <p className="panel-label">Metric</p>
           <div className="segmented-control" role="tablist" aria-label="Metric selector">
-            {METRIC_OPTIONS.map((option) => (
+            {metricChoices.map((option) => (
               <button
                 key={option.id}
                 type="button"

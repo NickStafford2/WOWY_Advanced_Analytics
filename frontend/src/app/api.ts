@@ -1,4 +1,4 @@
-import { buildLeaderboardParams } from './query'
+import { buildLeaderboardParams } from './leaderboardQuery'
 import type {
   ErrorPayload,
   LeaderboardFilters,
