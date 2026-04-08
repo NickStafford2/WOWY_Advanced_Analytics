@@ -11,22 +11,7 @@ export function AboutWowy() {
         </p>
       </div>
 
-      <div className="about-grid about-grid--triple">
-        <article className="about-card">
-          <h2>How The Query Works</h2>
-          <p className="about-card__subtitle">Direct on-off evidence</p>
-          <p>
-            WOWY splits the filtered game sample into two buckets for each player: games with the
-            player and games without the player. The result is a direct comparison between those
-            two conditions inside the exact season span and team scope you selected.
-          </p>
-          <p>
-            The table helps you inspect that split. <strong>With</strong> and <strong>Without</strong>{' '}
-            show how much evidence each side has, while <strong>Avg With</strong> and{' '}
-            <strong>Avg Without</strong> show the team outcome in each bucket.
-          </p>
-        </article>
-
+      <div className="about-grid">
         <article className="about-card">
           <h2>Non-Obvious Filters</h2>
           <p className="about-card__subtitle">Sample quality matters</p>
@@ -62,9 +47,13 @@ export function AboutWowy() {
       <section className="about-math">
         <h2>Math</h2>
         <p>
-          WOWY is the direct difference between team margin with a player in the sample and team
-          margin without that player, restricted to teams that actually used the player in the
-          filtered games.
+          WOWY starts from the most direct version of the question: how did the team perform in
+          the filtered games when this player appeared, and how did it perform when he did not?
+        </p>
+        <p>
+          Mathematically, that is just the difference between two sample means. The table exposes
+          both sides of the split directly through <strong>With</strong>, <strong>Without</strong>,
+          <strong>Avg With</strong>, and <strong>Avg Without</strong>.
         </p>
         <pre className="about-equation">
 {`avg_with =
@@ -77,7 +66,7 @@ wowy_score = avg_with - avg_without`}
         </pre>
         <p>
           That is why <strong>Min games with</strong> and <strong>Min games without</strong> matter
-          so much. The metric is only as stable as the two sample means it is subtracting.
+          so much. WOWY is only as stable as the two sample means it is subtracting.
         </p>
       </section>
     </section>

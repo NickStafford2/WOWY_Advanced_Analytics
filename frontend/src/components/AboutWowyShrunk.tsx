@@ -11,22 +11,7 @@ export function AboutWowyShrunk() {
         </p>
       </div>
 
-      <div className="about-grid about-grid--triple">
-        <article className="about-card">
-          <h2>How The Query Works</h2>
-          <p className="about-card__subtitle">WOWY with restraint</p>
-          <p>
-            This metric begins with the same basic structure as WOWY: compare team outcomes with a
-            player in the sample against outcomes without that player. The difference is that the
-            final estimate is shrunk toward a prior so unstable rows do not dominate the board.
-          </p>
-          <p>
-            In practice, that means players with small or uneven samples will usually move closer
-            to the center than they would in plain WOWY. Players with stronger evidence keep more
-            of their observed signal.
-          </p>
-        </article>
-
+      <div className="about-grid">
         <article className="about-card">
           <h2>How It Compares To WOWY</h2>
           <p className="about-card__subtitle">Same idea, steadier output</p>
@@ -62,8 +47,14 @@ export function AboutWowyShrunk() {
       <section className="about-math">
         <h2>Math</h2>
         <p>
-          WOWY Shrinkage starts from the plain WOWY score, then multiplies it by a shrinkage factor
-          based on the harmonic mean of the with and without sample sizes.
+          WOWY Shrinkage still begins with the plain WOWY question: compare team margin with the
+          player against team margin without the player. The difference is that the final score is
+          pulled back toward zero when the evidence is thin.
+        </p>
+        <p>
+          The general idea is shrinkage. Shrinkage leaves strong, well-supported estimates closer
+          to their observed value and compresses weaker estimates toward a safer middle. Here that
+          compression depends on the harmonic mean of the with and without game counts.
         </p>
         <pre className="about-equation">
 {`wowy_score = avg_with - avg_without

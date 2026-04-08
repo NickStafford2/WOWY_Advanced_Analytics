@@ -12,22 +12,7 @@ export function AboutRawr() {
         </p>
       </div>
 
-      <div className="about-grid about-grid--triple">
-        <article className="about-card">
-          <h2>How The Query Works</h2>
-          <p className="about-card__subtitle">Regression basics</p>
-          <p>
-            Regression is a way to explain an observed outcome by fitting weights to a set of
-            inputs. Here, the outcome is team performance at the game level, and the inputs include
-            which players were involved in the sample.
-          </p>
-          <p>
-            The model tries to find a set of player values that best explains the observed results
-            across the filtered games. The leaderboard is not showing raw box score production. It
-            is showing the model&apos;s estimate of each player&apos;s impact in the selected sample.
-          </p>
-        </article>
-
+      <div className="about-grid">
         <article className="about-card">
           <h2>Non-Obvious Filters</h2>
           <p className="about-card__subtitle">What changes the estimate</p>
@@ -64,9 +49,14 @@ export function AboutRawr() {
       <section className="about-math">
         <h2>Math</h2>
         <p>
-          RAWR is a ridge regression on game-level margin. For each observation, the model builds a
-          feature row with an intercept, a home-court term, player weights, a team-season effect,
-          and an opponent-season effect.
+          RAWR asks a simple question first: what set of player values best explains the game
+          margins in the filtered sample? Instead of comparing with and without buckets directly,
+          it fits one model across all selected games at once.
+        </p>
+        <p>
+          The general idea is regression. Regression fits coefficients so predicted outcomes stay as
+          close as possible to observed outcomes. Here the observed outcome is game margin, and the
+          model uses player terms plus a few context terms to explain it.
         </p>
         <pre className="about-equation">
 {`predicted_margin_i =
@@ -77,9 +67,9 @@ export function AboutRawr() {
   + delta_opponent(i)`}
         </pre>
         <p>
-          The fitted coefficients are the values that minimize squared error plus a ridge penalty.
-          In the current frontend path, the user-controlled knob is <strong>Ridge alpha</strong>,
-          which acts as the penalty strength.
+          The fit uses ridge regression, which means ordinary squared-error fitting plus a penalty
+          that pulls coefficients back toward zero. That penalty is what keeps the model from
+          chasing every noisy fluctuation in the sample.
         </p>
         <pre className="about-equation">
 {`beta_hat = argmin over beta:
