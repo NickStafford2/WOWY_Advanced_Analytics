@@ -1,5 +1,5 @@
 import { isAllTeamsSelection } from '../app/leaderboardQuery'
-import type { TeamOption } from '../app/types'
+import type { TeamOption } from '../app/leaderboardApiTypes'
 
 type TeamSelectorProps = {
   availableTeams: TeamOption[]

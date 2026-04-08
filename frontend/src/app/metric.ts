@@ -1,4 +1,4 @@
-import type { MetricId } from './types'
+import type { MetricId } from './metricTypes'
 
 type MetricOption = {
   id: MetricId

@@ -1,5 +1,5 @@
-export type MetricId = 'wowy' | 'wowy_shrunk' | 'rawr'
-export type ThemeMode = 'light' | 'dark'
+import type { MetricId } from './metricTypes'
+
 export type LeaderboardResultSource = 'cache' | 'live'
 
 export type TeamOption = {
@@ -29,28 +29,6 @@ export type WowyMetricFilters = BaseMetricFilters & {
 }
 
 export type MetricFilters = RawrMetricFilters | WowyMetricFilters
-
-export type LeaderboardFilters = {
-  startSeason: string
-  endSeason: string
-  teamIds: number[]
-  topN: number
-  minGames: number
-  ridgeAlpha: number
-  minGamesWith: number
-  minGamesWithout: number
-  minAverageMinutes: number
-  minTotalMinutes: number
-}
-
-export type LeaderboardNumberField =
-  | 'topN'
-  | 'minGames'
-  | 'ridgeAlpha'
-  | 'minGamesWith'
-  | 'minGamesWithout'
-  | 'minAverageMinutes'
-  | 'minTotalMinutes'
 
 export type SpanPoint = {
   season: string
@@ -117,18 +95,4 @@ export type MetricOptionsPayload = RawrMetricOptionsPayload | WowyMetricOptionsP
 
 export type ErrorPayload = {
   error?: string
-}
-
-export type LoadingPhase = {
-  label: string
-  detail: string
-}
-
-export type LoadingPanelModel = {
-  title: string
-  summary: string
-  progressLabel: string
-  progressPercent: number
-  phases: LoadingPhase[]
-  activePhaseIndex: number
 }

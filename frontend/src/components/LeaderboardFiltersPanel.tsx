@@ -1,4 +1,5 @@
-import type { LeaderboardFilters, LeaderboardNumberField, TeamOption } from '../app/types'
+import type { TeamOption } from '../app/leaderboardApiTypes'
+import type { LeaderboardFilters, LeaderboardNumberField } from '../app/leaderboardTypes'
 import { NumericField } from './NumericField'
 import { TeamSelector } from './TeamSelector'
 

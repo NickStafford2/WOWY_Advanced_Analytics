@@ -1,12 +1,7 @@
 import { buildLeaderboardParams } from './leaderboardQuery'
-import type {
-  ErrorPayload,
-  LeaderboardFilters,
-  LeaderboardPayload,
-  MetricId,
-  MetricOptionsPayload,
-  TeamOption,
-} from './types'
+import type { ErrorPayload, LeaderboardPayload, MetricOptionsPayload, TeamOption } from './leaderboardApiTypes'
+import type { LeaderboardFilters } from './leaderboardTypes'
+import type { MetricId } from './metricTypes'
 
 export async function fetchLeaderboard(
   metric: MetricId,

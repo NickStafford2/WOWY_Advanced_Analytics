@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { buildLoadingPanelModel } from './loading'
-import type { LoadingPanelModel, MetricId } from './types'
+import type { LoadingPanelModel } from './loadingTypes'
+import type { MetricId } from './metricTypes'
 
 const LOADING_PANEL_DELAY_MS = 250
 

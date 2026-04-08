@@ -1,4 +1,5 @@
-import type { LoadingPanelModel, LoadingPhase, MetricId } from './types'
+import type { LoadingPanelModel, LoadingPhase } from './loadingTypes'
+import type { MetricId } from './metricTypes'
 
 export function buildLoadingPanelModel({
   metric,

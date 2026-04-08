@@ -1,10 +1,6 @@
-import type {
-  LeaderboardFilters,
-  LeaderboardNumberField,
-  MetricId,
-  MetricOptionsPayload,
-  TeamOption,
-} from './types'
+import type { MetricOptionsPayload, TeamOption } from './leaderboardApiTypes'
+import type { LeaderboardFilters, LeaderboardNumberField } from './leaderboardTypes'
+import type { MetricId } from './metricTypes'
 
 export function defaultLeaderboardFilters(): LeaderboardFilters {
   return {

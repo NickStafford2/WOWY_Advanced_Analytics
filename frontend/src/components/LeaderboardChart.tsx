@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react'
-import type { SpanSeries } from '../app/types'
+import type { SpanSeries } from '../app/leaderboardApiTypes'
 
 const CHART_WIDTH = 920
 const CHART_HEIGHT = 420

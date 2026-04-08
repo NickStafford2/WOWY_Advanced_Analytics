@@ -1,4 +1,4 @@
-import type { ResultsTableRow } from '../app/types'
+import type { ResultsTableRow } from '../app/leaderboardApiTypes'
 
 type ResultsTableProps = {
   metricLabel: string

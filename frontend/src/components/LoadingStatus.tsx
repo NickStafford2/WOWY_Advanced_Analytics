@@ -1,4 +1,4 @@
-import type { LoadingPanelModel } from '../app/types'
+import type { LoadingPanelModel } from '../app/loadingTypes'
 
 type LoadingStatusProps = {
   model: LoadingPanelModel

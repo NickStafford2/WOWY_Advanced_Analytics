@@ -1,5 +1,5 @@
 import { metricOptions } from '../app/metric'
-import type { MetricId, ThemeMode } from '../app/types'
+import type { MetricId, ThemeMode } from '../app/metricTypes'
 
 type AppHeaderProps = {
   metric: MetricId

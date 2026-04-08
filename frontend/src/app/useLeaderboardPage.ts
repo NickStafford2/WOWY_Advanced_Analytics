@@ -13,13 +13,9 @@ import {
   updateLeaderboardFilterValue,
 } from './leaderboardQuery'
 import { metricDescriptionFor, metricLabelFor } from './metric'
-import type {
-  LeaderboardFilters,
-  LeaderboardNumberField,
-  LeaderboardPayload,
-  MetricId,
-  TeamOption,
-} from './types'
+import type { LeaderboardPayload, TeamOption } from './leaderboardApiTypes'
+import type { LeaderboardFilters, LeaderboardNumberField } from './leaderboardTypes'
+import type { MetricId } from './metricTypes'
 import { useLoadingPanel } from './useLoadingPanel'
 
 type UseLeaderboardPageValue = {

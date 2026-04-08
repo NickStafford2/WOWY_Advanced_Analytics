@@ -1,7 +1,9 @@
 import { LeaderboardChart } from './LeaderboardChart'
 import { LoadingStatus } from './LoadingStatus'
 import { ResultsTable } from './ResultsTable'
-import type { LeaderboardPayload, LoadingPanelModel, MetricId } from '../app/types'
+import type { LeaderboardPayload } from '../app/leaderboardApiTypes'
+import type { LoadingPanelModel } from '../app/loadingTypes'
+import type { MetricId } from '../app/metricTypes'
 
 type ResultsPanelProps = {
   metric: MetricId
