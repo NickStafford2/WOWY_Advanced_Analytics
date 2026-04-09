@@ -3,7 +3,7 @@ const PANEL_LABEL_CLASS_NAME =
 const SECTION_CLASS_NAME =
   'rounded-[28px] border border-[color:var(--panel-border)] bg-[var(--panel-soft-background)] p-6 shadow-[var(--panel-shadow)] max-sm:rounded-[22px] max-sm:p-[18px]'
 const INTRO_COPY_CLASS_NAME =
-  'm-0 max-w-[68ch] text-[1.02rem] leading-[1.65] text-[color:var(--text-muted)]'
+  'm-0 text-[1.02rem] leading-[1.65] text-[color:var(--text-muted)]'
 const GRID_CLASS_NAME = 'mt-5 grid grid-cols-2 gap-4 max-[1120px]:grid-cols-1'
 const CARD_CLASS_NAME =
   'rounded-3xl border border-[color:var(--panel-border-soft)] bg-[var(--panel-card-background)] p-5'
@@ -74,7 +74,7 @@ export function AboutWowy() {
           <strong>Avg With</strong>, and <strong>Avg Without</strong>.
         </p>
         <pre className={EQUATION_CLASS_NAME}>
-{`avg_with =
+          {`avg_with =
   (1 / games_with) * sum(margin_g for games g where player appears)
 
 avg_without =
