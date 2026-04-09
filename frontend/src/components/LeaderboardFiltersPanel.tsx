@@ -119,7 +119,6 @@ export function LeaderboardFiltersPanel({
           <NumericField
             label="Query top players"
             min="1"
-            max="100"
             value={filters.topN}
             disabled={isDisabled}
             onChange={(value) => onNumberChange('topN', value)}
