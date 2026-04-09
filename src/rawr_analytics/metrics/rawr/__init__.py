@@ -10,7 +10,6 @@ from rawr_analytics.metrics.rawr._store import (
     load_rawr_records,
 )
 from rawr_analytics.metrics.rawr.defaults import (
-    DEFAULT_RAWR_MIN_TOTAL_MINUTES,
     DEFAULT_RAWR_RIDGE_ALPHA,
     DEFAULT_RAWR_SHRINKAGE_MINUTE_SCALE,
     DEFAULT_RAWR_SHRINKAGE_MODE,
@@ -22,7 +21,6 @@ from rawr_analytics.metrics.rawr.inputs import validate_filters
 from rawr_analytics.metrics.rawr.records import RawrPlayerSeasonRecord, build_player_season_records
 
 __all__ = [
-    "DEFAULT_RAWR_MIN_TOTAL_MINUTES",
     "DEFAULT_RAWR_RIDGE_ALPHA",
     "DEFAULT_RAWR_SHRINKAGE_MINUTE_SCALE",
     "DEFAULT_RAWR_SHRINKAGE_MODE",
