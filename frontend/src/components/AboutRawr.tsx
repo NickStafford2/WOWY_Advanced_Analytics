@@ -1,3 +1,5 @@
+import { MathBlock } from './_MathBlock'
+
 const PANEL_LABEL_CLASS_NAME =
   'm-0 text-xs font-bold tracking-[0.16em] uppercase text-[color:var(--accent-warm)]'
 const SECTION_CLASS_NAME =
@@ -11,8 +13,21 @@ const BODY_COPY_CLASS_NAME = 'm-0 leading-[1.65] text-[color:var(--text-muted)]'
 const SUBTITLE_CLASS_NAME = 'mt-2 mb-3 font-bold text-[color:var(--text-soft)]'
 const MATH_SECTION_CLASS_NAME =
   'mt-5 border-t border-[color:var(--panel-border-soft)] pt-5'
-const EQUATION_CLASS_NAME =
-  'mt-[14px] overflow-x-auto rounded-[18px] border border-[color:var(--panel-border-soft)] [background:var(--chart-frame-background)] px-[18px] py-4 text-[0.92rem] leading-[1.6] whitespace-pre-wrap text-[color:var(--text-primary)]'
+
+const MODEL_EQUATION = String.raw`\begin{aligned}
+\operatorname{predicted\_margin}_i &= \beta_0 \\
+&\quad + \beta_{\text{home}} \cdot \operatorname{home\_sign}_i \\
+&\quad + \sum_p x_{i,p} \beta_p \\
+&\quad + \gamma_{\operatorname{team}(i)} \\
+&\quad + \delta_{\operatorname{opponent}(i)}
+\end{aligned}`
+
+const FIT_EQUATION = String.raw`\begin{aligned}
+\hat{\beta} = \arg\min_{\beta}\; &\sum_i \left(\operatorname{margin}_i - \operatorname{predicted\_margin}_i\right)^2 \\
+&+ \operatorname{ridge\_alpha} \sum_p \beta_p^2 \\
+&+ \operatorname{ridge\_alpha} \sum_t \gamma_t^2 \\
+&+ \operatorname{ridge\_alpha} \sum_t \delta_t^2
+\end{aligned}`
 
 export function AboutRawr() {
   return (
@@ -76,26 +91,13 @@ export function AboutRawr() {
           close as possible to observed outcomes. Here the observed outcome is game margin, and the
           model uses player terms plus a few context terms to explain it.
         </p>
-        <pre className={EQUATION_CLASS_NAME}>
-{`predicted_margin_i =
-  beta_0
-  + beta_home * home_sign_i
-  + sum(x_i,p * beta_p for players p)
-  + gamma_team(i)
-  + delta_opponent(i)`}
-        </pre>
+        <MathBlock equation={MODEL_EQUATION} />
         <p className="mt-3 leading-[1.65] text-[color:var(--text-muted)]">
           The fit uses ridge regression, which means ordinary squared-error fitting plus a penalty
           that pulls coefficients back toward zero. That penalty is what keeps the model from
           chasing every noisy fluctuation in the sample.
         </p>
-        <pre className={EQUATION_CLASS_NAME}>
-{`beta_hat = argmin over beta:
-  sum((margin_i - predicted_margin_i)^2 over observations i)
-  + ridge_alpha * sum(beta_p^2 over player terms p)
-  + ridge_alpha * sum(gamma_t^2 over team-season terms t)
-  + ridge_alpha * sum(delta_t^2 over opponent terms t)`}
-        </pre>
+        <MathBlock equation={FIT_EQUATION} />
         <p className="mt-3 leading-[1.65] text-[color:var(--text-muted)]">
           Bigger <strong>Ridge alpha</strong> means more shrinkage toward zero and therefore more
           conservative player estimates. Smaller values let the model follow the sample more

@@ -1,3 +1,5 @@
+import { MathBlock } from './_MathBlock'
+
 const PANEL_LABEL_CLASS_NAME =
   'm-0 text-xs font-bold tracking-[0.16em] uppercase text-[color:var(--accent-warm)]'
 const SECTION_CLASS_NAME =
@@ -11,8 +13,12 @@ const BODY_COPY_CLASS_NAME = 'm-0 leading-[1.65] text-[color:var(--text-muted)]'
 const SUBTITLE_CLASS_NAME = 'mt-2 mb-3 font-bold text-[color:var(--text-soft)]'
 const MATH_SECTION_CLASS_NAME =
   'mt-5 border-t border-[color:var(--panel-border-soft)] pt-5'
-const EQUATION_CLASS_NAME =
-  'mt-[14px] overflow-x-auto rounded-[18px] border border-[color:var(--panel-border-soft)] [background:var(--chart-frame-background)] px-[18px] py-4 text-[0.92rem] leading-[1.6] whitespace-pre-wrap text-[color:var(--text-primary)]'
+
+const WOWY_EQUATION = String.raw`\begin{aligned}
+\operatorname{avg\_with} &= \frac{1}{\operatorname{games\_with}} \sum_{g \in \operatorname{with}} \operatorname{margin}_g \\
+\operatorname{avg\_without} &= \frac{1}{\operatorname{games\_without}} \sum_{g \in \operatorname{without}} \operatorname{margin}_g \\
+\operatorname{wowy\_score} &= \operatorname{avg\_with} - \operatorname{avg\_without}
+\end{aligned}`
 
 export function AboutWowy() {
   return (
@@ -73,15 +79,7 @@ export function AboutWowy() {
           both sides of the split directly through <strong>With</strong>, <strong>Without</strong>,
           <strong>Avg With</strong>, and <strong>Avg Without</strong>.
         </p>
-        <pre className={EQUATION_CLASS_NAME}>
-          {`avg_with =
-  (1 / games_with) * sum(margin_g for games g where player appears)
-
-avg_without =
-  (1 / games_without) * sum(margin_g for games g where player does not appear)
-
-wowy_score = avg_with - avg_without`}
-        </pre>
+        <MathBlock equation={WOWY_EQUATION} />
         <p className="mt-3 leading-[1.65] text-[color:var(--text-muted)]">
           That is why <strong>Min games with</strong> and <strong>Min games without</strong> matter
           so much. WOWY is only as stable as the two sample means it is subtracting.

@@ -132,3 +132,16 @@ a:focus-visible {
   outline: 3px solid var(--focus-outline);
   outline-offset: 2px;
 }
+
+.katex-block .katex-display {
+  margin: 0;
+}
+
+.katex-block .katex {
+  color: var(--text-primary);
+  font-size: 1.02em;
+}
+
+.katex-block .katex-display > .katex {
+  text-align: left;
+}

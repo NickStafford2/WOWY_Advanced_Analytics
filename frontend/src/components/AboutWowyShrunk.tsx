@@ -1,3 +1,5 @@
+import { MathBlock } from './_MathBlock'
+
 const PANEL_LABEL_CLASS_NAME =
   'm-0 text-xs font-bold tracking-[0.16em] uppercase text-[color:var(--accent-warm)]'
 const SECTION_CLASS_NAME =
@@ -11,8 +13,13 @@ const BODY_COPY_CLASS_NAME = 'm-0 leading-[1.65] text-[color:var(--text-muted)]'
 const SUBTITLE_CLASS_NAME = 'mt-2 mb-3 font-bold text-[color:var(--text-soft)]'
 const MATH_SECTION_CLASS_NAME =
   'mt-5 border-t border-[color:var(--panel-border-soft)] pt-5'
-const EQUATION_CLASS_NAME =
-  'mt-[14px] overflow-x-auto rounded-[18px] border border-[color:var(--panel-border-soft)] [background:var(--chart-frame-background)] px-[18px] py-4 text-[0.92rem] leading-[1.6] whitespace-pre-wrap text-[color:var(--text-primary)]'
+
+const SHRINKAGE_EQUATION = String.raw`\begin{aligned}
+\operatorname{wowy\_score} &= \operatorname{avg\_with} - \operatorname{avg\_without} \\
+\operatorname{effective\_games} &= \frac{2 \cdot \operatorname{games\_with} \cdot \operatorname{games\_without}}{\operatorname{games\_with} + \operatorname{games\_without}} \\
+\operatorname{shrinkage\_factor} &= \frac{\operatorname{effective\_games}}{\operatorname{effective\_games} + \operatorname{prior\_games}} \\
+\operatorname{shrunk\_score} &= \operatorname{wowy\_score} \cdot \operatorname{shrinkage\_factor}
+\end{aligned}`
 
 export function AboutWowyShrunk() {
   return (
@@ -74,17 +81,7 @@ export function AboutWowyShrunk() {
           to their observed value and compresses weaker estimates toward a safer middle. Here that
           compression depends on the harmonic mean of the with and without game counts.
         </p>
-        <pre className={EQUATION_CLASS_NAME}>
-{`wowy_score = avg_with - avg_without
-
-effective_games =
-  (2 * games_with * games_without) / (games_with + games_without)
-
-shrinkage_factor =
-  effective_games / (effective_games + prior_games)
-
-shrunk_score = wowy_score * shrinkage_factor`}
-        </pre>
+        <MathBlock equation={SHRINKAGE_EQUATION} />
         <p className="mt-3 leading-[1.65] text-[color:var(--text-muted)]">
           In the current backend, <code>prior_games</code> defaults to <code>10</code>. If the with
           and without samples are both large, the shrinkage factor moves toward <code>1</code> and
