@@ -3,13 +3,8 @@ from __future__ import annotations
 from collections.abc import Callable
 from dataclasses import dataclass
 
-from rawr_analytics.data.game_cache import (
-    load_cache_snapshot,
-)
-from rawr_analytics.data.metric_store import (
-    clear_metric_scope_store,
-    load_metric_scope_store_state,
-)
+from rawr_analytics.data.game_cache import load_cache_snapshot
+from rawr_analytics.data.metric_store import clear_metric_scope_store, load_metric_scope_store_state
 from rawr_analytics.data.metric_store._catalog import (
     MetricScopeAvailability,
     MetricScopeCatalog,
@@ -24,12 +19,8 @@ from rawr_analytics.metrics.rawr import (
     build_rawr_store_rows,
     list_incomplete_rawr_season_warnings,
 )
-from rawr_analytics.metrics.wowy import (
-    build_wowy_store_rows,
-)
-from rawr_analytics.metrics.wowy import (
-    describe_metric as describe_wowy_metric,
-)
+from rawr_analytics.metrics.wowy import build_wowy_store_rows
+from rawr_analytics.metrics.wowy import describe_metric as describe_wowy_metric
 from rawr_analytics.shared.scope import TeamSeasonScope
 from rawr_analytics.shared.season import SeasonType
 from rawr_analytics.shared.team import Team, normalize_teams, to_normalized_team_ids
