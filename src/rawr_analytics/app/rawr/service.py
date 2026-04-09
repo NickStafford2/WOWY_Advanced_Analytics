@@ -9,10 +9,7 @@ from rawr_analytics.app.metric_store import (
     build_metric_options_payload,
     require_current_metric_scope,
 )
-from rawr_analytics.app.rawr.presenters import (
-    RawrQueryFiltersDTO,
-    build_rawr_export_rows,
-)
+from rawr_analytics.app.rawr.presenters import RawrQueryFiltersDTO, build_rawr_export_rows
 from rawr_analytics.app.rawr.presenters import (
     build_rawr_leaderboard_payload as build_rawr_leaderboard_payload_from_records,
 )
@@ -26,20 +23,14 @@ from rawr_analytics.app.rawr.query import RawrQuery
 from rawr_analytics.data.metric_store import load_rawr_player_season_value_rows
 from rawr_analytics.data.metric_store_scope import build_scope_key, season_ids
 from rawr_analytics.metrics.constants import Metric
-from rawr_analytics.metrics.rawr import (
-    build_rawr_record_from_store_row,
-    load_rawr_records,
-)
+from rawr_analytics.metrics.rawr import build_rawr_record_from_store_row, load_rawr_records
 from rawr_analytics.metrics.rawr.defaults import (
     DEFAULT_RAWR_SHRINKAGE_MINUTE_SCALE,
     DEFAULT_RAWR_SHRINKAGE_MODE,
     DEFAULT_RAWR_SHRINKAGE_STRENGTH,
 )
 from rawr_analytics.metrics.rawr.inputs import build_rawr_request
-from rawr_analytics.metrics.rawr.records import (
-    RawrPlayerSeasonRecord,
-    build_player_season_records,
-)
+from rawr_analytics.metrics.rawr.records import RawrPlayerSeasonRecord, build_player_season_records
 from rawr_analytics.shared import JSONDict
 from rawr_analytics.shared.season import Season
 
