@@ -9,8 +9,6 @@ This repo has two game-level analysis paths backed by SQLite:
 - WOWY: a simple with/without baseline on derived game records
 - RAWR: a ridge regression on validated canonical game and player rows
 
-The current web app goal is player comparison across the full cached history span. The primary WOWY leaderboard should surface the strongest multi-season player profiles; team filters only narrow the sampled games.
-
 ## Commands
 
 Install dependencies:

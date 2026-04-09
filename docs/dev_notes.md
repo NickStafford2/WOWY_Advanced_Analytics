@@ -7,7 +7,7 @@
 - Prefer a clean organized database in normal form.
 - Keep docs brief and focused on current behavior, commands, and file formats.
 - Do not add possession-level or substitution-level logic yet.
-- Preserve the player-first product goal: the main web WOWY ranking is the strongest multi-season WOWY profile across the full cached history.
+- Preserve the player-first product goal
 - Treat team filters as optional scope filters on player comparison, not as a shift toward team-centric ranking.
 
 
@@ -37,7 +37,6 @@
 ## Notes
 - The app is player-focused, not team-focused. Team filters are allowed only as a way to restrict the game sample used for player comparison.
 - Any long-running script or CLI must show visible progress by default.
-- For WOWY, the primary web ranking is the strongest multi-season WOWY profile over the full cached history span.
 - Do not replace the primary web ranking with pooled or recomputed all-games WOWY unless explicitly requested.
 - If there is ambiguity about ranking semantics, prefer the ranking that surfaces the strongest cross-season WOWY player histories rather than noisy role-player outliers from tiny with/without samples.
 - Team identity must be determined by stable source team IDs, not by abbreviations or aliases.
