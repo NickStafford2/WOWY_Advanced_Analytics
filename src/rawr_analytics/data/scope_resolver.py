@@ -3,7 +3,7 @@ from __future__ import annotations
 from rawr_analytics.data.game_cache import list_cached_scopes, load_cache_snapshot
 from rawr_analytics.shared.scope import TeamSeasonScope
 from rawr_analytics.shared.season import Season, SeasonType
-from rawr_analytics.shared.team import Team
+from rawr_analytics.shared.team import Team, normalize_teams
 
 __all__ = [
     "resolve_team_seasons",
@@ -16,7 +16,7 @@ def resolve_team_seasons(
     *,
     season_type: SeasonType | None = None,
 ) -> list[TeamSeasonScope]:
-    normalized_teams = _normalize_requested_teams(teams)
+    normalized_teams = normalize_teams(teams)
     resolved_season_type = season_type or SeasonType.REGULAR
     requested_seasons = _normalize_requested_seasons(
         seasons=seasons,
@@ -43,18 +43,6 @@ def resolve_team_seasons(
         seasons=requested_seasons,
         cached_team_seasons=cached_requested_team_seasons,
     )
-
-
-def _normalize_requested_teams(teams: list[Team] | None) -> list[Team] | None:
-    return (
-        sorted(
-            {team.team_id: team for team in teams or []}.values(),
-            key=lambda team: team.team_id,
-        )
-        or None
-    )
-
-
 def _normalize_requested_seasons(
     *,
     seasons: list[Season] | None,
