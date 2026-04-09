@@ -7,7 +7,7 @@ export function defaultLeaderboardFilters(): LeaderboardFilters {
     startSeason: '',
     endSeason: '',
     teamIds: [],
-    topN: 12,
+    topN: 100,
     minGames: 35,
     ridgeAlpha: 10,
     minGamesWith: 15,

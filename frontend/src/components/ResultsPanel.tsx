@@ -1,3 +1,4 @@
+import { useEffect, useState } from 'react'
 import { LeaderboardChart } from './LeaderboardChart'
 import { LoadingStatus } from './LoadingStatus'
 import { ResultsTable } from './ResultsTable'
@@ -33,11 +34,26 @@ export function ResultsPanel({
   isBootstrapping,
   loadingPanel,
 }: ResultsPanelProps) {
+  const [visiblePlayerCount, setVisiblePlayerCount] = useState(12)
   const seasonSummary = leaderboard?.span.available_seasons.length
     ? `${leaderboard.span.available_seasons[0]} to ${leaderboard.span.available_seasons.at(-1)}`
     : 'No seasons loaded'
   const displayedMetric = leaderboard?.metric ?? metric
   const isWowyStyleMetric = displayedMetric !== 'rawr'
+  const visibleRows = leaderboard?.table_rows.slice(0, visiblePlayerCount) ?? []
+  const visibleSeries = leaderboard?.series.slice(0, visiblePlayerCount) ?? []
+  const visibleCountOptions = _buildVisibleCountOptions(leaderboard?.table_rows.length ?? 0)
+
+  useEffect(() => {
+    if (leaderboard === null) {
+      return
+    }
+
+    setVisiblePlayerCount((current) => {
+      const maximumVisibleCount = Math.max(1, leaderboard.table_rows.length)
+      return Math.min(current, maximumVisibleCount)
+    })
+  }, [leaderboard])
 
   return (
     <section className="rounded-[28px] border border-[color:var(--panel-border)] bg-[var(--panel-background)] p-[22px] shadow-[var(--panel-shadow)] max-sm:rounded-[22px] max-sm:p-[18px]">
@@ -58,6 +74,20 @@ export function ResultsPanel({
             <span className={META_BADGE_CLASS_NAME}>
               {leaderboard.mode === 'cache' ? 'Served from cache' : 'Calculated live'}
             </span>
+            <label className="flex items-center gap-2 rounded-full bg-[var(--meta-background)] px-3 py-[9px] text-[0.88rem] font-semibold text-[color:var(--meta-text)]">
+              <span>Show</span>
+              <select
+                className="min-h-[28px] cursor-pointer rounded-full border border-[color:var(--control-border)] bg-[var(--input-background)] px-2 text-[0.88rem] font-semibold text-[color:var(--text-primary)]"
+                value={String(visiblePlayerCount)}
+                onChange={(event) => setVisiblePlayerCount(Number(event.target.value))}
+              >
+                {visibleCountOptions.map((count) => (
+                  <option key={count} value={count}>
+                    {count}
+                  </option>
+                ))}
+              </select>
+            </label>
           </div>
         ) : null}
       </header>
@@ -84,15 +114,24 @@ export function ResultsPanel({
 
       {!error && !isLoading && leaderboard && leaderboard.table_rows.length > 0 ? (
         <>
-          <LeaderboardChart metricLabel={metricLabel} series={leaderboard.series} />
+          <LeaderboardChart metricLabel={metricLabel} series={visibleSeries} />
           <ResultsTable
             metricLabel={metricLabel}
             exportUrl={exportUrl}
-            rows={leaderboard.table_rows}
+            rows={visibleRows}
             isWowyStyleMetric={isWowyStyleMetric}
           />
         </>
       ) : null}
     </section>
   )
+}
+
+function _buildVisibleCountOptions(totalRowCount: number): number[] {
+  if (totalRowCount <= 0) {
+    return [1]
+  }
+
+  const options = new Set<number>([10, 12, 25, 50, 100, totalRowCount])
+  return [...options].filter((count) => count <= totalRowCount).sort((left, right) => left - right)
 }

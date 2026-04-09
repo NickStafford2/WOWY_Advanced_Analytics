@@ -117,7 +117,7 @@ export function LeaderboardFiltersPanel({
 
         <div className="w-[9rem]">
           <NumericField
-            label="Top players"
+            label="Query top players"
             min="1"
             max="100"
             value={filters.topN}
