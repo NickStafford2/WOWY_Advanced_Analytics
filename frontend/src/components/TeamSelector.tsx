@@ -10,7 +10,7 @@ const UNSELECTED_CHIP_CLASS_NAME =
 
 type TeamSelectorProps = {
   availableTeams: TeamOption[]
-  selectedTeamIds: number[]
+  selectedTeamIds: number[] | null
   disabled: boolean
   onSelectAll: () => void
   onToggleTeam: (teamId: number) => void
@@ -42,7 +42,8 @@ export function TeamSelector({
       {hasAvailableTeams ? (
         <div className="grid grid-cols-[repeat(auto-fit,minmax(46px,1fr))] gap-1">
           {availableTeams.map((team) => {
-            const isSelected = allTeamsSelected || selectedTeamIds.includes(team.team_id)
+            const isSelected =
+              allTeamsSelected || selectedTeamIds?.includes(team.team_id) === true
             return (
               <label
                 key={team.team_id}

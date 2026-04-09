@@ -44,7 +44,8 @@ export function LeaderboardFiltersPanel({
   onRefresh,
 }: LeaderboardFiltersPanelProps) {
   const isDisabled = isBootstrapping || isLoading
-  const hasSelectedTeams = availableTeams.length > 0
+  const hasSelectedTeams =
+    availableTeams.length > 0 && (filters.teamIds === null || filters.teamIds.length > 0)
   const metricFields: FilterFieldConfig[] = isRawrMetric
     ? [
       {

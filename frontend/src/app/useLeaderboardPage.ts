@@ -199,7 +199,7 @@ export function useLeaderboardPage(): UseLeaderboardPageValue {
   useEffect(() => {
     setFilters((current) => {
       const nextTeamIds = syncSelectedTeamIds(current.teamIds, availableTeams)
-      if (nextTeamIds.length === current.teamIds.length) {
+      if (nextTeamIds === current.teamIds) {
         return current
       }
 
@@ -222,7 +222,7 @@ export function useLeaderboardPage(): UseLeaderboardPageValue {
   function handleSelectAllTeams(): void {
     setFilters((current) => ({
       ...current,
-      teamIds: selectAllTeams(),
+      teamIds: isAllTeamsSelection(current.teamIds, availableTeams) ? [] : selectAllTeams(),
     }))
   }
 
@@ -268,7 +268,7 @@ export function useLeaderboardPage(): UseLeaderboardPageValue {
 }
 
 function _hasSelectedTeams(
-  selectedTeamIds: number[],
+  selectedTeamIds: number[] | null,
   scopedTeamIds: number[],
   availableTeams: TeamOption[],
 ): boolean {

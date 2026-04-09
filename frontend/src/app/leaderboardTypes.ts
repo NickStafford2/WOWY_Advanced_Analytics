@@ -1,7 +1,7 @@
 export type LeaderboardFilters = {
   startSeason: string
   endSeason: string
-  teamIds: number[]
+  teamIds: number[] | null
   topN: number
   minGames: number
   ridgeAlpha: number
