@@ -8,8 +8,6 @@ import type { MetricId } from '../app/metricTypes'
 
 const PANEL_LABEL_CLASS_NAME =
   'm-0 text-xs font-bold tracking-[0.16em] uppercase text-[color:var(--accent-warm)]'
-const META_BADGE_CLASS_NAME =
-  'rounded-full bg-[var(--meta-background)] px-3 py-[9px] text-[0.88rem] font-semibold text-[color:var(--meta-text)]'
 const STATUS_CARD_CLASS_NAME =
   'mt-[18px] rounded-[18px] bg-[var(--status-background)] p-[18px] text-[color:var(--status-text)]'
 
@@ -67,13 +65,6 @@ export function ResultsPanel({
 
         {leaderboard ? (
           <div className="flex flex-wrap gap-[10px]">
-            <span className={META_BADGE_CLASS_NAME}>{leaderboard.table_rows.length} players</span>
-            <span className={META_BADGE_CLASS_NAME}>
-              {leaderboard.span.available_seasons.length} seasons
-            </span>
-            <span className={META_BADGE_CLASS_NAME}>
-              {leaderboard.mode === 'cache' ? 'Served from cache' : 'Calculated live'}
-            </span>
             <label className="flex items-center gap-2 rounded-full bg-[var(--meta-background)] px-3 py-[9px] text-[0.88rem] font-semibold text-[color:var(--meta-text)]">
               <span>Show</span>
               <select
