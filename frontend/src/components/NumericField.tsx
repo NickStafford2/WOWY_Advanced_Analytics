@@ -20,9 +20,10 @@ export function NumericField({
   onChange,
 }: NumericFieldProps) {
   return (
-    <label className="field">
+    <label className="flex flex-col gap-1.5 text-[0.9rem] text-[color:var(--text-secondary)]">
       <span>{label}</span>
       <input
+        className="min-h-[42px] w-full rounded-xl border border-[color:var(--control-border)] bg-[var(--input-background)] px-[14px] text-[color:var(--text-primary)] disabled:cursor-not-allowed disabled:opacity-60"
         type="number"
         min={min}
         max={max}

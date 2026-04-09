@@ -59,10 +59,10 @@ export function LeaderboardChart({ metricLabel, series }: LeaderboardChartProps)
   const [activePlayerId, setActivePlayerId] = useState<number | null>(null)
 
   return (
-    <div className="chart-layout">
-      <div className="chart-frame">
+    <div className="mt-[18px] grid gap-[14px] min-[1121px]:grid-cols-[minmax(0,1fr)_240px]">
+      <div className="overflow-auto rounded-3xl border border-[color:var(--panel-border-soft)] [background:var(--chart-frame-background)]">
         <svg
-          className="wowy-chart"
+          className="block min-w-[840px] w-full"
           viewBox={`0 0 ${CHART_WIDTH} ${CHART_HEIGHT}`}
           role="img"
           aria-label={`${metricLabel} line chart by season`}
@@ -74,9 +74,13 @@ export function LeaderboardChart({ metricLabel, series }: LeaderboardChartProps)
                 x2={CHART_WIDTH - CHART_PADDING.right}
                 y1={line.y}
                 y2={line.y}
-                className={line.isZero ? 'grid-line zero-line' : 'grid-line'}
+                className={line.isZero ? 'stroke-[#2a9d8f] stroke-[1.4]' : 'stroke-[var(--grid-line)] stroke-1'}
               />
-              <text x={18} y={line.y + 4} className="axis-label">
+              <text
+                x={18}
+                y={line.y + 4}
+                className="fill-[var(--text-faint)] text-[0.8rem]"
+              >
                 {line.value}
               </text>
             </g>
@@ -89,13 +93,13 @@ export function LeaderboardChart({ metricLabel, series }: LeaderboardChartProps)
                 x2={tick.x}
                 y1={CHART_PADDING.top}
                 y2={CHART_HEIGHT - CHART_PADDING.bottom}
-                className="grid-line grid-line-vertical"
+                className="stroke-[var(--grid-line)] stroke-1 [stroke-dasharray:5_7]"
               />
               <text
                 x={tick.x}
                 y={CHART_HEIGHT - 16}
                 textAnchor="middle"
-                className="axis-label"
+                className="fill-[var(--text-faint)] text-[0.8rem]"
               >
                 {tick.label}
               </text>
@@ -109,14 +113,11 @@ export function LeaderboardChart({ metricLabel, series }: LeaderboardChartProps)
               ? 'rgba(120, 128, 136, 0.35)'
               : SERIES_COLORS[index % SERIES_COLORS.length]
             return (
-              <g
-                key={entry.player_id}
-                className={isDimmed ? 'chart-series is-dimmed' : 'chart-series'}
-              >
+              <g key={entry.player_id} className={isDimmed ? 'opacity-90' : undefined}>
                 {entry.segments.map((segment, segmentIndex) => (
                   <polyline
                     key={`${entry.player_id}-${segmentIndex}`}
-                    className={isActive ? 'chart-line is-active' : 'chart-line'}
+                    className={isActive ? 'drop-shadow-[0_0_6px_var(--status-track)] transition-all duration-150' : 'transition-all duration-150'}
                     points={segment}
                     fill="none"
                     stroke={seriesColor}
@@ -128,7 +129,7 @@ export function LeaderboardChart({ metricLabel, series }: LeaderboardChartProps)
                 {entry.points.map((point) => (
                   <g key={`${entry.player_id}-${point.season}`}>
                     <circle
-                      className={isActive ? 'chart-point is-active' : 'chart-point'}
+                      className={isActive ? 'cursor-pointer drop-shadow-[0_0_6px_var(--status-track)] transition-all duration-150' : 'cursor-pointer transition-all duration-150'}
                       cx={point.x}
                       cy={point.y}
                       r={isActive ? '6.5' : '4.5'}
@@ -146,26 +147,26 @@ export function LeaderboardChart({ metricLabel, series }: LeaderboardChartProps)
           })}
         </svg>
       </div>
-      <aside className="legend-panel" aria-label="Chart legend">
-        <p className="panel-label">Legend</p>
-        <ul className="legend-list">
+      <aside
+        className="rounded-3xl border border-[color:var(--panel-border-soft)] [background:var(--legend-background)] p-[14px]"
+        aria-label="Chart legend"
+      >
+        <p className="m-0 text-xs font-bold tracking-[0.16em] uppercase text-[color:var(--accent-warm)]">
+          Legend
+        </p>
+        <ul className="mt-[10px] flex list-none flex-col gap-2 p-0">
           {chartModel.series.map((entry, index) => {
             const isActive = activePlayerId === entry.player_id
             const isDimmed = activePlayerId !== null && !isActive
-            const legendClassName = isDimmed
-              ? 'legend-item is-dimmed'
-              : isActive
-                ? 'legend-item is-active'
-                : 'legend-item'
             return (
               <li
                 key={`legend-${entry.player_id}`}
-                className={legendClassName}
+                className={`grid cursor-pointer grid-cols-[10px_minmax(0,1fr)] items-center gap-[10px] transition-all duration-150 ${isDimmed ? 'opacity-[0.58]' : isActive ? '-translate-x-0.5' : ''}`}
                 onMouseEnter={() => setActivePlayerId(entry.player_id)}
                 onMouseLeave={() => setActivePlayerId(null)}
               >
                 <span
-                  className="legend-swatch"
+                  className="h-[10px] w-[10px] rounded-full transition-all duration-150"
                   style={{
                     backgroundColor: isDimmed
                       ? 'rgba(120, 128, 136, 0.45)'
@@ -173,9 +174,21 @@ export function LeaderboardChart({ metricLabel, series }: LeaderboardChartProps)
                   }}
                   aria-hidden="true"
                 />
-                <div className="legend-list-text">
-                  <strong>{entry.player_name}</strong>
-                  <small>{formatNumber(entry.span_average_value, 2)}</small>
+                <div className="flex justify-between gap-3 max-sm:flex-col max-sm:items-start">
+                  <strong
+                    className={isDimmed
+                      ? 'text-[0.92rem] leading-[1.25] text-[color:var(--text-faint)] transition-colors duration-150'
+                      : 'text-[0.92rem] leading-[1.25] transition-colors duration-150'}
+                  >
+                    {entry.player_name}
+                  </strong>
+                  <small
+                    className={isDimmed
+                      ? 'leading-[1.25] text-[color:var(--text-faint)] transition-colors duration-150'
+                      : 'leading-[1.25] text-[color:var(--text-muted)] transition-colors duration-150'}
+                  >
+                    {formatNumber(entry.span_average_value, 2)}
+                  </small>
                 </div>
               </li>
             )

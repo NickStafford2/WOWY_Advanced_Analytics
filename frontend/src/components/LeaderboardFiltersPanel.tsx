@@ -3,6 +3,10 @@ import type { LeaderboardFilters, LeaderboardNumberField } from '../app/leaderbo
 import { NumericField } from './NumericField'
 import { TeamSelector } from './TeamSelector'
 
+const PANEL_LABEL_CLASS_NAME =
+  'm-0 text-xs font-bold tracking-[0.16em] uppercase text-[color:var(--accent-warm)]'
+const SECTION_TITLE_CLASS_NAME = 'm-0 text-[0.95rem] font-bold text-[color:var(--text-secondary)]'
+
 type FilterFieldConfig = {
   key: LeaderboardNumberField
   label: string
@@ -69,19 +73,20 @@ export function LeaderboardFiltersPanel({
     ]
 
   return (
-    <aside className="sidebar-panel">
-      <div className="sidebar-panel__section">
+    <aside className="flex flex-col gap-[18px] rounded-[28px] border border-[color:var(--panel-border)] bg-[var(--panel-muted-background)] p-5 shadow-[var(--panel-shadow)] max-sm:rounded-[22px] max-sm:p-[18px]">
+      <div className="flex flex-col gap-3">
         <div>
-          <p className="panel-label">Query</p>
+          <p className={PANEL_LABEL_CLASS_NAME}>Query</p>
         </div>
       </div>
 
-      <div className="sidebar-panel__section">
-        <p className="section-title">Scope</p>
-        <div className="field-grid">
-          <label className="field">
+      <div className="flex flex-col gap-3">
+        <p className={SECTION_TITLE_CLASS_NAME}>Scope</p>
+        <div className="grid grid-cols-2 gap-3 max-sm:grid-cols-1">
+          <label className="flex flex-col gap-1.5 text-[0.9rem] text-[color:var(--text-secondary)]">
             <span>Start season</span>
             <select
+              className="min-h-[42px] w-full rounded-xl border border-[color:var(--control-border)] bg-[var(--input-background)] px-[14px] text-[color:var(--text-primary)]"
               value={filters.startSeason}
               onChange={(event) => onStartSeasonChange(event.target.value)}
               disabled={isDisabled}
@@ -94,9 +99,10 @@ export function LeaderboardFiltersPanel({
             </select>
           </label>
 
-          <label className="field">
+          <label className="flex flex-col gap-1.5 text-[0.9rem] text-[color:var(--text-secondary)]">
             <span>End season</span>
             <select
+              className="min-h-[42px] w-full rounded-xl border border-[color:var(--control-border)] bg-[var(--input-background)] px-[14px] text-[color:var(--text-primary)]"
               value={filters.endSeason}
               onChange={(event) => onEndSeasonChange(event.target.value)}
               disabled={isDisabled}
@@ -150,8 +156,8 @@ export function LeaderboardFiltersPanel({
         </div>
       </div>
 
-      <fieldset className="sidebar-panel__section team-fieldset">
-        <legend className="section-title">Teams</legend>
+      <fieldset className="m-0 flex flex-col gap-3 border-0 p-0">
+        <legend className={SECTION_TITLE_CLASS_NAME}>Teams</legend>
         <TeamSelector
           availableTeams={availableTeams}
           selectedTeamIds={filters.teamIds}
@@ -161,14 +167,16 @@ export function LeaderboardFiltersPanel({
         />
 
         {!hasSelectedTeams ? (
-          <p className="sidebar-note">No teams are available for the current season span.</p>
+          <p className="m-0 leading-[1.55] text-[color:var(--text-muted)]">
+            No teams are available for the current season span.
+          </p>
         ) : null}
       </fieldset>
 
-      <div className="sidebar-panel__footer">
+      <div className="mt-auto">
         <button
           type="button"
-          className="primary-button"
+          className="min-h-[42px] w-full cursor-pointer rounded-[14px] [background:var(--accent-gradient)] px-[18px] font-bold text-[color:var(--text-inverse)] transition-opacity disabled:cursor-not-allowed disabled:opacity-60"
           onClick={onRefresh}
           disabled={isDisabled || !filters.startSeason || !filters.endSeason || !hasSelectedTeams}
         >
