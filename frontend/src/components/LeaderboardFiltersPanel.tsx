@@ -115,7 +115,7 @@ export function LeaderboardFiltersPanel({
           </label>
         </div>
 
-        <div className="w-[9rem]">
+        <div className="w-36">
           <NumericField
             label="Query top players"
             min="1"
@@ -126,7 +126,7 @@ export function LeaderboardFiltersPanel({
           />
         </div>
 
-        <div className="flex w-[11rem] flex-col gap-3">
+        <div className="flex w-44 flex-col gap-3">
           <NumericField
             label="Min average minutes"
             min="0"
@@ -145,18 +145,21 @@ export function LeaderboardFiltersPanel({
             onChange={(value) => onNumberChange('minTotalMinutes', value)}
           />
         </div>
-        {metricFields.map((field) => (
-          <div key={field.key} className="w-[11rem]">
-            <NumericField
-              label={field.label}
-              min="0"
-              step={field.step}
-              value={field.value}
-              disabled={isDisabled}
-              onChange={(value) => onNumberChange(field.key, value)}
-            />
-          </div>
-        ))}
+        <div>
+          {metricFields.map((field) => (
+            <div key={field.key} className="w-44">
+              <NumericField
+                label={field.label}
+                min="0"
+                step={field.step}
+                value={field.value}
+                disabled={isDisabled}
+                onChange={(value) => onNumberChange(field.key, value)}
+              />
+            </div>
+          ))}
+
+        </div>
 
         <fieldset className="m-0 flex min-w-[18rem] flex-1 flex-col gap-3 border-0 p-0 max-sm:min-w-0 max-sm:w-full">
           <legend className={SECTION_TITLE_CLASS_NAME}>Teams</legend>
