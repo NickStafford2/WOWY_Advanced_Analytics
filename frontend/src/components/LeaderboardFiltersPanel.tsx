@@ -80,9 +80,8 @@ export function LeaderboardFiltersPanel({
         </div>
       </div>
 
-      <div className="flex flex-col gap-3">
-        <p className={SECTION_TITLE_CLASS_NAME}>Scope</p>
-        <div className="grid grid-cols-2 gap-3 max-sm:grid-cols-1">
+      <div className="flex flex-row gap-3">
+        <div>
           <label className="flex flex-col gap-1.5 text-[0.9rem] text-[color:var(--text-secondary)]">
             <span>Start season</span>
             <select
@@ -115,15 +114,18 @@ export function LeaderboardFiltersPanel({
             </select>
           </label>
 
-          <NumericField
-            label="Top players"
-            min="1"
-            max="100"
-            value={filters.topN}
-            disabled={isDisabled}
-            onChange={(value) => onNumberChange('topN', value)}
-          />
+        </div>
 
+        <NumericField
+          label="Top players"
+          min="1"
+          max="100"
+          value={filters.topN}
+          disabled={isDisabled}
+          onChange={(value) => onNumberChange('topN', value)}
+        />
+
+        <div>
           <NumericField
             label="Min average minutes"
             min="0"
@@ -141,19 +143,18 @@ export function LeaderboardFiltersPanel({
             disabled={isDisabled}
             onChange={(value) => onNumberChange('minTotalMinutes', value)}
           />
-
-          {metricFields.map((field) => (
-            <NumericField
-              key={field.key}
-              label={field.label}
-              min="0"
-              step={field.step}
-              value={field.value}
-              disabled={isDisabled}
-              onChange={(value) => onNumberChange(field.key, value)}
-            />
-          ))}
         </div>
+        {metricFields.map((field) => (
+          <NumericField
+            key={field.key}
+            label={field.label}
+            min="0"
+            step={field.step}
+            value={field.value}
+            disabled={isDisabled}
+            onChange={(value) => onNumberChange(field.key, value)}
+          />
+        ))}
       </div>
 
       <fieldset className="m-0 flex flex-col gap-3 border-0 p-0">
