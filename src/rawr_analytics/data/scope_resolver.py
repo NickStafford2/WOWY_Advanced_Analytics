@@ -29,7 +29,7 @@ def resolve_team_seasons(
             season_type=resolved_season_type,
         )
 
-    cached_requested_team_seasons = _load_cached_requested_team_seasons(
+    cached_requested_team_seasons = list_cached_scopes(
         teams=normalized_teams,
         seasons=requested_seasons,
     )
@@ -74,19 +74,6 @@ def _resolve_cached_team_seasons(
     return [
         scope for scope in cached_team_seasons if scope.team.team_id in requested_team_ids
     ]
-
-
-def _load_cached_requested_team_seasons(
-    *,
-    teams: list[Team] | None,
-    seasons: list[Season],
-) -> list[TeamSeasonScope]:
-    return list_cached_scopes(
-        teams=teams,
-        seasons=seasons,
-    )
-
-
 def _build_cached_requested_season_scopes(
     *,
     seasons: list[Season],
