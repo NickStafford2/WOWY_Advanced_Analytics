@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from rawr_analytics.data.game_cache import list_cached_scopes, load_cache_snapshot
 from rawr_analytics.shared.scope import TeamSeasonScope
-from rawr_analytics.shared.season import Season, SeasonType
+from rawr_analytics.shared.season import Season, SeasonType, normalize_seasons
 from rawr_analytics.shared.team import Team, normalize_teams
 
 __all__ = [
@@ -48,13 +48,7 @@ def _normalize_requested_seasons(
     seasons: list[Season] | None,
     season_type: SeasonType,
 ) -> list[Season] | None:
-    normalized_seasons = (
-        sorted(
-            {(season.id, season.season_type.value): season for season in seasons or []}.values(),
-            key=lambda season: (season.id, season.season_type.value),
-        )
-        or None
-    )
+    normalized_seasons = normalize_seasons(seasons)
     if normalized_seasons is None:
         return None
     return [

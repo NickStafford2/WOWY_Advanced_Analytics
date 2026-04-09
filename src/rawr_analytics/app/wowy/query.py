@@ -2,14 +2,10 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
-from rawr_analytics.metrics._query_normalization import (
-    normalize_query_seasons,
-    normalize_query_teams,
-)
 from rawr_analytics.metrics.wowy.defaults import default_filters
 from rawr_analytics.metrics.wowy.inputs import validate_filters
-from rawr_analytics.shared.season import Season, SeasonType
-from rawr_analytics.shared.team import Team
+from rawr_analytics.shared.season import Season, SeasonType, normalize_seasons
+from rawr_analytics.shared.team import Team, normalize_teams
 
 
 @dataclass(frozen=True)
@@ -38,8 +34,8 @@ def build_wowy_query(
     defaults = default_filters()
     normalized_query = WowyQuery(
         season_type=season_type,
-        teams=normalize_query_teams(teams),
-        seasons=normalize_query_seasons(seasons),
+        teams=normalize_teams(teams),
+        seasons=normalize_seasons(seasons),
         top_n=int(top_n if top_n is not None else defaults["top_n"]),
         min_average_minutes=float(
             min_average_minutes

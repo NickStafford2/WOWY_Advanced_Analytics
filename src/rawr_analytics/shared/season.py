@@ -117,3 +117,11 @@ def build_season_list(start_year: int, first_year: int, season_type_str: str) ->
     return [
         Season.parse(str(year), season_type_str) for year in range(start_year, first_year - 1, -1)
     ]
+
+
+def normalize_seasons(seasons: list[Season] | None) -> list[Season] | None:
+    normalized_seasons = sorted(
+        {(season.start_year, season.season_type): season for season in seasons or []}.values(),
+        key=lambda season: (season.id, season.season_type.value),
+    )
+    return normalized_seasons or None
