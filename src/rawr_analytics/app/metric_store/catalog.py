@@ -4,6 +4,7 @@ from dataclasses import dataclass
 from typing import Any
 
 from rawr_analytics.data.game_cache import (
+    GameCacheSnapshot,
     load_cache_snapshot,
 )
 from rawr_analytics.data.metric_store import load_metric_scope_store_state
@@ -33,6 +34,32 @@ class MetricStoreCatalog:
     full_span: MetricSeasonSpan | None
 
 
+@dataclass(frozen=True)
+class _MetricCatalogAvailabilityIndex:
+    season_type: SeasonType
+    teams: list[Team]
+    seasons: list[Season]
+    season_ids_by_team_id: dict[int, list[str]]
+    team_ids_by_season_id: dict[str, list[int]]
+
+
+@dataclass(frozen=True)
+class _MetricCatalogOptionsContext:
+    catalog: MetricStoreCatalog
+    availability_index: _MetricCatalogAvailabilityIndex
+
+
+_MISSING_SCOPE_ERROR = "Metric store has not been built for the requested scope"
+_EMPTY_CACHE_ERROR = (
+    "Normalized cache is empty for the requested scope season type. "
+    "Rebuild ingest before using cached metrics."
+)
+_STALE_SCOPE_ERROR = (
+    "Cached metric store is stale relative to normalized cache. "
+    "Refresh the web metric store after ingest is rebuilt."
+)
+
+
 def build_metric_options_payload(
     *,
     metric: Metric,
@@ -40,7 +67,7 @@ def build_metric_options_payload(
     season_type: SeasonType,
     filters: dict[str, Any],
 ) -> dict[str, Any]:
-    catalog = load_metric_scope_catalog_for_options(
+    context = _load_metric_options_context(
         metric=metric,
         scope_key=build_scope_key(
             season_type=season_type,
@@ -49,15 +76,15 @@ def build_metric_options_payload(
         teams=teams,
         season_type=season_type,
     )
-    cached_team_seasons = load_cache_snapshot(catalog.season_type).scopes
     return {
         "metric": metric.value,
-        "available_teams": [team.current.abbreviation for team in catalog.availability.teams],
-        "team_options": _build_team_options(catalog, cached_team_seasons),
-        "available_seasons": [season.id for season in catalog.availability.seasons],
+        "available_teams": [
+            team.current.abbreviation for team in context.availability_index.teams
+        ],
+        "team_options": _build_team_options(context.availability_index),
+        "available_seasons": [season.id for season in context.availability_index.seasons],
         "available_teams_by_season": _build_available_teams_by_season(
-            catalog,
-            cached_team_seasons,
+            context.availability_index
         ),
         "filters": filters,
     }
@@ -68,40 +95,9 @@ def require_current_metric_scope(
     metric: Metric,
     scope_key: str,
 ) -> MetricStoreCatalog:
-    state = load_metric_scope_store_state(metric.value, scope_key)
-    if state is None:
-        raise ValueError("Metric store has not been built for the requested scope")
-
-    catalog_row = state.catalog_row
-    season_type = SeasonType.parse(catalog_row.season_type)
-    cache_snapshot = load_cache_snapshot(season_type)
-    if not cache_snapshot.entries:
-        raise ValueError(
-            "Normalized cache is empty for the requested scope season type. "
-            "Rebuild ingest before using cached metrics."
-        )
-
-    if state.snapshot_state.source_fingerprint != cache_snapshot.fingerprint:
-        raise ValueError(
-            "Cached metric store is stale relative to normalized cache. "
-            "Refresh the web metric store after ingest is rebuilt."
-        )
-
-    available_seasons = [
-        Season.parse(season_id, season_type.to_nba_format())
-        for season_id in catalog_row.available_season_ids
-    ]
-    return MetricStoreCatalog(
-        season_type=season_type,
-        availability=MetricCatalogAvailability(
-            teams=[Team.from_id(team_id) for team_id in catalog_row.available_team_ids],
-            seasons=available_seasons,
-        ),
-        full_span=_build_metric_season_span(
-            season_type=season_type,
-            start_season_id=catalog_row.full_span_start_season_id,
-            end_season_id=catalog_row.full_span_end_season_id,
-        ),
+    return _load_current_metric_scope_catalog(
+        metric=metric,
+        scope_key=scope_key,
     )
 
 
@@ -112,36 +108,86 @@ def load_metric_scope_catalog_for_options(
     teams: list[Team] | None,
     season_type: SeasonType,
 ) -> MetricStoreCatalog:
-    try:
-        return require_current_metric_scope(metric=metric, scope_key=scope_key)
-    except ValueError:
-        return _build_metric_options_catalog_from_cache(
-            teams=teams,
-            season_type=season_type,
-        )
+    return _load_metric_options_context(
+        metric=metric,
+        scope_key=scope_key,
+        teams=teams,
+        season_type=season_type,
+    ).catalog
 
 
-def _build_metric_options_catalog_from_cache(
+def _load_metric_options_context(
     *,
+    metric: Metric,
+    scope_key: str,
     teams: list[Team] | None,
     season_type: SeasonType,
-) -> MetricStoreCatalog:
-    cached_team_seasons = load_cache_snapshot(season_type).scopes
-    if teams is not None:
-        team_ids = {team.team_id for team in teams}
-        cached_team_seasons = [
-            team_season
-            for team_season in cached_team_seasons
-            if team_season.team.team_id in team_ids
-        ]
-    if not cached_team_seasons:
-        raise ValueError(
-            "Normalized cache is empty for the requested scope season type. "
-            "Rebuild ingest before using cached metrics."
+) -> _MetricCatalogOptionsContext:
+    cache_snapshot = _require_cache_snapshot(season_type)
+    try:
+        catalog = _load_current_metric_scope_catalog(
+            metric=metric,
+            scope_key=scope_key,
+            cache_snapshot=cache_snapshot,
         )
+        availability_index = _build_metric_catalog_availability_index(
+            season_type=season_type,
+            cached_team_seasons=cache_snapshot.scopes,
+            teams=catalog.availability.teams,
+            seasons=catalog.availability.seasons,
+        )
+    except ValueError:
+        filtered_cached_team_seasons = _filter_cached_team_seasons(
+            cache_snapshot.scopes,
+            team_ids=None if teams is None else {team.team_id for team in teams},
+        )
+        if not filtered_cached_team_seasons:
+            raise ValueError(_EMPTY_CACHE_ERROR) from None
+        availability_index = _build_metric_catalog_availability_index(
+            season_type=season_type,
+            cached_team_seasons=filtered_cached_team_seasons,
+        )
+        catalog = _build_metric_options_catalog_from_index(availability_index)
+    return _MetricCatalogOptionsContext(
+        catalog=catalog,
+        availability_index=availability_index,
+    )
 
-    available_team_ids = sorted({team_season.team.team_id for team_season in cached_team_seasons})
-    available_season_ids = sorted({team_season.season.id for team_season in cached_team_seasons})
+
+def _load_current_metric_scope_catalog(
+    *,
+    metric: Metric,
+    scope_key: str,
+    cache_snapshot: GameCacheSnapshot | None = None,
+) -> MetricStoreCatalog:
+    state = load_metric_scope_store_state(metric.value, scope_key)
+    if state is None:
+        raise ValueError(_MISSING_SCOPE_ERROR)
+
+    catalog = _build_metric_store_catalog_from_store_row(
+        season_type=SeasonType.parse(state.catalog_row.season_type),
+        available_team_ids=state.catalog_row.available_team_ids,
+        available_season_ids=state.catalog_row.available_season_ids,
+        start_season_id=state.catalog_row.full_span_start_season_id,
+        end_season_id=state.catalog_row.full_span_end_season_id,
+    )
+    resolved_snapshot = cache_snapshot or _require_cache_snapshot(catalog.season_type)
+    assert resolved_snapshot.season_type == catalog.season_type, (
+        "metric store season type must match the normalized cache snapshot"
+    )
+    if state.snapshot_state.source_fingerprint != resolved_snapshot.fingerprint:
+        raise ValueError(_STALE_SCOPE_ERROR)
+    return catalog
+
+
+def _build_metric_store_catalog_from_store_row(
+    *,
+    season_type: SeasonType,
+    available_team_ids: list[int],
+    available_season_ids: list[str],
+    start_season_id: str | None,
+    end_season_id: str | None,
+) -> MetricStoreCatalog:
     return MetricStoreCatalog(
         season_type=season_type,
         availability=MetricCatalogAvailability(
@@ -153,70 +199,130 @@ def _build_metric_options_catalog_from_cache(
         ),
         full_span=_build_metric_season_span(
             season_type=season_type,
-            start_season_id=available_season_ids[0],
-            end_season_id=available_season_ids[-1],
+            start_season_id=start_season_id,
+            end_season_id=end_season_id,
         ),
     )
 
 
-def _build_team_options(
-    catalog: MetricStoreCatalog,
+def _build_metric_options_catalog_from_index(
+    availability_index: _MetricCatalogAvailabilityIndex,
+) -> MetricStoreCatalog:
+    seasons = availability_index.seasons
+    return MetricStoreCatalog(
+        season_type=availability_index.season_type,
+        availability=MetricCatalogAvailability(
+            teams=availability_index.teams,
+            seasons=seasons,
+        ),
+        full_span=_build_metric_season_span(
+            season_type=availability_index.season_type,
+            start_season_id=None if not seasons else seasons[0].id,
+            end_season_id=None if not seasons else seasons[-1].id,
+        ),
+    )
+
+
+def _require_cache_snapshot(season_type: SeasonType) -> GameCacheSnapshot:
+    cache_snapshot = load_cache_snapshot(season_type)
+    if not cache_snapshot.entries:
+        raise ValueError(_EMPTY_CACHE_ERROR)
+    return cache_snapshot
+
+
+def _build_metric_catalog_availability_index(
+    *,
+    season_type: SeasonType,
     cached_team_seasons: list[TeamSeasonScope],
+    teams: list[Team] | None = None,
+    seasons: list[Season] | None = None,
+) -> _MetricCatalogAvailabilityIndex:
+    ordered_teams = teams or [
+        Team.from_id(team_id)
+        for team_id in sorted({team_season.team.team_id for team_season in cached_team_seasons})
+    ]
+    ordered_seasons = seasons or [
+        Season.parse(season_id, season_type.to_nba_format())
+        for season_id in sorted({team_season.season.id for team_season in cached_team_seasons})
+    ]
+    filtered_cached_team_seasons = _filter_cached_team_seasons(
+        cached_team_seasons,
+        team_ids={team.team_id for team in ordered_teams},
+        season_ids={season.id for season in ordered_seasons},
+    )
+
+    available_team_ids = [team.team_id for team in ordered_teams]
+    available_season_ids = [season.id for season in ordered_seasons]
+    season_ids_by_team_set: dict[int, set[str]] = {}
+    team_ids_by_season_set: dict[str, set[int]] = {}
+    for team_season in filtered_cached_team_seasons:
+        season_ids_by_team_set.setdefault(team_season.team.team_id, set()).add(
+            team_season.season.id
+        )
+        team_ids_by_season_set.setdefault(team_season.season.id, set()).add(
+            team_season.team.team_id
+        )
+
+    return _MetricCatalogAvailabilityIndex(
+        season_type=season_type,
+        teams=ordered_teams,
+        seasons=ordered_seasons,
+        season_ids_by_team_id={
+            team_id: [
+                season_id
+                for season_id in available_season_ids
+                if season_id in season_ids_by_team_set.get(team_id, set())
+            ]
+            for team_id in available_team_ids
+        },
+        team_ids_by_season_id={
+            season_id: [
+                team_id
+                for team_id in available_team_ids
+                if team_id in team_ids_by_season_set.get(season_id, set())
+            ]
+            for season_id in available_season_ids
+        },
+    )
+
+
+def _filter_cached_team_seasons(
+    cached_team_seasons: list[TeamSeasonScope],
+    *,
+    team_ids: set[int] | None = None,
+    season_ids: set[str] | None = None,
+) -> list[TeamSeasonScope]:
+    return [
+        team_season
+        for team_season in cached_team_seasons
+        if (team_ids is None or team_season.team.team_id in team_ids)
+        and (season_ids is None or team_season.season.id in season_ids)
+    ]
+
+
+def _build_team_options(
+    availability_index: _MetricCatalogAvailabilityIndex,
 ) -> list[dict[str, Any]]:
-    seasons_by_team = _build_available_team_seasons(catalog, cached_team_seasons)
     return [
         {
             "team_id": team.team_id,
             "label": team.current.abbreviation,
-            "available_seasons": [season.id for season in seasons_by_team.get(team.team_id, [])],
+            "available_seasons": availability_index.season_ids_by_team_id.get(team.team_id, []),
         }
-        for team in sorted(catalog.availability.teams, key=lambda item: item.current.abbreviation)
+        for team in sorted(availability_index.teams, key=lambda item: item.current.abbreviation)
     ]
 
 
-def _build_available_team_seasons(
-    catalog: MetricStoreCatalog,
-    cached_team_seasons: list[TeamSeasonScope],
-) -> dict[int, list[Season]]:
-    available_team_ids = {team.team_id for team in catalog.availability.teams}
-    available_season_ids = [season.id for season in catalog.availability.seasons]
-    seasons_by_team_id: dict[int, set[str]] = {}
-    for team_season in cached_team_seasons:
-        if team_season.team.team_id not in available_team_ids:
-            continue
-        if team_season.season.id not in available_season_ids:
-            continue
-        seasons_by_team_id.setdefault(team_season.team.team_id, set()).add(team_season.season.id)
-    return {
-        team_id: [
-            Season.parse(season_id, catalog.season_type.to_nba_format())
-            for season_id in available_season_ids
-            if season_id in seasons_by_team_id.get(team_id, set())
-        ]
-        for team_id in seasons_by_team_id
-    }
-
-
 def _build_available_teams_by_season(
-    catalog: MetricStoreCatalog,
-    cached_team_seasons: list[TeamSeasonScope],
+    availability_index: _MetricCatalogAvailabilityIndex,
 ) -> dict[str, list[str]]:
-    available_team_ids = {team.team_id for team in catalog.availability.teams}
-    available_season_ids = [season.id for season in catalog.availability.seasons]
-    teams_by_season: dict[str, set[int]] = {season_id: set() for season_id in available_season_ids}
-    for team_season in cached_team_seasons:
-        if team_season.season.id not in teams_by_season:
-            continue
-        if team_season.team.team_id not in available_team_ids:
-            continue
-        teams_by_season[team_season.season.id].add(team_season.team.team_id)
+    teams_by_id = {team.team_id: team for team in availability_index.teams}
     return {
         season_id: [
-            team.current.abbreviation
-            for team in catalog.availability.teams
-            if team.team_id in teams_by_season.get(season_id, set())
+            teams_by_id[team_id].current.abbreviation
+            for team_id in availability_index.team_ids_by_season_id.get(season_id, [])
         ]
-        for season_id in available_season_ids
+        for season_id in [season.id for season in availability_index.seasons]
     }
 
 
