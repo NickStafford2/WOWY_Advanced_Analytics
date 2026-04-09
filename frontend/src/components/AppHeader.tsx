@@ -1,5 +1,5 @@
 import { metricOptions } from '../app/metric'
-import type { MetricId, ThemeMode } from '../app/metricTypes'
+import type { MetricId } from '../app/metricTypes'
 
 const PANEL_LABEL_CLASS_NAME =
   'm-0 text-xs font-bold tracking-[0.16em] uppercase text-[color:var(--accent-warm)]'
@@ -13,9 +13,7 @@ type AppHeaderProps = {
   metricLabel: string
   metricStandsFor: string
   metricDescription: string
-  theme: ThemeMode
   onMetricChange: (metric: MetricId) => void
-  onThemeToggle: () => void
 }
 
 export function AppHeader({
@@ -23,9 +21,7 @@ export function AppHeader({
   metricLabel,
   metricStandsFor,
   metricDescription,
-  theme,
   onMetricChange,
-  onThemeToggle,
 }: AppHeaderProps) {
   const metricChoices = metricOptions()
 
@@ -64,14 +60,6 @@ export function AppHeader({
             ))}
           </div>
         </section>
-
-        <button
-          type="button"
-          className={`${CONTROL_BUTTON_CLASS_NAME} self-start`}
-          onClick={onThemeToggle}
-        >
-          {theme === 'dark' ? 'Light mode' : 'Dark mode'}
-        </button>
       </div>
     </header>
   )
