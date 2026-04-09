@@ -29,14 +29,14 @@ def replace_team_season_cache_rows(
         DELETE FROM normalized_game_players
         WHERE team_id = ? AND season = ? AND season_type = ?
         """,
-        (scope.team.team_id, scope.season.id, season_type),
+        (scope.team.team_id, scope.season.year_string_nba_api, season_type),
     )
     connection.execute(
         """
         DELETE FROM normalized_games
         WHERE team_id = ? AND season = ? AND season_type = ?
         """,
-        (scope.team.team_id, scope.season.id, season_type),
+        (scope.team.team_id, scope.season.year_string_nba_api, season_type),
     )
     connection.executemany(
         """
@@ -55,7 +55,7 @@ def replace_team_season_cache_rows(
         [
             (
                 game.game_id,
-                game.season.id,
+                game.season.year_string_nba_api,
                 game.game_date,
                 game.team.team_id,
                 game.opponent_team.team_id,
@@ -83,7 +83,7 @@ def replace_team_season_cache_rows(
         [
             (
                 game_player.game_id,
-                scope.season.id,
+                scope.season.year_string_nba_api,
                 season_type,
                 game_player.team.team_id,
                 game_player.player.player_id,
@@ -123,7 +123,7 @@ def replace_team_season_cache_rows(
         """,
         (
             scope.team.team_id,
-            scope.season.id,
+            scope.season.year_string_nba_api,
             season_type,
             source_path,
             source_snapshot,
@@ -176,7 +176,7 @@ def select_normalized_game_rows(
         query,
         params,
         column="season",
-        values=[season.id for season in seasons or []],
+        values=[season.year_string_nba_api for season in seasons or []],
     )
     query, params = _append_in_filter(
         query,
@@ -226,7 +226,7 @@ def select_normalized_game_player_rows(
         query,
         params,
         column="season",
-        values=[season.id for season in seasons or []],
+        values=[season.year_string_nba_api for season in seasons or []],
     )
     query, params = _append_in_filter(
         query,
@@ -274,7 +274,7 @@ def select_cache_load_rows(
         query,
         params,
         column="season",
-        values=[season.id for season in seasons or []],
+        values=[season.year_string_nba_api for season in seasons or []],
     )
     query, params = _append_in_filter(
         query,
@@ -303,7 +303,7 @@ def _append_team_season_filter(
         {
             (
                 scope.team.team_id,
-                scope.season.id,
+                scope.season.year_string_nba_api,
                 scope.season.season_type.to_nba_format(),
             )
             for scope in team_seasons

@@ -202,7 +202,11 @@ def validate_normalized_cache_relations(
             game = _build_normalized_game_record(row)
         except (AssertionError, ValueError):
             continue
-        scope = (game.team.team_id, game.season.id, game.season.season_type.to_nba_format())
+        scope = (
+            game.team.team_id,
+            game.season.year_string_nba_api,
+            game.season.season_type.to_nba_format(),
+        )
         games_by_scope[scope].append(game)
         game_key_scope_map[(game.game_id, game.team.team_id)] = scope
 
@@ -211,7 +215,11 @@ def validate_normalized_cache_relations(
             player, season = _build_normalized_game_player_record(row)
         except (AssertionError, ValueError):
             continue
-        scope = (player.team.team_id, season.id, season.season_type.to_nba_format())
+        scope = (
+            player.team.team_id,
+            season.year_string_nba_api,
+            season.season_type.to_nba_format(),
+        )
         players_by_scope[scope].append(player)
         game_scope = game_key_scope_map.get((player.game_id, player.team.team_id))
         if game_scope is None:
@@ -308,7 +316,9 @@ def _validate_reciprocal_game_margins(
             game = _build_normalized_game_record(row)
         except (AssertionError, ValueError):
             continue
-        games_by_id[(game.season.id, game.season.season_type.value, game.game_id)].append(game)
+        games_by_id[
+            (game.season.year_string_nba_api, game.season.season_type.value, game.game_id)
+        ].append(game)
 
     for games in games_by_id.values():
         if len(games) != 2:
@@ -320,7 +330,7 @@ def _validate_reciprocal_game_margins(
                 ValidationIssue(
                     "normalized_games",
                     (
-                        f"game_id={first_game.game_id!r},season={first_game.season.id!r},"
+                        f"game_id={first_game.game_id!r},season={first_game.season.year_string_nba_api!r},"
                         f"season_type={first_game.season.season_type.value!r}"
                     ),
                     "paired game rows must reference each other as opponents",
@@ -331,7 +341,7 @@ def _validate_reciprocal_game_margins(
                 ValidationIssue(
                     "normalized_games",
                     (
-                        f"game_id={first_game.game_id!r},season={first_game.season.id!r},"
+                        f"game_id={first_game.game_id!r},season={first_game.season.year_string_nba_api!r},"
                         f"season_type={first_game.season.season_type.value!r}"
                     ),
                     "paired game rows must reference each other as opponents",
@@ -342,7 +352,7 @@ def _validate_reciprocal_game_margins(
                 ValidationIssue(
                     "normalized_games",
                     (
-                        f"game_id={first_game.game_id!r},season={first_game.season.id!r},"
+                        f"game_id={first_game.game_id!r},season={first_game.season.year_string_nba_api!r},"
                         f"season_type={first_game.season.season_type.value!r}"
                     ),
                     "paired game rows must have opposite home/away flags",
@@ -353,7 +363,7 @@ def _validate_reciprocal_game_margins(
                 ValidationIssue(
                     "normalized_games",
                     (
-                        f"game_id={first_game.game_id!r},season={first_game.season.id!r},"
+                        f"game_id={first_game.game_id!r},season={first_game.season.year_string_nba_api!r},"
                         f"season_type={first_game.season.season_type.value!r}"
                     ),
                     "paired game rows must have the same game date",
@@ -364,7 +374,7 @@ def _validate_reciprocal_game_margins(
                 ValidationIssue(
                     "normalized_games",
                     (
-                        f"game_id={first_game.game_id!r},season={first_game.season.id!r},"
+                        f"game_id={first_game.game_id!r},season={first_game.season.year_string_nba_api!r},"
                         f"season_type={first_game.season.season_type.value!r}"
                     ),
                     (
@@ -482,9 +492,7 @@ def _validate_normalized_scope_batch(
     game_players: list[NormalizedGamePlayerRecord],
 ) -> None:
     game_keys: set[tuple[str, int]] = set()
-    players_by_game_key: dict[tuple[str, int], list[NormalizedGamePlayerRecord]] = defaultdict(
-        list
-    )
+    players_by_game_key: dict[tuple[str, int], list[NormalizedGamePlayerRecord]] = defaultdict(list)
 
     for game in games:
         _validate_normalized_game_row(game, expected_team=team, expected_season=season)

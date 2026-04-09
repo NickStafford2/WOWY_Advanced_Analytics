@@ -114,7 +114,7 @@ def ingest_kaggle_dataset(
         scope_summaries.append(
             KaggleIngestScopeSummary(
                 team_id=scope_data.scope.team.team_id,
-                season_id=scope_data.scope.season.id,
+                season_id=scope_data.scope.season.year_string_nba_api,
                 season_type=scope_data.scope.season.season_type.to_nba_format(),
                 games=len(games),
                 game_players=len(game_players),
@@ -194,8 +194,16 @@ def _build_scope_games(
             str(_season_start_year_from_game_date(game_date)), normalized_game_type
         )
 
-        home_key = (home_team.team_id, home_season.id, home_season.season_type.to_nba_format())
-        away_key = (away_team.team_id, away_season.id, away_season.season_type.to_nba_format())
+        home_key = (
+            home_team.team_id,
+            home_season.year_string_nba_api,
+            home_season.season_type.to_nba_format(),
+        )
+        away_key = (
+            away_team.team_id,
+            away_season.year_string_nba_api,
+            away_season.season_type.to_nba_format(),
+        )
         raw_game_counts[home_key] += 1
         raw_game_counts[away_key] += 1
 
@@ -271,7 +279,11 @@ def _load_player_rows(
             season = Season.parse(
                 str(_season_start_year_from_game_date(game_date)), normalized_game_type
             )
-            scope_key = (team.team_id, season.id, season.season_type.to_nba_format())
+            scope_key = (
+                team.team_id,
+                season.year_string_nba_api,
+                season.season_type.to_nba_format(),
+            )
             scope_data = scope_data_by_key.get(scope_key)
             assert scope_data is not None, f"Missing kaggle scope for player row {scope_key!r}"
 
@@ -353,7 +365,7 @@ def _season_start_year_from_game_date(game_date: str) -> int:
 
 def _scope_key(*, team: Team, game_date: str, season_type: str) -> tuple[int, str, str]:
     season = Season.parse(str(_season_start_year_from_game_date(game_date)), season_type)
-    return team.team_id, season.id, season.season_type.to_nba_format()
+    return team.team_id, season.year_string_nba_api, season.season_type.to_nba_format()
 
 
 def _build_source_snapshot(

@@ -59,12 +59,12 @@ class RawrQueryFiltersDTO:
     def to_payload(self) -> JSONDict:
         return {
             "team": (
-                None
-                if self.teams is None
-                else [team.current.abbreviation for team in self.teams]
+                None if self.teams is None else [team.current.abbreviation for team in self.teams]
             ),
             "team_id": None if self.teams is None else [team.team_id for team in self.teams],
-            "season": None if self.seasons is None else [season.id for season in self.seasons],
+            "season": None
+            if self.seasons is None
+            else [season.year_string_nba_api for season in self.seasons],
             "season_type": self.season_type.to_nba_format(),
             "min_average_minutes": self.min_average_minutes,
             "min_total_minutes": self.min_total_minutes,
@@ -138,7 +138,7 @@ def build_rawr_leaderboard_payload(
         },
     )
     if available_seasons is not None:
-        payload["available_seasons"] = [season.id for season in available_seasons]
+        payload["available_seasons"] = [season.year_string_nba_api for season in available_seasons]
     if available_teams is not None:
         payload["available_teams"] = [team.current.abbreviation for team in available_teams]
     return payload
@@ -179,7 +179,7 @@ def _build_player_season_row_dto(
     row: RawrPlayerSeasonRecord,
 ) -> RawrPlayerSeasonRowDTO:
     return RawrPlayerSeasonRowDTO(
-        season_id=row.season.id,
+        season_id=row.season.year_string_nba_api,
         player_id=row.player.player_id,
         player_name=row.player.player_name,
         value=row.coefficient,
@@ -226,7 +226,11 @@ def _build_ranked_table_rows(
                     RawrSeriesPointDTO(
                         season=season_id,
                         value=next(
-                            (row.coefficient for row in player_rows if row.season.id == season_id),
+                            (
+                                row.coefficient
+                                for row in player_rows
+                                if row.season.year_string_nba_api == season_id
+                            ),
                             None,
                         ),
                     )

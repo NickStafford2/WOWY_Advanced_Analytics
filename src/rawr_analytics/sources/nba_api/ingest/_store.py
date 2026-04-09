@@ -13,7 +13,7 @@ def store_team_season(result: IngestResult) -> None:
         source_path=(
             "nba_api://normalized_games/"
             f"{result.request.team.abbreviation(season=result.request.season)}_"
-            f"{result.request.season.id}_{result.request.season.season_type.to_slug()}"
+            f"{result.request.season.year_string_nba_api}_{result.request.season.season_type.to_slug()}"
         ),
         source_snapshot="ingest-build-v2:nba_api",
         source_kind="nba_api",

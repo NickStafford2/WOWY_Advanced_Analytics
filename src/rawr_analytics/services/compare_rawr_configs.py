@@ -239,8 +239,8 @@ def _validate_request(
     assert shrinkage_minute_scale_values is not None
     if top_n <= 0:
         raise ValueError("top_n must be positive")
-    train_season_ids = {season.id for season in train_seasons}
-    if holdout_season.id in train_season_ids:
+    train_season_ids = {season.year_string_nba_api for season in train_seasons}
+    if holdout_season.year_string_nba_api in train_season_ids:
         raise ValueError("holdout season must not be included in training seasons")
 
 

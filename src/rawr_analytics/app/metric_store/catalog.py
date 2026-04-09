@@ -82,14 +82,12 @@ def build_metric_options_payload(
     )
     return {
         "metric": metric.value,
-        "available_teams": [
-            team.current.abbreviation for team in context.availability_index.teams
-        ],
+        "available_teams": [team.current.abbreviation for team in context.availability_index.teams],
         "team_options": _build_team_options(context.availability_index),
-        "available_seasons": [season.id for season in context.availability_index.seasons],
-        "available_teams_by_season": _build_available_teams_by_season(
-            context.availability_index
-        ),
+        "available_seasons": [
+            season.year_string_nba_api for season in context.availability_index.seasons
+        ],
+        "available_teams_by_season": _build_available_teams_by_season(context.availability_index),
         "filters": filters,
     }
 
@@ -224,8 +222,8 @@ def _build_metric_options_catalog_from_index(
         ),
         full_span=_build_metric_season_span(
             season_type=availability_index.season_type,
-            start_season_id=None if not seasons else seasons[0].id,
-            end_season_id=None if not seasons else seasons[-1].id,
+            start_season_id=None if not seasons else seasons[0].year_string_nba_api,
+            end_season_id=None if not seasons else seasons[-1].year_string_nba_api,
         ),
     )
 
@@ -250,23 +248,25 @@ def _build_metric_catalog_availability_index(
     ]
     ordered_seasons = seasons or [
         Season.parse(season_id, season_type.to_nba_format())
-        for season_id in sorted({team_season.season.id for team_season in cached_team_seasons})
+        for season_id in sorted(
+            {team_season.season.year_string_nba_api for team_season in cached_team_seasons}
+        )
     ]
     filtered_cached_team_seasons = _filter_cached_team_seasons(
         cached_team_seasons,
         team_ids={team.team_id for team in ordered_teams},
-        season_ids={season.id for season in ordered_seasons},
+        season_ids={season.year_string_nba_api for season in ordered_seasons},
     )
 
     available_team_ids = [team.team_id for team in ordered_teams]
-    available_season_ids = [season.id for season in ordered_seasons]
+    available_season_ids = [season.year_string_nba_api for season in ordered_seasons]
     season_ids_by_team_set: dict[int, set[str]] = {}
     team_ids_by_season_set: dict[str, set[int]] = {}
     for team_season in filtered_cached_team_seasons:
         season_ids_by_team_set.setdefault(team_season.team.team_id, set()).add(
-            team_season.season.id
+            team_season.season.year_string_nba_api
         )
-        team_ids_by_season_set.setdefault(team_season.season.id, set()).add(
+        team_ids_by_season_set.setdefault(team_season.season.year_string_nba_api, set()).add(
             team_season.team.team_id
         )
 
@@ -303,7 +303,7 @@ def _filter_cached_team_seasons(
         team_season
         for team_season in cached_team_seasons
         if (team_ids is None or team_season.team.team_id in team_ids)
-        and (season_ids is None or team_season.season.id in season_ids)
+        and (season_ids is None or team_season.season.year_string_nba_api in season_ids)
     ]
 
 
@@ -329,7 +329,7 @@ def _build_available_teams_by_season(
             teams_by_id[team_id].current.abbreviation
             for team_id in availability_index.team_ids_by_season_id.get(season_id, [])
         ]
-        for season_id in [season.id for season in availability_index.seasons]
+        for season_id in [season.year_string_nba_api for season in availability_index.seasons]
     }
 
 

@@ -39,11 +39,13 @@ class WowyPlayerSeasonRecord:
 def build_player_season_records(request: WowyRequestDTO) -> list[WowyPlayerSeasonRecord]:
     validate_request(request)
     records: list[WowyPlayerSeasonRecord] = []
-    for season_input in sorted(request.season_inputs, key=lambda item: item.season.id):
+    for season_input in sorted(
+        request.season_inputs, key=lambda item: item.season.year_string_nba_api
+    ):
         records.extend(_build_season_records(season_input, request=request))
     records.sort(
         key=lambda record: (
-            record.season.id,
+            record.season.year_string_nba_api,
             record.result.value if record.result.value is not None else float("-inf"),
             record.player.player_name,
         ),
@@ -135,7 +137,7 @@ def _build_wowy_query_row(
 ) -> WowyPlayerSeasonValue:
     if metric == Metric.WOWY:
         return WowyPlayerSeasonValue(
-            season_id=record.season.id,
+            season_id=record.season.year_string_nba_api,
             player=record.player,
             minutes=record.minutes,
             result=WowyPlayerValue(
@@ -149,7 +151,7 @@ def _build_wowy_query_row(
         )
     if metric == Metric.WOWY_SHRUNK:
         return WowyPlayerSeasonValue(
-            season_id=record.season.id,
+            season_id=record.season.year_string_nba_api,
             player=record.player,
             minutes=record.minutes,
             result=WowyPlayerValue(

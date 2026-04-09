@@ -155,7 +155,7 @@ def render_progress_line(team_index: int, team_total: int, progress: IngestProgr
     total = progress.total
     status = progress.status
     team_id = progress.team.team_id
-    season = progress.season.id
+    season = progress.season.year_string_nba_api
     game_id = progress.game_id or ""
     filled = 20 if total == 0 else int((current / total) * 20)
     bar = "#" * filled + "-" * (20 - filled)

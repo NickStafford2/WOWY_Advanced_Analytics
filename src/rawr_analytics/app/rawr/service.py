@@ -192,5 +192,5 @@ def _try_load_rawr_store_result(query: RawrQuery) -> ResolvedRawrResultDTO | Non
 
 def _selected_rawr_seasons(query: RawrQuery, rows: list[RawrPlayerSeasonRecord]) -> list[str]:
     if query.seasons is not None:
-        return sorted({season.id for season in query.seasons})
-    return sorted({row.season.id for row in rows})
+        return sorted({season.year_string_nba_api for season in query.seasons})
+    return sorted({row.season.year_string_nba_api for row in rows})

@@ -114,7 +114,7 @@ def _validate_common_metric_row(
         team_filter=canonical_team_filter,
         season_type=canonical_season_type,
     )
-    canonical_season_id = Season.parse(row.season_id, SeasonType.REGULAR.value).id
+    canonical_season_id = Season.parse(row.season_id, SeasonType.REGULAR.value).year_string_nba_api
     if canonical_season_id != row.season_id:
         raise ValueError(
             f"Metric row for player {player_id!r} uses non-canonical season_id {row.season_id!r}"
@@ -232,7 +232,8 @@ def _validate_metric_catalog(
     )
 
     canonical_seasons = [
-        Season.parse(season, SeasonType.REGULAR.value).id for season in available_seasons
+        Season.parse(season, SeasonType.REGULAR.value).year_string_nba_api
+        for season in available_seasons
     ]
     if canonical_seasons != available_seasons:
         raise ValueError("Catalog available_seasons must use canonical season strings")
@@ -250,8 +251,8 @@ def _validate_metric_catalog(
     if full_span_start_season is None:
         return
 
-    start = Season.parse(full_span_start_season, SeasonType.REGULAR.value).id
-    end = Season.parse(full_span_end_season or "", SeasonType.REGULAR.value).id
+    start = Season.parse(full_span_start_season, SeasonType.REGULAR.value).year_string_nba_api
+    end = Season.parse(full_span_end_season or "", SeasonType.REGULAR.value).year_string_nba_api
     if start not in canonical_seasons or end not in canonical_seasons:
         raise ValueError("Catalog full-span seasons must be present in available_seasons")
     if _season_sort_key(start) > _season_sort_key(end):
@@ -318,7 +319,9 @@ def validate_metric_full_span_rows(
             raise ValueError("Full-span point rows must match the requested metric scope")
         if row.player_id not in expected_point_counts:
             raise ValueError(f"Full-span point row for unknown player {row.player_id!r}")
-        canonical_season_id = Season.parse(row.season_id, SeasonType.REGULAR.value).id
+        canonical_season_id = Season.parse(
+            row.season_id, SeasonType.REGULAR.value
+        ).year_string_nba_api
         if canonical_season_id != row.season_id:
             raise ValueError(
                 f"Full-span point row for player {row.player_id!r} uses "

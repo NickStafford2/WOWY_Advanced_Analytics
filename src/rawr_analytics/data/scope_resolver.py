@@ -43,6 +43,8 @@ def resolve_team_seasons(
         seasons=requested_seasons,
         cached_team_seasons=cached_requested_team_seasons,
     )
+
+
 def _normalize_requested_seasons(
     *,
     seasons: list[Season] | None,
@@ -52,7 +54,8 @@ def _normalize_requested_seasons(
     if normalized_seasons is None:
         return None
     return [
-        Season.parse(season.id, season_type.to_nba_format()) for season in normalized_seasons
+        Season.parse(season.year_string_nba_api, season_type.to_nba_format())
+        for season in normalized_seasons
     ]
 
 
@@ -65,9 +68,9 @@ def _resolve_cached_team_seasons(
     if teams is None:
         return cached_team_seasons
     requested_team_ids = {team.team_id for team in teams}
-    return [
-        scope for scope in cached_team_seasons if scope.team.team_id in requested_team_ids
-    ]
+    return [scope for scope in cached_team_seasons if scope.team.team_id in requested_team_ids]
+
+
 def _build_cached_requested_season_scopes(
     *,
     seasons: list[Season],
@@ -75,11 +78,11 @@ def _build_cached_requested_season_scopes(
 ) -> list[TeamSeasonScope]:
     cached_scopes_by_season_id: dict[str, list[TeamSeasonScope]] = {}
     for scope in cached_team_seasons:
-        cached_scopes_by_season_id.setdefault(scope.season.id, []).append(scope)
+        cached_scopes_by_season_id.setdefault(scope.season.year_string_nba_api, []).append(scope)
     return [
         scope
         for season in seasons
-        for scope in cached_scopes_by_season_id.get(season.id, [])
+        for scope in cached_scopes_by_season_id.get(season.year_string_nba_api, [])
     ]
 
 
@@ -90,14 +93,15 @@ def _build_requested_or_missing_team_seasons(
     cached_team_seasons: list[TeamSeasonScope],
 ) -> list[TeamSeasonScope]:
     cached_scopes_by_key: dict[tuple[int, str], TeamSeasonScope] = {
-        (scope.team.team_id, scope.season.id): scope for scope in cached_team_seasons
+        (scope.team.team_id, scope.season.year_string_nba_api): scope
+        for scope in cached_team_seasons
     }
     resolved_scopes: list[TeamSeasonScope] = []
     for season in seasons:
         for team in teams:
             resolved_scopes.append(
                 cached_scopes_by_key.get(
-                    (team.team_id, season.id),
+                    (team.team_id, season.year_string_nba_api),
                     TeamSeasonScope(team=team, season=season),
                 )
             )

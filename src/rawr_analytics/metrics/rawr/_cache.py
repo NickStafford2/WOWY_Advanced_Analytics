@@ -30,7 +30,7 @@ def load_rawr_records(
 
     teams_by_season = _build_teams_by_season(requested_team_seasons)
     complete_seasons = list_complete_rawr_seasons(
-        seasons=sorted({season.id for season in teams_by_season}),
+        seasons=sorted({season.year_string_nba_api for season in teams_by_season}),
         season_type=season_type,
     )
     if not complete_seasons:
@@ -38,12 +38,12 @@ def load_rawr_records(
 
     season_games: dict[Season, list[NormalizedGameRecord]] = {}
     season_game_players: dict[Season, list[NormalizedGamePlayerRecord]] = {}
-    sorted_seasons = sorted(teams_by_season, key=lambda item: item.id)
+    sorted_seasons = sorted(teams_by_season, key=lambda item: item.year_string_nba_api)
     total_seasons = len(sorted_seasons)
     for season_index, season in enumerate(sorted_seasons, start=1):
         if progress_fn is not None:
             progress_fn(season_index, total_seasons, season)
-        if season.id not in complete_seasons:
+        if season.year_string_nba_api not in complete_seasons:
             continue
         season_records = _load_rawr_season_records(
             teams=teams_by_season[season],
@@ -103,14 +103,18 @@ def _expand_rawr_season_scopes(
     seen_scope_keys = {
         (
             scope.team.team_id,
-            scope.season.id,
+            scope.season.year_string_nba_api,
             scope.season.season_type.value,
         )
         for scope in team_scopes
     }
     for game in games:
         scope = TeamSeasonScope(team=game.opponent_team, season=game.season)
-        scope_key = (scope.team.team_id, scope.season.id, scope.season.season_type.value)
+        scope_key = (
+            scope.team.team_id,
+            scope.season.year_string_nba_api,
+            scope.season.season_type.value,
+        )
         if scope_key in seen_scope_keys:
             continue
         team_scopes.append(scope)

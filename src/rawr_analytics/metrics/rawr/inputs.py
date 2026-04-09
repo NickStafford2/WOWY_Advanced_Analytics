@@ -44,7 +44,7 @@ def build_rawr_request(
     min_total_minutes: float | None = None,
 ) -> RawrRequestDTO:
     season_inputs: list[RawrSeasonInputDTO] = []
-    for season in sorted(season_games, key=lambda item: item.id):
+    for season in sorted(season_games, key=lambda item: item.year_string_nba_api):
         season_input = _build_rawr_season_input(
             season=season,
             games=season_games[season],
@@ -131,9 +131,7 @@ def _validate_season_input(season_input: RawrSeasonInputDTO) -> None:
     player_ids = set(season_input.players_by_id)
     for observation in season_input.observations:
         unknown_player_ids = sorted(
-            player_id
-            for player_id in observation.player_weights
-            if player_id not in player_ids
+            player_id for player_id in observation.player_weights if player_id not in player_ids
         )
         if unknown_player_ids:
             raise ValueError(

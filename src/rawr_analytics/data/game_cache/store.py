@@ -151,7 +151,7 @@ def _require_cached_team_season_scopes(team_seasons: list[TeamSeasonScope]) -> N
 def _team_season_key(scope: TeamSeasonScope) -> tuple[int, str, str]:
     return (
         scope.team.team_id,
-        scope.season.id,
+        scope.season.year_string_nba_api,
         scope.season.season_type.value,
     )
 

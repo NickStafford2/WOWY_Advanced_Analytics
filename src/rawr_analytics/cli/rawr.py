@@ -74,7 +74,7 @@ def _update_rawr_progress(
 ) -> None:
     if progress_bar.total != max(1, total):
         progress_bar.total = max(1, total)
-    progress_bar.update(current, detail=season.id)
+    progress_bar.update(current, detail=season.year_string_nba_api)
 
 
 def _build_progress_updater(

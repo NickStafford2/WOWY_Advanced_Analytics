@@ -338,7 +338,7 @@ def _build_refresh_scope(
             season_type=season_type.to_nba_format(),
             availability=MetricScopeAvailability(
                 season_ids=[
-                    season.id
+                    season.year_string_nba_api
                     for season in sorted(
                         {
                             scope.season
@@ -346,7 +346,7 @@ def _build_refresh_scope(
                             if normalized_team_ids is None
                             or scope.team.team_id in normalized_team_ids
                         },
-                        key=lambda season: season.id,
+                        key=lambda season: season.year_string_nba_api,
                     )
                 ],
                 team_ids=[],

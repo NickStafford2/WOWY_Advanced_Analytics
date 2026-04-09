@@ -77,7 +77,7 @@ def build_cache_fingerprint(entries: list[TeamSeasonCacheEntry]) -> str:
     digest = hashlib.sha256()
     for entry in entries:
         digest.update(str(entry.scope.team.team_id).encode("utf-8"))
-        digest.update(entry.scope.season.id.encode("utf-8"))
+        digest.update(entry.scope.season.year_string_nba_api.encode("utf-8"))
         digest.update(entry.scope.season.season_type.to_nba_format().encode("utf-8"))
         digest.update(entry.source_path.encode("utf-8"))
         digest.update(entry.source_snapshot.encode("utf-8"))

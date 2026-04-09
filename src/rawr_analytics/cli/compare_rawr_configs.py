@@ -214,14 +214,14 @@ def _build_compare_rawr_configs_summary(
     top_n: int,
     results: list[ComparisonResult],
 ) -> str:
-    train_label = ",".join(season.id for season in train_seasons)
+    train_label = ",".join(season.year_string_nba_api for season in train_seasons)
     team_label = "all-teams"
     if teams:
         team_label = ",".join(team.abbreviation(season=holdout_season) for team in teams)
     best = results[0] if results else None
     lines = [
         (
-            f"train_seasons={train_label} holdout_season={holdout_season.id} "
+            f"train_seasons={train_label} holdout_season={holdout_season.year_string_nba_api} "
             f"aggregation={aggregation} top_n={top_n}"
         ),
         f"team_filter={team_label} season_type={season_type.to_nba_format()}",

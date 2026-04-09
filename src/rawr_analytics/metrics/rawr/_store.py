@@ -82,7 +82,7 @@ def build_rawr_store_row_from_record(
         scope_key=scope_key,
         team_filter=team_filter,
         season_type=season_type.value,
-        season_id=record.season.id,
+        season_id=record.season.year_string_nba_api,
         player_id=record.player.player_id,
         player_name=record.player.player_name,
         games=record.games,

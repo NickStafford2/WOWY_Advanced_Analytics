@@ -51,7 +51,7 @@ def list_incomplete_rawr_season_warnings(
 
 def _list_cached_rawr_seasons_for_type(season_type: SeasonType) -> list[str]:
     snapshot = load_cache_snapshot(season_type)
-    return sorted({entry.scope.season.id for entry in snapshot.entries})
+    return sorted({entry.scope.season.year_string_nba_api for entry in snapshot.entries})
 
 
 def _summarize_rawr_cache_seasons(
@@ -64,10 +64,10 @@ def _summarize_rawr_cache_seasons(
     summaries: dict[str, _SeasonCacheSummary] = {}
     for entry in snapshot.entries:
         scope = entry.scope
-        if scope.season.id not in season_filter:
+        if scope.season.year_string_nba_api not in season_filter:
             continue
         summary = summaries.setdefault(
-            scope.season.id,
+            scope.season.year_string_nba_api,
             _SeasonCacheSummary(
                 team_labels=set(),
                 incomplete_metadata_teams=set(),

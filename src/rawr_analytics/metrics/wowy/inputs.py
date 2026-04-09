@@ -54,7 +54,7 @@ def build_wowy_season_inputs(
     games_by_season = _derive_wowy_games_by_season(games, game_players)
 
     season_inputs: list[WowySeasonInputDTO] = []
-    for season in sorted(games_by_season, key=lambda item: item.id):
+    for season in sorted(games_by_season, key=lambda item: item.year_string_nba_api):
         player_ids = sorted(
             {player_id for game in games_by_season[season] for player_id in game.players}
         )

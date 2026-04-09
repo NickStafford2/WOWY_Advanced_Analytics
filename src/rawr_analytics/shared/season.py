@@ -61,7 +61,7 @@ class Season:
     season_type: SeasonType
 
     @property
-    def id(self) -> str:  # "2014-15"
+    def year_string_nba_api(self) -> str:  # "2014-15"
         return f"{self.start_year}-{(self.start_year + 1) % 100:02d}"
 
     @classmethod
@@ -81,10 +81,10 @@ class Season:
         return self.season_type == SeasonType.PLAYOFFS
 
     def __str__(self) -> str:
-        return self.id
+        return self.year_string_nba_api
 
     def to_nba_api_format(self) -> str:
-        return self.id
+        return self.year_string_nba_api
 
     @staticmethod
     def _parse_start_year(year_string: str) -> int:
@@ -122,6 +122,6 @@ def build_season_list(start_year: int, first_year: int, season_type_str: str) ->
 def normalize_seasons(seasons: list[Season] | None) -> list[Season] | None:
     normalized_seasons = sorted(
         {(season.start_year, season.season_type): season for season in seasons or []}.values(),
-        key=lambda season: (season.id, season.season_type.value),
+        key=lambda season: (season.year_string_nba_api, season.season_type.value),
     )
     return normalized_seasons or None

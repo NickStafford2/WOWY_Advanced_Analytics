@@ -10,6 +10,20 @@ __all__ = [
     "validate_metric_scope",
 ]
 
+# TODO: Replace the single season_type scope boundary with an exact canonical
+# ordered season list in the scope key so metric snapshots can represent mixed
+# regular-season and playoff queries.
+#
+# Canonical rule going forward:
+# - scope identity will be team_filter + exact ordered seasons
+# - seasons will be normalized before key construction
+# - normalization will dedupe exact Season values
+# - ordering will be by (season.id, season.season_type.value)
+# - encoded season values will stay explicit rather than hashed so the key is
+#   readable and directly debuggable
+# - validation will compare against that canonical encoded season list rather
+#   than a single season_type field
+
 
 def build_team_filter(teams: list[Team] | None) -> str:
     team_ids = to_normalized_team_ids(teams) or []
@@ -42,4 +56,4 @@ def validate_metric_scope(*, scope_key: str, team_filter: str, season_type: str)
 def season_ids(seasons: list[Season] | None) -> list[str] | None:
     if not seasons:
         return None
-    return sorted({season.id for season in seasons})
+    return sorted({season.year_string_nba_api for season in seasons})
