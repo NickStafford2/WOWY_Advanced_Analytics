@@ -4,26 +4,26 @@ import json
 from pathlib import Path
 
 import pytest
-from requests import RequestException
-
+from rawr_analytics.basketball.models import NormalizedGamePlayerRecord, NormalizedGameRecord
 from rawr_analytics.data.game_cache.repository import (
     load_cache_load_row,
     load_normalized_games_from_db,
     load_normalized_scope_records_from_db,
     replace_team_season_normalized_rows,
 )
-from rawr_analytics.data.scope_resolver import resolve_team_seasons
 from rawr_analytics.services._ingest_errors import BoxScoreFetchError, LeagueGamesFetchError
-from rawr_analytics.basketball.models import NormalizedGamePlayerRecord, NormalizedGameRecord
 from rawr_analytics.sources.nba_api.cache import (
     BOX_SCORE_REQUEST_TIMEOUT_SECONDS,
     LEAGUE_GAMES_REQUEST_TIMEOUT_SECONDS,
     _league_games_cache_path,
+    _write_cached_payload,
     load_cached_payload,
     load_or_fetch_box_score_cache,
     load_or_fetch_league_games,
-    _write_cached_payload,
 )
+from requests import RequestException
+
+from rawr_analytics.data.scope_resolver import resolve_team_seasons
 from rawr_analytics.shared.scope import TeamSeasonScope
 from tests.support import game as normalized_game
 from tests.support import player as normalized_player
@@ -420,7 +420,9 @@ def test_load_or_fetch_box_score_falls_back_to_live_when_v2_and_v3_are_empty(
         "rawr_analytics.sources.nba_api.cache.boxscoretraditionalv3.BoxScoreTraditionalV3",
         FakeBoxScoreTraditionalV3,
     )
-    monkeypatch.setattr("rawr_analytics.sources.nba_api.cache.live_boxscore.BoxScore", FakeLiveBoxScore)
+    monkeypatch.setattr(
+        "rawr_analytics.sources.nba_api.cache.live_boxscore.BoxScore", FakeLiveBoxScore
+    )
     monkeypatch.setattr("rawr_analytics.sources.nba_api.cache.time.sleep", lambda _: None)
 
     payload, source = load_or_fetch_box_score_cache(
