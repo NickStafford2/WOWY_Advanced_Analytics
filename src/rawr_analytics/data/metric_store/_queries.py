@@ -1,7 +1,8 @@
 from __future__ import annotations
 
+import sqlite3
 from dataclasses import dataclass
-from typing import Any
+from typing import Any, cast
 
 from rawr_analytics.data._paths import METRIC_STORE_DB_PATH
 from rawr_analytics.data.metric_store._catalog import MetricScopeCatalogRow
@@ -44,13 +45,13 @@ def load_metric_snapshot_state(
     if row is None:
         return None
     return MetricSnapshotState(
-        snapshot_id=row["snapshot_id"],
-        metric_id=row["metric_id"],
-        scope_key=row["scope_key"],
-        build_version=row["build_version"],
-        source_fingerprint=row["source_fingerprint"],
-        row_count=row["row_count"],
-        updated_at=row["updated_at"],
+        snapshot_id=cast(int | None, row["snapshot_id"]),
+        metric_id=cast(str, row["metric_id"]),
+        scope_key=cast(str, row["scope_key"]),
+        build_version=cast(str, row["build_version"]),
+        source_fingerprint=cast(str, row["source_fingerprint"]),
+        row_count=cast(int, row["row_count"]),
+        updated_at=cast(str, row["updated_at"]),
     )
 
 
@@ -97,16 +98,16 @@ def load_metric_scope_catalog_row(
     if row is None:
         return None
     return MetricScopeCatalogRow(
-        metric_id=row["metric_id"],
-        scope_key=row["scope_key"],
-        label=row["label"],
-        team_filter=row["team_filter"],
-        season_type=row["season_type"],
-        available_season_ids=[season_row["season_id"] for season_row in season_rows],
-        available_team_ids=[team_row["team_id"] for team_row in team_rows],
-        full_span_start_season_id=row["full_span_start_season_id"],
-        full_span_end_season_id=row["full_span_end_season_id"],
-        updated_at=row["updated_at"],
+        metric_id=cast(str, row["metric_id"]),
+        scope_key=cast(str, row["scope_key"]),
+        label=cast(str, row["label"]),
+        team_filter=cast(str, row["team_filter"]),
+        season_type=cast(str, row["season_type"]),
+        available_season_ids=[cast(str, season_row["season_id"]) for season_row in season_rows],
+        available_team_ids=[cast(int, team_row["team_id"]) for team_row in team_rows],
+        full_span_start_season_id=cast(str | None, row["full_span_start_season_id"]),
+        full_span_end_season_id=cast(str | None, row["full_span_end_season_id"]),
+        updated_at=cast(str, row["updated_at"]),
     )
 
 
@@ -139,19 +140,7 @@ def load_metric_full_span_series_rows(
         params.append(top_n)
     with connect(METRIC_STORE_DB_PATH) as connection:
         rows = connection.execute(query, params).fetchall()
-    return [
-        MetricFullSpanSeriesRow(
-            snapshot_id=row["snapshot_id"],
-            metric_id=row["metric_id"],
-            scope_key=row["scope_key"],
-            player_id=row["player_id"],
-            player_name=row["player_name"],
-            span_average_value=row["span_average_value"],
-            season_count=row["season_count"],
-            rank_order=row["rank_order"],
-        )
-        for row in rows
-    ]
+    return [_build_metric_full_span_series_row(row) for row in rows]
 
 
 def load_metric_full_span_points_map(
@@ -181,5 +170,21 @@ def load_metric_full_span_points_map(
         rows = connection.execute(query, params).fetchall()
     points: dict[int, dict[str, float]] = {}
     for row in rows:
-        points.setdefault(row["player_id"], {})[row["season_id"]] = row["value"]
+        player_id = cast(int, row["player_id"])
+        season_id = cast(str, row["season_id"])
+        value = cast(float, row["value"])
+        points.setdefault(player_id, {})[season_id] = value
     return points
+
+
+def _build_metric_full_span_series_row(row: sqlite3.Row) -> MetricFullSpanSeriesRow:
+    return MetricFullSpanSeriesRow(
+        snapshot_id=cast(int | None, row["snapshot_id"]),
+        metric_id=cast(str, row["metric_id"]),
+        scope_key=cast(str, row["scope_key"]),
+        player_id=cast(int, row["player_id"]),
+        player_name=cast(str, row["player_name"]),
+        span_average_value=cast(float, row["span_average_value"]),
+        season_count=cast(int, row["season_count"]),
+        rank_order=cast(int, row["rank_order"]),
+    )

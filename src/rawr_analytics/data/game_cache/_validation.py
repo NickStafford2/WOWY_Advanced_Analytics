@@ -4,6 +4,7 @@ import math
 import sqlite3
 from collections import defaultdict
 from datetime import date
+from typing import cast
 
 from rawr_analytics.data._validation import (
     validate_iso_datetime,
@@ -11,10 +12,7 @@ from rawr_analytics.data._validation import (
     validate_required_text,
 )
 from rawr_analytics.data._validation_issue import ValidationIssue
-from rawr_analytics.data.game_cache.rows import (
-    NormalizedGamePlayerRow,
-    NormalizedGameRow,
-)
+from rawr_analytics.shared.game import NormalizedGamePlayerRecord, NormalizedGameRecord
 from rawr_analytics.shared.player import PlayerSummary
 from rawr_analytics.shared.season import Season, SeasonType
 from rawr_analytics.shared.team import Team
@@ -193,8 +191,10 @@ def validate_normalized_cache_relations(
         """
     ).fetchall()
 
-    games_by_scope: dict[tuple[int, str, str], list[NormalizedGameRow]] = defaultdict(list)
-    players_by_scope: dict[tuple[int, str, str], list[NormalizedGamePlayerRow]] = defaultdict(list)
+    games_by_scope: dict[tuple[int, str, str], list[NormalizedGameRecord]] = defaultdict(list)
+    players_by_scope: dict[tuple[int, str, str], list[NormalizedGamePlayerRecord]] = defaultdict(
+        list
+    )
     game_key_scope_map: dict[tuple[str, int], tuple[int, str, str]] = {}
 
     for row in game_rows:
@@ -301,7 +301,7 @@ def _validate_reciprocal_game_margins(
     game_rows: list[sqlite3.Row],
     issues: list[ValidationIssue],
 ) -> None:
-    games_by_id: dict[tuple[str, str, str], list[NormalizedGameRow]] = defaultdict(list)
+    games_by_id: dict[tuple[str, str, str], list[NormalizedGameRecord]] = defaultdict(list)
 
     for row in game_rows:
         try:
@@ -412,45 +412,62 @@ def validate_team_history_table(
             issues.append(ValidationIssue("team_history", key, str(exc)))
 
 
-def _build_normalized_game_record(row: sqlite3.Row) -> NormalizedGameRow:
-    season = Season.parse(row["season"], row["season_type"])
-    team = Team.from_id(row["team_id"])
-    opponent_team = Team.from_id(row["opponent_team_id"])
+def _build_normalized_game_record(row: sqlite3.Row) -> NormalizedGameRecord:
+    season_id = cast(str, row["season"])
+    season_type = cast(str, row["season_type"])
+    team_id = cast(int, row["team_id"])
+    opponent_team_id = cast(int, row["opponent_team_id"])
+    game_id = cast(str, row["game_id"])
+    game_date = cast(str, row["game_date"])
+    source = cast(str, row["source"])
+    margin = cast(int | float, row["margin"])
+    is_home = cast(int, row["is_home"])
+    season = Season.parse(season_id, season_type)
+    team = Team.from_id(team_id)
+    opponent_team = Team.from_id(opponent_team_id)
     team.for_season(season)
     opponent_team.for_season(season)
-    validate_required_text(row["game_id"], "game_id")
-    validate_required_text(row["game_date"], "game_date")
-    validate_required_text(row["source"], "source")
-    if not math.isfinite(row["margin"]):
+    validate_required_text(game_id, "game_id")
+    validate_required_text(game_date, "game_date")
+    validate_required_text(source, "source")
+    if not math.isfinite(margin):
         raise ValueError("margin must be finite")
-    date.fromisoformat(row["game_date"])
-    return NormalizedGameRow(
-        game_id=row["game_id"],
-        game_date=row["game_date"],
+    date.fromisoformat(game_date)
+    return NormalizedGameRecord(
+        game_id=game_id,
+        game_date=game_date,
         season=season,
         team=team,
         opponent_team=opponent_team,
-        is_home=bool(row["is_home"]),
-        margin=row["margin"],
-        source=row["source"],
+        is_home=bool(is_home),
+        margin=float(margin),
+        source=source,
     )
 
 
 def _build_normalized_game_player_record(
     row: sqlite3.Row,
-) -> tuple[NormalizedGamePlayerRow, Season]:
-    season = Season.parse(row["season"], row["season_type"])
-    team = Team.from_id(row["team_id"])
-    validate_required_text(row["game_id"], "game_id")
+) -> tuple[NormalizedGamePlayerRecord, Season]:
+    season_id = cast(str, row["season"])
+    season_type = cast(str, row["season_type"])
+    team_id = cast(int, row["team_id"])
+    game_id = cast(str, row["game_id"])
+    player_id = cast(int, row["player_id"])
+    player_name = cast(str, row["player_name"])
+    appeared = cast(int, row["appeared"])
+    minutes = cast(float | None, row["minutes"])
+    season = Season.parse(season_id, season_type)
+    team = Team.from_id(team_id)
+    validate_required_text(game_id, "game_id")
     return (
-        NormalizedGamePlayerRow(
-            game_id=row["game_id"],
+        NormalizedGamePlayerRecord(
+            game_id=game_id,
             player=PlayerSummary(
-                player_id=row["player_id"],
-                player_name=row["player_name"],
+                player_id=player_id,
+                player_name=player_name,
             ),
-            appeared=bool(row["appeared"]),
-            minutes=row["minutes"],
+            appeared=bool(appeared),
+            minutes=minutes,
             team=team,
         ),
         season,
@@ -461,11 +478,13 @@ def _validate_normalized_scope_batch(
     *,
     team: Team,
     season: Season,
-    games: list[NormalizedGameRow],
-    game_players: list[NormalizedGamePlayerRow],
+    games: list[NormalizedGameRecord],
+    game_players: list[NormalizedGamePlayerRecord],
 ) -> None:
     game_keys: set[tuple[str, int]] = set()
-    players_by_game_key: dict[tuple[str, int], list[NormalizedGamePlayerRow]] = defaultdict(list)
+    players_by_game_key: dict[tuple[str, int], list[NormalizedGamePlayerRecord]] = defaultdict(
+        list
+    )
 
     for game in games:
         _validate_normalized_game_row(game, expected_team=team, expected_season=season)
@@ -510,7 +529,7 @@ def _validate_normalized_scope_batch(
 
 
 def _validate_normalized_game_row(
-    game: NormalizedGameRow,
+    game: NormalizedGameRecord,
     *,
     expected_team: Team,
     expected_season: Season,
@@ -547,7 +566,7 @@ def _validate_normalized_game_row(
 
 
 def _validate_normalized_game_player_row(
-    player: NormalizedGamePlayerRow,
+    player: NormalizedGamePlayerRecord,
     *,
     expected_team: Team,
 ) -> None:

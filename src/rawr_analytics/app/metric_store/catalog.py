@@ -4,9 +4,8 @@ from dataclasses import dataclass
 from typing import Any
 
 from rawr_analytics.data.game_cache import (
-    build_normalized_cache_fingerprint,
-    list_cache_load_rows,
-    list_cached_team_seasons,
+    list_cached_scopes,
+    load_cache_snapshot,
 )
 from rawr_analytics.data.metric_store import load_metric_scope_store_state
 from rawr_analytics.data.metric_store_scope import build_scope_key, build_team_filter
@@ -70,27 +69,20 @@ def require_current_metric_scope(
         raise ValueError("Metric store has not been built for the requested scope")
 
     catalog_row = state.catalog_row
-    cache_load_rows = [
-        row
-        for row in list_cache_load_rows()
-        if row.season.season_type.to_nba_format() == catalog_row.season_type
-    ]
-    if not cache_load_rows:
+    season_type = SeasonType.parse(catalog_row.season_type)
+    cache_snapshot = load_cache_snapshot(season_type)
+    if not cache_snapshot.entries:
         raise ValueError(
             "Normalized cache is empty for the requested scope season type. "
             "Rebuild ingest before using cached metrics."
         )
 
-    current_fingerprint = build_normalized_cache_fingerprint(
-        season_type=SeasonType.parse(catalog_row.season_type)
-    )
-    if state.snapshot_state.source_fingerprint != current_fingerprint:
+    if state.snapshot_state.source_fingerprint != cache_snapshot.fingerprint:
         raise ValueError(
             "Cached metric store is stale relative to normalized cache. "
             "Refresh the web metric store after ingest is rebuilt."
         )
 
-    season_type = SeasonType.parse(catalog_row.season_type)
     available_seasons = [
         Season.parse(season_id, season_type.to_nba_format())
         for season_id in catalog_row.available_season_ids
@@ -132,7 +124,7 @@ def _build_metric_options_catalog_from_cache(
 ) -> MetricStoreCatalog:
     cached_team_seasons = [
         team_season
-        for team_season in list_cached_team_seasons(teams=teams)
+        for team_season in list_cached_scopes(teams=teams)
         if team_season.season.season_type == season_type
     ]
     if not cached_team_seasons:
@@ -176,7 +168,7 @@ def _build_available_team_seasons(catalog: MetricStoreCatalog) -> dict[int, list
     available_team_ids = {team.team_id for team in catalog.availability.teams}
     available_season_ids = [season.id for season in catalog.availability.seasons]
     seasons_by_team_id: dict[int, set[str]] = {}
-    for team_season in list_cached_team_seasons():
+    for team_season in list_cached_scopes():
         if team_season.season.season_type != catalog.season_type:
             continue
         if team_season.team.team_id not in available_team_ids:
@@ -198,7 +190,7 @@ def _build_available_teams_by_season(catalog: MetricStoreCatalog) -> dict[str, l
     available_team_ids = {team.team_id for team in catalog.availability.teams}
     available_season_ids = [season.id for season in catalog.availability.seasons]
     teams_by_season: dict[str, set[int]] = {season_id: set() for season_id in available_season_ids}
-    for team_season in list_cached_team_seasons():
+    for team_season in list_cached_scopes():
         if team_season.season.season_type != catalog.season_type:
             continue
         if team_season.season.id not in teams_by_season:

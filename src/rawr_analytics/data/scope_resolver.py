@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from rawr_analytics.data.game_cache import list_cached_team_seasons
+from rawr_analytics.data.game_cache import list_cached_scopes
 from rawr_analytics.shared.scope import TeamSeasonScope
 from rawr_analytics.shared.season import Season, SeasonType
 from rawr_analytics.shared.team import Team
@@ -33,7 +33,7 @@ def resolve_team_seasons(
     season_type = season_type or SeasonType.REGULAR
 
     cached_team_seasons = [
-        scope for scope in list_cached_team_seasons() if scope.season.season_type == season_type
+        scope for scope in list_cached_scopes() if scope.season.season_type == season_type
     ]
 
     if normalized_seasons is None and normalized_teams is None:

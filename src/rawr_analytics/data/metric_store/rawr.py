@@ -1,6 +1,8 @@
 from __future__ import annotations
 
+import sqlite3
 from dataclasses import dataclass
+from typing import cast
 
 from rawr_analytics.data._paths import METRIC_STORE_DB_PATH
 from rawr_analytics.data.metric_store.schema import connect, initialize_player_metrics_db
@@ -66,20 +68,21 @@ def load_rawr_player_season_value_rows(
     query += " ORDER BY season_id, coefficient DESC, player_name ASC"
     with connect(METRIC_STORE_DB_PATH) as connection:
         rows = connection.execute(query, params).fetchall()
-    return [
-        RawrPlayerSeasonValueRow(
-            snapshot_id=row["snapshot_id"],
-            metric_id=row["metric_id"],
-            scope_key=row["scope_key"],
-            team_filter=row["team_filter"],
-            season_type=row["season_type"],
-            season_id=row["season_id"],
-            player_id=row["player_id"],
-            player_name=row["player_name"],
-            games=row["games"],
-            coefficient=row["coefficient"],
-            average_minutes=row["average_minutes"],
-            total_minutes=row["total_minutes"],
-        )
-        for row in rows
-    ]
+    return [_build_rawr_player_season_value_row(row) for row in rows]
+
+
+def _build_rawr_player_season_value_row(row: sqlite3.Row) -> RawrPlayerSeasonValueRow:
+    return RawrPlayerSeasonValueRow(
+        snapshot_id=cast(int | None, row["snapshot_id"]),
+        metric_id=cast(str, row["metric_id"]),
+        scope_key=cast(str, row["scope_key"]),
+        team_filter=cast(str, row["team_filter"]),
+        season_type=cast(str, row["season_type"]),
+        season_id=cast(str, row["season_id"]),
+        player_id=cast(int, row["player_id"]),
+        player_name=cast(str, row["player_name"]),
+        games=cast(int, row["games"]),
+        coefficient=cast(float, row["coefficient"]),
+        average_minutes=cast(float | None, row["average_minutes"]),
+        total_minutes=cast(float | None, row["total_minutes"]),
+    )

@@ -3,6 +3,7 @@ from __future__ import annotations
 import sqlite3
 from collections import defaultdict
 from dataclasses import dataclass
+from typing import cast
 
 from rawr_analytics.data._validation_issue import ValidationIssue
 from rawr_analytics.data.metric_store._catalog import MetricScopeCatalogRow
@@ -90,12 +91,12 @@ def _audit_metric_player_season_values_table(
         """
     ).fetchall()
     metadata_by_key = {
-        (row["metric_id"], row["scope_key"]): MetricStoreAuditMetadata(
+        (cast(str, row["metric_id"]), cast(str, row["scope_key"])): MetricStoreAuditMetadata(
             source_table="metric_snapshot",
-            snapshot_id=row["snapshot_id"],
-            build_version=row["build_version"],
-            source_fingerprint=row["source_fingerprint"],
-            row_count=row["row_count"],
+            snapshot_id=cast(int | None, row["snapshot_id"]),
+            build_version=cast(str, row["build_version"]),
+            source_fingerprint=cast(str, row["source_fingerprint"]),
+            row_count=cast(int, row["row_count"]),
         )
         for row in snapshot_rows
     }
@@ -189,22 +190,7 @@ def _load_rawr_metric_rows(
         """
     ).fetchall()
     for row in rows:
-        groups[(row["metric_id"], row["scope_key"])].append(
-            RawrPlayerSeasonValueRow(
-                snapshot_id=row["snapshot_id"],
-                metric_id=row["metric_id"],
-                scope_key=row["scope_key"],
-                team_filter=row["team_filter"],
-                season_type=row["season_type"],
-                season_id=row["season_id"],
-                player_id=row["player_id"],
-                player_name=row["player_name"],
-                games=row["games"],
-                coefficient=row["coefficient"],
-                average_minutes=row["average_minutes"],
-                total_minutes=row["total_minutes"],
-            )
-        )
+        groups[_metric_scope_key(row)].append(_build_rawr_metric_row(row))
 
 
 def _load_wowy_metric_rows(
@@ -237,26 +223,7 @@ def _load_wowy_metric_rows(
         """
     ).fetchall()
     for row in rows:
-        groups[(row["metric_id"], row["scope_key"])].append(
-            WowyPlayerSeasonValueRow(
-                snapshot_id=row["snapshot_id"],
-                metric_id=row["metric_id"],
-                scope_key=row["scope_key"],
-                team_filter=row["team_filter"],
-                season_type=row["season_type"],
-                season_id=row["season_id"],
-                player_id=row["player_id"],
-                player_name=row["player_name"],
-                value=row["value"],
-                games_with=row["games_with"],
-                games_without=row["games_without"],
-                avg_margin_with=row["avg_margin_with"],
-                avg_margin_without=row["avg_margin_without"],
-                average_minutes=row["average_minutes"],
-                total_minutes=row["total_minutes"],
-                raw_wowy_score=row["raw_wowy_score"],
-            )
-        )
+        groups[_metric_scope_key(row)].append(_build_wowy_metric_row(row))
 
 
 def _audit_metric_scope_catalog_table(
@@ -304,24 +271,24 @@ def _audit_metric_scope_catalog_table(
     ).fetchall()
     scope_season_rows: dict[tuple[str, str], list[str]] = defaultdict(list)
     for row in season_rows:
-        scope_season_rows[(row["metric_id"], row["scope_key"])].append(row["season_id"])
+        scope_season_rows[_metric_scope_key(row)].append(cast(str, row["season_id"]))
     scope_team_rows: dict[tuple[str, str], list[int]] = defaultdict(list)
     for row in team_rows:
-        scope_team_rows[(row["metric_id"], row["scope_key"])].append(row["team_id"])
+        scope_team_rows[_metric_scope_key(row)].append(cast(int, row["team_id"]))
     catalog_rows: dict[tuple[str, str], MetricScopeCatalogRow] = {}
     for row in rows:
-        key = (row["metric_id"], row["scope_key"])
+        key = _metric_scope_key(row)
         catalog_row = MetricScopeCatalogRow(
-            metric_id=row["metric_id"],
-            scope_key=row["scope_key"],
-            label=row["label"],
-            team_filter=row["team_filter"],
-            season_type=row["season_type"],
+            metric_id=cast(str, row["metric_id"]),
+            scope_key=cast(str, row["scope_key"]),
+            label=cast(str, row["label"]),
+            team_filter=cast(str, row["team_filter"]),
+            season_type=cast(str, row["season_type"]),
             available_season_ids=list(scope_season_rows.get(key, [])),
             available_team_ids=list(scope_team_rows.get(key, [])),
-            full_span_start_season_id=row["full_span_start_season_id"],
-            full_span_end_season_id=row["full_span_end_season_id"],
-            updated_at=row["updated_at"],
+            full_span_start_season_id=cast(str | None, row["full_span_start_season_id"]),
+            full_span_end_season_id=cast(str | None, row["full_span_end_season_id"]),
+            updated_at=cast(str, row["updated_at"]),
         )
         catalog_rows[key] = catalog_row
         try:
@@ -378,29 +345,9 @@ def _audit_metric_full_span_tables(
     point_groups: dict[tuple[str, str], list[MetricFullSpanPointRow]] = defaultdict(list)
 
     for row in series_rows:
-        series_groups[(row["metric_id"], row["scope_key"])].append(
-            MetricFullSpanSeriesRow(
-                snapshot_id=row["snapshot_id"],
-                metric_id=row["metric_id"],
-                scope_key=row["scope_key"],
-                player_id=row["player_id"],
-                player_name=row["player_name"],
-                span_average_value=row["span_average_value"],
-                season_count=row["season_count"],
-                rank_order=row["rank_order"],
-            )
-        )
+        series_groups[_metric_scope_key(row)].append(_build_full_span_series_row(row))
     for row in point_rows:
-        point_groups[(row["metric_id"], row["scope_key"])].append(
-            MetricFullSpanPointRow(
-                snapshot_id=row["snapshot_id"],
-                metric_id=row["metric_id"],
-                scope_key=row["scope_key"],
-                player_id=row["player_id"],
-                season_id=row["season_id"],
-                value=row["value"],
-            )
-        )
+        point_groups[_metric_scope_key(row)].append(_build_full_span_point_row(row))
 
     groups: dict[
         tuple[str, str], tuple[list[MetricFullSpanSeriesRow], list[MetricFullSpanPointRow]]
@@ -434,3 +381,69 @@ def _load_json_list(value: str) -> list[str]:
     loaded = json.loads(value)
     assert isinstance(loaded, list), "metric store JSON column must decode to a list"
     return loaded
+
+
+def _metric_scope_key(row: sqlite3.Row) -> tuple[str, str]:
+    return (cast(str, row["metric_id"]), cast(str, row["scope_key"]))
+
+
+def _build_rawr_metric_row(row: sqlite3.Row) -> RawrPlayerSeasonValueRow:
+    return RawrPlayerSeasonValueRow(
+        snapshot_id=cast(int | None, row["snapshot_id"]),
+        metric_id=cast(str, row["metric_id"]),
+        scope_key=cast(str, row["scope_key"]),
+        team_filter=cast(str, row["team_filter"]),
+        season_type=cast(str, row["season_type"]),
+        season_id=cast(str, row["season_id"]),
+        player_id=cast(int, row["player_id"]),
+        player_name=cast(str, row["player_name"]),
+        games=cast(int, row["games"]),
+        coefficient=cast(float, row["coefficient"]),
+        average_minutes=cast(float | None, row["average_minutes"]),
+        total_minutes=cast(float | None, row["total_minutes"]),
+    )
+
+
+def _build_wowy_metric_row(row: sqlite3.Row) -> WowyPlayerSeasonValueRow:
+    return WowyPlayerSeasonValueRow(
+        snapshot_id=cast(int | None, row["snapshot_id"]),
+        metric_id=cast(str, row["metric_id"]),
+        scope_key=cast(str, row["scope_key"]),
+        team_filter=cast(str, row["team_filter"]),
+        season_type=cast(str, row["season_type"]),
+        season_id=cast(str, row["season_id"]),
+        player_id=cast(int, row["player_id"]),
+        player_name=cast(str, row["player_name"]),
+        value=cast(float | None, row["value"]),
+        games_with=cast(int, row["games_with"]),
+        games_without=cast(int, row["games_without"]),
+        avg_margin_with=cast(float | None, row["avg_margin_with"]),
+        avg_margin_without=cast(float | None, row["avg_margin_without"]),
+        average_minutes=cast(float | None, row["average_minutes"]),
+        total_minutes=cast(float | None, row["total_minutes"]),
+        raw_wowy_score=cast(float | None, row["raw_wowy_score"]),
+    )
+
+
+def _build_full_span_series_row(row: sqlite3.Row) -> MetricFullSpanSeriesRow:
+    return MetricFullSpanSeriesRow(
+        snapshot_id=cast(int | None, row["snapshot_id"]),
+        metric_id=cast(str, row["metric_id"]),
+        scope_key=cast(str, row["scope_key"]),
+        player_id=cast(int, row["player_id"]),
+        player_name=cast(str, row["player_name"]),
+        span_average_value=cast(float, row["span_average_value"]),
+        season_count=cast(int, row["season_count"]),
+        rank_order=cast(int, row["rank_order"]),
+    )
+
+
+def _build_full_span_point_row(row: sqlite3.Row) -> MetricFullSpanPointRow:
+    return MetricFullSpanPointRow(
+        snapshot_id=cast(int | None, row["snapshot_id"]),
+        metric_id=cast(str, row["metric_id"]),
+        scope_key=cast(str, row["scope_key"]),
+        player_id=cast(int, row["player_id"]),
+        season_id=cast(str, row["season_id"]),
+        value=cast(float, row["value"]),
+    )

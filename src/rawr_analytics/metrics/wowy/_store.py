@@ -1,7 +1,6 @@
 from __future__ import annotations
 
-from rawr_analytics.data.game_cache import load_normalized_scope_records_from_db
-from rawr_analytics.data.game_cache.rows import NormalizedGamePlayerRow, NormalizedGameRow
+from rawr_analytics.data.game_cache import load_team_season_cache
 from rawr_analytics.data.metric_store.wowy import WowyPlayerSeasonValueRow
 from rawr_analytics.data.scope_resolver import resolve_team_seasons
 from rawr_analytics.metrics.constants import Metric
@@ -31,11 +30,7 @@ def load_wowy_records(
     team_seasons = resolve_team_seasons(teams, seasons, season_type=season_type)
     if not team_seasons:
         raise ValueError("No cached data matched the requested scope")
-
-    game_rows, game_player_rows = load_normalized_scope_records_from_db(team_seasons)
-    games = [_build_normalized_game_record(row) for row in game_rows]
-    game_players = [_build_normalized_game_player_record(row) for row in game_player_rows]
-    return games, game_players
+    return load_team_season_cache(team_seasons)
 
 
 def build_wowy_store_rows(
@@ -128,29 +123,4 @@ def _build_wowy_store_row(
         average_minutes=record.minutes.average_minutes,
         total_minutes=record.minutes.total_minutes,
         raw_wowy_score=record.result.value if include_raw_wowy_score else None,
-    )
-
-
-def _build_normalized_game_record(row: NormalizedGameRow) -> NormalizedGameRecord:
-    return NormalizedGameRecord(
-        game_id=row.game_id,
-        game_date=row.game_date,
-        season=row.season,
-        team=row.team,
-        opponent_team=row.opponent_team,
-        is_home=row.is_home,
-        margin=row.margin,
-        source=row.source,
-    )
-
-
-def _build_normalized_game_player_record(
-    row: NormalizedGamePlayerRow,
-) -> NormalizedGamePlayerRecord:
-    return NormalizedGamePlayerRecord(
-        game_id=row.game_id,
-        player=row.player,
-        appeared=row.appeared,
-        minutes=row.minutes,
-        team=row.team,
     )

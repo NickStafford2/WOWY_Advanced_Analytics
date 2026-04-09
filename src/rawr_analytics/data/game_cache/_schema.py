@@ -202,6 +202,3 @@ def connect(db_path: Path) -> sqlite3.Connection:
     connection = sqlite3.connect(db_path)
     connection.row_factory = sqlite3.Row
     return connection
-
-
-__all__ = ["initialize_game_cache_db"]

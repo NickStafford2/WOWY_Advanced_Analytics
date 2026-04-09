@@ -6,11 +6,12 @@ import sqlite3
 from collections import Counter, defaultdict
 from collections.abc import Callable
 from dataclasses import dataclass
+from typing import cast
 
 from rawr_analytics.data._paths import METRIC_STORE_DB_PATH, NORMALIZED_CACHE_DB_PATH
 from rawr_analytics.data._validation_issue import ValidationIssue
-from rawr_analytics.data.game_cache import (
-    initialize_game_cache_db,
+from rawr_analytics.data.game_cache._schema import initialize_game_cache_db
+from rawr_analytics.data.game_cache._validation import (
     validate_normalized_cache_loads_table,
     validate_normalized_cache_relations,
     validate_normalized_game_players_table,
@@ -540,20 +541,30 @@ def _load_normalized_cache_state() -> tuple[dict[str, int], dict[str, str]]:
     counts: dict[str, int] = Counter()
     digests: dict[str, hashlib._Hash] = {}
     for row in rows:
-        season_type = row["season_type"]
+        team_id = cast(int, row["team_id"])
+        season_id = cast(str, row["season"])
+        season_type = cast(str, row["season_type"])
+        source_path = cast(str, row["source_path"])
+        source_snapshot = cast(str, row["source_snapshot"])
+        source_kind = cast(str, row["source_kind"])
+        build_version = cast(str, row["build_version"])
+        games_row_count = cast(int, row["games_row_count"])
+        game_players_row_count = cast(int, row["game_players_row_count"])
+        expected_games_row_count = cast(int | None, row["expected_games_row_count"])
+        skipped_games_row_count = cast(int | None, row["skipped_games_row_count"])
         counts[season_type] += 1
         digest = digests.setdefault(season_type, hashlib.sha256())
-        digest.update(str(row["team_id"]).encode("utf-8"))
-        digest.update(row["season"].encode("utf-8"))
-        digest.update(row["season_type"].encode("utf-8"))
-        digest.update(row["source_path"].encode("utf-8"))
-        digest.update(row["source_snapshot"].encode("utf-8"))
-        digest.update(row["source_kind"].encode("utf-8"))
-        digest.update(row["build_version"].encode("utf-8"))
-        digest.update(str(row["games_row_count"]).encode("utf-8"))
-        digest.update(str(row["game_players_row_count"]).encode("utf-8"))
-        digest.update(str(row["expected_games_row_count"]).encode("utf-8"))
-        digest.update(str(row["skipped_games_row_count"]).encode("utf-8"))
+        digest.update(str(team_id).encode("utf-8"))
+        digest.update(season_id.encode("utf-8"))
+        digest.update(season_type.encode("utf-8"))
+        digest.update(source_path.encode("utf-8"))
+        digest.update(source_snapshot.encode("utf-8"))
+        digest.update(source_kind.encode("utf-8"))
+        digest.update(build_version.encode("utf-8"))
+        digest.update(str(games_row_count).encode("utf-8"))
+        digest.update(str(game_players_row_count).encode("utf-8"))
+        digest.update(str(expected_games_row_count).encode("utf-8"))
+        digest.update(str(skipped_games_row_count).encode("utf-8"))
     return (
         counts,
         {season_type: digest.hexdigest() for season_type, digest in digests.items()},

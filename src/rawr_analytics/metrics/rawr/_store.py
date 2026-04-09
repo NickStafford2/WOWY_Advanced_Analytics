@@ -5,10 +5,9 @@ from collections.abc import Callable
 from dataclasses import dataclass
 
 from rawr_analytics.data.game_cache import (
-    list_cache_load_rows,
-    load_normalized_scope_records_from_db,
+    load_cache_snapshot,
+    load_team_season_cache,
 )
-from rawr_analytics.data.game_cache.rows import NormalizedGamePlayerRow, NormalizedGameRow
 from rawr_analytics.data.metric_store.rawr import RawrPlayerSeasonValueRow
 from rawr_analytics.data.scope_resolver import resolve_team_seasons
 from rawr_analytics.metrics.rawr.defaults import (
@@ -187,8 +186,7 @@ def _load_rawr_season_records(
     if not requested_team_seasons:
         return None
 
-    game_rows, _ = load_normalized_scope_records_from_db(requested_team_seasons)
-    games = [_build_normalized_game_record(row) for row in game_rows]
+    games, _ = load_team_season_cache(requested_team_seasons)
     team_scopes = list(requested_team_seasons)
     seen_scope_keys = {
         (
@@ -205,9 +203,7 @@ def _load_rawr_season_records(
             continue
         team_scopes.append(scope)
         seen_scope_keys.add(scope_key)
-    game_rows, game_player_rows = load_normalized_scope_records_from_db(team_scopes)
-    games = [_build_normalized_game_record(row) for row in game_rows]
-    game_players = [_build_normalized_game_player_record(row) for row in game_player_rows]
+    games, game_players = load_team_season_cache(team_scopes)
     games, game_players = _filter_rawr_scope(
         games,
         game_players,
@@ -265,33 +261,6 @@ def _exclude_rawr_games_without_positive_minutes(
     filtered_games = [game for game in games if game.game_id in valid_game_ids]
     filtered_game_players = [player for player in game_players if player.game_id in valid_game_ids]
     return filtered_games, filtered_game_players
-
-
-def _build_normalized_game_record(row: NormalizedGameRow) -> NormalizedGameRecord:
-    return NormalizedGameRecord(
-        game_id=row.game_id,
-        game_date=row.game_date,
-        season=row.season,
-        team=row.team,
-        opponent_team=row.opponent_team,
-        is_home=row.is_home,
-        margin=row.margin,
-        source=row.source,
-    )
-
-
-def _build_normalized_game_player_record(
-    row: NormalizedGamePlayerRow,
-) -> NormalizedGamePlayerRecord:
-    return NormalizedGamePlayerRecord(
-        game_id=row.game_id,
-        player=row.player,
-        appeared=row.appeared,
-        minutes=row.minutes,
-        team=row.team,
-    )
-
-
 def _list_expected_rawr_teams_for_season(season: str) -> list[str]:
     resolved_season = Season.parse(season, "Regular Season")
     return [
@@ -336,13 +305,15 @@ def _summarize_rawr_cache_seasons(
     seasons: list[str],
     season_type: SeasonType,
 ) -> dict[str, _SeasonCacheSummary]:
+    snapshot = load_cache_snapshot(season_type)
     season_filter = set(seasons)
     summaries: dict[str, _SeasonCacheSummary] = {}
-    for row in list_cache_load_rows():
-        if row.season.id not in season_filter or row.season.season_type != season_type:
+    for entry in snapshot.entries:
+        scope = entry.scope
+        if scope.season.id not in season_filter:
             continue
         summary = summaries.setdefault(
-            row.season.id,
+            scope.season.id,
             _SeasonCacheSummary(
                 team_labels=set(),
                 incomplete_metadata_teams=set(),
@@ -350,15 +321,15 @@ def _summarize_rawr_cache_seasons(
                 skipped_teams={},
             ),
         )
-        team_label = row.team.abbreviation(season=row.season)
+        team_label = scope.team.abbreviation(season=scope.season)
         summary.team_labels.add(team_label)
-        if row.expected_games_row_count is None or row.skipped_games_row_count is None:
+        if entry.expected_games_count is None or entry.skipped_games_count is None:
             summary.incomplete_metadata_teams.add(team_label)
             continue
-        if row.games_row_count != row.expected_games_row_count:
-            summary.partial_teams[team_label] = (row.games_row_count, row.expected_games_row_count)
-        if row.skipped_games_row_count != 0:
-            summary.skipped_teams[team_label] = row.skipped_games_row_count
+        if entry.games_count != entry.expected_games_count:
+            summary.partial_teams[team_label] = (entry.games_count, entry.expected_games_count)
+        if entry.skipped_games_count != 0:
+            summary.skipped_teams[team_label] = entry.skipped_games_count
     return summaries
 
 
@@ -392,6 +363,5 @@ def _build_rawr_warning_messages(*, season: str, summary: _SeasonCacheSummary) -
 
 
 def _list_cached_rawr_seasons_for_type(season_type: SeasonType) -> list[str]:
-    return sorted(
-        {row.season.id for row in list_cache_load_rows() if row.season.season_type == season_type}
-    )
+    snapshot = load_cache_snapshot(season_type)
+    return sorted({entry.scope.season.id for entry in snapshot.entries})
