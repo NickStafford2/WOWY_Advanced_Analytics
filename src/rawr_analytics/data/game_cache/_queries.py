@@ -141,6 +141,7 @@ def replace_team_season_cache_rows(
 def select_normalized_game_rows(
     connection: sqlite3.Connection,
     *,
+    team_seasons: Sequence[TeamSeasonScope] | None = None,
     teams: Sequence[Team] | None = None,
     seasons: Sequence[Season] | None = None,
     game_ids: Sequence[str] | None = None,
@@ -160,6 +161,11 @@ def select_normalized_game_rows(
         WHERE 1 = 1
     """
     params: list[object] = []
+    query, params = _append_team_season_filter(
+        query,
+        params,
+        team_seasons=team_seasons,
+    )
     query, params = _append_in_filter(
         query,
         params,
@@ -186,6 +192,7 @@ def select_normalized_game_rows(
 def select_normalized_game_player_rows(
     connection: sqlite3.Connection,
     *,
+    team_seasons: Sequence[TeamSeasonScope] | None = None,
     teams: Sequence[Team] | None = None,
     seasons: Sequence[Season] | None = None,
     game_ids: Sequence[str] | None = None,
@@ -204,6 +211,11 @@ def select_normalized_game_player_rows(
         WHERE 1 = 1
     """
     params: list[object] = []
+    query, params = _append_team_season_filter(
+        query,
+        params,
+        team_seasons=team_seasons,
+    )
     query, params = _append_in_filter(
         query,
         params,
@@ -231,6 +243,7 @@ def select_cache_load_rows(
     connection: sqlite3.Connection,
     *,
     seasons: Sequence[Season] | None = None,
+    season_types: Sequence[str] | None = None,
     teams: Sequence[Team] | None = None,
 ) -> list[sqlite3.Row]:
     query = """
@@ -267,10 +280,42 @@ def select_cache_load_rows(
         query,
         params,
         column="season_type",
-        values=sorted({season.season_type.to_nba_format() for season in seasons or []}),
+        values=sorted(
+            {
+                *[season.season_type.to_nba_format() for season in seasons or []],
+                *list(season_types or []),
+            }
+        ),
     )
     query += " ORDER BY season, season_type, team_id"
     return connection.execute(query, params).fetchall()
+
+
+def _append_team_season_filter(
+    query: str,
+    params: list[object],
+    *,
+    team_seasons: Sequence[TeamSeasonScope] | None,
+) -> tuple[str, list[object]]:
+    if not team_seasons:
+        return query, params
+    scope_keys = sorted(
+        {
+            (
+                scope.team.team_id,
+                scope.season.id,
+                scope.season.season_type.to_nba_format(),
+            )
+            for scope in team_seasons
+        },
+        key=lambda item: (item[1], item[2], item[0]),
+    )
+    query += " AND ("
+    query += " OR ".join("(team_id = ? AND season = ? AND season_type = ?)" for _ in scope_keys)
+    query += ")"
+    for team_id, season_id, season_type in scope_keys:
+        params.extend((team_id, season_id, season_type))
+    return query, params
 
 
 def _append_in_filter(

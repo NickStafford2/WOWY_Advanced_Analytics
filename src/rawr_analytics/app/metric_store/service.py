@@ -187,7 +187,7 @@ def _prepare_metric_store_refresh(
         )
 
     cached_team_seasons = cache_snapshot.scopes
-    available_teams = [Team.from_id(scope.team.team_id) for scope in cached_team_seasons]
+    available_teams = [scope.team for scope in cached_team_seasons]
     unique_available_teams = normalize_teams(available_teams) or []
     team_scopes: list[list[Team] | None] = [None]
     if include_team_scopes:

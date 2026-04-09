@@ -1,15 +1,14 @@
 from __future__ import annotations
 
-import hashlib
 import re
 import sqlite3
 from collections import Counter, defaultdict
 from collections.abc import Callable
 from dataclasses import dataclass
-from typing import cast
 
 from rawr_analytics.data._paths import METRIC_STORE_DB_PATH, NORMALIZED_CACHE_DB_PATH
 from rawr_analytics.data._validation_issue import ValidationIssue
+from rawr_analytics.data.game_cache import load_cache_snapshot
 from rawr_analytics.data.game_cache._schema import initialize_game_cache_db
 from rawr_analytics.data.game_cache._validation import (
     validate_normalized_cache_loads_table,
@@ -29,6 +28,7 @@ from rawr_analytics.data.metric_store.full_span import (
 )
 from rawr_analytics.data.metric_store.rawr import RawrPlayerSeasonValueRow
 from rawr_analytics.data.metric_store.wowy import WowyPlayerSeasonValueRow
+from rawr_analytics.shared.season import SeasonType
 
 
 @dataclass(frozen=True)
@@ -518,54 +518,11 @@ def _metric_group_season_type(
 
 
 def _load_normalized_cache_state() -> tuple[dict[str, int], dict[str, str]]:
-    with sqlite3.connect(NORMALIZED_CACHE_DB_PATH) as connection:
-        connection.row_factory = sqlite3.Row
-        rows = connection.execute(
-            """
-        SELECT
-            load.team_id,
-            load.season,
-            load.season_type,
-            load.source_path,
-            load.source_snapshot,
-            load.source_kind,
-            load.build_version,
-            load.games_row_count,
-            load.game_players_row_count,
-            load.expected_games_row_count,
-            load.skipped_games_row_count
-        FROM normalized_cache_loads AS load
-        ORDER BY load.season_type, load.season, load.team_id
-        """
-        ).fetchall()
-    counts: dict[str, int] = Counter()
-    digests: dict[str, hashlib._Hash] = {}
-    for row in rows:
-        team_id = cast(int, row["team_id"])
-        season_id = cast(str, row["season"])
-        season_type = cast(str, row["season_type"])
-        source_path = cast(str, row["source_path"])
-        source_snapshot = cast(str, row["source_snapshot"])
-        source_kind = cast(str, row["source_kind"])
-        build_version = cast(str, row["build_version"])
-        games_row_count = cast(int, row["games_row_count"])
-        game_players_row_count = cast(int, row["game_players_row_count"])
-        expected_games_row_count = cast(int | None, row["expected_games_row_count"])
-        skipped_games_row_count = cast(int | None, row["skipped_games_row_count"])
-        counts[season_type] += 1
-        digest = digests.setdefault(season_type, hashlib.sha256())
-        digest.update(str(team_id).encode("utf-8"))
-        digest.update(season_id.encode("utf-8"))
-        digest.update(season_type.encode("utf-8"))
-        digest.update(source_path.encode("utf-8"))
-        digest.update(source_snapshot.encode("utf-8"))
-        digest.update(source_kind.encode("utf-8"))
-        digest.update(build_version.encode("utf-8"))
-        digest.update(str(games_row_count).encode("utf-8"))
-        digest.update(str(game_players_row_count).encode("utf-8"))
-        digest.update(str(expected_games_row_count).encode("utf-8"))
-        digest.update(str(skipped_games_row_count).encode("utf-8"))
-    return (
-        counts,
-        {season_type: digest.hexdigest() for season_type, digest in digests.items()},
-    )
+    counts: dict[str, int] = {}
+    fingerprints: dict[str, str] = {}
+    for season_type in SeasonType:
+        snapshot = load_cache_snapshot(season_type)
+        counts[season_type.value] = len(snapshot.entries)
+        if snapshot.entries:
+            fingerprints[season_type.value] = snapshot.fingerprint
+    return counts, fingerprints

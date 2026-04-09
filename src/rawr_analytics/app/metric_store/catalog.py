@@ -4,12 +4,12 @@ from dataclasses import dataclass
 from typing import Any
 
 from rawr_analytics.data.game_cache import (
-    list_cached_scopes,
     load_cache_snapshot,
 )
 from rawr_analytics.data.metric_store import load_metric_scope_store_state
 from rawr_analytics.data.metric_store_scope import build_scope_key, build_team_filter
 from rawr_analytics.metrics.constants import Metric
+from rawr_analytics.shared.scope import TeamSeasonScope
 from rawr_analytics.shared.season import Season, SeasonType
 from rawr_analytics.shared.team import Team
 
@@ -49,12 +49,16 @@ def build_metric_options_payload(
         teams=teams,
         season_type=season_type,
     )
+    cached_team_seasons = load_cache_snapshot(catalog.season_type).scopes
     return {
         "metric": metric.value,
         "available_teams": [team.current.abbreviation for team in catalog.availability.teams],
-        "team_options": _build_team_options(catalog),
+        "team_options": _build_team_options(catalog, cached_team_seasons),
         "available_seasons": [season.id for season in catalog.availability.seasons],
-        "available_teams_by_season": _build_available_teams_by_season(catalog),
+        "available_teams_by_season": _build_available_teams_by_season(
+            catalog,
+            cached_team_seasons,
+        ),
         "filters": filters,
     }
 
@@ -122,11 +126,14 @@ def _build_metric_options_catalog_from_cache(
     teams: list[Team] | None,
     season_type: SeasonType,
 ) -> MetricStoreCatalog:
-    cached_team_seasons = [
-        team_season
-        for team_season in list_cached_scopes(teams=teams)
-        if team_season.season.season_type == season_type
-    ]
+    cached_team_seasons = load_cache_snapshot(season_type).scopes
+    if teams is not None:
+        team_ids = {team.team_id for team in teams}
+        cached_team_seasons = [
+            team_season
+            for team_season in cached_team_seasons
+            if team_season.team.team_id in team_ids
+        ]
     if not cached_team_seasons:
         raise ValueError(
             "Normalized cache is empty for the requested scope season type. "
@@ -152,8 +159,11 @@ def _build_metric_options_catalog_from_cache(
     )
 
 
-def _build_team_options(catalog: MetricStoreCatalog) -> list[dict[str, Any]]:
-    seasons_by_team = _build_available_team_seasons(catalog)
+def _build_team_options(
+    catalog: MetricStoreCatalog,
+    cached_team_seasons: list[TeamSeasonScope],
+) -> list[dict[str, Any]]:
+    seasons_by_team = _build_available_team_seasons(catalog, cached_team_seasons)
     return [
         {
             "team_id": team.team_id,
@@ -164,13 +174,14 @@ def _build_team_options(catalog: MetricStoreCatalog) -> list[dict[str, Any]]:
     ]
 
 
-def _build_available_team_seasons(catalog: MetricStoreCatalog) -> dict[int, list[Season]]:
+def _build_available_team_seasons(
+    catalog: MetricStoreCatalog,
+    cached_team_seasons: list[TeamSeasonScope],
+) -> dict[int, list[Season]]:
     available_team_ids = {team.team_id for team in catalog.availability.teams}
     available_season_ids = [season.id for season in catalog.availability.seasons]
     seasons_by_team_id: dict[int, set[str]] = {}
-    for team_season in list_cached_scopes():
-        if team_season.season.season_type != catalog.season_type:
-            continue
+    for team_season in cached_team_seasons:
         if team_season.team.team_id not in available_team_ids:
             continue
         if team_season.season.id not in available_season_ids:
@@ -186,13 +197,14 @@ def _build_available_team_seasons(catalog: MetricStoreCatalog) -> dict[int, list
     }
 
 
-def _build_available_teams_by_season(catalog: MetricStoreCatalog) -> dict[str, list[str]]:
+def _build_available_teams_by_season(
+    catalog: MetricStoreCatalog,
+    cached_team_seasons: list[TeamSeasonScope],
+) -> dict[str, list[str]]:
     available_team_ids = {team.team_id for team in catalog.availability.teams}
     available_season_ids = [season.id for season in catalog.availability.seasons]
     teams_by_season: dict[str, set[int]] = {season_id: set() for season_id in available_season_ids}
-    for team_season in list_cached_scopes():
-        if team_season.season.season_type != catalog.season_type:
-            continue
+    for team_season in cached_team_seasons:
         if team_season.season.id not in teams_by_season:
             continue
         if team_season.team.team_id not in available_team_ids:

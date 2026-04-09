@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from rawr_analytics.data.game_cache import list_cached_scopes
+from rawr_analytics.data.game_cache import list_cached_scopes, load_cache_snapshot
 from rawr_analytics.shared.scope import TeamSeasonScope
 from rawr_analytics.shared.season import Season, SeasonType
 from rawr_analytics.shared.team import Team
@@ -32,27 +32,31 @@ def resolve_team_seasons(
     )
     season_type = season_type or SeasonType.REGULAR
 
-    cached_team_seasons = [
-        scope for scope in list_cached_scopes() if scope.season.season_type == season_type
-    ]
-
     if normalized_seasons is None and normalized_teams is None:
-        return cached_team_seasons
+        return load_cache_snapshot(season_type).scopes
 
     if normalized_seasons is None:
         normalized_team_ids = {team.team_id for team in normalized_teams or []}
+        cached_team_seasons = load_cache_snapshot(season_type).scopes
         return [
             scope
             for scope in cached_team_seasons
             if normalized_teams is None or scope.team.team_id in normalized_team_ids
         ]
 
+    requested_seasons = [
+        Season.parse(season.id, season_type.to_nba_format()) for season in normalized_seasons
+    ]
+    cached_team_seasons = list_cached_scopes(
+        teams=normalized_teams,
+        seasons=requested_seasons,
+    )
+
     scopes_by_key: dict[tuple[int, str], TeamSeasonScope] = {
         (scope.team.team_id, scope.season.id): scope for scope in cached_team_seasons
     }
     resolved: list[TeamSeasonScope] = []
-    for requested_season in normalized_seasons:
-        season = Season.parse(requested_season.id, season_type.to_nba_format())
+    for season in requested_seasons:
         if normalized_teams is not None:
             for team in normalized_teams:
                 resolved.append(
