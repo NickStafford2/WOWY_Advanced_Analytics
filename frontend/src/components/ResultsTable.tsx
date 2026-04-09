@@ -45,16 +45,16 @@ export function ResultsTable({
               >
                 <td className="border-b border-[color:var(--panel-border-soft)] px-4 py-[14px] text-right whitespace-nowrap">{row.rank}</td>
                 <td className="border-b border-[color:var(--panel-border-soft)] px-4 py-[14px] text-left whitespace-nowrap">{row.player_name}</td>
-                <td className="border-b border-[color:var(--panel-border-soft)] px-4 py-[14px] text-right whitespace-nowrap">{formatNumber(row.span_average_value, 2)}</td>
+                <td className="border-b border-[color:var(--panel-border-soft)] px-4 py-[14px] text-right whitespace-nowrap">{formatSignedNumber(row.span_average_value, 2)}</td>
                 <td className="border-b border-[color:var(--panel-border-soft)] px-4 py-[14px] text-right whitespace-nowrap">{row.season_count}</td>
                 <td className="border-b border-[color:var(--panel-border-soft)] px-4 py-[14px] text-right whitespace-nowrap">{formatNumber(row.average_minutes, 1)}</td>
-                <td className="border-b border-[color:var(--panel-border-soft)] px-4 py-[14px] text-right whitespace-nowrap">{formatNumber(row.total_minutes, 1)}</td>
+                <td className="border-b border-[color:var(--panel-border-soft)] px-4 py-[14px] text-right whitespace-nowrap">{formatRoundedInteger(row.total_minutes)}</td>
                 {isWowyStyleMetric ? (
                   <>
                     <td className="border-b border-[color:var(--panel-border-soft)] px-4 py-[14px] text-right whitespace-nowrap">{formatInteger(row.games_with)}</td>
                     <td className="border-b border-[color:var(--panel-border-soft)] px-4 py-[14px] text-right whitespace-nowrap">{formatInteger(row.games_without)}</td>
-                    <td className="border-b border-[color:var(--panel-border-soft)] px-4 py-[14px] text-right whitespace-nowrap">{formatNumber(row.avg_margin_with, 2)}</td>
-                    <td className="border-b border-[color:var(--panel-border-soft)] px-4 py-[14px] text-right whitespace-nowrap">{formatNumber(row.avg_margin_without, 2)}</td>
+                    <td className="border-b border-[color:var(--panel-border-soft)] px-4 py-[14px] text-right whitespace-nowrap">{formatSignedNumber(row.avg_margin_with, 2)}</td>
+                    <td className="border-b border-[color:var(--panel-border-soft)] px-4 py-[14px] text-right whitespace-nowrap">{formatSignedNumber(row.avg_margin_without, 2)}</td>
                   </>
                 ) : (
                   <td className="border-b border-[color:var(--panel-border-soft)] px-4 py-[14px] text-right whitespace-nowrap">{formatInteger(row.games)}</td>
@@ -80,6 +80,18 @@ function formatNumber(value: number | null | undefined, decimals: number): strin
   return value == null ? '—' : value.toFixed(decimals)
 }
 
+function formatSignedNumber(value: number | null | undefined, decimals: number): string {
+  if (value == null) {
+    return '—'
+  }
+
+  return `${value >= 0 ? '+' : ''}${value.toFixed(decimals)}`
+}
+
 function formatInteger(value: number | null | undefined): string {
   return value == null ? '—' : String(value)
+}
+
+function formatRoundedInteger(value: number | null | undefined): string {
+  return value == null ? '—' : String(Math.round(value))
 }
