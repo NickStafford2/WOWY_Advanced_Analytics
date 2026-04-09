@@ -38,9 +38,6 @@ Don't waste a ton of tokens.
 I renamed a bunch of tests and moved them to approximately where i think they should go.
 old tests are written as old_test_something.py
 
-# Next test to evaluate
-todo
-
 # What you must do
 Select one old test file.
 Read it.
