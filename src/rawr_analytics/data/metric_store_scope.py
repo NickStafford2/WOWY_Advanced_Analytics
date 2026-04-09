@@ -17,8 +17,8 @@ __all__ = [
 
 
 def build_team_filter(teams: list[Team] | None) -> str:
-    normalized_team_ids = to_team_ids(normalize_teams(teams)) or []
-    return ",".join(str(team_id) for team_id in normalized_team_ids)
+    team_ids = to_team_ids(teams) or []
+    return ",".join(str(team_id) for team_id in team_ids)
 
 
 def build_scope_key(
