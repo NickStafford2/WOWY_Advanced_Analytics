@@ -4,6 +4,7 @@ import type { SpanSeries } from '../app/leaderboardApiTypes'
 const CHART_WIDTH = 920
 const CHART_HEIGHT = 420
 const CHART_PADDING = { top: 24, right: 28, bottom: 48, left: 60 }
+const MAX_X_AXIS_LABELS = 8
 const SERIES_COLORS = [
   '#e76f51',
   '#2a9d8f',
@@ -215,6 +216,7 @@ function buildChartModel(series: SpanSeries[]): ChartModel {
   const chartInnerWidth = CHART_WIDTH - CHART_PADDING.left - CHART_PADDING.right
   const chartInnerHeight = CHART_HEIGHT - CHART_PADDING.top - CHART_PADDING.bottom
   const seasonIndex = new Map(seasons.map((season, index) => [season, index]))
+  const tickIndexes = visibleTickIndexes(seasons.length)
 
   const xForSeason = (index: number) =>
     CHART_PADDING.left +
@@ -229,9 +231,9 @@ function buildChartModel(series: SpanSeries[]): ChartModel {
       y: yForScore(value),
       isZero: value === 0,
     })),
-    xTicks: seasons.map((season, index) => ({
-      season,
-      label: startYearLabel(season),
+    xTicks: tickIndexes.map((index) => ({
+      season: seasons[index] ?? '',
+      label: startYearLabel(seasons[index] ?? ''),
       x: xForSeason(index),
     })),
     series: series.map<ChartSeries>((entry) => {
@@ -314,6 +316,26 @@ function toSegments(points: ChartPoint[]): string[] {
 
 function uniqueSeasons(series: SpanSeries[]): string[] {
   return [...new Set(series.flatMap((entry) => entry.points.map((point) => point.season)))]
+}
+
+function visibleTickIndexes(seasonCount: number): number[] {
+  if (seasonCount <= MAX_X_AXIS_LABELS) {
+    return Array.from({ length: seasonCount }, (_, index) => index)
+  }
+
+  const tickIndexes: number[] = []
+  const step = Math.ceil((seasonCount - 1) / (MAX_X_AXIS_LABELS - 1))
+
+  for (let index = 0; index < seasonCount; index += step) {
+    tickIndexes.push(index)
+  }
+
+  const lastIndex = seasonCount - 1
+  if (tickIndexes.at(-1) !== lastIndex) {
+    tickIndexes.push(lastIndex)
+  }
+
+  return tickIndexes
 }
 
 function startYearLabel(season: string): string {

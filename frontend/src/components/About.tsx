@@ -3,9 +3,6 @@ import { AboutRawr } from './AboutRawr'
 import { AboutWowy } from './AboutWowy'
 import { AboutWowyShrunk } from './AboutWowyShrunk'
 
-const PANEL_LABEL_CLASS_NAME =
-  'm-0 text-xs font-bold tracking-[0.16em] uppercase text-[color:var(--accent-warm)]'
-
 type AboutProps = {
   metric: MetricId
 }
