@@ -10,6 +10,7 @@ function App() {
     metric,
     metricDescription,
     metricLabel,
+    metricStandsFor,
     filters,
     availableSeasons,
     availableTeams,
@@ -36,6 +37,7 @@ function App() {
         <AppHeader
           metric={metric}
           metricLabel={metricLabel}
+          metricStandsFor={metricStandsFor}
           metricDescription={metricDescription}
           theme={theme}
           onMetricChange={setMetric}

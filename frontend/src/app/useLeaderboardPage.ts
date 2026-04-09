@@ -12,7 +12,7 @@ import {
   toggleSelectedTeam,
   updateLeaderboardFilterValue,
 } from './leaderboardQuery'
-import { metricDescriptionFor, metricLabelFor } from './metric'
+import { metricDescriptionFor, metricLabelFor, metricStandsFor } from './metric'
 import type { LeaderboardPayload, TeamOption } from './leaderboardApiTypes'
 import type { LeaderboardFilters, LeaderboardNumberField } from './leaderboardTypes'
 import type { MetricId } from './metricTypes'
@@ -22,6 +22,7 @@ type UseLeaderboardPageValue = {
   metric: MetricId
   metricDescription: string
   metricLabel: string
+  metricStandsFor: string
   filters: LeaderboardFilters
   availableSeasons: string[]
   availableTeams: TeamOption[]
@@ -62,6 +63,7 @@ export function useLeaderboardPage(): UseLeaderboardPageValue {
 
   const metricLabel = metricLabelFor(metric)
   const metricDescription = metricDescriptionFor(metric)
+  const metricStandFor = metricStandsFor(metric)
   const availableTeams = useMemo(
     () =>
       buildAvailableTeamsForSeasonSpan({
@@ -244,6 +246,7 @@ export function useLeaderboardPage(): UseLeaderboardPageValue {
     metric,
     metricDescription,
     metricLabel,
+    metricStandsFor: metricStandFor,
     filters,
     availableSeasons,
     availableTeams,

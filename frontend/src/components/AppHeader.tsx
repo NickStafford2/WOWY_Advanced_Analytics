@@ -11,6 +11,7 @@ const ACTIVE_SEGMENT_CLASS_NAME =
 type AppHeaderProps = {
   metric: MetricId
   metricLabel: string
+  metricStandsFor: string
   metricDescription: string
   theme: ThemeMode
   onMetricChange: (metric: MetricId) => void
@@ -20,6 +21,7 @@ type AppHeaderProps = {
 export function AppHeader({
   metric,
   metricLabel,
+  metricStandsFor,
   metricDescription,
   theme,
   onMetricChange,
@@ -30,10 +32,12 @@ export function AppHeader({
   return (
     <header className="grid gap-6 rounded-[28px] border border-[color:var(--panel-border)] [background:var(--hero-background)] p-7 shadow-[var(--panel-shadow)] min-[1121px]:grid-cols-[minmax(0,1.35fr)_minmax(320px,0.95fr)] max-sm:rounded-[22px] max-sm:p-[18px]">
       <div>
-        <p className={PANEL_LABEL_CLASS_NAME}>RAWR Analytics</p>
         <h1 className="mt-3 mb-[10px] text-[clamp(2.75rem,6vw,5rem)] leading-[0.92] tracking-[-0.05em]">
           {metricLabel}
         </h1>
+        <p className="m-0 text-[1rem] font-semibold tracking-[0.01em] text-[color:var(--text-secondary)]">
+          {metricStandsFor}
+        </p>
         <p className="m-0 max-w-[68ch] text-[1.02rem] leading-[1.65] text-[color:var(--text-muted)]">
           {metricDescription}
         </p>
@@ -51,6 +55,7 @@ export function AppHeader({
               <button
                 key={option.id}
                 type="button"
+                title={option.standsFor}
                 className={`${CONTROL_BUTTON_CLASS_NAME} flex-1 basis-[140px] ${metric === option.id ? ACTIVE_SEGMENT_CLASS_NAME : ''}`}
                 onClick={() => onMetricChange(option.id)}
               >
