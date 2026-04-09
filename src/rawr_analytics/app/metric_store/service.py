@@ -35,7 +35,7 @@ from rawr_analytics.metrics.wowy import (
 )
 from rawr_analytics.shared.scope import TeamSeasonScope
 from rawr_analytics.shared.season import SeasonType
-from rawr_analytics.shared.team import Team, normalize_teams, to_team_ids
+from rawr_analytics.shared.team import Team, normalize_teams, to_normalized_team_ids
 
 MetricStoreRefreshEventFn = Callable[["MetricStoreRefreshProgressEvent"], None]
 DEFAULT_RAWR_RIDGE_ALPHA = 10.0
@@ -333,7 +333,7 @@ def _build_refresh_scope(
     cached_team_seasons: list[TeamSeasonScope],
 ) -> _MetricStoreRefreshScope:
     normalized_teams = normalize_teams(teams)
-    normalized_team_ids = to_team_ids(normalized_teams)
+    normalized_team_ids = to_normalized_team_ids(normalized_teams)
     team_filter = build_team_filter(normalized_teams)
     scope_key = build_scope_key(season_type=season_type, team_filter=team_filter)
     return _MetricStoreRefreshScope(

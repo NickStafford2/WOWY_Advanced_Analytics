@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from rawr_analytics.shared.season import Season, SeasonType
-from rawr_analytics.shared.team import Team, canonicalize_metric_team_filter, to_team_ids
+from rawr_analytics.shared.team import Team, canonicalize_metric_team_filter, to_normalized_team_ids
 
 __all__ = [
     "build_scope_key",
@@ -12,7 +12,7 @@ __all__ = [
 
 
 def build_team_filter(teams: list[Team] | None) -> str:
-    team_ids = to_team_ids(teams) or []
+    team_ids = to_normalized_team_ids(teams) or []
     return ",".join(str(team_id) for team_id in team_ids)
 
 
