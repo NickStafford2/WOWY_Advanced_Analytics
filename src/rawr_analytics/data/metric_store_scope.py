@@ -1,12 +1,7 @@
 from __future__ import annotations
 
 from rawr_analytics.shared.season import Season, SeasonType
-from rawr_analytics.shared.team import (
-    Team,
-    canonicalize_metric_team_filter,
-    normalize_teams,
-    to_team_ids,
-)
+from rawr_analytics.shared.team import Team, canonicalize_metric_team_filter, to_team_ids
 
 __all__ = [
     "build_scope_key",
