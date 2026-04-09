@@ -20,6 +20,15 @@ const WOWY_EQUATION = String.raw`\begin{aligned}
 \operatorname{wowy\_score} &= \operatorname{avg\_with} - \operatorname{avg\_without}
 \end{aligned}`
 
+const WOWY_EQUATION_WHERE = [
+  { label: 'avg_with', description: 'the team\'s average margin in filtered games where the player appeared.' },
+  { label: 'avg_without', description: 'the team\'s average margin in filtered games where the player did not appear.' },
+  { label: 'games_with', description: 'the number of filtered games with the player in the sample.' },
+  { label: 'games_without', description: 'the number of filtered games without the player in the sample.' },
+  { label: 'margin_g', description: 'the team margin recorded in game g.' },
+  { label: 'wowy_score', description: 'the displayed difference between the two sample means.' },
+] as const
+
 export function AboutWowy() {
   return (
     <section className={SECTION_CLASS_NAME}>
@@ -79,7 +88,7 @@ export function AboutWowy() {
           both sides of the split directly through <strong>With</strong>, <strong>Without</strong>,
           <strong>Avg With</strong>, and <strong>Avg Without</strong>.
         </p>
-        <MathBlock equation={WOWY_EQUATION} />
+        <MathBlock equation={WOWY_EQUATION} whereItems={WOWY_EQUATION_WHERE} />
         <p className="mt-3 leading-[1.65] text-[color:var(--text-muted)]">
           That is why <strong>Min games with</strong> and <strong>Min games without</strong> matter
           so much. WOWY is only as stable as the two sample means it is subtracting.

@@ -21,6 +21,16 @@ const SHRINKAGE_EQUATION = String.raw`\begin{aligned}
 \operatorname{shrunk\_score} &= \operatorname{wowy\_score} \cdot \operatorname{shrinkage\_factor}
 \end{aligned}`
 
+const SHRINKAGE_EQUATION_WHERE = [
+  { label: 'wowy_score', description: 'the raw WOWY difference before shrinkage.' },
+  { label: 'effective_games', description: 'the harmonic-mean sample size from the with and without counts.' },
+  { label: 'games_with', description: 'the count of filtered games with the player.' },
+  { label: 'games_without', description: 'the count of filtered games without the player.' },
+  { label: 'prior_games', description: 'the prior sample size that pulls unstable scores toward zero.' },
+  { label: 'shrinkage_factor', description: 'the weight kept on the raw WOWY score after shrinkage.' },
+  { label: 'shrunk_score', description: 'the displayed WOWY Shrinkage value.' },
+] as const
+
 export function AboutWowyShrunk() {
   return (
     <section className={SECTION_CLASS_NAME}>
@@ -81,7 +91,7 @@ export function AboutWowyShrunk() {
           to their observed value and compresses weaker estimates toward a safer middle. Here that
           compression depends on the harmonic mean of the with and without game counts.
         </p>
-        <MathBlock equation={SHRINKAGE_EQUATION} />
+        <MathBlock equation={SHRINKAGE_EQUATION} whereItems={SHRINKAGE_EQUATION_WHERE} />
         <p className="mt-3 leading-[1.65] text-[color:var(--text-muted)]">
           In the current backend, <code>prior_games</code> defaults to <code>10</code>. If the with
           and without samples are both large, the shrinkage factor moves toward <code>1</code> and

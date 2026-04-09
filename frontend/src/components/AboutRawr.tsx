@@ -29,6 +29,47 @@ const FIT_EQUATION = String.raw`\begin{aligned}
 &+ \operatorname{ridge\_alpha} \sum_t \delta_t^2
 \end{aligned}`
 
+const MODEL_EQUATION_WHERE = [
+  { label: 'i', description: 'indexes one filtered game observation.' },
+  {
+    label: String.raw`\operatorname{predicted\_margin}_i`,
+    description: 'the model-predicted team margin for observation i.',
+  },
+  { label: '\\beta_0', description: 'the intercept term.' },
+  {
+    label: String.raw`\beta_{\text{home}} \cdot \operatorname{home\_sign}_i`,
+    description: 'the home-court adjustment for observation i.',
+  },
+  { label: 'x_{i,p}', description: 'player p\'s feature weight in observation i.' },
+  { label: '\\beta_p', description: 'the fitted coefficient for player p.' },
+  {
+    label: String.raw`\gamma_{\operatorname{team}(i)}`,
+    description: 'the team-season effect for the team in observation i.',
+  },
+  {
+    label: String.raw`\delta_{\operatorname{opponent}(i)}`,
+    description: 'the opponent team-season effect in observation i.',
+  },
+] as const
+
+const FIT_EQUATION_WHERE = [
+  { label: '\\hat{\\beta}', description: 'the full set of fitted coefficients.' },
+  {
+    label: String.raw`\operatorname{margin}_i`,
+    description: 'the observed team margin in observation i.',
+  },
+  {
+    label: String.raw`\operatorname{predicted\_margin}_i`,
+    description: 'the model prediction for observation i.',
+  },
+  { label: 'p', description: 'ranges over player terms.' },
+  { label: 't', description: 'ranges over team-season and opponent terms.' },
+  {
+    label: String.raw`\operatorname{ridge\_alpha}`,
+    description: 'the shrinkage strength applied to the coefficients.',
+  },
+] as const
+
 export function AboutRawr() {
   return (
     <section className={SECTION_CLASS_NAME}>
@@ -91,13 +132,13 @@ export function AboutRawr() {
           close as possible to observed outcomes. Here the observed outcome is game margin, and the
           model uses player terms plus a few context terms to explain it.
         </p>
-        <MathBlock equation={MODEL_EQUATION} />
+        <MathBlock equation={MODEL_EQUATION} whereItems={MODEL_EQUATION_WHERE} />
         <p className="mt-3 leading-[1.65] text-[color:var(--text-muted)]">
           The fit uses ridge regression, which means ordinary squared-error fitting plus a penalty
           that pulls coefficients back toward zero. That penalty is what keeps the model from
           chasing every noisy fluctuation in the sample.
         </p>
-        <MathBlock equation={FIT_EQUATION} />
+        <MathBlock equation={FIT_EQUATION} whereItems={FIT_EQUATION_WHERE} />
         <p className="mt-3 leading-[1.65] text-[color:var(--text-muted)]">
           Bigger <strong>Ridge alpha</strong> means more shrinkage toward zero and therefore more
           conservative player estimates. Smaller values let the model follow the sample more
