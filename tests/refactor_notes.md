@@ -33,6 +33,8 @@ Test contracts and observable behavior. Ignore implementation details.
 
 # Notes
 Don't waste a ton of tokens.
+Don't simply rewrite the old tests. Think logically and decide what should be tested. Consider boundaries. 
+Look out for code smells and fix them when writing new tests. 
 
 # Current Status
 I renamed a bunch of tests and moved them to approximately where i think they should go.
