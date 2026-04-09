@@ -21,12 +21,30 @@ const WOWY_EQUATION = String.raw`\begin{aligned}
 \end{aligned}`
 
 const WOWY_EQUATION_WHERE = [
-  { label: 'avg_with', description: 'the team\'s average margin in filtered games where the player appeared.' },
-  { label: 'avg_without', description: 'the team\'s average margin in filtered games where the player did not appear.' },
-  { label: 'games_with', description: 'the number of filtered games with the player in the sample.' },
-  { label: 'games_without', description: 'the number of filtered games without the player in the sample.' },
-  { label: 'margin_g', description: 'the team margin recorded in game g.' },
-  { label: 'wowy_score', description: 'the displayed difference between the two sample means.' },
+  {
+    label: String.raw`\operatorname{avg\_with}`,
+    description: 'the team\'s average margin in filtered games where the player appeared.',
+  },
+  {
+    label: String.raw`\operatorname{avg\_without}`,
+    description: 'the team\'s average margin in filtered games where the player did not appear.',
+  },
+  {
+    label: String.raw`\operatorname{games\_with}`,
+    description: 'the number of filtered games with the player in the sample.',
+  },
+  {
+    label: String.raw`\operatorname{games\_without}`,
+    description: 'the number of filtered games without the player in the sample.',
+  },
+  {
+    label: String.raw`\operatorname{margin}_g`,
+    description: 'the team margin recorded in game g.',
+  },
+  {
+    label: String.raw`\operatorname{wowy\_score}`,
+    description: 'the displayed difference between the two sample means.',
+  },
 ] as const
 
 export function AboutWowy() {

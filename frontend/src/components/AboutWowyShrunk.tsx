@@ -22,13 +22,34 @@ const SHRINKAGE_EQUATION = String.raw`\begin{aligned}
 \end{aligned}`
 
 const SHRINKAGE_EQUATION_WHERE = [
-  { label: 'wowy_score', description: 'the raw WOWY difference before shrinkage.' },
-  { label: 'effective_games', description: 'the harmonic-mean sample size from the with and without counts.' },
-  { label: 'games_with', description: 'the count of filtered games with the player.' },
-  { label: 'games_without', description: 'the count of filtered games without the player.' },
-  { label: 'prior_games', description: 'the prior sample size that pulls unstable scores toward zero.' },
-  { label: 'shrinkage_factor', description: 'the weight kept on the raw WOWY score after shrinkage.' },
-  { label: 'shrunk_score', description: 'the displayed WOWY Shrinkage value.' },
+  {
+    label: String.raw`\operatorname{wowy\_score}`,
+    description: 'the raw WOWY difference before shrinkage.',
+  },
+  {
+    label: String.raw`\operatorname{effective\_games}`,
+    description: 'the harmonic-mean sample size from the with and without counts.',
+  },
+  {
+    label: String.raw`\operatorname{games\_with}`,
+    description: 'the count of filtered games with the player.',
+  },
+  {
+    label: String.raw`\operatorname{games\_without}`,
+    description: 'the count of filtered games without the player.',
+  },
+  {
+    label: String.raw`\operatorname{prior\_games}`,
+    description: 'the prior sample size that pulls unstable scores toward zero.',
+  },
+  {
+    label: String.raw`\operatorname{shrinkage\_factor}`,
+    description: 'the weight kept on the raw WOWY score after shrinkage.',
+  },
+  {
+    label: String.raw`\operatorname{shrunk\_score}`,
+    description: 'the displayed WOWY Shrinkage value.',
+  },
 ] as const
 
 export function AboutWowyShrunk() {
