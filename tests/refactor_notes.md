@@ -44,5 +44,6 @@ old tests are written as old_test_something.py
 Select one old test file.
 Read it.
 Decide if it is worth keeping. If it is not, stop execution and tell me to delete it. 
+Look at the related src code. determine if there is a well defined boundary or if it needs rewritten. 
 If it is worth keeping, tell me what i should do with it. 
 
