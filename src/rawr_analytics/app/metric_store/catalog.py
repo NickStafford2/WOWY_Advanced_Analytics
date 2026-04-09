@@ -49,6 +49,10 @@ class _MetricCatalogOptionsContext:
     availability_index: _MetricCatalogAvailabilityIndex
 
 
+class _MetricStoreCatalogUnavailableError(Exception):
+    pass
+
+
 _MISSING_SCOPE_ERROR = "Metric store has not been built for the requested scope"
 _EMPTY_CACHE_ERROR = (
     "Normalized cache is empty for the requested scope season type. "
@@ -95,10 +99,13 @@ def require_current_metric_scope(
     metric: Metric,
     scope_key: str,
 ) -> MetricStoreCatalog:
-    return _load_current_metric_scope_catalog(
-        metric=metric,
-        scope_key=scope_key,
-    )
+    try:
+        return _load_current_metric_scope_catalog(
+            metric=metric,
+            scope_key=scope_key,
+        )
+    except _MetricStoreCatalogUnavailableError as err:
+        raise ValueError(str(err)) from None
 
 
 def load_metric_scope_catalog_for_options(
@@ -136,7 +143,7 @@ def _load_metric_options_context(
             teams=catalog.availability.teams,
             seasons=catalog.availability.seasons,
         )
-    except ValueError:
+    except _MetricStoreCatalogUnavailableError:
         filtered_cached_team_seasons = _filter_cached_team_seasons(
             cache_snapshot.scopes,
             team_ids=None if teams is None else {team.team_id for team in teams},
@@ -162,7 +169,7 @@ def _load_current_metric_scope_catalog(
 ) -> MetricStoreCatalog:
     state = load_metric_scope_store_state(metric.value, scope_key)
     if state is None:
-        raise ValueError(_MISSING_SCOPE_ERROR)
+        raise _MetricStoreCatalogUnavailableError(_MISSING_SCOPE_ERROR)
 
     catalog = _build_metric_store_catalog_from_store_row(
         season_type=SeasonType.parse(state.catalog_row.season_type),
@@ -176,7 +183,7 @@ def _load_current_metric_scope_catalog(
         "metric store season type must match the normalized cache snapshot"
     )
     if state.snapshot_state.source_fingerprint != resolved_snapshot.fingerprint:
-        raise ValueError(_STALE_SCOPE_ERROR)
+        raise _MetricStoreCatalogUnavailableError(_STALE_SCOPE_ERROR)
     return catalog
 
 
