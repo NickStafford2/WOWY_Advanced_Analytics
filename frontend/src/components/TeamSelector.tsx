@@ -28,10 +28,10 @@ export function TeamSelector({
 
   return (
     <div className="flex flex-col gap-[10px]">
-      <div className="flex">
+      <div className="flex w-full">
         <button
           type="button"
-          className={`flex min-h-9 cursor-pointer items-center justify-center rounded-xl border px-[18px] text-center font-bold ${allTeamsSelected ? SELECTED_CLASS_NAME : UNSELECTED_BUTTON_CLASS_NAME} disabled:cursor-not-allowed disabled:opacity-60`}
+          className={`flex min-h-9 w-full cursor-pointer items-center justify-center rounded-xl border px-[18px] text-center font-bold ${allTeamsSelected ? SELECTED_CLASS_NAME : UNSELECTED_BUTTON_CLASS_NAME} disabled:cursor-not-allowed disabled:opacity-60`}
           onClick={onSelectAll}
           disabled={disabled || !hasAvailableTeams}
         >
