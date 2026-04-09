@@ -25,7 +25,6 @@ type UseLeaderboardPageValue = {
   filters: LeaderboardFilters
   availableSeasons: string[]
   availableTeams: TeamOption[]
-  teamCount: number
   leaderboard: LeaderboardPayload | null
   exportUrl: string
   error: string
@@ -248,7 +247,6 @@ export function useLeaderboardPage(): UseLeaderboardPageValue {
     filters,
     availableSeasons,
     availableTeams,
-    teamCount: teamOptions.length,
     leaderboard,
     exportUrl,
     error,

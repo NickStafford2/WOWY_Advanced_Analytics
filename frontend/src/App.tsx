@@ -13,7 +13,6 @@ function App() {
     filters,
     availableSeasons,
     availableTeams,
-    teamCount,
     leaderboard,
     exportUrl,
     error,
@@ -38,8 +37,6 @@ function App() {
           metric={metric}
           metricLabel={metricLabel}
           metricDescription={metricDescription}
-          seasonCount={availableSeasons.length}
-          teamCount={teamCount}
           theme={theme}
           onMetricChange={setMetric}
           onThemeToggle={toggleTheme}

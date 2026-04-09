@@ -3,8 +3,6 @@ import type { MetricId, ThemeMode } from '../app/metricTypes'
 
 const PANEL_LABEL_CLASS_NAME =
   'm-0 text-xs font-bold tracking-[0.16em] uppercase text-[color:var(--accent-warm)]'
-const META_BADGE_CLASS_NAME =
-  'rounded-full bg-[var(--meta-background)] px-3 py-[9px] text-[0.88rem] font-semibold text-[color:var(--meta-text)]'
 const CONTROL_BUTTON_CLASS_NAME =
   'min-h-[42px] cursor-pointer rounded-[14px] border border-[color:var(--control-border)] bg-[var(--input-background)] px-[14px] font-bold text-[color:var(--text-secondary)] transition-colors disabled:cursor-not-allowed disabled:opacity-60'
 const ACTIVE_SEGMENT_CLASS_NAME =
@@ -14,8 +12,6 @@ type AppHeaderProps = {
   metric: MetricId
   metricLabel: string
   metricDescription: string
-  seasonCount: number
-  teamCount: number
   theme: ThemeMode
   onMetricChange: (metric: MetricId) => void
   onThemeToggle: () => void
@@ -25,8 +21,6 @@ export function AppHeader({
   metric,
   metricLabel,
   metricDescription,
-  seasonCount,
-  teamCount,
   theme,
   onMetricChange,
   onThemeToggle,
@@ -43,10 +37,6 @@ export function AppHeader({
         <p className="m-0 max-w-[68ch] text-[1.02rem] leading-[1.65] text-[color:var(--text-muted)]">
           {metricDescription}
         </p>
-        <div className="mt-[18px] flex flex-wrap gap-[10px]" aria-label="Dataset summary">
-          <span className={META_BADGE_CLASS_NAME}>{seasonCount || 'No'} seasons loaded</span>
-          <span className={META_BADGE_CLASS_NAME}>{teamCount || 'No'} teams in scope</span>
-        </div>
       </div>
 
       <div className="flex flex-col gap-[14px] min-[1121px]:max-w-[30rem] min-[1121px]:justify-self-end max-[1120px]:order-first">
