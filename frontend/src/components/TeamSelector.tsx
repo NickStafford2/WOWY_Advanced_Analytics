@@ -40,13 +40,13 @@ export function TeamSelector({
       </div>
 
       {hasAvailableTeams ? (
-        <div className="grid grid-cols-[repeat(auto-fit,minmax(56px,1fr))] gap-2">
+        <div className="grid grid-cols-[repeat(auto-fit,minmax(46px,1fr))] gap-1">
           {availableTeams.map((team) => {
             const isSelected = allTeamsSelected || selectedTeamIds.includes(team.team_id)
             return (
               <label
                 key={team.team_id}
-                className={`relative flex min-h-9 items-center justify-center rounded-xl border px-[10px] text-center ${isSelected ? SELECTED_CLASS_NAME : UNSELECTED_CHIP_CLASS_NAME} ${disabled ? 'cursor-not-allowed opacity-60' : 'cursor-pointer'}`}
+                className={`relative flex min-h-6 items-center justify-center rounded-xl border px-[10px] text-center ${isSelected ? SELECTED_CLASS_NAME : UNSELECTED_CHIP_CLASS_NAME} ${disabled ? 'cursor-not-allowed opacity-60' : 'cursor-pointer'}`}
               >
                 <input
                   className="pointer-events-none absolute opacity-0"

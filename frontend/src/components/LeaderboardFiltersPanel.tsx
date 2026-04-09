@@ -80,8 +80,8 @@ export function LeaderboardFiltersPanel({
         </div>
       </div>
 
-      <div className="flex flex-row gap-3">
-        <div>
+      <div className="flex flex-row flex-wrap items-start gap-4 max-sm:flex-col">
+        <div className="flex w-[11rem] flex-col gap-3">
           <label className="flex flex-col gap-1.5 text-[0.9rem] text-[color:var(--text-secondary)]">
             <span>Start season</span>
             <select
@@ -113,19 +113,20 @@ export function LeaderboardFiltersPanel({
               ))}
             </select>
           </label>
-
         </div>
 
-        <NumericField
-          label="Top players"
-          min="1"
-          max="100"
-          value={filters.topN}
-          disabled={isDisabled}
-          onChange={(value) => onNumberChange('topN', value)}
-        />
+        <div className="w-[9rem]">
+          <NumericField
+            label="Top players"
+            min="1"
+            max="100"
+            value={filters.topN}
+            disabled={isDisabled}
+            onChange={(value) => onNumberChange('topN', value)}
+          />
+        </div>
 
-        <div>
+        <div className="flex w-[11rem] flex-col gap-3">
           <NumericField
             label="Min average minutes"
             min="0"
@@ -145,34 +146,35 @@ export function LeaderboardFiltersPanel({
           />
         </div>
         {metricFields.map((field) => (
-          <NumericField
-            key={field.key}
-            label={field.label}
-            min="0"
-            step={field.step}
-            value={field.value}
-            disabled={isDisabled}
-            onChange={(value) => onNumberChange(field.key, value)}
-          />
+          <div key={field.key} className="w-[11rem]">
+            <NumericField
+              label={field.label}
+              min="0"
+              step={field.step}
+              value={field.value}
+              disabled={isDisabled}
+              onChange={(value) => onNumberChange(field.key, value)}
+            />
+          </div>
         ))}
+
+        <fieldset className="m-0 flex min-w-[18rem] flex-1 flex-col gap-3 border-0 p-0 max-sm:min-w-0 max-sm:w-full">
+          <legend className={SECTION_TITLE_CLASS_NAME}>Teams</legend>
+          <TeamSelector
+            availableTeams={availableTeams}
+            selectedTeamIds={filters.teamIds}
+            disabled={isDisabled}
+            onSelectAll={onSelectAllTeams}
+            onToggleTeam={onToggleTeam}
+          />
+
+          {!hasSelectedTeams ? (
+            <p className="m-0 leading-[1.55] text-[color:var(--text-muted)]">
+              No teams are available for the current season span.
+            </p>
+          ) : null}
+        </fieldset>
       </div>
-
-      <fieldset className="m-0 flex flex-col gap-3 border-0 p-0">
-        <legend className={SECTION_TITLE_CLASS_NAME}>Teams</legend>
-        <TeamSelector
-          availableTeams={availableTeams}
-          selectedTeamIds={filters.teamIds}
-          disabled={isDisabled}
-          onSelectAll={onSelectAllTeams}
-          onToggleTeam={onToggleTeam}
-        />
-
-        {!hasSelectedTeams ? (
-          <p className="m-0 leading-[1.55] text-[color:var(--text-muted)]">
-            No teams are available for the current season span.
-          </p>
-        ) : null}
-      </fieldset>
 
       <div className="mt-auto">
         <button
