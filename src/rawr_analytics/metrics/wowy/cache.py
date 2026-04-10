@@ -1,8 +1,6 @@
 from __future__ import annotations
 
 from rawr_analytics.data.game_cache.store import list_cached_scopes, load_team_season_cache
-
-# from rawr_analytics.data.scope_resolver import resolve_team_seasons
 from rawr_analytics.shared.game import NormalizedGamePlayerRecord, NormalizedGameRecord
 from rawr_analytics.shared.scope import TeamSeasonScope
 from rawr_analytics.shared.season import Season
@@ -13,7 +11,6 @@ def load_wowy_records(
     *,
     teams: list[Team],
     seasons: list[Season],
-    # season_type: SeasonType,
 ) -> tuple[list[NormalizedGameRecord], list[NormalizedGamePlayerRecord]]:
     assert seasons, "WOWY record loading requires a non-empty season list"
     assert teams, "WOWY record loading requires a non-empty team list"

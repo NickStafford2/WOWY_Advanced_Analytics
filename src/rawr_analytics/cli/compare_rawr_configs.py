@@ -140,7 +140,6 @@ def main(argv: list[str] | None = None) -> int:
     results = compare_rawr_configs(
         train_seasons=train_seasons,
         holdout_season=holdout_season,
-        season_type=season_type,
         aggregation=args.aggregation,
         teams=teams,
         rawr_ridge_values=rawr_ridge_values,

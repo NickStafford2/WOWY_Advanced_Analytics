@@ -6,22 +6,17 @@ from rawr_analytics.metrics.wowy.calculate.records import (
     WowyPlayerSeasonRecord,
     prepare_wowy_player_season_records,
 )
-from rawr_analytics.shared.season import Season, SeasonType
+from rawr_analytics.shared.season import Season
 from rawr_analytics.shared.team import Team
 
 
 def build_wowy_refresh_records(
     *,
-    season_type: SeasonType,
     seasons: list[Season],
-    teams: list[Team] | None,
+    teams: list[Team],
 ) -> list[WowyPlayerSeasonRecord]:
     assert seasons, "WOWY refresh record builds require explicit non-empty seasons"
-    games, game_players = load_wowy_records(
-        teams=teams,
-        seasons=seasons,
-        season_type=season_type,
-    )
+    games, game_players = load_wowy_records(teams=teams, seasons=seasons)
     season_inputs = build_wowy_season_inputs(games=games, game_players=game_players)
     return prepare_wowy_player_season_records(
         season_inputs=season_inputs,

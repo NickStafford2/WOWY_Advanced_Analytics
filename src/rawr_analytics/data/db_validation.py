@@ -8,7 +8,6 @@ from dataclasses import dataclass
 
 from rawr_analytics.data._paths import METRIC_STORE_DB_PATH, NORMALIZED_CACHE_DB_PATH
 from rawr_analytics.data._validation_issue import ValidationIssue
-from rawr_analytics.data.game_cache.store import load_cache_snapshot
 from rawr_analytics.data.game_cache._schema import initialize_game_cache_db
 from rawr_analytics.data.game_cache._validation import (
     validate_normalized_cache_loads_table,
@@ -16,6 +15,7 @@ from rawr_analytics.data.game_cache._validation import (
     validate_normalized_game_players_table,
     validate_normalized_games_table,
 )
+from rawr_analytics.data.game_cache.store import load_cache_snapshot
 from rawr_analytics.data.metric_store import (
     audit_metric_store_tables,
     initialize_player_metrics_db,
@@ -521,7 +521,7 @@ def _load_normalized_cache_state() -> tuple[dict[str, int], dict[str, str]]:
     counts: dict[str, int] = {}
     fingerprints: dict[str, str] = {}
     for season_type in SeasonType:
-        snapshot = load_cache_snapshot(season_type)
+        snapshot = load_cache_snapshot()
         counts[season_type.value] = len(snapshot.entries)
         if snapshot.entries:
             fingerprints[season_type.value] = snapshot.fingerprint

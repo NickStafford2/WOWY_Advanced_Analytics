@@ -1,5 +1,3 @@
-from __future__ import annotations
-
 from collections.abc import Callable
 from dataclasses import dataclass
 
@@ -62,6 +60,14 @@ class RefreshMetricStoreResult:
 
 
 @dataclass(frozen=True)
+class _MetricStoreRefreshScope:
+    teams: list[Team]
+    scope_key: str
+    scope_label: str
+    catalog: MetricScopeCatalog
+
+
+@dataclass(frozen=True)
 class _MetricStoreRefreshPlan:
     build_version: str
     source_fingerprint: str
@@ -69,14 +75,6 @@ class _MetricStoreRefreshPlan:
     failure_message: str | None = None
     available_teams: list[Team] | None = None
     scopes: list[_MetricStoreRefreshScope] | None = None
-
-
-@dataclass(frozen=True)
-class _MetricStoreRefreshScope:
-    teams: list[Team] | None
-    scope_key: str
-    scope_label: str
-    catalog: MetricScopeCatalog
 
 
 def refresh_metric_store(
@@ -189,7 +187,7 @@ def _prepare_metric_store_refresh(
 
     available_teams = [scope.team for scope in cached_team_seasons]
     unique_available_teams = normalize_teams(available_teams) or []
-    team_scopes: list[list[Team] | None] = [None]
+    team_scopes: list[list[Team]] = []
 
     metric_info = _describe_metric(metric)
     source_fingerprint = cache_snapshot.fingerprint
@@ -265,6 +263,7 @@ def _refresh_metric_store_scope(
             rawr_ridge_alpha=rawr_ridge_alpha,
         )
         if scope.teams is None and not rows:
+            # unreachable code? maybe?
             clear_metric_scope_store(
                 metric=metric.value,
                 scope_key=scope.scope_key,
@@ -292,7 +291,6 @@ def _refresh_metric_store_scope(
             metric=metric,
             scope_key=scope.scope_key,
             team_filter=scope.catalog.team_filter,
-            season_type=season_type,
             seasons=seasons,
             teams=scope.teams,
         )
@@ -318,11 +316,12 @@ def _refresh_metric_store_scope(
 
 def _build_refresh_scope(
     *,
-    teams: list[Team] | None,
+    teams: list[Team],
     season_type: SeasonType,
     cached_team_seasons: list[TeamSeasonScope],
 ) -> _MetricStoreRefreshScope:
     normalized_teams = normalize_teams(teams)
+    assert normalized_teams, "no teams to rebuild"
     normalized_team_ids = to_normalized_team_ids(normalized_teams)
     team_filter = build_team_filter(normalized_teams)
     seasons = require_normalized_seasons(

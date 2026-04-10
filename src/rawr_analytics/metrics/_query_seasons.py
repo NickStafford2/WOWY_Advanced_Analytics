@@ -1,12 +1,12 @@
-from __future__ import annotations
-
-from rawr_analytics.shared.season import (
-    Season,
-    SeasonType,
-    build_all_nba_history_seasons,
-    normalize_seasons,
-)
-from rawr_analytics.shared.team import Team, normalize_teams
+# from __future__ import annotations
+#
+# from rawr_analytics.shared.season import (
+#     Season,
+#     SeasonType,
+#     build_all_nba_history_seasons,
+#     normalize_seasons,
+# )
+# from rawr_analytics.shared.team import Team, normalize_teams
 
 
 # don't think i need this. if team has no seasons in span, the db will take care of it.
