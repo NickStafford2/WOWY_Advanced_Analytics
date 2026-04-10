@@ -342,9 +342,9 @@ def _build_refresh_scope(
         catalog=MetricScopeCatalog(
             label="",
             team_filter=team_filter,
-            season_type=season_type.value,
+            season_type=season_type.to_nba_format(),
             availability=MetricScopeAvailability(
-                season_ids=[season.id for season in seasons],
+                season_ids=[season.year_string_nba_api for season in seasons],
                 team_ids=[],
             ),
             full_span=None,
@@ -367,7 +367,7 @@ def _build_scope_catalog(
     return MetricScopeCatalog(
         label=metric.value,
         team_filter=scope.catalog.team_filter,
-        season_type=season_type.value,
+        season_type=season_type.to_nba_format(),
         availability=MetricScopeAvailability(
             season_ids=season_ids,
             team_ids=[team.team_id for team in available_teams],
@@ -390,7 +390,10 @@ def _build_scope_seasons(
     scope: _MetricStoreRefreshScope,
     season_type: SeasonType,
 ) -> list[Season]:
-    seasons = [Season.parse_id(season_id) for season_id in scope.catalog.availability.season_ids]
+    seasons = [
+        Season.parse(season_id, season_type.value)
+        for season_id in scope.catalog.availability.season_ids
+    ]
     assert seasons, "metric store refresh scopes require non-empty seasons"
     invalid_seasons = [season.id for season in seasons if season.season_type != season_type]
     assert not invalid_seasons, (

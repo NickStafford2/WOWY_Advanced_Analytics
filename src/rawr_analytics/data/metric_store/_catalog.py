@@ -72,11 +72,6 @@ def catalog_seasons(catalog: MetricScopeCatalog | MetricScopeCatalogRow) -> list
         if isinstance(catalog, MetricScopeCatalog)
         else catalog.available_season_ids
     )
-    seasons = [Season.parse_id(season_id) for season_id in season_ids]
+    seasons = [Season.parse(season_id, season_type.value) for season_id in season_ids]
     assert seasons, "metric store catalog requires non-empty seasons"
-    invalid_seasons = [season.id for season in seasons if season.season_type != season_type]
-    assert not invalid_seasons, (
-        "metric store catalog season_type does not match available seasons: "
-        f"{invalid_seasons!r}"
-    )
     return seasons

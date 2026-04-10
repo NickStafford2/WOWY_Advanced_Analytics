@@ -185,11 +185,8 @@ def _load_current_metric_scope_catalog(
         raise _MetricStoreCatalogUnavailableError(_MISSING_SCOPE_ERROR)
 
     try:
-        season_type = SeasonType.parse(state.catalog_row.season_type)
-        if state.catalog_row.season_type != season_type.value:
-            raise ValueError("metric store catalog season_type is not canonical")
         catalog = _build_metric_store_catalog_from_store_row(
-            season_type=season_type,
+            season_type=SeasonType.parse(state.catalog_row.season_type),
             available_team_ids=state.catalog_row.available_team_ids,
             available_season_ids=state.catalog_row.available_season_ids,
             start_season_id=state.catalog_row.full_span_start_season_id,
@@ -243,8 +240,8 @@ def _build_metric_options_catalog_from_index(
         ),
         full_span=_build_metric_season_span(
             season_type=availability_index.season_type,
-            start_season_id=None if not seasons else seasons[0].id,
-            end_season_id=None if not seasons else seasons[-1].id,
+            start_season_id=None if not seasons else seasons[0].year_string_nba_api,
+            end_season_id=None if not seasons else seasons[-1].year_string_nba_api,
         ),
     )
 
@@ -370,8 +367,8 @@ def _build_metric_season_span(
     if start_season_id is None:
         return None
     assert end_season_id is not None, "metric store full-span seasons must be paired"
-    start_season = Season.parse_id(start_season_id)
-    end_season = Season.parse_id(end_season_id)
+    start_season = Season.parse(start_season_id, season_type.value)
+    end_season = Season.parse(end_season_id, season_type.value)
     assert start_season.season_type == season_type, "metric store span start season_type mismatch"
     assert end_season.season_type == season_type, "metric store span end season_type mismatch"
     return MetricSeasonSpan(
@@ -385,7 +382,7 @@ def _parse_catalog_seasons(
     season_type: SeasonType,
     season_ids: list[str],
 ) -> list[Season]:
-    seasons = [Season.parse_id(season_id) for season_id in season_ids]
+    seasons = [Season.parse(season_id, season_type.value) for season_id in season_ids]
     invalid_seasons = [season.id for season in seasons if season.season_type != season_type]
     assert not invalid_seasons, (
         "metric store catalog season_type does not match available seasons: "

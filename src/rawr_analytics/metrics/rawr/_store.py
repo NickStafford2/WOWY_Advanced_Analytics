@@ -54,7 +54,7 @@ def build_rawr_record_from_store_row(
     row: RawrPlayerSeasonValueRow,
 ) -> RawrPlayerSeasonRecord:
     return RawrPlayerSeasonRecord(
-        season=Season.parse_id(row.season_id),
+        season=Season.parse(row.season_id, row.season_type),
         player=PlayerSummary(
             player_id=row.player_id,
             player_name=row.player_name,
@@ -80,7 +80,7 @@ def build_rawr_store_row_from_record(
         scope_key=scope_key,
         team_filter=team_filter,
         season_type=record.season.season_type.value,
-        season_id=record.season.id,
+        season_id=record.season.year_string_nba_api,
         player_id=record.player.player_id,
         player_name=record.player.player_name,
         games=record.games,

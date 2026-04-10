@@ -69,7 +69,7 @@ def build_wowy_store_rows(
 
 
 def build_wowy_value_from_store_row(row: WowyPlayerSeasonValueRow) -> WowyPlayerSeasonValue:
-    season = Season.parse_id(row.season_id)
+    season = Season.parse(row.season_id, row.season_type)
     return WowyPlayerSeasonValue(
         season_id=season.year_string_nba_api,
         player=PlayerSummary(
@@ -114,7 +114,7 @@ def _build_wowy_store_row(
         scope_key=scope_key,
         team_filter=team_filter,
         season_type=record.season.season_type.value,
-        season_id=record.season.id,
+        season_id=record.season.year_string_nba_api,
         player_id=record.player.player_id,
         player_name=record.player.player_name,
         value=value,

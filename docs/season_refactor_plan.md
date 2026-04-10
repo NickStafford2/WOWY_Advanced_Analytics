@@ -140,12 +140,10 @@ Current migration rule:
 
 - do not rename every existing year-only payload field before mixed season-type
   payloads are actually supported
-- prefer new filter payload names such as `season_filter` over ambiguous
-  `season` when touching presenter DTOs
+- prefer new filter payload names such as `season_filter` over ambiguous `season` when touching presenter DTOs
 
 Internal API rule:
 
-- internal module boundaries may pass full `Season` objects directly
 - internal code should prefer passing `Season` dataclass values instead of splitting them into separate year and season-type fields unless a lower-level storage or serialization boundary requires it
 
 ## Metric Store Scope Key

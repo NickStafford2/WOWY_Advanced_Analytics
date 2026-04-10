@@ -49,7 +49,7 @@ def validate_metric_scope(
 
 
 def season_ids(seasons: list[Season]) -> list[str]:
-    return [season.id for season in require_normalized_seasons(seasons)]
+    return [season.year_string_nba_api for season in require_normalized_seasons(seasons)]
 
 
 def _encode_scope_seasons(seasons: list[Season]) -> str:
