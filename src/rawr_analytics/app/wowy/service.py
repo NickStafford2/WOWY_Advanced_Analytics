@@ -27,9 +27,10 @@ from rawr_analytics.data.metric_store import load_wowy_player_season_value_rows
 from rawr_analytics.data.metric_store.wowy import WowyPlayerSeasonValueRow
 from rawr_analytics.data.metric_store_scope import season_ids
 from rawr_analytics.metrics.constants import Metric
-from rawr_analytics.metrics.wowy import WowyPlayerValue, load_wowy_records
+from rawr_analytics.metrics.wowy.analysis import WowyPlayerValue
 from rawr_analytics.metrics.wowy.inputs import build_wowy_season_inputs
 from rawr_analytics.metrics.wowy.records import WowyPlayerSeasonValue, build_wowy_custom_query
+from rawr_analytics.metrics.wowy.refresh_records import load_wowy_records
 from rawr_analytics.shared import JSONDict
 from rawr_analytics.shared.player import PlayerMinutes, PlayerSummary
 from rawr_analytics.shared.season import Season
