@@ -22,9 +22,10 @@ from rawr_analytics.app.rawr.presenters import (
 )
 from rawr_analytics.app.rawr.query import RawrQuery
 from rawr_analytics.data.metric_store import load_rawr_player_season_value_rows
+from rawr_analytics.data.metric_store.rawr import RawrPlayerSeasonValueRow
 from rawr_analytics.data.metric_store_scope import season_ids
 from rawr_analytics.metrics.constants import Metric
-from rawr_analytics.metrics.rawr import build_rawr_record_from_store_row, load_rawr_records
+from rawr_analytics.metrics.rawr import load_rawr_records
 from rawr_analytics.metrics.rawr.defaults import (
     DEFAULT_RAWR_SHRINKAGE_MINUTE_SCALE,
     DEFAULT_RAWR_SHRINKAGE_MODE,
@@ -33,6 +34,7 @@ from rawr_analytics.metrics.rawr.defaults import (
 from rawr_analytics.metrics.rawr.inputs import build_rawr_request
 from rawr_analytics.metrics.rawr.records import RawrPlayerSeasonRecord, build_player_season_records
 from rawr_analytics.shared import JSONDict
+from rawr_analytics.shared.player import PlayerMinutes, PlayerSummary
 from rawr_analytics.shared.season import Season
 
 type RawrProgressFn = Callable[[int, int, Season], None]
@@ -176,7 +178,7 @@ def _try_load_rawr_store_result(query: RawrQuery) -> ResolvedRawrResultDTO | Non
     except ValueError:
         return None
     rows = [
-        build_rawr_record_from_store_row(row)
+        _build_rawr_record_from_store_row(row)
         for row in load_rawr_player_season_value_rows(
             scope_key=scope_key,
             seasons=season_ids(query.seasons),
@@ -198,3 +200,21 @@ def _selected_rawr_seasons(query: RawrQuery, rows: list[RawrPlayerSeasonRecord])
     if selected_seasons:
         return selected_seasons
     return sorted({season.year_string_nba_api for season in query.seasons})
+
+
+def _build_rawr_record_from_store_row(
+    row: RawrPlayerSeasonValueRow,
+) -> RawrPlayerSeasonRecord:
+    return RawrPlayerSeasonRecord(
+        season=Season.parse(row.season_id, row.season_type),
+        player=PlayerSummary(
+            player_id=row.player_id,
+            player_name=row.player_name,
+        ),
+        minutes=PlayerMinutes(
+            average_minutes=row.average_minutes,
+            total_minutes=row.total_minutes,
+        ),
+        games=row.games,
+        coefficient=row.coefficient,
+    )

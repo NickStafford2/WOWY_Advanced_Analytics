@@ -3,9 +3,7 @@
 from rawr_analytics.metrics.rawr._shrinkage import RawrShrinkageMode
 from rawr_analytics.metrics.rawr._store import (
     RawrSeasonProgressFn,
-    build_rawr_record_from_store_row,
-    build_rawr_store_row_from_record,
-    build_rawr_store_rows,
+    build_rawr_store_records,
     list_incomplete_rawr_season_warnings,
     load_rawr_records,
 )
@@ -31,9 +29,7 @@ __all__ = [
     "RawrSeasonProgressFn",
     "RawrShrinkageMode",
     "build_player_season_records",
-    "build_rawr_record_from_store_row",
-    "build_rawr_store_row_from_record",
-    "build_rawr_store_rows",
+    "build_rawr_store_records",
     "list_incomplete_rawr_season_warnings",
     "load_rawr_records",
     "validate_filters",

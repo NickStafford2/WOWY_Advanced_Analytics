@@ -12,11 +12,13 @@ from rawr_analytics.data.metric_store._catalog import (
 )
 from rawr_analytics.data.metric_store._rawr_store import replace_rawr_scope_snapshot
 from rawr_analytics.data.metric_store._wowy_store import replace_wowy_scope_snapshot
+from rawr_analytics.data.metric_store.rawr import RawrPlayerSeasonValueRow
 from rawr_analytics.data.metric_store_scope import build_scope_key, build_team_filter
 from rawr_analytics.metrics.constants import Metric, MetricSummary
 from rawr_analytics.metrics.rawr import (
     RAWR_METRIC_SUMMARY,
-    build_rawr_store_rows,
+    RawrPlayerSeasonRecord,
+    build_rawr_store_records,
     list_incomplete_rawr_season_warnings,
 )
 from rawr_analytics.metrics.wowy import build_wowy_store_rows
@@ -411,14 +413,42 @@ def _build_rawr_cached_rows(
     seasons: list[Season],
     teams: list[Team] | None,
     rawr_ridge_alpha: float,
-):
-    return build_rawr_store_rows(
-        scope_key=scope_key,
-        team_filter=team_filter,
+) -> list[RawrPlayerSeasonValueRow]:
+    records = build_rawr_store_records(
         season_type=season_type,
         seasons=seasons,
         teams=teams,
         ridge_alpha=rawr_ridge_alpha,
+    )
+    return [
+        _build_rawr_store_row_from_record(
+            record,
+            scope_key=scope_key,
+            team_filter=team_filter,
+        )
+        for record in records
+    ]
+
+
+def _build_rawr_store_row_from_record(
+    record: RawrPlayerSeasonRecord,
+    *,
+    scope_key: str,
+    team_filter: str,
+) -> RawrPlayerSeasonValueRow:
+    return RawrPlayerSeasonValueRow(
+        snapshot_id=None,
+        metric_id=Metric.RAWR.value,
+        scope_key=scope_key,
+        team_filter=team_filter,
+        season_type=record.season.season_type.value,
+        season_id=record.season.year_string_nba_api,
+        player_id=record.player.player_id,
+        player_name=record.player.player_name,
+        games=record.games,
+        coefficient=record.coefficient,
+        average_minutes=record.minutes.average_minutes,
+        total_minutes=record.minutes.total_minutes,
     )
 
 
