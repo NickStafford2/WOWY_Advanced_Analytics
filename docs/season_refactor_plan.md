@@ -163,6 +163,17 @@ Canonical rule going forward:
 - encoded season values will stay explicit rather than hashed so the key is readable and directly debuggable
 - validation will compare against that canonical encoded season list rather than a single `season_type` field
 
+Current migration state:
+
+- metric-store scope keys now encode exact ordered `Season.id` values
+- the key format still includes a team-filter segment, but stored snapshots
+  should currently use only the all-teams value
+- team-filtered metric queries should not build team-scoped snapshot keys during
+  this migration; they should fall back to live query execution
+- cached metric reads should resolve the current all-teams snapshot key from the
+  normalized cache's exact season set, then filter rows by the query's explicit
+  season list
+
 ## RAWR Completeness
 
 Recommended rule:
@@ -212,7 +223,14 @@ Metric-store snapshot behavior:
 - teams are not part of metric-store snapshot identity
 - team-filtered metric queries should remain live-query only for now
 
-For each metric, build exactly these stored season-set shapes:
+Current staged implementation:
+
+- each refresh call builds one all-teams snapshot for the requested season type
+- the snapshot scope key is based on the exact seasons currently present in the
+  normalized cache for that season type
+- mixed stored season-set shapes are not built yet
+
+Target stored season-set shapes:
 
 - `PRESEASON`
 - `REGULAR`
