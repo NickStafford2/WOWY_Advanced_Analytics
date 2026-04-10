@@ -2,7 +2,8 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
-from rawr_analytics.shared.season import Season, SeasonType
+from rawr_analytics.shared.season import Season, SeasonType, require_normalized_seasons
+from rawr_analytics.shared.team import Team
 
 
 @dataclass(frozen=True)
@@ -62,6 +63,31 @@ def build_metric_scope_catalog_row(
             None if catalog.full_span is None else catalog.full_span.end_season_id
         ),
         updated_at=updated_at,
+    )
+
+
+def build_metric_scope_catalog(
+    *,
+    label: str,
+    team_filter: str,
+    season_type: SeasonType,
+    seasons: list[Season],
+    available_teams: list[Team],
+) -> MetricScopeCatalog:
+    normalized_seasons = require_normalized_seasons(seasons)
+    season_ids = [season.year_string_nba_api for season in normalized_seasons]
+    return MetricScopeCatalog(
+        label=label,
+        team_filter=team_filter,
+        season_type=season_type.value,
+        availability=MetricScopeAvailability(
+            season_ids=season_ids,
+            team_ids=sorted({team.team_id for team in available_teams}),
+        ),
+        full_span=MetricSeasonSpanIds(
+            start_season_id=season_ids[0],
+            end_season_id=season_ids[-1],
+        ),
     )
 
 
