@@ -22,7 +22,7 @@ from rawr_analytics.metrics.rawr import (
 from rawr_analytics.metrics.wowy import build_wowy_store_rows
 from rawr_analytics.metrics.wowy import describe_metric as describe_wowy_metric
 from rawr_analytics.shared.scope import TeamSeasonScope
-from rawr_analytics.shared.season import Season, SeasonType, normalize_seasons
+from rawr_analytics.shared.season import Season, SeasonType, require_normalized_seasons
 from rawr_analytics.shared.team import Team, normalize_teams, to_normalized_team_ids
 
 MetricStoreRefreshEventFn = Callable[["MetricStoreRefreshProgressEvent"], None]
@@ -323,14 +323,13 @@ def _build_refresh_scope(
     normalized_teams = normalize_teams(teams)
     normalized_team_ids = to_normalized_team_ids(normalized_teams)
     team_filter = build_team_filter(normalized_teams)
-    seasons = normalize_seasons(
+    seasons = require_normalized_seasons(
         [
             scope.season
             for scope in cached_team_seasons
             if normalized_team_ids is None or scope.team.team_id in normalized_team_ids
         ]
     )
-    assert seasons is not None, "metric store refresh scopes require non-empty seasons"
     scope_key = build_scope_key(seasons=seasons, team_filter=team_filter)
     return _MetricStoreRefreshScope(
         teams=normalized_teams,
@@ -343,12 +342,9 @@ def _build_refresh_scope(
         catalog=MetricScopeCatalog(
             label="",
             team_filter=team_filter,
-            season_type=season_type.to_nba_format(),
+            season_type=season_type.value,
             availability=MetricScopeAvailability(
-                season_ids=[
-                    season.year_string_nba_api
-                    for season in seasons
-                ],
+                season_ids=[season.id for season in seasons],
                 team_ids=[],
             ),
             full_span=None,
@@ -357,9 +353,7 @@ def _build_refresh_scope(
 
 
 def _build_available_seasons(cached_team_seasons: list[TeamSeasonScope]) -> list[Season]:
-    seasons = normalize_seasons([scope.season for scope in cached_team_seasons])
-    assert seasons is not None, "metric store refresh requires at least one cached season"
-    return seasons
+    return require_normalized_seasons([scope.season for scope in cached_team_seasons])
 
 
 def _build_scope_catalog(
@@ -373,7 +367,7 @@ def _build_scope_catalog(
     return MetricScopeCatalog(
         label=metric.value,
         team_filter=scope.catalog.team_filter,
-        season_type=season_type.to_nba_format(),
+        season_type=season_type.value,
         availability=MetricScopeAvailability(
             season_ids=season_ids,
             team_ids=[team.team_id for team in available_teams],
@@ -396,11 +390,13 @@ def _build_scope_seasons(
     scope: _MetricStoreRefreshScope,
     season_type: SeasonType,
 ) -> list[Season]:
-    seasons = [
-        Season.parse(season_id, season_type.to_nba_format())
-        for season_id in scope.catalog.availability.season_ids
-    ]
+    seasons = [Season.parse_id(season_id) for season_id in scope.catalog.availability.season_ids]
     assert seasons, "metric store refresh scopes require non-empty seasons"
+    invalid_seasons = [season.id for season in seasons if season.season_type != season_type]
+    assert not invalid_seasons, (
+        "metric store refresh scope season_type does not match scope seasons: "
+        f"{invalid_seasons!r}"
+    )
     return seasons
 
 

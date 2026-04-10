@@ -163,7 +163,7 @@ def _logged_team(team: Team) -> _LoggedTeam:
 
 def _logged_season(season: Season) -> _LoggedSeason:
     return _LoggedSeason(
-        id=season.year_string_nba_api,
+        id=season.id,
         start_year=season.start_year,
         season_type=season.season_type.value,
     )

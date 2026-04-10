@@ -11,7 +11,11 @@ from rawr_analytics.data.metric_store import load_metric_scope_store_state
 from rawr_analytics.data.metric_store_scope import build_scope_key, build_team_filter
 from rawr_analytics.metrics.constants import Metric
 from rawr_analytics.shared.scope import TeamSeasonScope
-from rawr_analytics.shared.season import Season, SeasonType, normalize_seasons
+from rawr_analytics.shared.season import (
+    Season,
+    SeasonType,
+    require_normalized_seasons,
+)
 from rawr_analytics.shared.team import Team
 
 
@@ -180,13 +184,19 @@ def _load_current_metric_scope_catalog(
     if state is None:
         raise _MetricStoreCatalogUnavailableError(_MISSING_SCOPE_ERROR)
 
-    catalog = _build_metric_store_catalog_from_store_row(
-        season_type=SeasonType.parse(state.catalog_row.season_type),
-        available_team_ids=state.catalog_row.available_team_ids,
-        available_season_ids=state.catalog_row.available_season_ids,
-        start_season_id=state.catalog_row.full_span_start_season_id,
-        end_season_id=state.catalog_row.full_span_end_season_id,
-    )
+    try:
+        season_type = SeasonType.parse(state.catalog_row.season_type)
+        if state.catalog_row.season_type != season_type.value:
+            raise ValueError("metric store catalog season_type is not canonical")
+        catalog = _build_metric_store_catalog_from_store_row(
+            season_type=season_type,
+            available_team_ids=state.catalog_row.available_team_ids,
+            available_season_ids=state.catalog_row.available_season_ids,
+            start_season_id=state.catalog_row.full_span_start_season_id,
+            end_season_id=state.catalog_row.full_span_end_season_id,
+        )
+    except (AssertionError, ValueError) as exc:
+        raise _MetricStoreCatalogUnavailableError(str(exc)) from None
     resolved_snapshot = cache_snapshot or _require_cache_snapshot(catalog.season_type)
     assert resolved_snapshot.season_type == catalog.season_type, (
         "metric store season type must match the normalized cache snapshot"
@@ -208,10 +218,10 @@ def _build_metric_store_catalog_from_store_row(
         season_type=season_type,
         availability=MetricCatalogAvailability(
             teams=[Team.from_id(team_id) for team_id in available_team_ids],
-            seasons=[
-                Season.parse(season_id, season_type.to_nba_format())
-                for season_id in available_season_ids
-            ],
+            seasons=_parse_catalog_seasons(
+                season_type=season_type,
+                season_ids=available_season_ids,
+            ),
         ),
         full_span=_build_metric_season_span(
             season_type=season_type,
@@ -233,8 +243,8 @@ def _build_metric_options_catalog_from_index(
         ),
         full_span=_build_metric_season_span(
             season_type=availability_index.season_type,
-            start_season_id=None if not seasons else seasons[0].year_string_nba_api,
-            end_season_id=None if not seasons else seasons[-1].year_string_nba_api,
+            start_season_id=None if not seasons else seasons[0].id,
+            end_season_id=None if not seasons else seasons[-1].id,
         ),
     )
 
@@ -247,9 +257,9 @@ def _require_cache_snapshot(season_type: SeasonType) -> GameCacheSnapshot:
 
 
 def _available_cache_seasons(cached_team_seasons: list[TeamSeasonScope]) -> list[Season]:
-    seasons = normalize_seasons([team_season.season for team_season in cached_team_seasons])
-    assert seasons is not None, "metric store scope keys require cached seasons"
-    return seasons
+    return require_normalized_seasons(
+        [team_season.season for team_season in cached_team_seasons]
+    )
 
 
 def _build_metric_catalog_availability_index(
@@ -263,10 +273,13 @@ def _build_metric_catalog_availability_index(
         Team.from_id(team_id)
         for team_id in sorted({team_season.team.team_id for team_season in cached_team_seasons})
     ]
-    ordered_seasons = seasons or normalize_seasons(
-        [team_season.season for team_season in cached_team_seasons]
+    ordered_seasons = (
+        seasons
+        if seasons is not None
+        else require_normalized_seasons(
+            [team_season.season for team_season in cached_team_seasons]
+        )
     )
-    assert ordered_seasons is not None, "metric catalog availability requires seasons"
     filtered_cached_team_seasons = _filter_cached_team_seasons(
         cached_team_seasons,
         team_ids={team.team_id for team in ordered_teams},
@@ -357,7 +370,25 @@ def _build_metric_season_span(
     if start_season_id is None:
         return None
     assert end_season_id is not None, "metric store full-span seasons must be paired"
+    start_season = Season.parse_id(start_season_id)
+    end_season = Season.parse_id(end_season_id)
+    assert start_season.season_type == season_type, "metric store span start season_type mismatch"
+    assert end_season.season_type == season_type, "metric store span end season_type mismatch"
     return MetricSeasonSpan(
-        start_season=Season.parse(start_season_id, season_type.to_nba_format()),
-        end_season=Season.parse(end_season_id, season_type.to_nba_format()),
+        start_season=start_season,
+        end_season=end_season,
     )
+
+
+def _parse_catalog_seasons(
+    *,
+    season_type: SeasonType,
+    season_ids: list[str],
+) -> list[Season]:
+    seasons = [Season.parse_id(season_id) for season_id in season_ids]
+    invalid_seasons = [season.id for season in seasons if season.season_type != season_type]
+    assert not invalid_seasons, (
+        "metric store catalog season_type does not match available seasons: "
+        f"{invalid_seasons!r}"
+    )
+    return seasons

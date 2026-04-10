@@ -16,14 +16,14 @@ def default_filters() -> dict[str, int | float]:
 def describe_wowy_metric() -> MetricSummary:
     return MetricSummary(
         metric=Metric.WOWY,
-        build_version="wowy-player-season-v3",
+        build_version="wowy-player-season-v4",
     )
 
 
 def describe_wowy_shrunk_metric() -> MetricSummary:
     return MetricSummary(
         metric=Metric.WOWY_SHRUNK,
-        build_version="wowy-shrunk-player-season-v1",
+        build_version="wowy-shrunk-player-season-v2",
     )
 
 

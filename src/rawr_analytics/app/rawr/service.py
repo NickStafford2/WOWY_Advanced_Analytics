@@ -176,7 +176,7 @@ def _try_load_rawr_store_result(query: RawrQuery) -> ResolvedRawrResultDTO | Non
     except ValueError:
         return None
     rows = [
-        build_rawr_record_from_store_row(row, season_type=query.season_type)
+        build_rawr_record_from_store_row(row)
         for row in load_rawr_player_season_value_rows(
             scope_key=scope_key,
             seasons=season_ids(query.seasons),

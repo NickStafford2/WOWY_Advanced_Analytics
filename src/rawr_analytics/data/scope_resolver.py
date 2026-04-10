@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from rawr_analytics.data.game_cache import list_cached_scopes
 from rawr_analytics.shared.scope import TeamSeasonScope
-from rawr_analytics.shared.season import Season, SeasonType, normalize_seasons
+from rawr_analytics.shared.season import Season, SeasonType, require_normalized_seasons
 from rawr_analytics.shared.team import Team, normalize_teams
 
 __all__ = [
@@ -23,8 +23,6 @@ def resolve_team_seasons(
         seasons=seasons,
         season_type=resolved_season_type,
     )
-    if not normalized_seasons:
-        raise AssertionError("season normalization unexpectedly produced no seasons")
 
     cached_requested_team_seasons = list_cached_scopes(
         teams=normalized_teams,
@@ -47,9 +45,7 @@ def _normalize_scope_seasons(
     seasons: list[Season],
     season_type: SeasonType,
 ) -> list[Season]:
-    normalized_seasons = normalize_seasons(seasons)
-    if normalized_seasons is None:
-        return []
+    normalized_seasons = require_normalized_seasons(seasons)
     invalid_seasons = [
         season.id for season in normalized_seasons if season.season_type != season_type
     ]

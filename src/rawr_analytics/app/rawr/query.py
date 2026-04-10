@@ -11,7 +11,7 @@ from rawr_analytics.metrics.rawr.defaults import (
     DEFAULT_RAWR_TOP_N,
 )
 from rawr_analytics.metrics.rawr.inputs import validate_filters
-from rawr_analytics.shared.season import Season, SeasonType, normalize_seasons
+from rawr_analytics.shared.season import Season, SeasonType
 from rawr_analytics.shared.team import Team, normalize_teams
 
 
@@ -39,13 +39,12 @@ def build_rawr_query(
     ridge_alpha: float | None = None,
 ) -> RawrQuery:
     normalized_teams = normalize_teams(teams)
-    normalized_season_filter = normalize_seasons(seasons)
     normalized_query = RawrQuery(
         season_type=season_type,
         teams=normalized_teams,
         seasons=resolve_query_seasons(
             teams=normalized_teams,
-            season_filter=normalized_season_filter,
+            season_filter=seasons,
             season_type=season_type,
         ),
         top_n=int(top_n if top_n is not None else DEFAULT_RAWR_TOP_N),

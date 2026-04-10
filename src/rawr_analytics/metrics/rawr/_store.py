@@ -45,7 +45,6 @@ def build_rawr_store_rows(
             record,
             scope_key=scope_key,
             team_filter=team_filter,
-            season_type=season_type,
         )
         for record in records
     ]
@@ -53,11 +52,9 @@ def build_rawr_store_rows(
 
 def build_rawr_record_from_store_row(
     row: RawrPlayerSeasonValueRow,
-    *,
-    season_type: SeasonType,
 ) -> RawrPlayerSeasonRecord:
     return RawrPlayerSeasonRecord(
-        season=Season.parse(row.season_id, season_type.value),
+        season=Season.parse_id(row.season_id),
         player=PlayerSummary(
             player_id=row.player_id,
             player_name=row.player_name,
@@ -76,15 +73,14 @@ def build_rawr_store_row_from_record(
     *,
     scope_key: str,
     team_filter: str,
-    season_type: SeasonType,
 ) -> RawrPlayerSeasonValueRow:
     return RawrPlayerSeasonValueRow(
         snapshot_id=None,
         metric_id="rawr",
         scope_key=scope_key,
         team_filter=team_filter,
-        season_type=season_type.value,
-        season_id=record.season.year_string_nba_api,
+        season_type=record.season.season_type.value,
+        season_id=record.season.id,
         player_id=record.player.player_id,
         player_name=record.player.player_name,
         games=record.games,

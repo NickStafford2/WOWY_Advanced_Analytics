@@ -172,3 +172,10 @@ def normalize_seasons(seasons: list[Season] | None) -> list[Season] | None:
         key=lambda season: (season.start_year, _SEASON_TYPE_ORDER[season.season_type.value]),
     )
     return normalized_seasons or None
+
+
+def require_normalized_seasons(seasons: list[Season]) -> list[Season]:
+    assert seasons, "season normalization requires explicit non-empty seasons"
+    normalized_seasons = normalize_seasons(seasons)
+    assert normalized_seasons is not None, "season normalization produced no seasons"
+    return normalized_seasons

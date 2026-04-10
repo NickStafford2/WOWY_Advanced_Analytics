@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from rawr_analytics.shared.season import Season, normalize_seasons
+from rawr_analytics.shared.season import Season, require_normalized_seasons
 from rawr_analytics.shared.team import Team, canonicalize_metric_team_filter, to_normalized_team_ids
 
 __all__ = [
@@ -49,13 +49,9 @@ def validate_metric_scope(
 
 
 def season_ids(seasons: list[Season]) -> list[str]:
-    assert seasons, "metric store reads require a non-empty season filter"
-    normalized_seasons = normalize_seasons(seasons)
-    assert normalized_seasons is not None, "metric store reads require normalized seasons"
-    return sorted({season.year_string_nba_api for season in normalized_seasons})
+    return [season.id for season in require_normalized_seasons(seasons)]
 
 
 def _encode_scope_seasons(seasons: list[Season]) -> str:
-    normalized_seasons = normalize_seasons(seasons)
-    assert normalized_seasons is not None, "metric scope keys require non-empty seasons"
+    normalized_seasons = require_normalized_seasons(seasons)
     return ",".join(season.id for season in normalized_seasons)
