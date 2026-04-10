@@ -22,7 +22,12 @@ from rawr_analytics.shared.season import Season
 def _build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(description="Run the RAWR custom query used by the web app.")
     add_metric_query_common_arguments(parser)
-    parser.add_argument("--min-games", type=int, default=35)
+    parser.add_argument(
+        "--min-games",
+        type=int,
+        default=35,
+        help="Pre-model minimum games required for RAWR eligibility.",
+    )
     parser.add_argument("--ridge-alpha", type=float, default=10.0)
     parser.add_argument("--recalculate", action="store_true")
     return parser

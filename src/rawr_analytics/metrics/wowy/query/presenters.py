@@ -17,7 +17,6 @@ from rawr_analytics.shared.team import Team
 class WowyQueryFiltersDTO:
     team_filter: list[Team] | None
     season_filter: list[Season] | None
-    # season_type: SeasonType
     min_average_minutes: float | None
     min_total_minutes: float | None
     top_n: int
@@ -29,7 +28,6 @@ class WowyQueryFiltersDTO:
         return cls(
             team_filter=query.teams,
             season_filter=query.seasons,
-            # season_type=query.season_type,
             min_average_minutes=query.filters.min_average_minutes,
             min_total_minutes=query.filters.min_total_minutes,
             top_n=query.top_n,
@@ -41,7 +39,6 @@ class WowyQueryFiltersDTO:
         return WowyQueryFiltersDTO(
             team_filter=self.team_filter,
             season_filter=None,
-            # season_type=self.season_type,
             min_average_minutes=self.min_average_minutes,
             min_total_minutes=self.min_total_minutes,
             top_n=self.top_n,
@@ -60,7 +57,6 @@ class WowyQueryFiltersDTO:
             "season_filter": None
             if self.season_filter is None
             else [season.year_string_nba_api for season in self.season_filter],
-            # "season_type": self.season_type.to_nba_format(),
             "min_average_minutes": self.min_average_minutes,
             "min_total_minutes": self.min_total_minutes,
             "top_n": self.top_n,

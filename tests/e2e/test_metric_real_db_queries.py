@@ -73,6 +73,10 @@ def test_rawr_custom_query_uses_real_db(season_case: _MetricSeasonCase) -> None:
         season_label=season_case.season_label,
     )
     first_row = _first_table_row(payload)
+    filters = _assert_common_filter_payload(payload, season_case=season_case)
+    assert filters["min_games"] == int(season_case.min_rawr_games)
+    assert filters["ridge_alpha"] == 10.0
+    assert filters["recalculate"] is True
     assert first_row["games"] >= int(season_case.min_rawr_games)
     assert first_row["average_minutes"] is not None
     assert first_row["total_minutes"] is not None
@@ -116,6 +120,9 @@ def test_wowy_custom_query_uses_real_db(
         season_label=season_case.season_label,
     )
     first_row = _first_table_row(payload)
+    filters = _assert_common_filter_payload(payload, season_case=season_case)
+    assert filters["min_games_with"] == int(season_case.min_wowy_games_with)
+    assert filters["min_games_without"] == int(season_case.min_wowy_games_without)
     assert first_row["games_with"] >= int(season_case.min_wowy_games_with)
     assert first_row["games_without"] >= int(season_case.min_wowy_games_without)
     assert first_row["avg_margin_with"] is not None
@@ -155,6 +162,20 @@ def _assert_live_leaderboard_response(
         }
     ]
     return payload
+
+
+def _assert_common_filter_payload(
+    payload: dict[str, Any],
+    *,
+    season_case: _MetricSeasonCase,
+) -> dict[str, Any]:
+    filters = _as_dict(payload["filters"])
+    assert filters["team_id_filter"] == [int(_GSW_TEAM_ID)]
+    assert filters["season_filter"] == [season_case.season_label]
+    assert filters["top_n"] == int(_TOP_N)
+    assert filters["min_average_minutes"] == 0.0
+    assert filters["min_total_minutes"] == 0.0
+    return filters
 
 
 def _first_table_row(payload: dict[str, Any]) -> dict[str, Any]:

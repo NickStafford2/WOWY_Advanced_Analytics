@@ -73,31 +73,31 @@ def _build_parser() -> argparse.ArgumentParser:
         "--rawr-min-games",
         type=int,
         default=35,
-        help="Minimum games required for a RAWR player-season record.",
+        help="Pre-model minimum games required for RAWR eligibility.",
     )
     parser.add_argument(
         "--holdout-min-games-with",
         type=int,
         default=15,
-        help="Minimum games with player for holdout WOWY target rows.",
+        help="Pre-record minimum games with player for holdout WOWY eligibility.",
     )
     parser.add_argument(
         "--holdout-min-games-without",
         type=int,
         default=2,
-        help="Minimum games without player for holdout WOWY target rows.",
+        help="Pre-record minimum games without player for holdout WOWY eligibility.",
     )
     parser.add_argument(
         "--min-average-minutes",
         type=float,
         default=30.0,
-        help="Minimum average minutes filter applied to both training and holdout rows.",
+        help="Post-record average minutes filter applied to training and holdout rows.",
     )
     parser.add_argument(
         "--min-total-minutes",
         type=float,
         default=600.0,
-        help="Minimum total minutes filter applied to both training and holdout rows.",
+        help="Post-record total minutes filter applied to training and holdout rows.",
     )
     parser.add_argument(
         "--top-n",

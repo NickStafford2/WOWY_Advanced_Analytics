@@ -2,7 +2,6 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
-# from rawr_analytics.metrics._query_seasons import resolve_query_seasons
 from rawr_analytics.metrics._player_context import PlayerSeasonFilters
 from rawr_analytics.metrics.rawr.calculate.inputs import RawrEligibility, validate_filters
 from rawr_analytics.metrics.rawr.defaults import (
@@ -34,7 +33,6 @@ def build_rawr_query(
     *,
     teams: list[Team] | None = None,
     seasons: list[Season] | None = None,
-    # season_type: SeasonType = SeasonType.REGULAR,
     top_n: int | None = None,
     min_average_minutes: float | None = None,
     min_total_minutes: float | None = None,
@@ -48,7 +46,6 @@ def build_rawr_query(
     if not normalized_seasons:
         normalized_seasons = build_all_nba_history_seasons()
     normalized_query = RawrQuery(
-        # season_type=season_type,
         teams=normalized_teams,
         seasons=normalized_seasons,
         top_n=int(top_n if top_n is not None else DEFAULT_RAWR_TOP_N),

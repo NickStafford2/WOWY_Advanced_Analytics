@@ -13,8 +13,18 @@ def add_metric_query_common_arguments(parser: argparse.ArgumentParser) -> None:
     parser.add_argument("--season", action="append", default=None)
     parser.add_argument("--season-type", default="Regular Season")
     parser.add_argument("--top-n", type=int, default=40)
-    parser.add_argument("--min-average-minutes", type=float, default=30)
-    parser.add_argument("--min-total-minutes", type=float, default=600)
+    parser.add_argument(
+        "--min-average-minutes",
+        type=float,
+        default=30,
+        help="Post-record player-season average minutes filter.",
+    )
+    parser.add_argument(
+        "--min-total-minutes",
+        type=float,
+        default=600,
+        help="Post-record player-season total minutes filter.",
+    )
 
 
 def parse_metric_query_teams(raw_values: list[str] | None) -> list[Team] | None:

@@ -9,7 +9,7 @@ from rawr_analytics.shared.team import Team
 
 
 def build_rawr_query_from_request(request: Request) -> RawrQuery:
-    season_type = _parse_season_type(request)
+    _parse_season_type(request)
     return build_rawr_query(
         teams=_parse_team_id_list(request.args.getlist("team_id")),
         seasons=_parse_season_list(request.args.getlist("season")),
@@ -30,7 +30,6 @@ def build_rawr_options_query_from_request(request: Request) -> RawrQuery:
 
 def build_wowy_query_from_request(request: Request) -> WowyQuery:
     return build_wowy_query(
-        # season_type=season_type,
         teams=_parse_team_id_list(request.args.getlist("team_id")),
         seasons=_parse_season_list(request.args.getlist("season")),
         top_n=_parse_optional_int(request.args.get("top_n", None)),

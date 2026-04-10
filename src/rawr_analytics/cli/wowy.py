@@ -23,8 +23,18 @@ from rawr_analytics.metrics.wowy.query.service import (
 def _build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(description="Run the WOWY custom query used by the web app.")
     add_metric_query_common_arguments(parser)
-    parser.add_argument("--min-games-with", type=int, default=15)
-    parser.add_argument("--min-games-without", type=int, default=4)
+    parser.add_argument(
+        "--min-games-with",
+        type=int,
+        default=15,
+        help="Pre-record minimum games with player for WOWY eligibility.",
+    )
+    parser.add_argument(
+        "--min-games-without",
+        type=int,
+        default=4,
+        help="Pre-record minimum games without player for WOWY eligibility.",
+    )
     return parser
 
 

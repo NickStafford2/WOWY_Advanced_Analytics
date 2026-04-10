@@ -15,7 +15,6 @@ from rawr_analytics.shared.team import Team, normalize_teams
 
 @dataclass(frozen=True)
 class WowyQuery:
-    # season_type: SeasonType
     teams: list[Team]
     seasons: list[Season]
     top_n: int
@@ -27,7 +26,6 @@ def build_wowy_query(
     *,
     teams: list[Team] | None = None,
     seasons: list[Season] | None = None,
-    # season_type: SeasonType = SeasonType.REGULAR,
     top_n: int | None = None,
     min_average_minutes: float | None = None,
     min_total_minutes: float | None = None,
@@ -42,7 +40,6 @@ def build_wowy_query(
     if not normalized_seasons:
         normalized_seasons = build_all_nba_history_seasons()
     normalized_query = WowyQuery(
-        # season_type=season_type,
         teams=normalized_teams,
         seasons=normalized_seasons,
         top_n=int(top_n if top_n is not None else defaults["top_n"]),
