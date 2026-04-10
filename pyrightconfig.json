@@ -21,6 +21,5 @@
   "reportUnusedImport": "error",
   "reportDuplicateImport": "error",
   "reportUnnecessaryTypeIgnoreComment": "warning",
-  "reportPrivateLocalImportUsage": "error",
   "reportUnsupportedDunderAll": "error"
 }
