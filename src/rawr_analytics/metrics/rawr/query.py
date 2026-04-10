@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
-from rawr_analytics.app._query_seasons import resolve_query_seasons
+from rawr_analytics.metrics._query_seasons import resolve_query_seasons
 from rawr_analytics.metrics.rawr.defaults import (
     DEFAULT_RAWR_MIN_AVERAGE_MINUTES,
     DEFAULT_RAWR_MIN_GAMES,

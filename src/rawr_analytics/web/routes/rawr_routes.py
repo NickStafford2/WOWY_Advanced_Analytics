@@ -2,7 +2,8 @@ from __future__ import annotations
 
 from flask import Flask, Response, jsonify, request
 
-from rawr_analytics.app.rawr.service import (
+from rawr_analytics.metrics.constants import Metric
+from rawr_analytics.metrics.rawr.service import (
     build_rawr_leaderboard_export,
     build_rawr_leaderboard_payload,
     build_rawr_options_payload,
@@ -10,7 +11,6 @@ from rawr_analytics.app.rawr.service import (
     build_rawr_span_chart_payload,
     resolve_rawr_result,
 )
-from rawr_analytics.metrics.constants import Metric
 from rawr_analytics.web._csv import render_leaderboard_csv
 from rawr_analytics.web._errors import web_route
 from rawr_analytics.web._parse import (

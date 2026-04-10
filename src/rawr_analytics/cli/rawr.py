@@ -3,11 +3,6 @@ from __future__ import annotations
 import argparse
 import sys
 
-from rawr_analytics.app.rawr.query import build_rawr_query
-from rawr_analytics.app.rawr.service import (
-    build_rawr_leaderboard_export,
-    resolve_rawr_result,
-)
 from rawr_analytics.cli._common import format_scope
 from rawr_analytics.cli._metric_query_cli import (
     add_metric_query_common_arguments,
@@ -18,6 +13,11 @@ from rawr_analytics.cli._metric_query_cli import (
 )
 from rawr_analytics.cli._progress_bar import TerminalProgressBar, print_status_box
 from rawr_analytics.metrics.constants import Metric
+from rawr_analytics.metrics.rawr.query import build_rawr_query
+from rawr_analytics.metrics.rawr.service import (
+    build_rawr_leaderboard_export,
+    resolve_rawr_result,
+)
 from rawr_analytics.shared.season import Season
 
 
