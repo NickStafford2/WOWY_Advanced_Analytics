@@ -4,7 +4,7 @@ from flask import Flask, Response, jsonify, request
 
 from rawr_analytics.metrics.constants import Metric
 from rawr_analytics.metrics.wowy.query.service import (
-    build_wowy_leaderboard_export,
+    build_wowy_export_rows_from_values,
     build_wowy_leaderboard_payload,
     build_wowy_options_payload,
     build_wowy_player_seasons_payload,
@@ -100,7 +100,9 @@ def csv_leaderboard_response(
     return Response(
         render_leaderboard_csv(
             metric=metric,
-            table_rows=build_wowy_leaderboard_export(query, result),
+            table_rows=build_wowy_export_rows_from_values(
+                rows=result.player_season_value, seasons=result.seasons
+            ),
         ),
         mimetype="text/csv",
         headers={"Content-Disposition": f'attachment; filename="{filename}"'},

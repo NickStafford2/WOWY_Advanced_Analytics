@@ -23,10 +23,7 @@ from rawr_analytics.metrics.rawr.defaults import (
     DEFAULT_RAWR_SHRINKAGE_MODE,
     DEFAULT_RAWR_SHRINKAGE_STRENGTH,
 )
-from rawr_analytics.metrics.rawr.query.presenters import (
-    RawrQueryFiltersDTO,
-    build_rawr_export_rows,
-)
+from rawr_analytics.metrics.rawr.query.presenters import RawrQueryFiltersDTO
 from rawr_analytics.metrics.rawr.query.presenters import (
     build_rawr_leaderboard_payload as build_rawr_leaderboard_payload_from_records,
 )
@@ -189,10 +186,6 @@ def build_rawr_span_chart_payload(
         recalculate=recalculate,
     ).to_payload()
     return payload
-
-
-def delete___build_rawr_leaderboard_export(result: ResolvedRawrResultDTO) -> MetricQueryExport:
-    return build_rawr_export_rows(rows=result.rows, seasons=result.seasons)
 
 
 def _build_live_rawr_query_result(

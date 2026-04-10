@@ -15,7 +15,7 @@ from rawr_analytics.cli._progress_bar import print_status_box
 from rawr_analytics.metrics.constants import Metric
 from rawr_analytics.metrics.wowy.query.request import build_wowy_query
 from rawr_analytics.metrics.wowy.query.service import (
-    build_wowy_leaderboard_export,
+    build_wowy_export_rows_from_values,
     resolve_wowy_result,
 )
 
@@ -33,7 +33,6 @@ def main(argv: list[str] | None = None) -> int:
     args = parser.parse_args(argv)
     season_type = parse_metric_query_season_type(args.season_type)
     query = build_wowy_query(
-        season_type=season_type,
         teams=parse_metric_query_teams(args.team),
         seasons=parse_metric_query_seasons(args.season, season_type=season_type),
         top_n=args.top_n,
@@ -52,7 +51,10 @@ def main(argv: list[str] | None = None) -> int:
     )
     print(f"[1/2] building {Metric.WOWY.value} custom query")
     result = resolve_wowy_result(query, metric=Metric.WOWY, recalculate=True)
-    rows = build_wowy_leaderboard_export(query, result)
+
+    rows = build_wowy_export_rows_from_values(
+        rows=result.player_season_value, seasons=result.seasons
+    )
     print(f"[2/2] built {len(rows)} leaderboard rows")
     print(render_metric_query_table(Metric.WOWY, rows))
     return 0

@@ -179,10 +179,9 @@ def build_wowy_span_chart_payload(
     return payload
 
 
-def build_wowy_leaderboard_export(result: ResolvedWowyResultDTO) -> MetricQueryExport:
+def build_____wowy_leaderboard_export(result: ResolvedWowyResultDTO) -> MetricQueryExport:
     return build_wowy_export_rows_from_values(
-        rows=result.player_season_value,
-        seasons=result.seasons,
+        rows=result.player_season_value, seasons=result.seasons
     )
 
 
