@@ -32,14 +32,13 @@ def load_wowy_player_season_value_rows(
     *,
     metric_id: str,
     scope_key: str,
-    seasons: list[str] | None = None,
+    seasons: list[str],
     min_average_minutes: float | None = None,
     min_total_minutes: float | None = None,
     min_games_with: int | None = None,
     min_games_without: int | None = None,
 ) -> list[WowyPlayerSeasonValueRow]:
-    if seasons == []:
-        return []
+    assert seasons, "WOWY metric store reads require explicit non-empty seasons"
     initialize_player_metrics_db()
     query = """
         SELECT
@@ -65,9 +64,8 @@ def load_wowy_player_season_value_rows(
         WHERE snapshot.metric_id = ? AND snapshot.scope_key = ?
     """
     params: list[object] = [metric_id, scope_key]
-    if seasons is not None:
-        query += f" AND season_id IN ({','.join('?' for _ in seasons)})"
-        params.extend(seasons)
+    query += f" AND season_id IN ({','.join('?' for _ in seasons)})"
+    params.extend(seasons)
     if min_average_minutes is not None:
         query += " AND COALESCE(average_minutes, 0.0) >= ?"
         params.append(min_average_minutes)

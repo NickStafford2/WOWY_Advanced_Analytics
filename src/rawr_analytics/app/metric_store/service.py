@@ -22,7 +22,7 @@ from rawr_analytics.metrics.rawr import (
 from rawr_analytics.metrics.wowy import build_wowy_store_rows
 from rawr_analytics.metrics.wowy import describe_metric as describe_wowy_metric
 from rawr_analytics.shared.scope import TeamSeasonScope
-from rawr_analytics.shared.season import SeasonType
+from rawr_analytics.shared.season import Season, SeasonType
 from rawr_analytics.shared.team import Team, normalize_teams, to_normalized_team_ids
 
 MetricStoreRefreshEventFn = Callable[["MetricStoreRefreshProgressEvent"], None]
@@ -257,10 +257,12 @@ def _refresh_metric_store_scope(
         available_teams=available_teams,
     )
     if metric == Metric.RAWR:
+        seasons = _build_scope_seasons(scope=scope, season_type=season_type)
         rows = _build_rawr_cached_rows(
             scope_key=scope.scope_key,
             team_filter=scope.catalog.team_filter,
             season_type=season_type,
+            seasons=seasons,
             teams=scope.teams,
             rawr_ridge_alpha=rawr_ridge_alpha,
         )
@@ -287,11 +289,13 @@ def _refresh_metric_store_scope(
         )
         row_count = len(rows)
     else:
+        seasons = _build_scope_seasons(scope=scope, season_type=season_type)
         rows = _build_wowy_cached_rows(
             metric=metric,
             scope_key=scope.scope_key,
             team_filter=scope.catalog.team_filter,
             season_type=season_type,
+            seasons=seasons,
             teams=scope.teams,
         )
         replace_wowy_scope_snapshot(
@@ -385,11 +389,25 @@ def _build_metric_season_span_ids(season_ids: list[str]) -> MetricSeasonSpanIds 
     )
 
 
+def _build_scope_seasons(
+    *,
+    scope: _MetricStoreRefreshScope,
+    season_type: SeasonType,
+) -> list[Season]:
+    seasons = [
+        Season.parse(season_id, season_type.to_nba_format())
+        for season_id in scope.catalog.availability.season_ids
+    ]
+    assert seasons, "metric store refresh scopes require non-empty seasons"
+    return seasons
+
+
 def _build_rawr_cached_rows(
     *,
     scope_key: str,
     team_filter: str,
     season_type: SeasonType,
+    seasons: list[Season],
     teams: list[Team] | None,
     rawr_ridge_alpha: float,
 ):
@@ -397,6 +415,7 @@ def _build_rawr_cached_rows(
         scope_key=scope_key,
         team_filter=team_filter,
         season_type=season_type,
+        seasons=seasons,
         teams=teams,
         ridge_alpha=rawr_ridge_alpha,
     )
@@ -408,6 +427,7 @@ def _build_wowy_cached_rows(
     scope_key: str,
     team_filter: str,
     season_type: SeasonType,
+    seasons: list[Season],
     teams: list[Team] | None,
 ):
     return build_wowy_store_rows(
@@ -415,6 +435,7 @@ def _build_wowy_cached_rows(
         scope_key=scope_key,
         team_filter=team_filter,
         season_type=season_type,
+        seasons=seasons,
         teams=teams,
     )
 

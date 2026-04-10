@@ -34,13 +34,13 @@ def build_wowy_query(
 ) -> WowyQuery:
     defaults = default_filters()
     normalized_teams = normalize_teams(teams)
-    normalized_requested_seasons = normalize_seasons(seasons)
+    normalized_season_filter = normalize_seasons(seasons)
     normalized_query = WowyQuery(
         season_type=season_type,
         teams=normalized_teams,
         seasons=resolve_query_seasons(
             teams=normalized_teams,
-            seasons=normalized_requested_seasons,
+            season_filter=normalized_season_filter,
             season_type=season_type,
         ),
         top_n=int(top_n if top_n is not None else defaults["top_n"]),
@@ -63,6 +63,7 @@ def build_wowy_query(
             else defaults["min_games_without"]
         ),
     )
+    assert normalized_query.seasons, "WowyQuery must have a concrete non-empty season list"
     validate_filters(
         normalized_query.min_games_with,
         normalized_query.min_games_without,

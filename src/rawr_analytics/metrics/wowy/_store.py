@@ -24,9 +24,10 @@ from rawr_analytics.shared.team import Team
 def load_wowy_records(
     *,
     teams: list[Team] | None,
-    seasons: list[Season] | None,
+    seasons: list[Season],
     season_type: SeasonType,
 ) -> tuple[list[NormalizedGameRecord], list[NormalizedGamePlayerRecord]]:
+    assert seasons, "WOWY record loading requires a non-empty season list"
     team_seasons = resolve_team_seasons(teams, seasons, season_type=season_type)
     if not team_seasons:
         raise ValueError("No cached data matched the requested scope")
@@ -39,11 +40,13 @@ def build_wowy_store_rows(
     scope_key: str,
     team_filter: str,
     season_type: SeasonType,
+    seasons: list[Season],
     teams: list[Team] | None,
 ) -> list[WowyPlayerSeasonValueRow]:
+    assert seasons, "WOWY store row builds require explicit non-empty seasons"
     games, game_players = load_wowy_records(
         teams=teams,
-        seasons=None,
+        seasons=seasons,
         season_type=season_type,
     )
     season_inputs = build_wowy_season_inputs(games=games, game_players=game_players)

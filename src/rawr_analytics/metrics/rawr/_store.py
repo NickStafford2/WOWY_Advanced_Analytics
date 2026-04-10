@@ -20,12 +20,14 @@ def build_rawr_store_rows(
     scope_key: str,
     team_filter: str,
     season_type: SeasonType,
+    seasons: list[Season],
     teams: list[Team] | None,
     ridge_alpha: float,
 ) -> list[RawrPlayerSeasonValueRow]:
+    assert seasons, "RAWR store row builds require explicit non-empty seasons"
     season_games, season_game_players = load_rawr_records(
         teams=teams,
-        seasons=None,
+        seasons=seasons,
         season_type=season_type,
     )
     request = build_rawr_request(

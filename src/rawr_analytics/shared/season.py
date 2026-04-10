@@ -2,8 +2,10 @@ from __future__ import annotations
 
 import re
 from dataclasses import dataclass
+from datetime import date
 from enum import Enum
 
+NBA_FIRST_SEASON_START_YEAR = 1946
 _SEASON_YEAR_PATTERN = re.compile(r"^(?P<start>\d{4})(?:-(?P<end>\d{2}))?$")
 _SEASON_TYPE_ORDER = {
     "PRESEASON": 0,
@@ -138,6 +140,30 @@ def build_season_list(start_year: int, first_year: int, season_type_str: str) ->
     return [
         Season.parse(str(year), season_type_str) for year in range(start_year, first_year - 1, -1)
     ]
+
+
+def build_nba_history_seasons(
+    season_type: SeasonType,
+    *,
+    end_year: int | None = None,
+) -> list[Season]:
+    resolved_end_year = (
+        current_nba_season_start_year() if end_year is None else end_year
+    )
+    assert resolved_end_year >= NBA_FIRST_SEASON_START_YEAR, (
+        f"Invalid NBA history end year: {resolved_end_year!r}"
+    )
+    return [
+        Season(start_year=year, season_type=season_type)
+        for year in range(NBA_FIRST_SEASON_START_YEAR, resolved_end_year + 1)
+    ]
+
+
+def current_nba_season_start_year() -> int:
+    today = date.today()
+    if today.month >= 10:
+        return today.year
+    return today.year - 1
 
 
 def normalize_seasons(seasons: list[Season] | None) -> list[Season] | None:

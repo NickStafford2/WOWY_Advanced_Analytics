@@ -15,8 +15,8 @@ from rawr_analytics.shared.team import Team
 
 @dataclass(frozen=True)
 class WowyQueryFiltersDTO:
-    teams: list[Team] | None
-    seasons: list[Season] | None
+    team_filter: list[Team] | None
+    season_filter: list[Season] | None
     season_type: SeasonType
     min_average_minutes: float
     min_total_minutes: float
@@ -27,8 +27,8 @@ class WowyQueryFiltersDTO:
     @classmethod
     def from_query(cls, query: WowyQuery) -> WowyQueryFiltersDTO:
         return cls(
-            teams=query.teams,
-            seasons=query.seasons,
+            team_filter=query.teams,
+            season_filter=query.seasons,
             season_type=query.season_type,
             min_average_minutes=query.min_average_minutes,
             min_total_minutes=query.min_total_minutes,
@@ -39,8 +39,8 @@ class WowyQueryFiltersDTO:
 
     def for_options(self) -> WowyQueryFiltersDTO:
         return WowyQueryFiltersDTO(
-            teams=self.teams,
-            seasons=None,
+            team_filter=self.team_filter,
+            season_filter=None,
             season_type=self.season_type,
             min_average_minutes=self.min_average_minutes,
             min_total_minutes=self.min_total_minutes,
@@ -51,13 +51,15 @@ class WowyQueryFiltersDTO:
 
     def to_payload(self) -> JSONDict:
         return {
-            "team": (
-                None if self.teams is None else [team.current.abbreviation for team in self.teams]
-            ),
-            "team_id": None if self.teams is None else [team.team_id for team in self.teams],
-            "season": None
-            if self.seasons is None
-            else [season.year_string_nba_api for season in self.seasons],
+            "team_filter": None
+            if self.team_filter is None
+            else [team.current.abbreviation for team in self.team_filter],
+            "team_id_filter": None
+            if self.team_filter is None
+            else [team.team_id for team in self.team_filter],
+            "season_filter": None
+            if self.season_filter is None
+            else [season.year_string_nba_api for season in self.season_filter],
             "season_type": self.season_type.to_nba_format(),
             "min_average_minutes": self.min_average_minutes,
             "min_total_minutes": self.min_total_minutes,

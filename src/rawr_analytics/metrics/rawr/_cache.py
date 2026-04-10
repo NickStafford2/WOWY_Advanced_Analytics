@@ -17,13 +17,14 @@ type RawrSeasonProgressFn = Callable[[int, int, Season], None]
 def load_rawr_records(
     *,
     teams: list[Team] | None,
-    seasons: list[Season] | None,
+    seasons: list[Season],
     season_type: SeasonType,
     progress_fn: RawrSeasonProgressFn | None = None,
 ) -> tuple[
     dict[Season, list[NormalizedGameRecord]],
     dict[Season, list[NormalizedGamePlayerRecord]],
 ]:
+    assert seasons, "RAWR record loading requires a non-empty season list"
     requested_team_seasons = resolve_team_seasons(teams, seasons, season_type=season_type)
     if not requested_team_seasons:
         raise ValueError("No cached data matched the requested RAWR scope")
@@ -73,6 +74,7 @@ def _load_rawr_season_records(
     season: Season,
     season_type: SeasonType,
 ) -> tuple[list[NormalizedGameRecord], list[NormalizedGamePlayerRecord]] | None:
+    assert season.season_type == season_type, "RAWR season must match requested season_type"
     requested_team_seasons = resolve_team_seasons(teams, [season], season_type=season_type)
     if not requested_team_seasons:
         return None

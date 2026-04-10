@@ -23,18 +23,24 @@ That is a boundary smell. One value is representing multiple concepts.
 - Core metric/data boundaries should receive an explicit `list[Season]`, not `None`.
 - Core normalized query objects should carry one `seasons: list[Season]` field only.
   Do not keep both `requested_seasons` and resolved `seasons` on the same core query object.
+- If no season filter is provided, query normalization should build an explicit
+  full-history season list for the requested season type.
+- After query normalization, season lists passed inside the application and down
+  to metric-store reads should be non-`None` and non-empty.
+- Use assert statements at these boundaries to document that an omitted or empty
+  season list is an unexpected programmer error.
 
 Ownership rule:
 
 - request parsers may leave seasons omitted
 - query builders should own omitted-season resolution
 - app services and deeper layers should assume seasons are already concrete
-- query builders should resolve omitted seasons from normalized cache
-  availability, not from metric-store catalogs
+- query builders should resolve omitted seasons from the NBA history season list,
+  not from metric-store catalogs
 
 ## Implication
 
-If a caller wants "all available seasons", that should be resolved before entering the metric engine.
+If a caller wants "all seasons", that should be resolved before entering the metric engine.
 
 In other words:
 
@@ -45,6 +51,13 @@ In other words:
 If the program still needs to preserve "user did not explicitly choose seasons",
 that should live in a separate outer request/filter DTO, not in the normalized
 core metric query object.
+
+Presenter/filter DTOs should name optional user inputs as filters:
+
+- `team_filter`
+- `season_filter`
+
+This keeps filter state distinct from the concrete execution scope.
 
 ## Where `None` May Still Make Sense
 
@@ -63,9 +76,14 @@ Important distinction:
 - `None` means the season filter is omitted and still unresolved
 - `[]` means the season set has been resolved and is empty
 
-`[]` is a valid internal normalized value. It must not silently widen into "all
-seasons". If a lower-level query helper receives `[]`, it should return no rows
-or no scopes rather than dropping the season filter.
+After app/query normalization, `[]` should generally not appear in the metric or
+metric-store path. If it does, assert because the normalized query should have
+already built a non-empty list, either from explicit filters or from full NBA
+history.
+
+Lower-level storage helpers may still use `None` only when it means one precise
+thing: omit that SQL filter. Metric-store reads should prefer receiving an
+explicit non-empty season list rather than relying on omitted season filters.
 
 ## Migration Direction
 
@@ -73,6 +91,7 @@ or no scopes rather than dropping the season filter.
 - remove `seasons=None` branching from core metric and cache paths
 - pass explicit normalized `list[Season]` into scope resolution and metric execution
 - keep any optional season semantics only at the outer request/presenter layer
+- when no season filter is supplied, build all NBA history seasons explicitly
 - update live query paths before metric-store snapshot paths
 - redesign metric-store scope keys, catalog metadata, and span metadata after
   live query season handling is stable

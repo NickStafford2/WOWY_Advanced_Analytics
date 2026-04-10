@@ -1,25 +1,41 @@
 from __future__ import annotations
 
-from rawr_analytics.data.game_cache import list_cached_scopes
-from rawr_analytics.shared.season import Season, SeasonType, normalize_seasons
+from rawr_analytics.shared.season import (
+    Season,
+    SeasonType,
+    build_nba_history_seasons,
+    normalize_seasons,
+)
 from rawr_analytics.shared.team import Team, normalize_teams
 
 
 def resolve_query_seasons(
     *,
     teams: list[Team] | None,
-    seasons: list[Season] | None,
+    season_filter: list[Season] | None,
     season_type: SeasonType,
 ) -> list[Season]:
-    normalized_seasons = normalize_seasons(seasons)
-    if normalized_seasons is not None:
-        _validate_query_season_type(seasons=normalized_seasons, season_type=season_type)
-        return normalized_seasons
+    normalized_season_filter = normalize_seasons(season_filter)
+    if normalized_season_filter is not None:
+        _validate_query_season_type(
+            seasons=normalized_season_filter,
+            season_type=season_type,
+        )
+        assert normalized_season_filter, "season_filter normalization produced no seasons"
+        return normalized_season_filter
 
-    cached_scopes = list_cached_scopes(teams=normalize_teams(teams))
-    return normalize_seasons(
-        [scope.season for scope in cached_scopes if scope.season.season_type == season_type]
-    ) or []
+    normalized_teams = normalize_teams(teams)
+    history_seasons = build_nba_history_seasons(season_type)
+    if normalized_teams is None:
+        return history_seasons
+
+    team_history_seasons = [
+        season
+        for season in history_seasons
+        if any(team.is_active_during(season) for team in normalized_teams)
+    ]
+    assert team_history_seasons, "team_filter resolved to no active NBA seasons"
+    return team_history_seasons
 
 
 def _validate_query_season_type(
