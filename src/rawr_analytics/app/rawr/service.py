@@ -8,6 +8,7 @@ from rawr_analytics.app.metric_store import (
     MetricStoreCatalog,
     build_metric_options_payload,
     require_current_metric_scope,
+    resolve_current_metric_scope_key,
 )
 from rawr_analytics.app.rawr.presenters import RawrQueryFiltersDTO, build_rawr_export_rows
 from rawr_analytics.app.rawr.presenters import (
@@ -21,7 +22,7 @@ from rawr_analytics.app.rawr.presenters import (
 )
 from rawr_analytics.app.rawr.query import RawrQuery
 from rawr_analytics.data.metric_store import load_rawr_player_season_value_rows
-from rawr_analytics.data.metric_store_scope import build_scope_key, season_ids
+from rawr_analytics.data.metric_store_scope import season_ids
 from rawr_analytics.metrics.constants import Metric
 from rawr_analytics.metrics.rawr import build_rawr_record_from_store_row, load_rawr_records
 from rawr_analytics.metrics.rawr.defaults import (
@@ -164,10 +165,12 @@ def _build_live_rawr_query_result(
 
 
 def _try_load_rawr_store_result(query: RawrQuery) -> ResolvedRawrResultDTO | None:
-    scope_key = build_scope_key(
+    scope_key = resolve_current_metric_scope_key(
         season_type=query.season_type,
         teams=query.teams,
     )
+    if scope_key is None:
+        return None
     try:
         catalog = require_current_metric_scope(metric=Metric.RAWR, scope_key=scope_key)
     except ValueError:

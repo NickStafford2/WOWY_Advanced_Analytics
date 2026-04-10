@@ -7,6 +7,7 @@ from rawr_analytics.app.metric_store import (
     MetricStoreCatalog,
     build_metric_options_payload,
     require_current_metric_scope,
+    resolve_current_metric_scope_key,
 )
 from rawr_analytics.app.wowy.presenters import WowyQueryFiltersDTO
 from rawr_analytics.app.wowy.presenters import (
@@ -23,7 +24,7 @@ from rawr_analytics.app.wowy.presenters import (
 )
 from rawr_analytics.app.wowy.query import WowyQuery
 from rawr_analytics.data.metric_store import load_wowy_player_season_value_rows
-from rawr_analytics.data.metric_store_scope import build_scope_key, season_ids
+from rawr_analytics.data.metric_store_scope import season_ids
 from rawr_analytics.metrics.constants import Metric
 from rawr_analytics.metrics.wowy import build_wowy_value_from_store_row, load_wowy_records
 from rawr_analytics.metrics.wowy.inputs import build_wowy_season_inputs
@@ -158,10 +159,12 @@ def _try_load_wowy_store_result(
     metric: Metric,
     query: WowyQuery,
 ) -> ResolvedWowyResultDTO | None:
-    scope_key = build_scope_key(
+    scope_key = resolve_current_metric_scope_key(
         season_type=query.season_type,
         teams=query.teams,
     )
+    if scope_key is None:
+        return None
     try:
         catalog = require_current_metric_scope(metric=metric, scope_key=scope_key)
     except ValueError:

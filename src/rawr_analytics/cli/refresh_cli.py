@@ -50,7 +50,7 @@ def main(argv: list[str] | None = None) -> int:
             f"Metrics: {', '.join(metrics)}",
             "Refreshing cached player-season rows and full-span leaderboard"
             " slices used by the Flask and React web app.",
-            "The progress bar below tracks each built team scope in the SQLite metric store.",
+            "The progress bar below tracks each built snapshot scope in the SQLite metric store.",
         ],
     )
     for metric in metrics:

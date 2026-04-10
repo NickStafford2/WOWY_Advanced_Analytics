@@ -83,7 +83,7 @@ def refresh_metric_store(
     metric: Metric | str,
     season_type: SeasonType | str,
     rawr_ridge_alpha: float = DEFAULT_RAWR_RIDGE_ALPHA,
-    include_team_scopes: bool = True,
+    include_team_scopes: bool = False,
     event_fn: MetricStoreRefreshEventFn | None = None,
 ) -> RefreshMetricStoreResult:
     normalized_metric = Metric.parse(metric) if isinstance(metric, str) else metric
@@ -172,8 +172,10 @@ def _prepare_metric_store_refresh(
     *,
     season_type: SeasonType,
     rawr_ridge_alpha: float = DEFAULT_RAWR_RIDGE_ALPHA,
-    include_team_scopes: bool = True,
+    include_team_scopes: bool = False,
 ) -> _MetricStoreRefreshPlan:
+    if include_team_scopes:
+        raise ValueError("Metric-store snapshots are all-teams only during season scope migration")
     cache_snapshot = load_cache_snapshot(season_type)
     if not cache_snapshot.entries:
         return _MetricStoreRefreshPlan(
@@ -190,8 +192,6 @@ def _prepare_metric_store_refresh(
     available_teams = [scope.team for scope in cached_team_seasons]
     unique_available_teams = normalize_teams(available_teams) or []
     team_scopes: list[list[Team] | None] = [None]
-    if include_team_scopes:
-        team_scopes.extend([[team] for team in unique_available_teams])
 
     metric_info = _describe_metric(metric)
     source_fingerprint = cache_snapshot.fingerprint
@@ -328,7 +328,15 @@ def _build_refresh_scope(
     normalized_teams = normalize_teams(teams)
     normalized_team_ids = to_normalized_team_ids(normalized_teams)
     team_filter = build_team_filter(normalized_teams)
-    scope_key = build_scope_key(season_type=season_type, team_filter=team_filter)
+    seasons = normalize_seasons(
+        [
+            scope.season
+            for scope in cached_team_seasons
+            if normalized_team_ids is None or scope.team.team_id in normalized_team_ids
+        ]
+    )
+    assert seasons is not None, "metric store refresh scopes require non-empty seasons"
+    scope_key = build_scope_key(seasons=seasons, team_filter=team_filter)
     return _MetricStoreRefreshScope(
         teams=normalized_teams,
         scope_key=scope_key,
@@ -344,15 +352,7 @@ def _build_refresh_scope(
             availability=MetricScopeAvailability(
                 season_ids=[
                     season.year_string_nba_api
-                    for season in sorted(
-                        {
-                            scope.season
-                            for scope in cached_team_seasons
-                            if normalized_team_ids is None
-                            or scope.team.team_id in normalized_team_ids
-                        },
-                        key=lambda season: season.year_string_nba_api,
-                    )
+                    for season in seasons
                 ],
                 team_ids=[],
             ),

@@ -34,6 +34,7 @@ class _MetricRowBatchState:
 def validate_rawr_rows(
     *,
     scope_key: str,
+    seasons: list[Season],
     build_version: str,
     source_fingerprint: str,
     rows: list[RawrPlayerSeasonValueRow],
@@ -48,6 +49,7 @@ def validate_rawr_rows(
         _validate_common_metric_row(
             metric_id="rawr",
             scope_key=scope_key,
+            seasons=seasons,
             row=row,
             state=state,
         )
@@ -58,6 +60,7 @@ def validate_wowy_rows(
     *,
     metric_id: str,
     scope_key: str,
+    seasons: list[Season],
     build_version: str,
     source_fingerprint: str,
     rows: list[WowyPlayerSeasonValueRow],
@@ -72,6 +75,7 @@ def validate_wowy_rows(
         _validate_common_metric_row(
             metric_id=metric_id,
             scope_key=scope_key,
+            seasons=seasons,
             row=row,
             state=state,
         )
@@ -82,6 +86,7 @@ def _validate_common_metric_row(
     *,
     metric_id: str,
     scope_key: str,
+    seasons: list[Season],
     row: RawrPlayerSeasonValueRow | WowyPlayerSeasonValueRow,
     state: _MetricRowBatchState,
 ) -> None:
@@ -112,12 +117,18 @@ def _validate_common_metric_row(
     validate_metric_scope(
         scope_key=row.scope_key,
         team_filter=canonical_team_filter,
-        season_type=canonical_season_type,
+        seasons=seasons,
     )
-    canonical_season_id = Season.parse(row.season_id, SeasonType.REGULAR.value).year_string_nba_api
+    canonical_season_id = Season.parse(row.season_id, canonical_season_type).year_string_nba_api
     if canonical_season_id != row.season_id:
         raise ValueError(
             f"Metric row for player {player_id!r} uses non-canonical season_id {row.season_id!r}"
+        )
+    scope_season_ids = {season.year_string_nba_api for season in seasons}
+    if canonical_season_id not in scope_season_ids:
+        raise ValueError(
+            f"Metric row for player {player_id!r} is outside scope seasons: "
+            f"{row.season_id!r}"
         )
 
     if state.expected_team_filter is None:
@@ -225,19 +236,25 @@ def _validate_metric_catalog(
     full_span_start_season: str | None,
     full_span_end_season: str | None,
 ) -> None:
+    canonical_season_type = SeasonType.parse(season_type)
+    canonical_seasons = [
+        Season.parse(season, canonical_season_type.value).year_string_nba_api
+        for season in available_seasons
+    ]
+    scope_seasons = [
+        Season.parse(season, canonical_season_type.value) for season in available_seasons
+    ]
     validate_metric_scope(
         scope_key=scope_key,
         team_filter=team_filter,
-        season_type=season_type,
+        seasons=scope_seasons,
     )
-
-    canonical_seasons = [
-        Season.parse(season, SeasonType.REGULAR.value).year_string_nba_api
-        for season in available_seasons
-    ]
     if canonical_seasons != available_seasons:
         raise ValueError("Catalog available_seasons must use canonical season strings")
-    if canonical_seasons != sorted(set(canonical_seasons), key=_season_sort_key):
+    if canonical_seasons != sorted(
+        set(canonical_seasons),
+        key=lambda season: _season_sort_key(season, canonical_season_type),
+    ):
         raise ValueError("Catalog available_seasons must be unique and sorted")
 
     canonical_team_ids = [_canonical_team_id(team_id) for team_id in available_team_ids]
@@ -251,11 +268,14 @@ def _validate_metric_catalog(
     if full_span_start_season is None:
         return
 
-    start = Season.parse(full_span_start_season, SeasonType.REGULAR.value).year_string_nba_api
-    end = Season.parse(full_span_end_season or "", SeasonType.REGULAR.value).year_string_nba_api
+    start = Season.parse(full_span_start_season, canonical_season_type.value).year_string_nba_api
+    end = Season.parse(full_span_end_season or "", canonical_season_type.value).year_string_nba_api
     if start not in canonical_seasons or end not in canonical_seasons:
         raise ValueError("Catalog full-span seasons must be present in available_seasons")
-    if _season_sort_key(start) > _season_sort_key(end):
+    if _season_sort_key(start, canonical_season_type) > _season_sort_key(
+        end,
+        canonical_season_type,
+    ):
         raise ValueError("Catalog full-span start season must not be after end season")
 
 
@@ -265,8 +285,8 @@ def _canonical_team_id(value: int) -> int:
     return value
 
 
-def _season_sort_key(season: str) -> int:
-    return Season.parse(season, SeasonType.REGULAR.value).start_year
+def _season_sort_key(season: str, season_type: SeasonType) -> int:
+    return Season.parse(season, season_type.value).start_year
 
 
 def validate_metric_full_span_rows(

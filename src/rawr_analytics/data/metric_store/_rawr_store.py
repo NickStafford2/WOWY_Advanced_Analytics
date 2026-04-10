@@ -5,6 +5,7 @@ from datetime import UTC, datetime
 from rawr_analytics.data.metric_store._catalog import (
     MetricScopeCatalog,
     build_metric_scope_catalog_row,
+    catalog_seasons,
 )
 from rawr_analytics.data.metric_store._replace import replace_metric_scope_snapshot
 from rawr_analytics.data.metric_store._sql_writes import insert_rawr_rows
@@ -27,6 +28,7 @@ def replace_rawr_scope_snapshot(
     updated_at = datetime.now(UTC).isoformat()
     validate_rawr_rows(
         scope_key=scope_key,
+        seasons=catalog_seasons(catalog),
         build_version=build_version,
         source_fingerprint=source_fingerprint,
         rows=rows,

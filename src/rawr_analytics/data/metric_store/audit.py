@@ -6,7 +6,7 @@ from dataclasses import dataclass
 from typing import cast
 
 from rawr_analytics.data._validation_issue import ValidationIssue
-from rawr_analytics.data.metric_store._catalog import MetricScopeCatalogRow
+from rawr_analytics.data.metric_store._catalog import MetricScopeCatalogRow, catalog_seasons
 from rawr_analytics.data.metric_store._validation import (
     validate_metric_full_span_rows,
     validate_metric_scope_catalog_row,
@@ -47,13 +47,14 @@ def audit_metric_store_tables(
     connection: sqlite3.Connection,
     issues: list[ValidationIssue],
 ) -> MetricStoreAuditState:
-    rawr_row_groups, wowy_row_groups, metadata_rows = _audit_metric_player_season_values_table(
-        connection,
-        issues,
-    )
     catalog_rows, scope_season_rows, scope_team_rows = _audit_metric_scope_catalog_table(
         connection,
         issues,
+    )
+    rawr_row_groups, wowy_row_groups, metadata_rows = _audit_metric_player_season_values_table(
+        connection,
+        issues,
+        catalog_rows,
     )
     full_span_groups = _audit_metric_full_span_tables(
         connection,
@@ -73,6 +74,7 @@ def audit_metric_store_tables(
 def _audit_metric_player_season_values_table(
     connection: sqlite3.Connection,
     issues: list[ValidationIssue],
+    catalog_rows: dict[tuple[str, str], MetricScopeCatalogRow],
 ) -> tuple[
     dict[tuple[str, str], list[RawrPlayerSeasonValueRow]],
     dict[tuple[str, str], list[WowyPlayerSeasonValueRow]],
@@ -117,9 +119,20 @@ def _audit_metric_player_season_values_table(
                 row_count=-1,
             ),
         )
+        catalog_row = catalog_rows.get(key)
+        if catalog_row is None:
+            issues.append(
+                ValidationIssue(
+                    "rawr_player_season_values",
+                    f"metric={key[0]!r},scope_key={key[1]!r}",
+                    "Metric rows are missing a matching metric_scope_catalog row",
+                )
+            )
+            continue
         try:
             validate_rawr_rows(
                 scope_key=key[1],
+                seasons=catalog_seasons(catalog_row),
                 build_version=metadata_row.build_version,
                 source_fingerprint=metadata_row.source_fingerprint,
                 rows=group_rows,
@@ -144,10 +157,21 @@ def _audit_metric_player_season_values_table(
                 row_count=-1,
             ),
         )
+        catalog_row = catalog_rows.get(key)
+        if catalog_row is None:
+            issues.append(
+                ValidationIssue(
+                    "wowy_player_season_values",
+                    f"metric={key[0]!r},scope_key={key[1]!r}",
+                    "Metric rows are missing a matching metric_scope_catalog row",
+                )
+            )
+            continue
         try:
             validate_wowy_rows(
                 metric_id=key[0],
                 scope_key=key[1],
+                seasons=catalog_seasons(catalog_row),
                 build_version=metadata_row.build_version,
                 source_fingerprint=metadata_row.source_fingerprint,
                 rows=group_rows,

@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from rawr_analytics.shared.season import Season, SeasonType
+from rawr_analytics.shared.season import Season, normalize_seasons
 from rawr_analytics.shared.team import Team, canonicalize_metric_team_filter, to_normalized_team_ids
 
 __all__ = [
@@ -10,20 +10,6 @@ __all__ = [
     "validate_metric_scope",
 ]
 
-# TODO: Replace the single season_type scope boundary with an exact canonical
-# ordered season list in the scope key so metric snapshots can represent mixed
-# regular-season and playoff queries.
-#
-# Canonical rule going forward:
-# - scope identity will be team_filter + exact ordered seasons
-# - seasons will be normalized before key construction
-# - normalization will dedupe exact Season values
-# - ordering will be by (season.id, season.season_type.value)
-# - encoded season values will stay explicit rather than hashed so the key is
-#   readable and directly debuggable
-# - validation will compare against that canonical encoded season list rather
-#   than a single season_type field
-
 
 def build_team_filter(teams: list[Team] | None) -> str:
     team_ids = to_normalized_team_ids(teams) or []
@@ -32,20 +18,29 @@ def build_team_filter(teams: list[Team] | None) -> str:
 
 def build_scope_key(
     *,
-    season_type: SeasonType,
+    seasons: list[Season],
     teams: list[Team] | None = None,
     team_filter: str | None = None,
 ) -> str:
     resolved_team_filter = team_filter if team_filter is not None else build_team_filter(teams)
-    return f"team_ids={resolved_team_filter or 'all-teams'}|season_type={season_type.value}"
+    return (
+        f"team_ids={resolved_team_filter or 'all-teams'}"
+        f"|seasons={_encode_scope_seasons(seasons)}"
+    )
 
 
-def validate_metric_scope(*, scope_key: str, team_filter: str, season_type: str) -> None:
-    canonical_season_type = SeasonType.parse(season_type)
+def validate_metric_scope(
+    *,
+    scope_key: str,
+    team_filter: str,
+    seasons: list[Season],
+) -> None:
+    if not seasons:
+        raise ValueError("metric scope validation requires non-empty seasons")
     canonical_team_filter = canonicalize_metric_team_filter(team_filter)
     expected_scope_key = build_scope_key(
-        season_type=canonical_season_type,
         team_filter=canonical_team_filter,
+        seasons=seasons,
     )
     if scope_key != expected_scope_key:
         raise ValueError(
@@ -55,4 +50,12 @@ def validate_metric_scope(*, scope_key: str, team_filter: str, season_type: str)
 
 def season_ids(seasons: list[Season]) -> list[str]:
     assert seasons, "metric store reads require a non-empty season filter"
-    return sorted({season.year_string_nba_api for season in seasons})
+    normalized_seasons = normalize_seasons(seasons)
+    assert normalized_seasons is not None, "metric store reads require normalized seasons"
+    return sorted({season.year_string_nba_api for season in normalized_seasons})
+
+
+def _encode_scope_seasons(seasons: list[Season]) -> str:
+    normalized_seasons = normalize_seasons(seasons)
+    assert normalized_seasons is not None, "metric scope keys require non-empty seasons"
+    return ",".join(season.id for season in normalized_seasons)
