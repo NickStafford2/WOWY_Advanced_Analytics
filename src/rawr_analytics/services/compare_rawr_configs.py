@@ -177,7 +177,7 @@ def compare_rawr_configs(
             if shrinkage_mode == RawrShrinkageMode.MINUTES:
                 detail += f" min_scale={minute_scale:.1f}"
             season_games, season_game_players = load_rawr_records(
-                teams=teams,
+                teams=teams or Team.all(),
                 seasons=train_seasons,
             )
             rawr_request = build_rawr_request(

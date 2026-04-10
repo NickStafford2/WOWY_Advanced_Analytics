@@ -18,7 +18,7 @@ from rawr_analytics.shared.team import Team
 def build_rawr_refresh_records(
     *,
     seasons: list[Season],
-    teams: list[Team] | None,
+    teams: list[Team],
     ridge_alpha: float,
 ) -> list[RawrPlayerSeasonRecord]:
     assert seasons, "RAWR store record builds require explicit non-empty seasons"

@@ -13,7 +13,7 @@ def build_rawr_metric_store_rows(
     scope_key: str,
     team_filter: str,
     seasons: list[Season],
-    teams: list[Team] | None,
+    teams: list[Team],
     rawr_ridge_alpha: float,
 ) -> list[RawrPlayerSeasonValueRow]:
     records = build_rawr_refresh_records(
