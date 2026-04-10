@@ -4,7 +4,7 @@ from rawr_analytics.refresh_metrics.rebuild._events import (
     RebuildEventFn,
     RebuildMetricRefreshProgressEvent,
 )
-from rawr_analytics.refresh_metrics.refresh_metrics import (
+from rawr_analytics.refresh_metrics.service import (
     DEFAULT_RAWR_RIDGE_ALPHA,
     MetricStoreRefreshProgressEvent,
     RefreshMetricStoreResult,
