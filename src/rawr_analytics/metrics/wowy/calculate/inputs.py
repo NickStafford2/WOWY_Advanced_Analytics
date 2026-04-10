@@ -3,7 +3,7 @@ from __future__ import annotations
 from collections import defaultdict
 from dataclasses import dataclass
 
-from rawr_analytics.metrics._player_context import PlayerSeasonContext
+from rawr_analytics.metrics._player_context import PlayerSeasonContext, PlayerSeasonFilters
 from rawr_analytics.metrics._validation import validate_top_n_and_minutes
 from rawr_analytics.metrics.wowy.calculate._analysis import WowyGame
 from rawr_analytics.shared.game import NormalizedGamePlayerRecord, NormalizedGameRecord
@@ -19,28 +19,28 @@ class WowySeasonInputDTO:
 
 
 @dataclass(frozen=True)
-class WowyRequestDTO:
-    season_inputs: list[WowySeasonInputDTO]
+class WowyEligibility:
     min_games_with: int
     min_games_without: int
-    min_average_minutes: float | None = None
-    min_total_minutes: float | None = None
+
+
+@dataclass(frozen=True)
+class WowyRequestDTO:
+    season_inputs: list[WowySeasonInputDTO]
+    eligibility: WowyEligibility
+    filters: PlayerSeasonFilters
 
 
 def build_wowy_request(
     *,
     season_inputs: list[WowySeasonInputDTO],
-    min_games_with: int,
-    min_games_without: int,
-    min_average_minutes: float | None = None,
-    min_total_minutes: float | None = None,
+    eligibility: WowyEligibility,
+    filters: PlayerSeasonFilters,
 ) -> WowyRequestDTO:
     return WowyRequestDTO(
         season_inputs=season_inputs,
-        min_games_with=min_games_with,
-        min_games_without=min_games_without,
-        min_average_minutes=min_average_minutes,
-        min_total_minutes=min_total_minutes,
+        eligibility=eligibility,
+        filters=filters,
     )
 
 
@@ -96,10 +96,10 @@ def validate_filters(
 
 def validate_request(request: WowyRequestDTO) -> None:
     validate_filters(
-        request.min_games_with,
-        request.min_games_without,
-        min_average_minutes=request.min_average_minutes,
-        min_total_minutes=request.min_total_minutes,
+        request.eligibility.min_games_with,
+        request.eligibility.min_games_without,
+        min_average_minutes=request.filters.min_average_minutes,
+        min_total_minutes=request.filters.min_total_minutes,
     )
     for season_input in request.season_inputs:
         _validate_season_input(season_input)

@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
+from rawr_analytics.metrics._player_context import PlayerSeasonFilters
 from rawr_analytics.metrics.constants import Metric
 from rawr_analytics.metrics.wowy.calculate._analysis import (
     WowyPlayerValue,
@@ -9,6 +10,7 @@ from rawr_analytics.metrics.wowy.calculate._analysis import (
     filter_results,
 )
 from rawr_analytics.metrics.wowy.calculate.inputs import (
+    WowyEligibility,
     WowyRequestDTO,
     WowySeasonInputDTO,
     build_wowy_request,
@@ -64,8 +66,8 @@ def _build_season_records(
     results = compute_wowy(season_input.games)
     filtered_results = filter_results(
         results,
-        min_games_with=request.min_games_with,
-        min_games_without=request.min_games_without,
+        min_games_with=request.eligibility.min_games_with,
+        min_games_without=request.eligibility.min_games_without,
     )
 
     records: list[WowyPlayerSeasonRecord] = []
@@ -76,10 +78,7 @@ def _build_season_records(
     )
     for player_id, value in ranked_results:
         player = season_input.players_by_id[player_id]
-        if not player.passes_minute_filters(
-            min_average_minutes=request.min_average_minutes,
-            min_total_minutes=request.min_total_minutes,
-        ):
+        if not player.passes_minute_filters(request.filters):
             continue
         assert value.avg_margin_with is not None
         assert value.avg_margin_without is not None
@@ -98,18 +97,14 @@ def _build_season_records(
 def prepare_wowy_player_season_records(
     *,
     season_inputs: list[WowySeasonInputDTO],
-    min_games_with: int,
-    min_games_without: int,
-    min_average_minutes: float | None = None,
-    min_total_minutes: float | None = None,
+    eligibility: WowyEligibility,
+    filters: PlayerSeasonFilters,
 ) -> list[WowyPlayerSeasonRecord]:
     return build_player_season_records(
         build_wowy_request(
             season_inputs=season_inputs,
-            min_games_with=min_games_with,
-            min_games_without=min_games_without,
-            min_average_minutes=min_average_minutes,
-            min_total_minutes=min_total_minutes,
+            eligibility=eligibility,
+            filters=filters,
         )
     )
 
@@ -118,17 +113,13 @@ def build_wowy_custom_query(
     metric: Metric,
     *,
     season_inputs: list[WowySeasonInputDTO],
-    min_games_with: int,
-    min_games_without: int,
-    min_average_minutes: float | None,
-    min_total_minutes: float | None,
+    eligibility: WowyEligibility,
+    filters: PlayerSeasonFilters,
 ) -> list[WowyPlayerSeasonValue]:
     records = prepare_wowy_player_season_records(
         season_inputs=season_inputs,
-        min_games_with=min_games_with,
-        min_games_without=min_games_without,
-        min_average_minutes=min_average_minutes,
-        min_total_minutes=min_total_minutes,
+        eligibility=eligibility,
+        filters=filters,
     )
     return [_build_wowy_query_row(metric, record) for record in records]
 

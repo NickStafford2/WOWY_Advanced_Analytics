@@ -5,6 +5,7 @@ typed RAWR player-season records and validation errors for invalid filters.
 """
 
 from rawr_analytics.metrics.rawr.calculate.inputs import (
+    RawrEligibility,
     RawrRequestDTO,
     RawrSeasonInputDTO,
     build_rawr_request,
@@ -18,6 +19,7 @@ from rawr_analytics.metrics.rawr.calculate.records import (
 from rawr_analytics.metrics.rawr.calculate.shrinkage import RawrShrinkageMode
 
 __all__ = [
+    "RawrEligibility",
     "RawrPlayerSeasonRecord",
     "RawrRequestDTO",
     "RawrSeasonInputDTO",

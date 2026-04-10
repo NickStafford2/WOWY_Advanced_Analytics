@@ -50,7 +50,7 @@ def _build_season_records(
     eligible_player_ids = sorted(
         player_id
         for player_id, games in games_by_player_id.items()
-        if games >= request.min_games
+        if games >= request.eligibility.min_games
     )
     if not eligible_player_ids:
         return []
@@ -68,10 +68,7 @@ def _build_season_records(
     records: list[RawrPlayerSeasonRecord] = []
     for player_id, coefficient in coefficients_by_player_id.items():
         player = player_contexts[player_id]
-        if not player.passes_minute_filters(
-            min_average_minutes=request.min_average_minutes,
-            min_total_minutes=request.min_total_minutes,
-        ):
+        if not player.passes_minute_filters(request.filters):
             continue
         records.append(
             RawrPlayerSeasonRecord(

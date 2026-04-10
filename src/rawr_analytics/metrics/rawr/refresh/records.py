@@ -1,7 +1,8 @@
 from __future__ import annotations
 
+from rawr_analytics.metrics._player_context import PlayerSeasonFilters
 from rawr_analytics.metrics.rawr.cache import load_rawr_records
-from rawr_analytics.metrics.rawr.calculate.inputs import build_rawr_request
+from rawr_analytics.metrics.rawr.calculate.inputs import RawrEligibility, build_rawr_request
 from rawr_analytics.metrics.rawr.calculate.records import (
     RawrPlayerSeasonRecord,
     build_player_season_records,
@@ -29,7 +30,8 @@ def build_rawr_refresh_records(
     request = build_rawr_request(
         season_games=season_games,
         season_game_players=season_game_players,
-        min_games=1,
+        eligibility=RawrEligibility(min_games=1),
+        filters=PlayerSeasonFilters(min_average_minutes=None, min_total_minutes=None),
         ridge_alpha=ridge_alpha,
         shrinkage_mode=DEFAULT_RAWR_SHRINKAGE_MODE,
         shrinkage_strength=DEFAULT_RAWR_SHRINKAGE_STRENGTH,

@@ -5,6 +5,7 @@ typed WOWY player-season records and validation errors for invalid filters.
 """
 
 from rawr_analytics.metrics.wowy.calculate.inputs import (
+    WowyEligibility,
     WowyRequestDTO,
     WowySeasonInputDTO,
     build_wowy_request,
@@ -26,6 +27,7 @@ from rawr_analytics.metrics.wowy.calculate.shrinkage import (
 
 __all__ = [
     "DEFAULT_WOWY_SHRINKAGE_PRIOR_GAMES",
+    "WowyEligibility",
     "WowyPlayerSeasonRecord",
     "WowyPlayerSeasonValue",
     "WowyRequestDTO",

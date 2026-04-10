@@ -6,15 +6,16 @@ from itertools import product
 
 import numpy as np
 
+from rawr_analytics.metrics._player_context import PlayerSeasonFilters
 from rawr_analytics.metrics.rawr.cache import load_rawr_records
-from rawr_analytics.metrics.rawr.calculate.inputs import build_rawr_request
+from rawr_analytics.metrics.rawr.calculate.inputs import RawrEligibility, build_rawr_request
 from rawr_analytics.metrics.rawr.calculate.records import (
     RawrPlayerSeasonRecord,
     build_player_season_records,
 )
 from rawr_analytics.metrics.rawr.calculate.shrinkage import RawrShrinkageMode
 from rawr_analytics.metrics.wowy.cache import load_wowy_records
-from rawr_analytics.metrics.wowy.calculate.inputs import build_wowy_season_inputs
+from rawr_analytics.metrics.wowy.calculate.inputs import WowyEligibility, build_wowy_season_inputs
 from rawr_analytics.metrics.wowy.calculate.records import (
     WowyPlayerSeasonRecord,
     prepare_wowy_player_season_records,
@@ -96,6 +97,15 @@ def compare_rawr_configs(
     completed_steps = 0
     normalized_shrinkage_modes = _normalize_shrinkage_modes(shrinkage_modes)
     wowy_teams = teams or Team.all()
+    player_filters = PlayerSeasonFilters(
+        min_average_minutes=min_average_minutes,
+        min_total_minutes=min_total_minutes,
+    )
+    holdout_eligibility = WowyEligibility(
+        min_games_with=holdout_min_games_with,
+        min_games_without=holdout_min_games_without,
+    )
+    rawr_eligibility = RawrEligibility(min_games=rawr_min_games)
 
     holdout_games, holdout_game_players = load_wowy_records(
         teams=wowy_teams,
@@ -107,10 +117,8 @@ def compare_rawr_configs(
     )
     holdout_records = prepare_wowy_player_season_records(
         season_inputs=holdout_season_inputs,
-        min_games_with=holdout_min_games_with,
-        min_games_without=holdout_min_games_without,
-        min_average_minutes=min_average_minutes,
-        min_total_minutes=min_total_minutes,
+        eligibility=holdout_eligibility,
+        filters=player_filters,
     )
     completed_steps += 1
     _emit_progress(
@@ -131,10 +139,8 @@ def compare_rawr_configs(
     )
     training_wowy_records = prepare_wowy_player_season_records(
         season_inputs=training_wowy_season_inputs,
-        min_games_with=holdout_min_games_with,
-        min_games_without=holdout_min_games_without,
-        min_average_minutes=min_average_minutes,
-        min_total_minutes=min_total_minutes,
+        eligibility=holdout_eligibility,
+        filters=player_filters,
     )
     completed_steps += 1
     _emit_progress(
@@ -183,13 +189,12 @@ def compare_rawr_configs(
             rawr_request = build_rawr_request(
                 season_games=season_games,
                 season_game_players=season_game_players,
-                min_games=rawr_min_games,
+                eligibility=rawr_eligibility,
+                filters=player_filters,
                 ridge_alpha=ridge_alpha,
                 shrinkage_mode=shrinkage_mode,
                 shrinkage_strength=shrinkage_strength,
                 shrinkage_minute_scale=minute_scale,
-                min_average_minutes=min_average_minutes,
-                min_total_minutes=min_total_minutes,
             )
             rawr_records = build_player_season_records(rawr_request)
             completed_steps += 1

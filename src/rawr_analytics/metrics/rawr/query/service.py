@@ -201,13 +201,12 @@ def _build_live_rawr_query_result(
     request = build_rawr_request(
         season_games=season_games,
         season_game_players=season_game_players,
-        min_games=query.min_games,
+        eligibility=query.eligibility,
+        filters=query.filters,
         ridge_alpha=query.ridge_alpha,
         shrinkage_mode=DEFAULT_RAWR_SHRINKAGE_MODE,
         shrinkage_strength=DEFAULT_RAWR_SHRINKAGE_STRENGTH,
         shrinkage_minute_scale=DEFAULT_RAWR_SHRINKAGE_MINUTE_SCALE,
-        min_average_minutes=query.min_average_minutes,
-        min_total_minutes=query.min_total_minutes,
     )
     return build_player_season_records(request)
 
@@ -230,9 +229,9 @@ def _try_load_rawr_store_result(query: RawrQuery) -> ResolvedRawrResultDTO | Non
         for row in load_rawr_player_season_value_rows(
             scope_key=scope_key,
             seasons=season_ids(query.seasons),
-            min_average_minutes=query.min_average_minutes,
-            min_total_minutes=query.min_total_minutes,
-            min_games=query.min_games,
+            min_average_minutes=query.filters.min_average_minutes,
+            min_total_minutes=query.filters.min_total_minutes,
+            min_games=query.eligibility.min_games,
         )
     ]
     return ResolvedRawrResultDTO(

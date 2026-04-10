@@ -18,8 +18,8 @@ class WowyQueryFiltersDTO:
     team_filter: list[Team] | None
     season_filter: list[Season] | None
     # season_type: SeasonType
-    min_average_minutes: float
-    min_total_minutes: float
+    min_average_minutes: float | None
+    min_total_minutes: float | None
     top_n: int
     min_games_with: int
     min_games_without: int
@@ -30,11 +30,11 @@ class WowyQueryFiltersDTO:
             team_filter=query.teams,
             season_filter=query.seasons,
             # season_type=query.season_type,
-            min_average_minutes=query.min_average_minutes,
-            min_total_minutes=query.min_total_minutes,
+            min_average_minutes=query.filters.min_average_minutes,
+            min_total_minutes=query.filters.min_total_minutes,
             top_n=query.top_n,
-            min_games_with=query.min_games_with,
-            min_games_without=query.min_games_without,
+            min_games_with=query.eligibility.min_games_with,
+            min_games_without=query.eligibility.min_games_without,
         )
 
     def for_options(self) -> WowyQueryFiltersDTO:

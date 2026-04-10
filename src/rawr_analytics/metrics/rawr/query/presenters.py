@@ -17,8 +17,8 @@ class RawrQueryFiltersDTO:
     team_filter: list[Team] | None
     season_filter: list[Season] | None
     top_n: int
-    min_average_minutes: float
-    min_total_minutes: float
+    min_average_minutes: float | None
+    min_total_minutes: float | None
     min_games: int
     ridge_alpha: float
     recalculate: bool
@@ -34,9 +34,9 @@ class RawrQueryFiltersDTO:
             team_filter=query.teams,
             season_filter=query.seasons,
             top_n=query.top_n,
-            min_average_minutes=query.min_average_minutes,
-            min_total_minutes=query.min_total_minutes,
-            min_games=query.min_games,
+            min_average_minutes=query.filters.min_average_minutes,
+            min_total_minutes=query.filters.min_total_minutes,
+            min_games=query.eligibility.min_games,
             ridge_alpha=query.ridge_alpha,
             recalculate=recalculate,
         )

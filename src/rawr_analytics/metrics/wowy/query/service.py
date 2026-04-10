@@ -4,7 +4,7 @@ from dataclasses import dataclass
 from typing import Literal
 
 from rawr_analytics.data.game_cache.store import load_cache_snapshot
-from rawr_analytics.data.metric_store import load_metric_scope_store_state
+from rawr_analytics.data.metric_store._reads import load_metric_scope_store_state
 from rawr_analytics.data.metric_store.wowy import (
     WowyPlayerSeasonValueRow,
     load_wowy_player_season_value_rows,
@@ -198,10 +198,8 @@ def _build_live_wowy_query_result(
     return build_wowy_custom_query(
         metric,
         season_inputs=season_inputs,
-        min_games_with=query.min_games_with,
-        min_games_without=query.min_games_without,
-        min_average_minutes=query.min_average_minutes,
-        min_total_minutes=query.min_total_minutes,
+        eligibility=query.eligibility,
+        filters=query.filters,
     )
 
 
@@ -228,10 +226,10 @@ def _try_load_wowy_store_result(
             metric_id=metric.value,
             scope_key=scope_key,
             seasons=season_ids(query.seasons),
-            min_average_minutes=query.min_average_minutes,
-            min_total_minutes=query.min_total_minutes,
-            min_games_with=query.min_games_with,
-            min_games_without=query.min_games_without,
+            min_average_minutes=query.filters.min_average_minutes,
+            min_total_minutes=query.filters.min_total_minutes,
+            min_games_with=query.eligibility.min_games_with,
+            min_games_without=query.eligibility.min_games_without,
         )
     ]
 
