@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from rawr_analytics.app.metric_store import (
+from rawr_analytics.app.metric_store.refresh_service import (
     DEFAULT_RAWR_RIDGE_ALPHA,
     MetricStoreRefreshProgressEvent,
     RefreshMetricStoreResult,

@@ -3,7 +3,7 @@ from __future__ import annotations
 from collections.abc import Callable
 from dataclasses import dataclass
 
-from rawr_analytics.app.metric_store import RefreshMetricStoreResult
+from rawr_analytics.app.metric_store.refresh_service import RefreshMetricStoreResult
 from rawr_analytics.data.db_validation import DatabaseValidationSummary
 from rawr_analytics.shared.ingest import (
     FetchError,

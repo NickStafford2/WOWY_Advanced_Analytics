@@ -5,7 +5,7 @@ from rawr_analytics.app.metric_store.catalog import (
     build_metric_options_payload,
     require_current_metric_scope,
 )
-from rawr_analytics.app.metric_store.service import (
+from rawr_analytics.app.metric_store.refresh_service import (
     DEFAULT_RAWR_RIDGE_ALPHA,
     MetricStoreRefreshEventFn,
     MetricStoreRefreshProgressEvent,

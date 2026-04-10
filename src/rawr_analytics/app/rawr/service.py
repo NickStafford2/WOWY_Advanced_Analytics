@@ -4,12 +4,12 @@ from collections.abc import Callable
 from dataclasses import dataclass
 from typing import Literal
 
-from rawr_analytics.app.metric_store import (
+from rawr_analytics.app.metric_store.catalog import (
     MetricStoreCatalog,
     build_metric_options_payload,
     require_current_metric_scope,
+    resolve_all_teams_snapshot_scope_key,
 )
-from rawr_analytics.app.metric_store.catalog import resolve_all_teams_snapshot_scope_key
 from rawr_analytics.app.rawr.presenters import RawrQueryFiltersDTO, build_rawr_export_rows
 from rawr_analytics.app.rawr.presenters import (
     build_rawr_leaderboard_payload as build_rawr_leaderboard_payload_from_records,

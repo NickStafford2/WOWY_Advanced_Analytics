@@ -3,12 +3,12 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Literal
 
-from rawr_analytics.app.metric_store import (
+from rawr_analytics.app.metric_store.catalog import (
     MetricStoreCatalog,
     build_metric_options_payload,
     require_current_metric_scope,
+    resolve_all_teams_snapshot_scope_key,
 )
-from rawr_analytics.app.metric_store.catalog import resolve_all_teams_snapshot_scope_key
 from rawr_analytics.app.wowy.presenters import WowyQueryFiltersDTO
 from rawr_analytics.app.wowy.presenters import (
     build_wowy_export_rows as build_wowy_export_rows_from_values,
