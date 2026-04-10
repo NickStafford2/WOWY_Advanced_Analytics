@@ -3,8 +3,8 @@ from __future__ import annotations
 from flask import Flask, Response, jsonify, request
 
 from rawr_analytics.metrics.constants import Metric
+from rawr_analytics.metrics.rawr.query.presenters import build_rawr_export_rows
 from rawr_analytics.metrics.rawr.query.service import (
-    build_rawr_leaderboard_export,
     build_rawr_leaderboard_payload,
     build_rawr_options_payload,
     build_rawr_player_seasons_payload,
@@ -75,7 +75,7 @@ def _rawr_csv_leaderboard_response(*, recalculate: bool = False) -> Response:
     return Response(
         render_leaderboard_csv(
             metric=Metric.RAWR,
-            table_rows=build_rawr_leaderboard_export(result),
+            table_rows=build_rawr_export_rows(rows=result.rows, seasons=result.seasons),
         ),
         mimetype="text/csv",
         headers={"Content-Disposition": f'attachment; filename="{filename}"'},

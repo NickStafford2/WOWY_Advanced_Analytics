@@ -191,11 +191,8 @@ def build_rawr_span_chart_payload(
     return payload
 
 
-def build_rawr_leaderboard_export(result: ResolvedRawrResultDTO) -> MetricQueryExport:
-    return build_rawr_export_rows(
-        rows=result.rows,
-        seasons=result.seasons,
-    )
+def delete___build_rawr_leaderboard_export(result: ResolvedRawrResultDTO) -> MetricQueryExport:
+    return build_rawr_export_rows(rows=result.rows, seasons=result.seasons)
 
 
 def _build_live_rawr_query_result(

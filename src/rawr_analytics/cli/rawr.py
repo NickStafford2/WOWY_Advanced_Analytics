@@ -13,11 +13,9 @@ from rawr_analytics.cli._metric_query_cli import (
 )
 from rawr_analytics.cli._progress_bar import TerminalProgressBar, print_status_box
 from rawr_analytics.metrics.constants import Metric
+from rawr_analytics.metrics.rawr.query.presenters import build_rawr_export_rows
 from rawr_analytics.metrics.rawr.query.request import build_rawr_query
-from rawr_analytics.metrics.rawr.query.service import (
-    build_rawr_leaderboard_export,
-    resolve_rawr_result,
-)
+from rawr_analytics.metrics.rawr.query.service import resolve_rawr_result
 from rawr_analytics.shared.season import Season
 
 
@@ -35,7 +33,6 @@ def main(argv: list[str] | None = None) -> int:
     args = parser.parse_args(argv)
     season_type = parse_metric_query_season_type(args.season_type)
     query = build_rawr_query(
-        season_type=season_type,
         teams=parse_metric_query_teams(args.team),
         seasons=parse_metric_query_seasons(args.season, season_type=season_type),
         top_n=args.top_n,
@@ -57,7 +54,7 @@ def main(argv: list[str] | None = None) -> int:
     print("[1/3] loading season inputs", flush=True)
     progress_fn = _build_progress_updater(load_bar)
     result = resolve_rawr_result(query, progress_fn=progress_fn, recalculate=args.recalculate)
-    rows = build_rawr_leaderboard_export(result=result)
+    rows = build_rawr_export_rows(rows=result.rows, seasons=result.seasons)
     load_bar.finish(detail="season inputs ready")
     print("[2/3] computed rawr rankings", flush=True)
     print(f"[3/3] rendering {len(rows)} leaderboard rows", flush=True)
