@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import sys
 
-from rawr_analytics.app.rebuild import (
+from rawr_analytics.refresh_metrics.rebuild import (
     RebuildEvent,
     RebuildMetricRefreshProgressEvent,
     RebuildTeamFailureEvent,

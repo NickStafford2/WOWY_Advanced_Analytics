@@ -1,4 +1,4 @@
-from rawr_analytics.app.rebuild._events import (
+from rawr_analytics.refresh_metrics.rebuild._events import (
     RebuildEvent,
     RebuildEventFn,
     RebuildMetricRefreshProgressEvent,
@@ -6,8 +6,10 @@ from rawr_analytics.app.rebuild._events import (
     RebuildTeamFailureEvent,
     RebuildValidationProgressEvent,
 )
-from rawr_analytics.app.rebuild._validation import format_rebuild_validation_summary
-from rawr_analytics.app.rebuild.service import rebuild_player_metrics_db
+from rawr_analytics.refresh_metrics.rebuild._validation import (
+    format_rebuild_validation_summary,
+)
+from rawr_analytics.refresh_metrics.rebuild.service import rebuild_player_metrics_db
 
 __all__ = [
     "RebuildEvent",

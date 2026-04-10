@@ -1,6 +1,9 @@
 from __future__ import annotations
 
-from rawr_analytics.app.rebuild._events import RebuildEventFn, RebuildTeamFailureEvent
+from rawr_analytics.refresh_metrics.rebuild._events import (
+    RebuildEventFn,
+    RebuildTeamFailureEvent,
+)
 from rawr_analytics.shared.ingest import FetchError, PartialTeamSeasonError
 from rawr_analytics.sources.nba_api.ingest._models import (
     FailureLogFn,

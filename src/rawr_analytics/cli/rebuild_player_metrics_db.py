@@ -4,7 +4,7 @@ import argparse
 import sys
 from collections.abc import Sequence
 
-from rawr_analytics.app.rebuild import (
+from rawr_analytics.refresh_metrics.rebuild import (
     format_rebuild_validation_summary,
     rebuild_player_metrics_db,
 )
