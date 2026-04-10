@@ -1,14 +1,11 @@
 from __future__ import annotations
 
+from rawr_analytics.data import validate_rebuild_storage
+from rawr_analytics.data.db_validation import DatabaseValidationSummary, render_validation_summary
 from rawr_analytics.refresh_metrics.rebuild._events import (
     RebuildEventFn,
     RebuildValidationProgressEvent,
 )
-from rawr_analytics.data import (
-    render_rebuild_validation_summary,
-    validate_rebuild_storage,
-)
-from rawr_analytics.data.db_validation import DatabaseValidationSummary
 
 
 def format_rebuild_validation_summary(
@@ -16,7 +13,7 @@ def format_rebuild_validation_summary(
     *,
     top_n: int = 10,
 ) -> str:
-    return render_rebuild_validation_summary(summary, top_n=top_n)
+    return render_validation_summary(summary, top_n=top_n)
 
 
 def validate_rebuild_result(

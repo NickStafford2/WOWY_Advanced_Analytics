@@ -3,8 +3,8 @@ from __future__ import annotations
 from flask import Flask, Response, jsonify, request
 
 from rawr_analytics.metrics.constants import Metric
+from rawr_analytics.metrics.wowy.query.presenters import build_wowy_export_rows
 from rawr_analytics.metrics.wowy.query.service import (
-    build_wowy_export_rows_from_values,
     build_wowy_leaderboard_payload,
     build_wowy_options_payload,
     build_wowy_player_seasons_payload,
@@ -100,7 +100,7 @@ def csv_leaderboard_response(
     return Response(
         render_leaderboard_csv(
             metric=metric,
-            table_rows=build_wowy_export_rows_from_values(
+            table_rows=build_wowy_export_rows(
                 rows=result.player_season_value, seasons=result.seasons
             ),
         ),

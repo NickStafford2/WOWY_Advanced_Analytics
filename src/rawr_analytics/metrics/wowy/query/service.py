@@ -20,9 +20,6 @@ from rawr_analytics.metrics.wowy.calculate.records import (
 )
 from rawr_analytics.metrics.wowy.query.presenters import WowyQueryFiltersDTO
 from rawr_analytics.metrics.wowy.query.presenters import (
-    build_wowy_export_rows as build_wowy_export_rows_from_values,
-)
-from rawr_analytics.metrics.wowy.query.presenters import (
     build_wowy_leaderboard_payload as build_wowy_leaderboard_payload_from_values,
 )
 from rawr_analytics.metrics.wowy.query.presenters import (
@@ -177,12 +174,6 @@ def build_wowy_span_chart_payload(
     )
     payload["filters"] = WowyQueryFiltersDTO.from_query(query).to_payload()
     return payload
-
-
-def build_____wowy_leaderboard_export(result: ResolvedWowyResultDTO) -> MetricQueryExport:
-    return build_wowy_export_rows_from_values(
-        rows=result.player_season_value, seasons=result.seasons
-    )
 
 
 def _build_live_wowy_query_result(
