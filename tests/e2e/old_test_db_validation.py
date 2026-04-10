@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from rawr_analytics.data.db_validation import (
-    assert_valid_player_metrics_db,
+    _assert_valid_player_metrics_db,
     audit_player_metrics_db,
     render_validation_summary,
     summarize_validation_report,
@@ -14,7 +14,7 @@ def test_audit_player_metrics_db_validates_real_database():
 
     assert report.ok is True
     assert report.issues == []
-    assert_valid_player_metrics_db()
+    _assert_valid_player_metrics_db()
 
 
 def test_db_validation_cli_json_mode_omits_progress_output(capsys):

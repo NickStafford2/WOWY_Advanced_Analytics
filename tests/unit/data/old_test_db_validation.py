@@ -1,9 +1,9 @@
 from __future__ import annotations
 
+from rawr_analytics.data._validation_issue import ValidationIssue
 from rawr_analytics.data.db_validation import (
     DatabaseValidationReport,
-    ValidationIssue,
-    normalize_issue_message,
+    _normalize_issue_message,
     render_validation_summary,
     summarize_validation_report,
 )
@@ -67,7 +67,7 @@ def test_render_validation_summary_lists_tables_and_trends():
 
 
 def test_normalize_issue_message_replaces_embedded_ids():
-    normalized = normalize_issue_message(
+    normalized = _normalize_issue_message(
         "Normalized player row for game '0020301176' player_id=445 player_name='Wesley Person' "
         "has invalid minutes nan"
     )

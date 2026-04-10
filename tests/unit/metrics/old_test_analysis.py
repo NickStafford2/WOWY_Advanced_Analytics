@@ -2,17 +2,17 @@ from __future__ import annotations
 
 from pathlib import Path
 
+from rawr_analytics.metrics.wowy.models import (
+    WowyGameRecord,
+    WowyPlayerSeasonRecord,
+    WowyPlayerStats,
+)
+
 from rawr_analytics.metrics.wowy.analysis import (
     DEFAULT_WOWY_SHRINKAGE_PRIOR_GAMES,
     apply_wowy_shrinkage,
     compute_wowy,
     compute_wowy_shrinkage_score,
-    filter_results,
-)
-from rawr_analytics.metrics.wowy.models import (
-    WowyGameRecord,
-    WowyPlayerSeasonRecord,
-    WowyPlayerStats,
 )
 from rawr_analytics.metrics.wowy.records import (
     available_wowy_seasons,

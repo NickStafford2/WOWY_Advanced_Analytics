@@ -3,14 +3,14 @@ from __future__ import annotations
 from pathlib import Path
 
 import pytest
-
 import rawr_analytics.data.game_cache._repository as game_cache_repository
 import rawr_analytics.data.game_cache.schema as game_cache_schema
+from rawr_analytics.data.game_cache.rows import NormalizedGamePlayerRow, NormalizedGameRow
+
 from rawr_analytics.data.game_cache import (
     list_cached_team_seasons,
     replace_team_season_normalized_rows,
 )
-from rawr_analytics.data.game_cache.rows import NormalizedGamePlayerRow, NormalizedGameRow
 from rawr_analytics.shared.player import PlayerSummary
 from rawr_analytics.shared.scope import TeamSeasonScope
 from rawr_analytics.shared.season import Season
