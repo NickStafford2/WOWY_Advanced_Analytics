@@ -9,8 +9,10 @@ from rawr_analytics.app.metric_store.catalog import (
     require_current_metric_scope,
     resolve_all_teams_snapshot_scope_key,
 )
-from rawr_analytics.data.metric_store import load_wowy_player_season_value_rows
-from rawr_analytics.data.metric_store.wowy import WowyPlayerSeasonValueRow
+from rawr_analytics.data.metric_store.wowy import (
+    WowyPlayerSeasonValueRow,
+    load_wowy_player_season_value_rows,
+)
 from rawr_analytics.data.metric_store_scope import season_ids
 from rawr_analytics.metrics.constants import Metric
 from rawr_analytics.metrics.wowy.cache import load_wowy_records
