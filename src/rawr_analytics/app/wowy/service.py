@@ -24,12 +24,15 @@ from rawr_analytics.app.wowy.presenters import (
 )
 from rawr_analytics.app.wowy.query import WowyQuery
 from rawr_analytics.data.metric_store import load_wowy_player_season_value_rows
+from rawr_analytics.data.metric_store.wowy import WowyPlayerSeasonValueRow
 from rawr_analytics.data.metric_store_scope import season_ids
 from rawr_analytics.metrics.constants import Metric
-from rawr_analytics.metrics.wowy import build_wowy_value_from_store_row, load_wowy_records
+from rawr_analytics.metrics.wowy import WowyPlayerValue, load_wowy_records
 from rawr_analytics.metrics.wowy.inputs import build_wowy_season_inputs
 from rawr_analytics.metrics.wowy.records import WowyPlayerSeasonValue, build_wowy_custom_query
 from rawr_analytics.shared import JSONDict
+from rawr_analytics.shared.player import PlayerMinutes, PlayerSummary
+from rawr_analytics.shared.season import Season
 
 type WowyResultSource = Literal["cache", "live"]
 type MetricQueryExport = list[JSONDict]
@@ -170,7 +173,7 @@ def _try_load_wowy_store_result(
     except ValueError:
         return None
     rows = [
-        build_wowy_value_from_store_row(row)
+        _build_wowy_value_from_store_row(row)
         for row in load_wowy_player_season_value_rows(
             metric_id=metric.value,
             scope_key=scope_key,
@@ -203,3 +206,26 @@ def _selected_wowy_seasons(
 def _require_wowy_metric(metric: Metric) -> None:
     if metric not in {Metric.WOWY, Metric.WOWY_SHRUNK}:
         raise ValueError(f"Unknown WOWY metric: {metric}")
+
+
+def _build_wowy_value_from_store_row(row: WowyPlayerSeasonValueRow) -> WowyPlayerSeasonValue:
+    season = Season.parse(row.season_id, row.season_type)
+    return WowyPlayerSeasonValue(
+        season_id=season.year_string_nba_api,
+        player=PlayerSummary(
+            player_id=row.player_id,
+            player_name=row.player_name,
+        ),
+        minutes=PlayerMinutes(
+            average_minutes=row.average_minutes,
+            total_minutes=row.total_minutes,
+        ),
+        result=WowyPlayerValue(
+            games_with=row.games_with,
+            games_without=row.games_without,
+            avg_margin_with=row.avg_margin_with,
+            avg_margin_without=row.avg_margin_without,
+            value=row.value,
+            raw_value=row.raw_wowy_score,
+        ),
+    )

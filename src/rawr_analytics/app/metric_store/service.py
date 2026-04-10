@@ -13,6 +13,7 @@ from rawr_analytics.data.metric_store._catalog import (
 from rawr_analytics.data.metric_store._rawr_store import replace_rawr_scope_snapshot
 from rawr_analytics.data.metric_store._wowy_store import replace_wowy_scope_snapshot
 from rawr_analytics.data.metric_store.rawr import RawrPlayerSeasonValueRow
+from rawr_analytics.data.metric_store.wowy import WowyPlayerSeasonValueRow
 from rawr_analytics.data.metric_store_scope import build_scope_key, build_team_filter
 from rawr_analytics.metrics.constants import Metric, MetricSummary
 from rawr_analytics.metrics.rawr import (
@@ -21,7 +22,12 @@ from rawr_analytics.metrics.rawr import (
     build_rawr_refresh_records,
     list_incomplete_rawr_season_warnings,
 )
-from rawr_analytics.metrics.wowy import build_wowy_store_rows
+from rawr_analytics.metrics.wowy import (
+    DEFAULT_WOWY_SHRINKAGE_PRIOR_GAMES,
+    WowyPlayerSeasonRecord,
+    build_wowy_refresh_records,
+    compute_wowy_shrinkage_score,
+)
 from rawr_analytics.metrics.wowy import describe_metric as describe_wowy_metric
 from rawr_analytics.shared.scope import TeamSeasonScope
 from rawr_analytics.shared.season import Season, SeasonType, require_normalized_seasons
@@ -459,14 +465,57 @@ def _build_wowy_cached_rows(
     season_type: SeasonType,
     seasons: list[Season],
     teams: list[Team] | None,
-):
-    return build_wowy_store_rows(
-        metric=metric,
-        scope_key=scope_key,
-        team_filter=team_filter,
+) -> list[WowyPlayerSeasonValueRow]:
+    records = build_wowy_refresh_records(
         season_type=season_type,
         seasons=seasons,
         teams=teams,
+    )
+    return [
+        _build_wowy_store_row_from_record(
+            metric=metric,
+            record=record,
+            scope_key=scope_key,
+            team_filter=team_filter,
+        )
+        for record in records
+    ]
+
+
+def _build_wowy_store_row_from_record(
+    *,
+    metric: Metric,
+    record: WowyPlayerSeasonRecord,
+    scope_key: str,
+    team_filter: str,
+) -> WowyPlayerSeasonValueRow:
+    value = record.result.value
+    include_raw_wowy_score = False
+    if metric == Metric.WOWY_SHRUNK:
+        include_raw_wowy_score = True
+        value = compute_wowy_shrinkage_score(
+            games_with=record.result.games_with,
+            games_without=record.result.games_without,
+            wowy_score=record.result.value,
+            prior_games=DEFAULT_WOWY_SHRINKAGE_PRIOR_GAMES,
+        )
+    return WowyPlayerSeasonValueRow(
+        snapshot_id=None,
+        metric_id=metric.value,
+        scope_key=scope_key,
+        team_filter=team_filter,
+        season_type=record.season.season_type.value,
+        season_id=record.season.year_string_nba_api,
+        player_id=record.player.player_id,
+        player_name=record.player.player_name,
+        value=value,
+        games_with=record.result.games_with,
+        games_without=record.result.games_without,
+        avg_margin_with=record.result.avg_margin_with,
+        avg_margin_without=record.result.avg_margin_without,
+        average_minutes=record.minutes.average_minutes,
+        total_minutes=record.minutes.total_minutes,
+        raw_wowy_score=record.result.value if include_raw_wowy_score else None,
     )
 
 
