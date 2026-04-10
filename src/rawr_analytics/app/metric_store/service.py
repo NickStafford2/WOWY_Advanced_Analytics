@@ -22,7 +22,7 @@ from rawr_analytics.metrics.rawr import (
 from rawr_analytics.metrics.wowy import build_wowy_store_rows
 from rawr_analytics.metrics.wowy import describe_metric as describe_wowy_metric
 from rawr_analytics.shared.scope import TeamSeasonScope
-from rawr_analytics.shared.season import Season, SeasonType
+from rawr_analytics.shared.season import Season, SeasonType, normalize_seasons
 from rawr_analytics.shared.team import Team, normalize_teams, to_normalized_team_ids
 
 MetricStoreRefreshEventFn = Callable[["MetricStoreRefreshProgressEvent"], None]
@@ -200,9 +200,10 @@ def _prepare_metric_store_refresh(
         if metric == Metric.RAWR
         else metric_info.build_version
     )
+    available_seasons = _build_available_seasons(cached_team_seasons)
     warnings = (
-        list_incomplete_rawr_season_warnings(season_type=season_type)
-        if metric == Metric.RAWR
+        list_incomplete_rawr_season_warnings(seasons=available_seasons)
+        if metric == Metric.RAWR and available_seasons
         else []
     )
 
@@ -358,6 +359,12 @@ def _build_refresh_scope(
             full_span=None,
         ),
     )
+
+
+def _build_available_seasons(cached_team_seasons: list[TeamSeasonScope]) -> list[Season]:
+    seasons = normalize_seasons([scope.season for scope in cached_team_seasons])
+    assert seasons is not None, "metric store refresh requires at least one cached season"
+    return seasons
 
 
 def _build_scope_catalog(

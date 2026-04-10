@@ -8,7 +8,7 @@ from rawr_analytics.data.scope_resolver import resolve_team_seasons
 from rawr_analytics.metrics.rawr._cache_status import list_complete_rawr_seasons
 from rawr_analytics.shared.game import NormalizedGamePlayerRecord, NormalizedGameRecord
 from rawr_analytics.shared.scope import TeamSeasonScope
-from rawr_analytics.shared.season import Season, SeasonType
+from rawr_analytics.shared.season import Season, SeasonType, normalize_seasons
 from rawr_analytics.shared.team import Team
 
 type RawrSeasonProgressFn = Callable[[int, int, Season], None]
@@ -31,20 +31,20 @@ def load_rawr_records(
 
     teams_by_season = _build_teams_by_season(requested_team_seasons)
     complete_seasons = list_complete_rawr_seasons(
-        seasons=sorted({season.year_string_nba_api for season in teams_by_season}),
-        season_type=season_type,
+        seasons=list(teams_by_season),
     )
     if not complete_seasons:
         raise ValueError("No complete cached seasons matched the requested RAWR scope")
 
     season_games: dict[Season, list[NormalizedGameRecord]] = {}
     season_game_players: dict[Season, list[NormalizedGamePlayerRecord]] = {}
-    sorted_seasons = sorted(teams_by_season, key=lambda item: item.year_string_nba_api)
+    sorted_seasons = normalize_seasons(list(teams_by_season))
+    assert sorted_seasons is not None, "RAWR team grouping produced no seasons"
     total_seasons = len(sorted_seasons)
     for season_index, season in enumerate(sorted_seasons, start=1):
         if progress_fn is not None:
             progress_fn(season_index, total_seasons, season)
-        if season.year_string_nba_api not in complete_seasons:
+        if season not in complete_seasons:
             continue
         season_records = _load_rawr_season_records(
             teams=teams_by_season[season],
@@ -103,20 +103,12 @@ def _expand_rawr_season_scopes(
 ) -> list[TeamSeasonScope]:
     team_scopes = list(requested_team_seasons)
     seen_scope_keys = {
-        (
-            scope.team.team_id,
-            scope.season.year_string_nba_api,
-            scope.season.season_type.value,
-        )
+        (scope.team.team_id, scope.season.id)
         for scope in team_scopes
     }
     for game in games:
         scope = TeamSeasonScope(team=game.opponent_team, season=game.season)
-        scope_key = (
-            scope.team.team_id,
-            scope.season.year_string_nba_api,
-            scope.season.season_type.value,
-        )
+        scope_key = (scope.team.team_id, scope.season.id)
         if scope_key in seen_scope_keys:
             continue
         team_scopes.append(scope)

@@ -11,7 +11,7 @@ from rawr_analytics.data.metric_store import load_metric_scope_store_state
 from rawr_analytics.data.metric_store_scope import build_scope_key, build_team_filter
 from rawr_analytics.metrics.constants import Metric
 from rawr_analytics.shared.scope import TeamSeasonScope
-from rawr_analytics.shared.season import Season, SeasonType
+from rawr_analytics.shared.season import Season, SeasonType, normalize_seasons
 from rawr_analytics.shared.team import Team
 
 
@@ -246,16 +246,14 @@ def _build_metric_catalog_availability_index(
         Team.from_id(team_id)
         for team_id in sorted({team_season.team.team_id for team_season in cached_team_seasons})
     ]
-    ordered_seasons = seasons or [
-        Season.parse(season_id, season_type.to_nba_format())
-        for season_id in sorted(
-            {team_season.season.year_string_nba_api for team_season in cached_team_seasons}
-        )
-    ]
+    ordered_seasons = seasons or normalize_seasons(
+        [team_season.season for team_season in cached_team_seasons]
+    )
+    assert ordered_seasons is not None, "metric catalog availability requires seasons"
     filtered_cached_team_seasons = _filter_cached_team_seasons(
         cached_team_seasons,
         team_ids={team.team_id for team in ordered_teams},
-        season_ids={season.year_string_nba_api for season in ordered_seasons},
+        seasons=set(ordered_seasons),
     )
 
     available_team_ids = [team.team_id for team in ordered_teams]
@@ -297,13 +295,13 @@ def _filter_cached_team_seasons(
     cached_team_seasons: list[TeamSeasonScope],
     *,
     team_ids: set[int] | None = None,
-    season_ids: set[str] | None = None,
+    seasons: set[Season] | None = None,
 ) -> list[TeamSeasonScope]:
     return [
         team_season
         for team_season in cached_team_seasons
         if (team_ids is None or team_season.team.team_id in team_ids)
-        and (season_ids is None or team_season.season.year_string_nba_api in season_ids)
+        and (seasons is None or team_season.season in seasons)
     ]
 
 

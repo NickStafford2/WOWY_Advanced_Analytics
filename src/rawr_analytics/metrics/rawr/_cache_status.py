@@ -3,7 +3,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 
 from rawr_analytics.data.game_cache import load_cache_snapshot
-from rawr_analytics.shared.season import Season, SeasonType
+from rawr_analytics.shared.season import Season, normalize_seasons
 from rawr_analytics.shared.team import Team
 
 
@@ -17,10 +17,10 @@ class _SeasonCacheSummary:
 
 def list_complete_rawr_seasons(
     *,
-    seasons: list[str],
-    season_type: SeasonType,
-) -> set[str]:
-    summaries = _summarize_rawr_cache_seasons(seasons=seasons, season_type=season_type)
+    seasons: list[Season],
+) -> set[Season]:
+    assert seasons, "RAWR completeness requires explicit seasons"
+    summaries = _summarize_rawr_cache_seasons(seasons=seasons)
     return {
         season
         for season in seasons
@@ -34,60 +34,59 @@ def list_complete_rawr_seasons(
 
 def list_incomplete_rawr_season_warnings(
     *,
-    seasons: list[str] | None = None,
-    season_type: SeasonType,
+    seasons: list[Season],
 ) -> list[str]:
-    requested_seasons = seasons or _list_cached_rawr_seasons_for_type(season_type)
-    summaries = _summarize_rawr_cache_seasons(seasons=requested_seasons, season_type=season_type)
+    assert seasons, "RAWR completeness warnings require explicit seasons"
+    requested_seasons = normalize_seasons(seasons)
+    assert requested_seasons is not None
+    summaries = _summarize_rawr_cache_seasons(seasons=requested_seasons)
     warnings: list[str] = []
     for season in requested_seasons:
         summary = summaries.get(season)
         if summary is None:
-            warnings.append(f"{season}: no cache load metadata found")
+            warnings.append(f"{season.id}: no cache load metadata found")
             continue
         warnings.extend(_build_rawr_warning_messages(season=season, summary=summary))
     return warnings
 
 
-def _list_cached_rawr_seasons_for_type(season_type: SeasonType) -> list[str]:
-    snapshot = load_cache_snapshot(season_type)
-    return sorted({entry.scope.season.year_string_nba_api for entry in snapshot.entries})
-
-
 def _summarize_rawr_cache_seasons(
     *,
-    seasons: list[str],
-    season_type: SeasonType,
-) -> dict[str, _SeasonCacheSummary]:
-    snapshot = load_cache_snapshot(season_type)
+    seasons: list[Season],
+) -> dict[Season, _SeasonCacheSummary]:
     season_filter = set(seasons)
-    summaries: dict[str, _SeasonCacheSummary] = {}
-    for entry in snapshot.entries:
-        scope = entry.scope
-        if scope.season.year_string_nba_api not in season_filter:
-            continue
-        summary = summaries.setdefault(
-            scope.season.year_string_nba_api,
-            _SeasonCacheSummary(
-                team_labels=set(),
-                incomplete_metadata_teams=set(),
-                partial_teams={},
-                skipped_teams={},
-            ),
-        )
-        team_label = scope.team.abbreviation(season=scope.season)
-        summary.team_labels.add(team_label)
-        if entry.expected_games_count is None or entry.skipped_games_count is None:
-            summary.incomplete_metadata_teams.add(team_label)
-            continue
-        if entry.games_count != entry.expected_games_count:
-            summary.partial_teams[team_label] = (entry.games_count, entry.expected_games_count)
-        if entry.skipped_games_count != 0:
-            summary.skipped_teams[team_label] = entry.skipped_games_count
+    summaries: dict[Season, _SeasonCacheSummary] = {}
+    for season_type in {season.season_type for season in seasons}:
+        snapshot = load_cache_snapshot(season_type)
+        for entry in snapshot.entries:
+            scope = entry.scope
+            if scope.season not in season_filter:
+                continue
+            summary = summaries.setdefault(
+                scope.season,
+                _SeasonCacheSummary(
+                    team_labels=set(),
+                    incomplete_metadata_teams=set(),
+                    partial_teams={},
+                    skipped_teams={},
+                ),
+            )
+            team_label = scope.team.abbreviation(season=scope.season)
+            summary.team_labels.add(team_label)
+            if entry.expected_games_count is None or entry.skipped_games_count is None:
+                summary.incomplete_metadata_teams.add(team_label)
+                continue
+            if entry.games_count != entry.expected_games_count:
+                summary.partial_teams[team_label] = (
+                    entry.games_count,
+                    entry.expected_games_count,
+                )
+            if entry.skipped_games_count != 0:
+                summary.skipped_teams[team_label] = entry.skipped_games_count
     return summaries
 
 
-def _is_complete_rawr_summary(*, season: str, summary: _SeasonCacheSummary) -> bool:
+def _is_complete_rawr_summary(*, season: Season, summary: _SeasonCacheSummary) -> bool:
     return (
         summary.team_labels == set(_list_expected_rawr_teams_for_season(season))
         and not summary.incomplete_metadata_teams
@@ -96,29 +95,28 @@ def _is_complete_rawr_summary(*, season: str, summary: _SeasonCacheSummary) -> b
     )
 
 
-def _build_rawr_warning_messages(*, season: str, summary: _SeasonCacheSummary) -> list[str]:
+def _build_rawr_warning_messages(*, season: Season, summary: _SeasonCacheSummary) -> list[str]:
     warnings: list[str] = []
     missing_teams = sorted(set(_list_expected_rawr_teams_for_season(season)) - summary.team_labels)
     if missing_teams:
-        warnings.append(f"{season}: missing team-seasons: {', '.join(missing_teams)}")
+        warnings.append(f"{season.id}: missing team-seasons: {', '.join(missing_teams)}")
     warnings.extend(
-        f"{season}: incomplete cache metadata for {team_label}"
+        f"{season.id}: incomplete cache metadata for {team_label}"
         for team_label in sorted(summary.incomplete_metadata_teams)
     )
     warnings.extend(
-        f"{season}: partial team-season cache for {team_label} ({games}/{expected} games)"
+        f"{season.id}: partial team-season cache for {team_label} ({games}/{expected} games)"
         for team_label, (games, expected) in sorted(summary.partial_teams.items())
     )
     warnings.extend(
-        f"{season}: skipped games present for {team_label} ({skipped} skipped)"
+        f"{season.id}: skipped games present for {team_label} ({skipped} skipped)"
         for team_label, skipped in sorted(summary.skipped_teams.items())
     )
     return warnings
 
 
-def _list_expected_rawr_teams_for_season(season: str) -> list[str]:
-    resolved_season = Season.parse(season, "Regular Season")
+def _list_expected_rawr_teams_for_season(season: Season) -> list[str]:
     return [
-        team.abbreviation(season=resolved_season)
-        for team in Team.all_active_in_season(resolved_season)
+        team.abbreviation(season=season)
+        for team in Team.all_active_in_season(season)
     ]

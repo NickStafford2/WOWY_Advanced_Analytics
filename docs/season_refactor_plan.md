@@ -48,23 +48,26 @@ In other words:
 - app/query boundary: omission becomes an explicit season list
 - metric/cache/data boundary: `seasons` is always concrete
 
-If the program still needs to preserve "user did not explicitly choose seasons",
-that should live in a separate outer request/filter DTO, not in the normalized
-core metric query object.
+If the program later needs to preserve "user did not explicitly choose seasons",
+that must live in a separate outer request/filter DTO, not in the normalized
+core metric query object. Do not add `requested_seasons` next to `seasons` on
+core query objects.
 
 Presenter/filter DTOs should name optional user inputs as filters:
 
 - `team_filter`
 - `season_filter`
 
-This keeps filter state distinct from the concrete execution scope.
+This keeps filter state distinct from the concrete execution scope. Current
+metric query filter payloads may show resolved filters. Option/default payloads
+may still use `season_filter=None` to mean no user filter is selected.
 
 ## Where `None` May Still Make Sense
 
 `None` may still be acceptable at outer boundaries where the distinction matters:
 
 - request parsing
-- presenter/filter DTOs that need to preserve "user did not select seasons"
+- presenter/filter DTOs that intentionally represent "user did not select seasons"
 - possibly rebuild/admin entrypoints before season selection is resolved
 - lower-level storage/query helpers where `None` has one precise meaning:
   omit the season filter entirely
@@ -126,11 +129,19 @@ Implication:
   APIs may still emit year strings where the current contract is year-only; do
   not introduce a half-migrated outward payload scheme prematurely
 
-Outward-facing API rule:
+Future outward-facing API rule:
 
 - when a payload needs to identify a season, it should use `season_id`
-- outward-facing payloads should not use ambiguous year-only `season` values for identity
+- outward-facing payloads should not use ambiguous year-only `season` values for
+  exact season identity once mixed season-type payloads are supported
 - `Season.year_string_nba_api` may still be included later for display or grouping convenience, but `season_id` is the required identifier
+
+Current migration rule:
+
+- do not rename every existing year-only payload field before mixed season-type
+  payloads are actually supported
+- prefer new filter payload names such as `season_filter` over ambiguous
+  `season` when touching presenter DTOs
 
 Internal API rule:
 
@@ -185,10 +196,18 @@ Migration direction:
 Metric-store snapshots should only represent fixed full-history season-set
 shapes.
 
-This means:
+This snapshot rule is separate from live query normalization.
+
+Live query behavior:
+
+- when no season filter is supplied, build an explicit NBA history season list
+  for the requested season type
+- cache/database reads naturally return only seasons with matching stored data
+
+Metric-store snapshot behavior:
 
 - metric-store refresh should build snapshots only for full NBA history
-- full NBA history means all exact `Season` values currently present in the
+- for stored snapshots, full NBA history means all exact `Season` values currently present in the
   normalized cache for the selected shape
 - teams are not part of metric-store snapshot identity
 - team-filtered metric queries should remain live-query only for now
