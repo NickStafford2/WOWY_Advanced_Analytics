@@ -17,12 +17,12 @@ def load_wowy_records(
 ) -> tuple[list[NormalizedGameRecord], list[NormalizedGamePlayerRecord]]:
     assert seasons, "WOWY record loading requires a non-empty season list"
     assert teams, "WOWY record loading requires a non-empty team list"
-    # team_seasons = resolve_team_seasons(teams, seasons)
-    # if not team_seasons:
-    #     raise ValueError("No cached data matched the requested scope")
-    #
     team_seasons: list[TeamSeasonScope] = []
-    for team in teams:
-        for season in seasons:
+    for season in seasons:
+        for team in teams:
+            if not team.is_active_during(season):
+                continue
             team_seasons.append(TeamSeasonScope(team, season))
+    if not team_seasons:
+        raise ValueError("No active team-season scopes matched the requested WOWY scope")
     return load_team_season_cache(team_seasons)

@@ -98,6 +98,10 @@ explicit non-empty season list rather than relying on omitted season filters.
 - update live query paths before metric-store snapshot paths
 - redesign metric-store scope keys, catalog metadata, and span metadata after
   live query season handling is stable
+- after the metric package refactor, make season changes in concrete workflow
+  modules under `metrics/{rawr,wowy}/query`, `metrics/{rawr,wowy}/cache.py`,
+  `metrics/{rawr,wowy}/refresh`, and `metrics/{rawr,wowy}/calculate`; do not
+  reintroduce old `app/wowy` or root-level WOWY calculation modules
 - remove old single-`season_type` query plumbing last
 
 ## Season Identity
@@ -166,15 +170,29 @@ Current migration state:
 - metric-store scope keys now encode exact ordered `Season.id` values
 - the key format still includes a team-filter segment, but stored snapshots
   should currently use only the all-teams value
+- catalog availability, full-span metadata, and metric-store row reads are not
+  fully migrated yet; they still store or filter by NBA year string plus a
+  separate `season_type`
 - team-filtered metric queries should not build team-scoped snapshot keys during
   this migration; they should fall back to live query execution
 - cached metric reads should resolve the current all-teams snapshot key from the
   normalized cache's exact season set, then filter rows by the query's explicit
   season list
 
+Metric-store row-read target:
+
+- `load_rawr_player_season_value_rows` and `load_wowy_player_season_value_rows`
+  should receive exact `Season` values or exact encoded season IDs, not
+  year-only strings
+- row reads must filter by exact season identity, either `Season.id` or the
+  pair `(season_id, season_type)`
+- year-only `season_id IN (...)` filtering is acceptable only while stored
+  snapshots remain single-season-type; it is incorrect for mixed regular-season
+  and playoff snapshots
+
 ## RAWR Completeness
 
-Recommended rule:
+Target rule:
 
 - RAWR completeness should be defined per exact `Season`
 - when a mixed query includes incomplete seasons, return results for the
@@ -199,6 +217,9 @@ Migration direction:
 
 - replace season-type-based RAWR cache completeness logic with exact `Season` completeness checks
 - treat incompleteness as a property of the requested season itself, not of a separate season-type bucket
+- current RAWR cache loading may skip incomplete seasons without returning the
+  warning/log behavior above; keep that as an implementation gap until the query
+  result contract has a place for excluded-season warnings
 
 ## Metric Store Snapshot Policy
 
@@ -226,6 +247,8 @@ Current staged implementation:
 - each refresh call builds one all-teams snapshot for the requested season type
 - the snapshot scope key is based on the exact seasons currently present in the
   normalized cache for that season type
+- the catalog and full-span rows still persist year-only season identifiers and
+  a separate `season_type`, so this is only a partial exact-season migration
 - mixed stored season-set shapes are not built yet
 
 Target stored season-set shapes:

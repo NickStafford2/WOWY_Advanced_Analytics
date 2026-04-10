@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from rawr_analytics.data.game_cache import store_team_season_cache
+from rawr_analytics.data.game_cache.store import store_team_season_cache
 from rawr_analytics.shared.scope import TeamSeasonScope
 from rawr_analytics.sources.nba_api.ingest._models import IngestResult
 

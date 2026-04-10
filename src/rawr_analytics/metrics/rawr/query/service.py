@@ -4,7 +4,7 @@ from collections.abc import Callable
 from dataclasses import dataclass
 from typing import Any, Literal
 
-from rawr_analytics.data.game_cache import load_cache_snapshot
+from rawr_analytics.data.game_cache.store import load_cache_snapshot
 from rawr_analytics.data.metric_store import (
     load_metric_scope_store_state,
     load_rawr_player_season_value_rows,

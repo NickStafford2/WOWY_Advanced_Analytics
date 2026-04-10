@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
-from rawr_analytics.data.game_cache import load_cache_snapshot
+from rawr_analytics.data.game_cache.store import load_cache_snapshot
 from rawr_analytics.shared.season import Season, normalize_seasons
 from rawr_analytics.shared.team import Team
 

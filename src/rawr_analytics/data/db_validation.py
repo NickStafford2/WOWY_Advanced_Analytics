@@ -8,7 +8,7 @@ from dataclasses import dataclass
 
 from rawr_analytics.data._paths import METRIC_STORE_DB_PATH, NORMALIZED_CACHE_DB_PATH
 from rawr_analytics.data._validation_issue import ValidationIssue
-from rawr_analytics.data.game_cache import load_cache_snapshot
+from rawr_analytics.data.game_cache.store import load_cache_snapshot
 from rawr_analytics.data.game_cache._schema import initialize_game_cache_db
 from rawr_analytics.data.game_cache._validation import (
     validate_normalized_cache_loads_table,

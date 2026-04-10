@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from rawr_analytics.data.game_cache import list_cached_scopes
+from rawr_analytics.data.game_cache.store import list_cached_scopes
 from rawr_analytics.shared.scope import TeamSeasonScope
 from rawr_analytics.shared.season import Season, require_normalized_seasons
 from rawr_analytics.shared.team import Team, normalize_teams

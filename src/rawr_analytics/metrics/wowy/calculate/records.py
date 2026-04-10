@@ -135,7 +135,7 @@ def build_wowy_custom_query(
 
 def build_wowy_player_season_value(
     *,
-    season_id: str,
+    season: Season,
     player: PlayerSummary,
     minutes: PlayerMinutes,
     games_with: int,
@@ -146,7 +146,7 @@ def build_wowy_player_season_value(
     raw_value: float | None,
 ) -> WowyPlayerSeasonValue:
     return WowyPlayerSeasonValue(
-        season_id=season_id,
+        season=season,
         player=player,
         minutes=minutes,
         result=WowyPlayerValue(
@@ -166,7 +166,7 @@ def _build_wowy_query_row(
 ) -> WowyPlayerSeasonValue:
     if metric == Metric.WOWY:
         return WowyPlayerSeasonValue(
-            season_id=record.season.year_string_nba_api,
+            season=record.season,
             player=record.player,
             minutes=record.minutes,
             result=WowyPlayerValue(
@@ -180,7 +180,7 @@ def _build_wowy_query_row(
         )
     if metric == Metric.WOWY_SHRUNK:
         return WowyPlayerSeasonValue(
-            season_id=record.season.year_string_nba_api,
+            season=record.season,
             player=record.player,
             minutes=record.minutes,
             result=WowyPlayerValue(

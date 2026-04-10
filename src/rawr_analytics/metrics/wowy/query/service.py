@@ -3,7 +3,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Literal
 
-from rawr_analytics.data.game_cache import load_cache_snapshot
+from rawr_analytics.data.game_cache.store import load_cache_snapshot
 from rawr_analytics.data.metric_store import load_metric_scope_store_state
 from rawr_analytics.data.metric_store.wowy import (
     WowyPlayerSeasonValueRow,
@@ -79,7 +79,7 @@ def _build_static_metric_options_payload(
     metric: Metric,
     seasons: list[Season],
     teams: list[Team],
-    filters: dict[str, object],
+    filters: JSONDict,
 ) -> JSONDict:
     ordered_teams = sorted(teams, key=lambda team: team.current.abbreviation)
 
@@ -269,7 +269,7 @@ def _require_wowy_metric(metric: Metric) -> None:
 def _build_wowy_value_from_store_row(row: WowyPlayerSeasonValueRow) -> WowyPlayerSeasonValue:
     season = Season.parse(row.season_id, row.season_type)
     return build_wowy_player_season_value(
-        season_id=season.year_string_nba_api,
+        season=season,
         player=PlayerSummary(
             player_id=row.player_id,
             player_name=row.player_name,
@@ -292,7 +292,7 @@ def _resolve_all_teams_snapshot_scope_key(query: WowyQuery) -> str | None:
     if team_filter:
         return None
 
-    cache_snapshot = load_cache_snapshot(query.season_type)
+    cache_snapshot = load_cache_snapshot()
     if not cache_snapshot.entries:
         return None
 
@@ -319,7 +319,7 @@ def _try_load_current_metric_availability(
     if state is None:
         return None
 
-    cache_snapshot = load_cache_snapshot(query.season_type)
+    cache_snapshot = load_cache_snapshot()
     if not cache_snapshot.entries:
         return None
 

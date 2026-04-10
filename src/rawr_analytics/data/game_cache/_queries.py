@@ -279,7 +279,7 @@ def select_cache_load_rows(
         query,
         params,
         column="season_type",
-        values=[season.season_type.value for season in seasons or []],
+        values=sorted({season.season_type.to_nba_format() for season in seasons or []}),
     )
     query += " ORDER BY season, season_type, team_id"
     return connection.execute(query, params).fetchall()
@@ -304,8 +304,8 @@ def _append_team_season_filter(
         },
         key=lambda item: (item[1], item[2], item[0]),
     )
-    query += " AND ("
-    query += " OR ".join("(team_id = ? AND season = ? AND season_type = ?)" for _ in scope_keys)
+    query += " AND (team_id, season, season_type) IN (VALUES "
+    query += ",".join("(?, ?, ?)" for _ in scope_keys)
     query += ")"
     for team_id, season_id, season_type in scope_keys:
         params.extend((team_id, season_id, season_type))

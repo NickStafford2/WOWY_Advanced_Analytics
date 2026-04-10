@@ -71,7 +71,7 @@ class WowyQueryFiltersDTO:
 
 @dataclass(frozen=True)
 class WowySeriesPointDTO:
-    season: Season
+    season: str
     value: float | None
 
 
@@ -123,19 +123,20 @@ def build_wowy_leaderboard_payload(
     *,
     metric: Metric,
     rows: Sequence[WowyPlayerSeasonValue],
-    seasons: list[str],
+    seasons: list[Season],
     top_n: int,
     mode: str,
     available_seasons: list[Season] | None = None,
     available_teams: list[Team] | None = None,
 ) -> JSONDict:
+    season_ids = _season_ids(seasons)
     table_rows = _build_ranked_table_rows(rows=rows, seasons=seasons, top_n=top_n)
     payload = cast(
         JSONDict,
         {
             "mode": mode,
             "metric": metric.value,
-            "span": build_span_payload(seasons=seasons, top_n=top_n),
+            "span": build_span_payload(seasons=season_ids, top_n=top_n),
             "table_rows": [asdict(row) for row in table_rows],
             "series": _build_series_from_table_rows(table_rows),
         },
@@ -150,7 +151,7 @@ def build_wowy_leaderboard_payload(
 def build_wowy_export_rows(
     *,
     rows: Sequence[WowyPlayerSeasonValue],
-    seasons: list[str],
+    seasons: list[Season],
 ) -> list[dict[str, Any]]:
     return [asdict(row) for row in _build_ranked_table_rows(rows=rows, seasons=seasons, top_n=None)]
 
@@ -159,18 +160,19 @@ def build_wowy_span_chart_payload(
     *,
     metric: Metric,
     rows: Sequence[WowyPlayerSeasonValue],
-    seasons: list[str],
+    seasons: list[Season],
     top_n: int,
 ) -> JSONDict:
+    season_ids = _season_ids(seasons)
     table_rows = _build_ranked_table_rows(rows=rows, seasons=seasons, top_n=top_n)
     return cast(
         JSONDict,
         {
             "metric": metric.value,
             "span": {
-                "start_season": seasons[0] if seasons else None,
-                "end_season": seasons[-1] if seasons else None,
-                "available_seasons": seasons,
+                "start_season": season_ids[0] if season_ids else None,
+                "end_season": season_ids[-1] if season_ids else None,
+                "available_seasons": season_ids,
                 "top_n": top_n,
             },
             "series": _build_series_from_table_rows(table_rows),
@@ -180,7 +182,7 @@ def build_wowy_span_chart_payload(
 
 def _build_wowy_player_season_row_dto(row: WowyPlayerSeasonValue) -> WowyPlayerSeasonRowDTO:
     return WowyPlayerSeasonRowDTO(
-        season_id=row.season_id,
+        season_id=row.season.year_string_nba_api,
         player_id=row.player.player_id,
         player_name=row.player.player_name,
         value=row.result.value,
@@ -199,14 +201,14 @@ def _build_wowy_player_season_row_dto(row: WowyPlayerSeasonValue) -> WowyPlayerS
 def _build_ranked_table_rows(
     *,
     rows: Sequence[WowyPlayerSeasonValue],
-    seasons: list[str],
+    seasons: list[Season],
     top_n: int | None,
 ) -> list[WowyLeaderboardRowDTO]:
     rows_by_player: dict[int, list[WowyPlayerSeasonValue]] = {}
     for row in rows:
         rows_by_player.setdefault(row.player.player_id, []).append(row)
 
-    ordered_seasons = sorted(dict.fromkeys(seasons))
+    ordered_seasons = _season_ids(seasons)
     full_span_length = len(ordered_seasons) or 1
     ranked_rows: list[WowyLeaderboardRowDTO] = []
     for player_id, player_rows in rows_by_player.items():
@@ -240,9 +242,13 @@ def _build_ranked_table_rows(
                 season_count=len(player_rows),
                 points=[
                     WowySeriesPointDTO(
-                        season=season,
+                        season=season_id,
                         value=next(
-                            (row.result.value for row in player_rows if row.season_id == season_id),
+                            (
+                                row.result.value
+                                for row in player_rows
+                                if row.season.year_string_nba_api == season_id
+                            ),
                             None,
                         ),
                     )
@@ -319,3 +325,7 @@ def _weighted_average_rows(
     if weight_total == 0:
         return None
     return weighted_total / weight_total
+
+
+def _season_ids(seasons: Sequence[Season]) -> list[str]:
+    return sorted(dict.fromkeys(season.year_string_nba_api for season in seasons))

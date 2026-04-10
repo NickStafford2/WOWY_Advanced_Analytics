@@ -3,7 +3,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Any
 
-from rawr_analytics.data.game_cache import (
+from rawr_analytics.data.game_cache.store import (
     GameCacheSnapshot,
     load_cache_snapshot,
 )
