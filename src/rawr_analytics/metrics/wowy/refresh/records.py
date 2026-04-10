@@ -30,3 +30,8 @@ def build_wowy_refresh_records(
         min_average_minutes=None,
         min_total_minutes=None,
     )
+
+
+__all__ = [
+    "build_wowy_refresh_records",
+]

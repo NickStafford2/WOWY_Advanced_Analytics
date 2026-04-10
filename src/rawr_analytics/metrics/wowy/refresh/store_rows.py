@@ -7,7 +7,7 @@ from rawr_analytics.metrics.wowy.analysis import (
     compute_wowy_shrinkage_score,
 )
 from rawr_analytics.metrics.wowy.records import WowyPlayerSeasonRecord
-from rawr_analytics.metrics.wowy.refresh_records import build_wowy_refresh_records
+from rawr_analytics.metrics.wowy.refresh.records import build_wowy_refresh_records
 from rawr_analytics.shared.season import Season, SeasonType
 from rawr_analytics.shared.team import Team
 

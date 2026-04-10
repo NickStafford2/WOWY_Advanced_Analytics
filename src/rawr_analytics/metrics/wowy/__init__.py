@@ -25,9 +25,8 @@ from rawr_analytics.metrics.wowy.records import (
     build_wowy_custom_query,
     prepare_wowy_player_season_records,
 )
-from rawr_analytics.metrics.wowy.refresh_records import (
+from rawr_analytics.metrics.wowy.refresh.records import (
     build_wowy_refresh_records,
-    load_wowy_records,
 )
 
 __all__ = [
@@ -47,7 +46,6 @@ __all__ = [
     "describe_metric",
     "describe_wowy_metric",
     "describe_wowy_shrunk_metric",
-    "load_wowy_records",
     "prepare_wowy_player_season_records",
     "validate_filters",
 ]
