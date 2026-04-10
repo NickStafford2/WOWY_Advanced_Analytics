@@ -87,7 +87,10 @@ def _summarize_rawr_cache_seasons(
 
 def _is_complete_rawr_summary(*, season: Season, summary: _SeasonCacheSummary) -> bool:
     return (
-        summary.team_labels == set(_list_expected_rawr_teams_for_season(season))
+        (
+            season.is_playoffs()
+            or summary.team_labels == set(_list_expected_rawr_teams_for_season(season))
+        )
         and not summary.incomplete_metadata_teams
         and not summary.partial_teams
         and not summary.skipped_teams
@@ -96,9 +99,12 @@ def _is_complete_rawr_summary(*, season: Season, summary: _SeasonCacheSummary) -
 
 def _build_rawr_warning_messages(*, season: Season, summary: _SeasonCacheSummary) -> list[str]:
     warnings: list[str] = []
-    missing_teams = sorted(set(_list_expected_rawr_teams_for_season(season)) - summary.team_labels)
-    if missing_teams:
-        warnings.append(f"{season.id}: missing team-seasons: {', '.join(missing_teams)}")
+    if not season.is_playoffs():
+        missing_teams = sorted(
+            set(_list_expected_rawr_teams_for_season(season)) - summary.team_labels
+        )
+        if missing_teams:
+            warnings.append(f"{season.id}: missing team-seasons: {', '.join(missing_teams)}")
     warnings.extend(
         f"{season.id}: incomplete cache metadata for {team_label}"
         for team_label in sorted(summary.incomplete_metadata_teams)
