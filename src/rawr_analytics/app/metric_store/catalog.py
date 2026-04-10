@@ -102,7 +102,7 @@ def require_current_metric_scope(
         raise ValueError(str(err)) from None
 
 
-def resolve_current_metric_scope_key(
+def resolve_all_teams_snapshot_scope_key(
     *,
     teams: list[Team] | None,
     season_type: SeasonType,
@@ -121,19 +121,6 @@ def resolve_current_metric_scope_key(
     )
 
 
-def load_metric_scope_catalog_for_options(
-    *,
-    metric: Metric,
-    teams: list[Team] | None,
-    season_type: SeasonType,
-) -> MetricStoreCatalog:
-    return _load_metric_options_context(
-        metric=metric,
-        teams=teams,
-        season_type=season_type,
-    ).catalog
-
-
 def _load_metric_options_context(
     *,
     metric: Metric,
@@ -141,7 +128,7 @@ def _load_metric_options_context(
     season_type: SeasonType,
 ) -> _MetricCatalogOptionsContext:
     cache_snapshot = _require_cache_snapshot(season_type)
-    scope_key = resolve_current_metric_scope_key(
+    scope_key = resolve_all_teams_snapshot_scope_key(
         teams=teams,
         season_type=season_type,
         cache_snapshot=cache_snapshot,

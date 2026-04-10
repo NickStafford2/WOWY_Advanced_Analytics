@@ -7,8 +7,8 @@ from rawr_analytics.app.metric_store import (
     MetricStoreCatalog,
     build_metric_options_payload,
     require_current_metric_scope,
-    resolve_current_metric_scope_key,
 )
+from rawr_analytics.app.metric_store.catalog import resolve_all_teams_snapshot_scope_key
 from rawr_analytics.app.wowy.presenters import WowyQueryFiltersDTO
 from rawr_analytics.app.wowy.presenters import (
     build_wowy_export_rows as build_wowy_export_rows_from_values,
@@ -159,7 +159,7 @@ def _try_load_wowy_store_result(
     metric: Metric,
     query: WowyQuery,
 ) -> ResolvedWowyResultDTO | None:
-    scope_key = resolve_current_metric_scope_key(
+    scope_key = resolve_all_teams_snapshot_scope_key(
         season_type=query.season_type,
         teams=query.teams,
     )

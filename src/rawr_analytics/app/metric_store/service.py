@@ -83,7 +83,6 @@ def refresh_metric_store(
     metric: Metric | str,
     season_type: SeasonType | str,
     rawr_ridge_alpha: float = DEFAULT_RAWR_RIDGE_ALPHA,
-    include_team_scopes: bool = False,
     event_fn: MetricStoreRefreshEventFn | None = None,
 ) -> RefreshMetricStoreResult:
     normalized_metric = Metric.parse(metric) if isinstance(metric, str) else metric
@@ -94,7 +93,6 @@ def refresh_metric_store(
         normalized_metric,
         season_type=normalized_season_type,
         rawr_ridge_alpha=rawr_ridge_alpha,
-        include_team_scopes=include_team_scopes,
     )
     if plan.failure_message is not None:
         return RefreshMetricStoreResult(
@@ -172,10 +170,7 @@ def _prepare_metric_store_refresh(
     *,
     season_type: SeasonType,
     rawr_ridge_alpha: float = DEFAULT_RAWR_RIDGE_ALPHA,
-    include_team_scopes: bool = False,
 ) -> _MetricStoreRefreshPlan:
-    if include_team_scopes:
-        raise ValueError("Metric-store snapshots are all-teams only during season scope migration")
     cache_snapshot = load_cache_snapshot(season_type)
     if not cache_snapshot.entries:
         return _MetricStoreRefreshPlan(

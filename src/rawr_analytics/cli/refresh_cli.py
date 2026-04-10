@@ -59,7 +59,6 @@ def main(argv: list[str] | None = None) -> int:
             metric=metric,
             season_type=args.season_type,
             rawr_ridge_alpha=args.rawr_ridge_alpha,
-            include_team_scopes=False,
             event_fn=lambda event, progress_bar=progress_bar: _update_progress(
                 progress_bar,
                 event,

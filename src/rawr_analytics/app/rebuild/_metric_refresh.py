@@ -27,7 +27,6 @@ def refresh_rebuild_metrics(
                 metric=metric,
                 season_type=season_type,
                 rawr_ridge_alpha=DEFAULT_RAWR_RIDGE_ALPHA,
-                include_team_scopes=False,
                 event_fn=_build_metric_refresh_event_fn(event_fn=event_fn, metric=metric),
             )
         )

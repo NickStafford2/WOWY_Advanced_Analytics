@@ -8,8 +8,8 @@ from rawr_analytics.app.metric_store import (
     MetricStoreCatalog,
     build_metric_options_payload,
     require_current_metric_scope,
-    resolve_current_metric_scope_key,
 )
+from rawr_analytics.app.metric_store.catalog import resolve_all_teams_snapshot_scope_key
 from rawr_analytics.app.rawr.presenters import RawrQueryFiltersDTO, build_rawr_export_rows
 from rawr_analytics.app.rawr.presenters import (
     build_rawr_leaderboard_payload as build_rawr_leaderboard_payload_from_records,
@@ -165,7 +165,7 @@ def _build_live_rawr_query_result(
 
 
 def _try_load_rawr_store_result(query: RawrQuery) -> ResolvedRawrResultDTO | None:
-    scope_key = resolve_current_metric_scope_key(
+    scope_key = resolve_all_teams_snapshot_scope_key(
         season_type=query.season_type,
         teams=query.teams,
     )

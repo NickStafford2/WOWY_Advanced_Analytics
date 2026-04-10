@@ -3,9 +3,7 @@ from rawr_analytics.app.metric_store.catalog import (
     MetricSeasonSpan,
     MetricStoreCatalog,
     build_metric_options_payload,
-    load_metric_scope_catalog_for_options,
     require_current_metric_scope,
-    resolve_current_metric_scope_key,
 )
 from rawr_analytics.app.metric_store.service import (
     DEFAULT_RAWR_RIDGE_ALPHA,
@@ -24,8 +22,6 @@ __all__ = [
     "MetricStoreRefreshProgressEvent",
     "RefreshMetricStoreResult",
     "build_metric_options_payload",
-    "load_metric_scope_catalog_for_options",
     "refresh_metric_store",
     "require_current_metric_scope",
-    "resolve_current_metric_scope_key",
 ]
