@@ -8,7 +8,7 @@ from rawr_analytics.shared.season import Season, SeasonType
 from rawr_analytics.shared.team import Team
 
 
-def build_rawr_cached_rows(
+def build_rawr_metric_store_rows(
     *,
     scope_key: str,
     team_filter: str,
