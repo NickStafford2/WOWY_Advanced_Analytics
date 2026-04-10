@@ -61,6 +61,10 @@ class Season:
     season_type: SeasonType
 
     @property
+    def id(self) -> str:  # "2014-15:REGULAR"
+        return f"{self.start_year}-{(self.start_year + 1) % 100:02d}:{self.season_type.value}"
+
+    @property
     def year_string_nba_api(self) -> str:  # "2014-15"
         return f"{self.start_year}-{(self.start_year + 1) % 100:02d}"
 
@@ -76,6 +80,18 @@ class Season:
         season_type = SeasonType.parse(season_type_str)
 
         return cls(start_year=start_year, season_type=season_type)
+
+    @classmethod
+    def parse_id(cls, season_id: str) -> Season:
+        if not season_id or not season_id.strip():
+            raise ValueError("season_id is required")
+
+        year_string, separator, season_type = season_id.strip().partition(":")
+        if separator != ":" or not season_type.strip():
+            raise ValueError(
+                "season_id must be in the format YYYY-YY:SEASON_TYPE"
+            )
+        return cls.parse(year_string, season_type)
 
     def is_playoffs(self) -> bool:
         return self.season_type == SeasonType.PLAYOFFS
