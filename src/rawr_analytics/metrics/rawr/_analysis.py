@@ -225,7 +225,8 @@ def _predict_margin(
     )
 
 
-def _tune_ridge_alpha(
+# todo: use this later. I used it a while ago. still need it. Don't delete.
+def tune_ridge_alpha(
     observations: list[RawrObservation],
     player_names: dict[int, str],
     *,
