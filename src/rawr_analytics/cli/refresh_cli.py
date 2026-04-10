@@ -2,13 +2,13 @@ from __future__ import annotations
 
 import argparse
 
+from rawr_analytics.cli._progress_bar import TerminalProgressBar, print_status_box
+from rawr_analytics.metrics.constants import Metric
+from rawr_analytics.metrics.rawr.defaults import DEFAULT_RAWR_RIDGE_ALPHA
 from rawr_analytics.refresh_metrics.service import (
-    DEFAULT_RAWR_RIDGE_ALPHA,
     MetricStoreRefreshProgressEvent,
     refresh_metric_store,
 )
-from rawr_analytics.cli._progress_bar import TerminalProgressBar, print_status_box
-from rawr_analytics.metrics.constants import Metric
 
 _choices = [m.value for m in Metric]
 
