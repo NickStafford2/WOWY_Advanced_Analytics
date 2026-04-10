@@ -35,6 +35,7 @@ For every change, know that I want stronger package boundries with simpler data 
 - Excluding __init__.py, do not write wrapper functions or wrapper modules that don't edit data. This is unwanted complexity.
 - Ask for special permission to override any of the above rules
 - If something is meant to be internal, keep it out of __init__.py and preferably prefix it with _ if appropriate.
+- inside src/ no module is to import from another __init__.py also in src/ import directly to the module. Fix any instances of this you see. 
 - Inside the subpackage itself, modules may import internals directly.
 
 ## Test boundaries
