@@ -5,13 +5,9 @@ Owns genuinely cross-cutting helpers that are neither metric-specific nor NBA-sp
 Keep this package small.
 """
 
-from rawr_analytics.shared.common import LogFn, ProgressFn
+from rawr_analytics.shared.common import JSONDict, JSONScalar, JSONValue, LogFn, ProgressFn
 from rawr_analytics.shared.season import Season, SeasonType, build_season_list
 from rawr_analytics.shared.team import Team
-
-type JSONScalar = None | bool | int | float | str
-type JSONValue = JSONScalar | list[JSONValue] | dict[str, JSONValue]
-type JSONDict = dict[str, JSONValue]
 
 __all__ = [
     "JSONDict",

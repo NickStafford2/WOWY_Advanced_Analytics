@@ -4,11 +4,11 @@ from collections.abc import Sequence
 from dataclasses import asdict, dataclass
 from typing import Any, cast
 
-from rawr_analytics.app.wowy.query import WowyQuery
 from rawr_analytics.metrics._span import build_span_payload
 from rawr_analytics.metrics.constants import Metric
+from rawr_analytics.metrics.wowy.query.request import WowyQuery
 from rawr_analytics.metrics.wowy.records import WowyPlayerSeasonValue
-from rawr_analytics.shared import JSONDict
+from rawr_analytics.shared.common import JSONDict
 from rawr_analytics.shared.season import Season, SeasonType
 from rawr_analytics.shared.team import Team
 

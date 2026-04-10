@@ -2,8 +2,8 @@ from __future__ import annotations
 
 from flask import Request
 
-from rawr_analytics.app.wowy.query import WowyQuery, build_wowy_query
 from rawr_analytics.metrics.rawr.query.request import RawrQuery, build_rawr_query
+from rawr_analytics.metrics.wowy.query.request import WowyQuery, build_wowy_query
 from rawr_analytics.shared.season import Season, SeasonType
 from rawr_analytics.shared.team import Team
 

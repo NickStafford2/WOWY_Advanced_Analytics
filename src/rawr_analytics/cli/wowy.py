@@ -3,11 +3,6 @@ from __future__ import annotations
 import argparse
 import sys
 
-from rawr_analytics.app.wowy.query import build_wowy_query
-from rawr_analytics.app.wowy.service import (
-    build_wowy_leaderboard_export,
-    resolve_wowy_result,
-)
 from rawr_analytics.cli._common import format_scope
 from rawr_analytics.cli._metric_query_cli import (
     add_metric_query_common_arguments,
@@ -18,6 +13,11 @@ from rawr_analytics.cli._metric_query_cli import (
 )
 from rawr_analytics.cli._progress_bar import print_status_box
 from rawr_analytics.metrics.constants import Metric
+from rawr_analytics.metrics.wowy.query.request import build_wowy_query
+from rawr_analytics.metrics.wowy.query.service import (
+    build_wowy_leaderboard_export,
+    resolve_wowy_result,
+)
 
 
 def _build_parser() -> argparse.ArgumentParser:
