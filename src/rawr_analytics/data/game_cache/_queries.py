@@ -243,7 +243,6 @@ def select_cache_load_rows(
     connection: sqlite3.Connection,
     *,
     seasons: Sequence[Season] | None = None,
-    season_types: Sequence[str] | None = None,
     teams: Sequence[Team] | None = None,
 ) -> list[sqlite3.Row]:
     query = """
@@ -280,12 +279,7 @@ def select_cache_load_rows(
         query,
         params,
         column="season_type",
-        values=sorted(
-            {
-                *[season.season_type.to_nba_format() for season in seasons or []],
-                *list(season_types or []),
-            }
-        ),
+        values=[season.season_type.value for season in seasons or []],
     )
     query += " ORDER BY season, season_type, team_id"
     return connection.execute(query, params).fetchall()

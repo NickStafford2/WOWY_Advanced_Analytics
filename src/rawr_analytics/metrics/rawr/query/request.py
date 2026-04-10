@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
-from rawr_analytics.metrics._query_seasons import resolve_query_seasons
+# from rawr_analytics.metrics._query_seasons import resolve_query_seasons
 from rawr_analytics.metrics.rawr.calculate.inputs import validate_filters
 from rawr_analytics.metrics.rawr.defaults import (
     DEFAULT_RAWR_MIN_AVERAGE_MINUTES,
@@ -11,14 +11,17 @@ from rawr_analytics.metrics.rawr.defaults import (
     DEFAULT_RAWR_RIDGE_ALPHA,
     DEFAULT_RAWR_TOP_N,
 )
-from rawr_analytics.shared.season import Season, SeasonType
+from rawr_analytics.shared.season import (
+    Season,
+    build_all_nba_history_seasons,
+    normalize_seasons,
+)
 from rawr_analytics.shared.team import Team, normalize_teams
 
 
 @dataclass(frozen=True)
 class RawrQuery:
-    season_type: SeasonType
-    teams: list[Team] | None
+    teams: list[Team]
     seasons: list[Season]
     top_n: int
     min_average_minutes: float
@@ -31,7 +34,7 @@ def build_rawr_query(
     *,
     teams: list[Team] | None = None,
     seasons: list[Season] | None = None,
-    season_type: SeasonType = SeasonType.REGULAR,
+    # season_type: SeasonType = SeasonType.REGULAR,
     top_n: int | None = None,
     min_average_minutes: float | None = None,
     min_total_minutes: float | None = None,
@@ -39,14 +42,13 @@ def build_rawr_query(
     ridge_alpha: float | None = None,
 ) -> RawrQuery:
     normalized_teams = normalize_teams(teams)
+    normalized_seasons = normalize_seasons(seasons)
+    if not normalized_seasons:
+        normalized_seasons = build_all_nba_history_seasons()
     normalized_query = RawrQuery(
-        season_type=season_type,
+        # season_type=season_type,
         teams=normalized_teams,
-        seasons=resolve_query_seasons(
-            teams=normalized_teams,
-            season_filter=seasons,
-            season_type=season_type,
-        ),
+        seasons=normalized_seasons,
         top_n=int(top_n if top_n is not None else DEFAULT_RAWR_TOP_N),
         min_average_minutes=float(
             min_average_minutes

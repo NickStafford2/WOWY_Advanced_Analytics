@@ -95,9 +95,7 @@ class Season:
 
         year_string, separator, season_type = season_id.strip().partition(":")
         if separator != ":" or not season_type.strip():
-            raise ValueError(
-                "season_id must be in the format YYYY-YY:SEASON_TYPE"
-            )
+            raise ValueError("season_id must be in the format YYYY-YY:SEASON_TYPE")
         return cls.parse(year_string, season_type)
 
     def is_playoffs(self) -> bool:
@@ -142,21 +140,28 @@ def build_season_list(start_year: int, first_year: int, season_type_str: str) ->
     ]
 
 
-def build_nba_history_seasons(
-    season_type: SeasonType,
+def build_all_nba_history_seasons(
     *,
+    season_types: list[SeasonType] | None = None,
     end_year: int | None = None,
 ) -> list[Season]:
-    resolved_end_year = (
-        current_nba_season_start_year() if end_year is None else end_year
-    )
-    assert resolved_end_year >= NBA_FIRST_SEASON_START_YEAR, (
-        f"Invalid NBA history end year: {resolved_end_year!r}"
-    )
-    return [
-        Season(start_year=year, season_type=season_type)
-        for year in range(NBA_FIRST_SEASON_START_YEAR, resolved_end_year + 1)
-    ]
+    if end_year is None:
+        end_year = current_nba_season_start_year()
+    assert end_year >= NBA_FIRST_SEASON_START_YEAR, f"Invalid NBA history end year: {end_year!r}"
+
+    if season_types is None or len(season_types) == 0:
+        season_types = [SeasonType.REGULAR]
+
+    result: list[Season] = []
+    for season_type in season_types:
+        result.extend(
+            [
+                Season(start_year=year, season_type=season_type)
+                for year in range(NBA_FIRST_SEASON_START_YEAR, end_year + 1)
+            ]
+        )
+
+    return result
 
 
 def current_nba_season_start_year() -> int:

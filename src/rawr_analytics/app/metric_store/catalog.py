@@ -27,15 +27,15 @@ class MetricCatalogAvailability:
 
 @dataclass(frozen=True)
 class MetricSeasonSpan:
-    start_season: Season
-    end_season: Season
+    earliest_season: Season
+    latest_season: Season
 
 
 @dataclass(frozen=True)
 class MetricStoreCatalog:
-    season_type: SeasonType
+    season_types: list[SeasonType]
     availability: MetricCatalogAvailability
-    full_span: MetricSeasonSpan | None
+    full_span: MetricSeasonSpan
 
 
 @dataclass(frozen=True)
@@ -43,8 +43,8 @@ class _MetricCatalogAvailabilityIndex:
     season_type: SeasonType
     teams: list[Team]
     seasons: list[Season]
-    season_ids_by_team_id: dict[int, list[str]]
-    team_ids_by_season_id: dict[str, list[int]]
+    season_ids_by_team_id: dict[int, list[str]]  # todo: i don't think this is ever used
+    team_ids_by_season_id: dict[str, list[int]]  # todo: i don't think this is ever used
 
 
 @dataclass(frozen=True)
@@ -72,21 +72,20 @@ def build_metric_options_payload(
     *,
     metric: Metric,
     teams: list[Team] | None,
-    season_type: SeasonType,
+    seasons: list[Season],
     filters: dict[str, Any],
 ) -> dict[str, Any]:
-    context = _load_metric_options_context(
+    # todo: only need some variables inside availability_index
+    context: _MetricCatalogAvailabilityIndex = _load_availability_index(
         metric=metric,
         teams=teams,
-        season_type=season_type,
+        seasons=seasons,
     )
     return {
         "metric": metric.value,
         "available_teams": [team.current.abbreviation for team in context.availability_index.teams],
         "team_options": _build_team_options(context.availability_index),
-        "available_seasons": [
-            season.year_string_nba_api for season in context.availability_index.seasons
-        ],
+        "available_seasons": [season.id for season in context.availability_index.seasons],
         "available_teams_by_season": _build_available_teams_by_season(context.availability_index),
         "filters": filters,
     }
@@ -109,7 +108,7 @@ def require_current_metric_scope(
 def resolve_all_teams_snapshot_scope_key(
     *,
     teams: list[Team] | None,
-    season_type: SeasonType,
+    seasons: list[Season],
     cache_snapshot: GameCacheSnapshot | None = None,
 ) -> str | None:
     team_filter = build_team_filter(teams)
@@ -129,12 +128,12 @@ def _load_metric_options_context(
     *,
     metric: Metric,
     teams: list[Team] | None,
-    season_type: SeasonType,
+    seasons: list[Season],
 ) -> _MetricCatalogOptionsContext:
     cache_snapshot = _require_cache_snapshot(season_type)
     scope_key = resolve_all_teams_snapshot_scope_key(
         teams=teams,
-        season_type=season_type,
+        seasons=seasons,
         cache_snapshot=cache_snapshot,
     )
     if scope_key is not None:
@@ -171,6 +170,46 @@ def _load_metric_options_context(
     return _MetricCatalogOptionsContext(
         catalog=catalog,
         availability_index=availability_index,
+    )
+
+
+def _load_availability_index(
+    *,
+    metric: Metric,
+    teams: list[Team] | None,
+    seasons: list[Season],
+) -> _MetricCatalogAvailabilityIndex:
+    cache_snapshot = _require_cache_snapshot(season_type)
+    scope_key = resolve_all_teams_snapshot_scope_key(
+        teams=teams,
+        seasons=seasons,
+        cache_snapshot=cache_snapshot,
+    )
+    if scope_key is not None:
+        try:
+            catalog = _load_current_metric_scope_catalog(
+                metric=metric,
+                scope_key=scope_key,
+                cache_snapshot=cache_snapshot,
+            )
+            return _build_metric_catalog_availability_index(
+                season_type=season_type,
+                cached_team_seasons=cache_snapshot.scopes,
+                teams=catalog.availability.teams,
+                seasons=catalog.availability.seasons,
+            )
+        except _MetricStoreCatalogUnavailableError:
+            pass
+
+    filtered_cached_team_seasons = _filter_cached_team_seasons(
+        cache_snapshot.scopes,
+        team_ids=None if teams is None else {team.team_id for team in teams},
+    )
+    if not filtered_cached_team_seasons:
+        raise ValueError(_EMPTY_CACHE_ERROR) from None
+    return _build_metric_catalog_availability_index(
+        season_type=season_type,
+        cached_team_seasons=filtered_cached_team_seasons,
     )
 
 
@@ -254,9 +293,7 @@ def _require_cache_snapshot(season_type: SeasonType) -> GameCacheSnapshot:
 
 
 def _available_cache_seasons(cached_team_seasons: list[TeamSeasonScope]) -> list[Season]:
-    return require_normalized_seasons(
-        [team_season.season for team_season in cached_team_seasons]
-    )
+    return require_normalized_seasons([team_season.season for team_season in cached_team_seasons])
 
 
 def _build_metric_catalog_availability_index(
@@ -273,9 +310,7 @@ def _build_metric_catalog_availability_index(
     ordered_seasons = (
         seasons
         if seasons is not None
-        else require_normalized_seasons(
-            [team_season.season for team_season in cached_team_seasons]
-        )
+        else require_normalized_seasons([team_season.season for team_season in cached_team_seasons])
     )
     filtered_cached_team_seasons = _filter_cached_team_seasons(
         cached_team_seasons,
@@ -372,8 +407,8 @@ def _build_metric_season_span(
     assert start_season.season_type == season_type, "metric store span start season_type mismatch"
     assert end_season.season_type == season_type, "metric store span end season_type mismatch"
     return MetricSeasonSpan(
-        start_season=start_season,
-        end_season=end_season,
+        earliest_season=start_season,
+        latest_season=end_season,
     )
 
 
@@ -385,7 +420,6 @@ def _parse_catalog_seasons(
     seasons = [Season.parse(season_id, season_type.value) for season_id in season_ids]
     invalid_seasons = [season.id for season in seasons if season.season_type != season_type]
     assert not invalid_seasons, (
-        "metric store catalog season_type does not match available seasons: "
-        f"{invalid_seasons!r}"
+        f"metric store catalog season_type does not match available seasons: {invalid_seasons!r}"
     )
     return seasons

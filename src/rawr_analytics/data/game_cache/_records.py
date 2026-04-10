@@ -32,7 +32,7 @@ class TeamSeasonCacheEntry:
 
 @dataclass(frozen=True)
 class GameCacheSnapshot:
-    season_type: SeasonType
+    # season_type: SeasonType # should be something else
     fingerprint: str
     entries: list[TeamSeasonCacheEntry]
 

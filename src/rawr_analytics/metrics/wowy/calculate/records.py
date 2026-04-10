@@ -24,7 +24,7 @@ from rawr_analytics.shared.season import Season
 
 @dataclass(frozen=True)
 class WowyPlayerSeasonValue:
-    season_id: str
+    season: Season
     player: PlayerSummary
     minutes: PlayerMinutes
     result: WowyPlayerValue

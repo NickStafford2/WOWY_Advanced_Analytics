@@ -35,6 +35,10 @@ class Team:
         return team
 
     @staticmethod
+    def all() -> list[Team]:
+        return [Team.from_id(team_id) for team_id in sorted(_TEAMS_BY_ID)]
+
+    @staticmethod
     def from_abbreviation(
         abbreviation: str,
         *,

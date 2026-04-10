@@ -9,7 +9,7 @@ from rawr_analytics.metrics.constants import Metric
 from rawr_analytics.metrics.wowy.calculate.records import WowyPlayerSeasonValue
 from rawr_analytics.metrics.wowy.query.request import WowyQuery
 from rawr_analytics.shared.common import JSONDict
-from rawr_analytics.shared.season import Season, SeasonType
+from rawr_analytics.shared.season import Season
 from rawr_analytics.shared.team import Team
 
 
@@ -17,7 +17,7 @@ from rawr_analytics.shared.team import Team
 class WowyQueryFiltersDTO:
     team_filter: list[Team] | None
     season_filter: list[Season] | None
-    season_type: SeasonType
+    # season_type: SeasonType
     min_average_minutes: float
     min_total_minutes: float
     top_n: int
@@ -29,7 +29,7 @@ class WowyQueryFiltersDTO:
         return cls(
             team_filter=query.teams,
             season_filter=query.seasons,
-            season_type=query.season_type,
+            # season_type=query.season_type,
             min_average_minutes=query.min_average_minutes,
             min_total_minutes=query.min_total_minutes,
             top_n=query.top_n,
@@ -41,7 +41,7 @@ class WowyQueryFiltersDTO:
         return WowyQueryFiltersDTO(
             team_filter=self.team_filter,
             season_filter=None,
-            season_type=self.season_type,
+            # season_type=self.season_type,
             min_average_minutes=self.min_average_minutes,
             min_total_minutes=self.min_total_minutes,
             top_n=self.top_n,
@@ -60,7 +60,7 @@ class WowyQueryFiltersDTO:
             "season_filter": None
             if self.season_filter is None
             else [season.year_string_nba_api for season in self.season_filter],
-            "season_type": self.season_type.to_nba_format(),
+            # "season_type": self.season_type.to_nba_format(),
             "min_average_minutes": self.min_average_minutes,
             "min_total_minutes": self.min_total_minutes,
             "top_n": self.top_n,
@@ -71,7 +71,7 @@ class WowyQueryFiltersDTO:
 
 @dataclass(frozen=True)
 class WowySeriesPointDTO:
-    season: str
+    season: Season
     value: float | None
 
 
@@ -240,7 +240,7 @@ def _build_ranked_table_rows(
                 season_count=len(player_rows),
                 points=[
                     WowySeriesPointDTO(
-                        season=season_id,
+                        season=season,
                         value=next(
                             (row.result.value for row in player_rows if row.season_id == season_id),
                             None,

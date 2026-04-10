@@ -18,7 +18,6 @@ def load_rawr_records(
     *,
     teams: list[Team] | None,
     seasons: list[Season],
-    season_type: SeasonType,
     progress_fn: RawrSeasonProgressFn | None = None,
 ) -> tuple[
     dict[Season, list[NormalizedGameRecord]],
@@ -102,10 +101,7 @@ def _expand_rawr_season_scopes(
     games: list[NormalizedGameRecord],
 ) -> list[TeamSeasonScope]:
     team_scopes = list(requested_team_seasons)
-    seen_scope_keys = {
-        (scope.team.team_id, scope.season.id)
-        for scope in team_scopes
-    }
+    seen_scope_keys = {(scope.team.team_id, scope.season.id) for scope in team_scopes}
     for game in games:
         scope = TeamSeasonScope(team=game.opponent_team, season=game.season)
         scope_key = (scope.team.team_id, scope.season.id)

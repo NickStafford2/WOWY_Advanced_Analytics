@@ -20,7 +20,7 @@ from rawr_analytics.data.game_cache._records import (
 from rawr_analytics.data.game_cache._schema import connect, initialize_game_cache_db
 from rawr_analytics.shared.game import NormalizedGamePlayerRecord, NormalizedGameRecord
 from rawr_analytics.shared.scope import TeamSeasonScope
-from rawr_analytics.shared.season import Season, SeasonType
+from rawr_analytics.shared.season import Season
 from rawr_analytics.shared.team import Team
 
 _GAME_CACHE_BUILD_VERSION = "normalized-cache-v3"
@@ -89,10 +89,10 @@ def list_cached_scopes(
     return [entry.scope for entry in entries if entry.is_available]
 
 
-def load_cache_snapshot(season_type: SeasonType) -> GameCacheSnapshot:
-    entries = _list_cache_entries(season_type=season_type)
+def load_cache_snapshot() -> GameCacheSnapshot:  # todo? probably pass info if this is ever used.
+    entries = _list_cache_entries()  # todo? probably pass info if this is ever used.
     return GameCacheSnapshot(
-        season_type=season_type,
+        # season_type=season_type,
         fingerprint=build_cache_fingerprint(entries),
         entries=entries,
     )
@@ -101,7 +101,6 @@ def load_cache_snapshot(season_type: SeasonType) -> GameCacheSnapshot:
 def _list_cache_entries(
     *,
     seasons: list[Season] | None = None,
-    season_type: SeasonType | None = None,
     teams: list[Team] | None = None,
 ) -> list[TeamSeasonCacheEntry]:
     if not NORMALIZED_CACHE_DB_PATH.exists():
@@ -112,7 +111,6 @@ def _list_cache_entries(
             connection,
             teams=teams,
             seasons=seasons,
-            season_types=None if season_type is None else [season_type.to_nba_format()],
         )
     return [build_team_season_cache_entry(row) for row in rows]
 
