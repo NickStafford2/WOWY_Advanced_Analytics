@@ -13,7 +13,7 @@ from rawr_analytics.shared.season import Season, SeasonType
 from rawr_analytics.shared.team import Team
 
 
-def build_rawr_store_records(
+def build_rawr_refresh_records(
     *,
     season_type: SeasonType,
     seasons: list[Season],
@@ -40,7 +40,7 @@ def build_rawr_store_records(
 
 __all__ = [
     "RawrSeasonProgressFn",
-    "build_rawr_store_records",
+    "build_rawr_refresh_records",
     "list_incomplete_rawr_season_warnings",
     "load_rawr_records",
 ]

@@ -18,7 +18,7 @@ from rawr_analytics.metrics.constants import Metric, MetricSummary
 from rawr_analytics.metrics.rawr import (
     RAWR_METRIC_SUMMARY,
     RawrPlayerSeasonRecord,
-    build_rawr_store_records,
+    build_rawr_refresh_records,
     list_incomplete_rawr_season_warnings,
 )
 from rawr_analytics.metrics.wowy import build_wowy_store_rows
@@ -399,8 +399,7 @@ def _build_scope_seasons(
     assert seasons, "metric store refresh scopes require non-empty seasons"
     invalid_seasons = [season.id for season in seasons if season.season_type != season_type]
     assert not invalid_seasons, (
-        "metric store refresh scope season_type does not match scope seasons: "
-        f"{invalid_seasons!r}"
+        f"metric store refresh scope season_type does not match scope seasons: {invalid_seasons!r}"
     )
     return seasons
 
@@ -414,7 +413,7 @@ def _build_rawr_cached_rows(
     teams: list[Team] | None,
     rawr_ridge_alpha: float,
 ) -> list[RawrPlayerSeasonValueRow]:
-    records = build_rawr_store_records(
+    records = build_rawr_refresh_records(
         season_type=season_type,
         seasons=seasons,
         teams=teams,
