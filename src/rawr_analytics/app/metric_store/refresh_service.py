@@ -3,6 +3,8 @@ from __future__ import annotations
 from collections.abc import Callable
 from dataclasses import dataclass
 
+from rawr_analytics.app.metric_store.rawr_rows import build_rawr_cached_rows
+from rawr_analytics.app.metric_store.wowy_rows import build_wowy_cached_rows
 from rawr_analytics.data.game_cache import load_cache_snapshot
 from rawr_analytics.data.metric_store import clear_metric_scope_store, load_metric_scope_store_state
 from rawr_analytics.data.metric_store._catalog import (
@@ -12,23 +14,13 @@ from rawr_analytics.data.metric_store._catalog import (
 )
 from rawr_analytics.data.metric_store._rawr_store import replace_rawr_scope_snapshot
 from rawr_analytics.data.metric_store._wowy_store import replace_wowy_scope_snapshot
-from rawr_analytics.data.metric_store.rawr import RawrPlayerSeasonValueRow
-from rawr_analytics.data.metric_store.wowy import WowyPlayerSeasonValueRow
 from rawr_analytics.data.metric_store_scope import build_scope_key, build_team_filter
 from rawr_analytics.metrics.constants import Metric, MetricSummary
-from rawr_analytics.metrics.rawr import (
-    RAWR_METRIC_SUMMARY,
-    RawrPlayerSeasonRecord,
-    build_rawr_refresh_records,
+from rawr_analytics.metrics.rawr.defaults import RAWR_METRIC_SUMMARY
+from rawr_analytics.metrics.rawr.refresh_records import (
     list_incomplete_rawr_season_warnings,
 )
-from rawr_analytics.metrics.wowy import (
-    DEFAULT_WOWY_SHRINKAGE_PRIOR_GAMES,
-    WowyPlayerSeasonRecord,
-    build_wowy_refresh_records,
-    compute_wowy_shrinkage_score,
-)
-from rawr_analytics.metrics.wowy import describe_metric as describe_wowy_metric
+from rawr_analytics.metrics.wowy.defaults import describe_metric as describe_wowy_metric
 from rawr_analytics.shared.scope import TeamSeasonScope
 from rawr_analytics.shared.season import Season, SeasonType, require_normalized_seasons
 from rawr_analytics.shared.team import Team, normalize_teams, to_normalized_team_ids
@@ -262,7 +254,7 @@ def _refresh_metric_store_scope(
     )
     if metric == Metric.RAWR:
         seasons = _build_scope_seasons(scope=scope, season_type=season_type)
-        rows = _build_rawr_cached_rows(
+        rows = build_rawr_cached_rows(
             scope_key=scope.scope_key,
             team_filter=scope.catalog.team_filter,
             season_type=season_type,
@@ -294,7 +286,7 @@ def _refresh_metric_store_scope(
         row_count = len(rows)
     else:
         seasons = _build_scope_seasons(scope=scope, season_type=season_type)
-        rows = _build_wowy_cached_rows(
+        rows = build_wowy_cached_rows(
             metric=metric,
             scope_key=scope.scope_key,
             team_filter=scope.catalog.team_filter,
@@ -408,115 +400,6 @@ def _build_scope_seasons(
         f"metric store refresh scope season_type does not match scope seasons: {invalid_seasons!r}"
     )
     return seasons
-
-
-def _build_rawr_cached_rows(
-    *,
-    scope_key: str,
-    team_filter: str,
-    season_type: SeasonType,
-    seasons: list[Season],
-    teams: list[Team] | None,
-    rawr_ridge_alpha: float,
-) -> list[RawrPlayerSeasonValueRow]:
-    records = build_rawr_refresh_records(
-        season_type=season_type,
-        seasons=seasons,
-        teams=teams,
-        ridge_alpha=rawr_ridge_alpha,
-    )
-    return [
-        _build_rawr_store_row_from_record(
-            record,
-            scope_key=scope_key,
-            team_filter=team_filter,
-        )
-        for record in records
-    ]
-
-
-def _build_rawr_store_row_from_record(
-    record: RawrPlayerSeasonRecord,
-    *,
-    scope_key: str,
-    team_filter: str,
-) -> RawrPlayerSeasonValueRow:
-    return RawrPlayerSeasonValueRow(
-        snapshot_id=None,
-        metric_id=Metric.RAWR.value,
-        scope_key=scope_key,
-        team_filter=team_filter,
-        season_type=record.season.season_type.value,
-        season_id=record.season.year_string_nba_api,
-        player_id=record.player.player_id,
-        player_name=record.player.player_name,
-        games=record.games,
-        coefficient=record.coefficient,
-        average_minutes=record.minutes.average_minutes,
-        total_minutes=record.minutes.total_minutes,
-    )
-
-
-def _build_wowy_cached_rows(
-    *,
-    metric: Metric,
-    scope_key: str,
-    team_filter: str,
-    season_type: SeasonType,
-    seasons: list[Season],
-    teams: list[Team] | None,
-) -> list[WowyPlayerSeasonValueRow]:
-    records = build_wowy_refresh_records(
-        season_type=season_type,
-        seasons=seasons,
-        teams=teams,
-    )
-    return [
-        _build_wowy_store_row_from_record(
-            metric=metric,
-            record=record,
-            scope_key=scope_key,
-            team_filter=team_filter,
-        )
-        for record in records
-    ]
-
-
-def _build_wowy_store_row_from_record(
-    *,
-    metric: Metric,
-    record: WowyPlayerSeasonRecord,
-    scope_key: str,
-    team_filter: str,
-) -> WowyPlayerSeasonValueRow:
-    value = record.result.value
-    include_raw_wowy_score = False
-    if metric == Metric.WOWY_SHRUNK:
-        include_raw_wowy_score = True
-        value = compute_wowy_shrinkage_score(
-            games_with=record.result.games_with,
-            games_without=record.result.games_without,
-            wowy_score=record.result.value,
-            prior_games=DEFAULT_WOWY_SHRINKAGE_PRIOR_GAMES,
-        )
-    return WowyPlayerSeasonValueRow(
-        snapshot_id=None,
-        metric_id=metric.value,
-        scope_key=scope_key,
-        team_filter=team_filter,
-        season_type=record.season.season_type.value,
-        season_id=record.season.year_string_nba_api,
-        player_id=record.player.player_id,
-        player_name=record.player.player_name,
-        value=value,
-        games_with=record.result.games_with,
-        games_without=record.result.games_without,
-        avg_margin_with=record.result.avg_margin_with,
-        avg_margin_without=record.result.avg_margin_without,
-        average_minutes=record.minutes.average_minutes,
-        total_minutes=record.minutes.total_minutes,
-        raw_wowy_score=record.result.value if include_raw_wowy_score else None,
-    )
 
 
 def _describe_metric(metric: Metric) -> MetricSummary:
