@@ -3,8 +3,7 @@ from __future__ import annotations
 from collections import defaultdict
 from collections.abc import Callable
 
-from rawr_analytics.data.game_cache.store import load_team_season_cache
-from rawr_analytics.data.scope_resolver import resolve_team_seasons
+from rawr_analytics.data.game_cache.store import list_cached_scopes, load_team_season_cache
 from rawr_analytics.metrics.rawr.cache_status import list_complete_rawr_seasons
 from rawr_analytics.shared.game import NormalizedGamePlayerRecord, NormalizedGameRecord
 from rawr_analytics.shared.scope import TeamSeasonScope
@@ -25,7 +24,10 @@ def load_rawr_records(
 ]:
     assert seasons, "RAWR record loading requires a non-empty season list"
     assert teams, "RAWR record loading requires a non-empty team list"
-    requested_team_seasons = resolve_team_seasons(teams, seasons)
+    requested_team_seasons = _build_requested_rawr_team_seasons(
+        teams=teams,
+        seasons=seasons,
+    )
     if not requested_team_seasons:
         raise ValueError("No cached data matched the requested RAWR scope")
 
@@ -67,12 +69,36 @@ def _build_teams_by_season(
     return teams_by_season
 
 
+def _build_requested_rawr_team_seasons(
+    *,
+    teams: list[Team],
+    seasons: list[Season],
+) -> list[TeamSeasonScope]:
+    cached_scopes_by_key = {
+        (scope.team.team_id, scope.season): scope
+        for scope in list_cached_scopes(teams=teams, seasons=seasons)
+    }
+    team_seasons: list[TeamSeasonScope] = []
+    for season in seasons:
+        for team in teams:
+            if not team.is_active_during(season):
+                continue
+            cached_scope = cached_scopes_by_key.get((team.team_id, season))
+            if cached_scope is None:
+                continue
+            team_seasons.append(cached_scope)
+    return team_seasons
+
+
 def _load_rawr_season_records(
     *,
     teams: list[Team],
     season: Season,
 ) -> tuple[list[NormalizedGameRecord], list[NormalizedGamePlayerRecord]] | None:
-    requested_team_seasons = resolve_team_seasons(teams, [season])
+    requested_team_seasons = _build_requested_rawr_team_seasons(
+        teams=teams,
+        seasons=[season],
+    )
     if not requested_team_seasons:
         return None
 
