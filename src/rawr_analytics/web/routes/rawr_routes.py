@@ -3,7 +3,7 @@ from __future__ import annotations
 from flask import Flask, Response, jsonify, request
 
 from rawr_analytics.metrics.constants import Metric
-from rawr_analytics.metrics.rawr.service import (
+from rawr_analytics.metrics.rawr.query.service import (
     build_rawr_leaderboard_export,
     build_rawr_leaderboard_payload,
     build_rawr_options_payload,

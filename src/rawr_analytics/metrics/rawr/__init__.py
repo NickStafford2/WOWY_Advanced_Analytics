@@ -1,4 +1,10 @@
-"""RAWR metric package."""
+"""RAWR metric package.
+
+The public workflow interfaces live in subpackages:
+calculate turns normalized game records into RAWR player-season records, refresh
+builds metric-store rows for precomputed snapshots, and query resolves user
+filters into records, payloads, and exports.
+"""
 
 from rawr_analytics.metrics.rawr.calculate.inputs import validate_filters
 from rawr_analytics.metrics.rawr.calculate.records import (

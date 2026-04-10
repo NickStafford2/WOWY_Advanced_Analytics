@@ -6,7 +6,7 @@ from typing import Any, cast
 
 from rawr_analytics.metrics._span import build_span_payload
 from rawr_analytics.metrics.rawr.calculate.records import RawrPlayerSeasonRecord
-from rawr_analytics.metrics.rawr.query import RawrQuery
+from rawr_analytics.metrics.rawr.query.request import RawrQuery
 from rawr_analytics.shared import JSONDict
 from rawr_analytics.shared.season import Season, SeasonType
 from rawr_analytics.shared.team import Team

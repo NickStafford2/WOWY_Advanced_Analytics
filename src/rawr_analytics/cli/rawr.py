@@ -13,8 +13,8 @@ from rawr_analytics.cli._metric_query_cli import (
 )
 from rawr_analytics.cli._progress_bar import TerminalProgressBar, print_status_box
 from rawr_analytics.metrics.constants import Metric
-from rawr_analytics.metrics.rawr.query import build_rawr_query
-from rawr_analytics.metrics.rawr.service import (
+from rawr_analytics.metrics.rawr.query.request import build_rawr_query
+from rawr_analytics.metrics.rawr.query.service import (
     build_rawr_leaderboard_export,
     resolve_rawr_result,
 )
