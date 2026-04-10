@@ -5,7 +5,7 @@ from collections.abc import Callable
 
 from rawr_analytics.data.game_cache import load_team_season_cache
 from rawr_analytics.data.scope_resolver import resolve_team_seasons
-from rawr_analytics.metrics.rawr._cache_status import list_complete_rawr_seasons
+from rawr_analytics.metrics.rawr.cache_status import list_complete_rawr_seasons
 from rawr_analytics.shared.game import NormalizedGamePlayerRecord, NormalizedGameRecord
 from rawr_analytics.shared.scope import TeamSeasonScope
 from rawr_analytics.shared.season import Season, SeasonType, normalize_seasons

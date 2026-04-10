@@ -14,6 +14,7 @@ from rawr_analytics.data.metric_store import load_rawr_player_season_value_rows
 from rawr_analytics.data.metric_store.rawr import RawrPlayerSeasonValueRow
 from rawr_analytics.data.metric_store_scope import season_ids
 from rawr_analytics.metrics.constants import Metric
+from rawr_analytics.metrics.rawr.cache import load_rawr_records
 from rawr_analytics.metrics.rawr.calculate.inputs import build_rawr_request
 from rawr_analytics.metrics.rawr.calculate.records import (
     RawrPlayerSeasonRecord,
@@ -38,7 +39,6 @@ from rawr_analytics.metrics.rawr.query.presenters import (
     build_rawr_span_chart_payload as build_rawr_span_chart_payload_from_records,
 )
 from rawr_analytics.metrics.rawr.query.request import RawrQuery
-from rawr_analytics.metrics.rawr.refresh.records import load_rawr_records
 from rawr_analytics.shared import JSONDict
 from rawr_analytics.shared.player import PlayerMinutes, PlayerSummary
 from rawr_analytics.shared.season import Season
