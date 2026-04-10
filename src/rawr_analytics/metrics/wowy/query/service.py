@@ -13,9 +13,13 @@ from rawr_analytics.data.metric_store import load_wowy_player_season_value_rows
 from rawr_analytics.data.metric_store.wowy import WowyPlayerSeasonValueRow
 from rawr_analytics.data.metric_store_scope import season_ids
 from rawr_analytics.metrics.constants import Metric
-from rawr_analytics.metrics.wowy.analysis import WowyPlayerValue
 from rawr_analytics.metrics.wowy.cache import load_wowy_records
-from rawr_analytics.metrics.wowy.inputs import build_wowy_season_inputs
+from rawr_analytics.metrics.wowy.calculate.inputs import build_wowy_season_inputs
+from rawr_analytics.metrics.wowy.calculate.records import (
+    WowyPlayerSeasonValue,
+    build_wowy_custom_query,
+    build_wowy_player_season_value,
+)
 from rawr_analytics.metrics.wowy.query.presenters import WowyQueryFiltersDTO
 from rawr_analytics.metrics.wowy.query.presenters import (
     build_wowy_export_rows as build_wowy_export_rows_from_values,
@@ -30,7 +34,6 @@ from rawr_analytics.metrics.wowy.query.presenters import (
     build_wowy_span_chart_payload as build_wowy_span_chart_payload_from_values,
 )
 from rawr_analytics.metrics.wowy.query.request import WowyQuery
-from rawr_analytics.metrics.wowy.records import WowyPlayerSeasonValue, build_wowy_custom_query
 from rawr_analytics.shared.common import JSONDict
 from rawr_analytics.shared.player import PlayerMinutes, PlayerSummary
 from rawr_analytics.shared.season import Season
@@ -211,7 +214,7 @@ def _require_wowy_metric(metric: Metric) -> None:
 
 def _build_wowy_value_from_store_row(row: WowyPlayerSeasonValueRow) -> WowyPlayerSeasonValue:
     season = Season.parse(row.season_id, row.season_type)
-    return WowyPlayerSeasonValue(
+    return build_wowy_player_season_value(
         season_id=season.year_string_nba_api,
         player=PlayerSummary(
             player_id=row.player_id,
@@ -221,12 +224,10 @@ def _build_wowy_value_from_store_row(row: WowyPlayerSeasonValueRow) -> WowyPlaye
             average_minutes=row.average_minutes,
             total_minutes=row.total_minutes,
         ),
-        result=WowyPlayerValue(
-            games_with=row.games_with,
-            games_without=row.games_without,
-            avg_margin_with=row.avg_margin_with,
-            avg_margin_without=row.avg_margin_without,
-            value=row.value,
-            raw_value=row.raw_wowy_score,
-        ),
+        games_with=row.games_with,
+        games_without=row.games_without,
+        avg_margin_with=row.avg_margin_with,
+        avg_margin_without=row.avg_margin_without,
+        value=row.value,
+        raw_value=row.raw_wowy_score,
     )

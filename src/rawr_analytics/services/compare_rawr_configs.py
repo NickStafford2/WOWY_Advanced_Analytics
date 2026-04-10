@@ -14,8 +14,8 @@ from rawr_analytics.metrics.rawr.calculate.records import (
 )
 from rawr_analytics.metrics.rawr.calculate.shrinkage import RawrShrinkageMode
 from rawr_analytics.metrics.wowy.cache import load_wowy_records
-from rawr_analytics.metrics.wowy.inputs import build_wowy_season_inputs
-from rawr_analytics.metrics.wowy.records import (
+from rawr_analytics.metrics.wowy.calculate.inputs import build_wowy_season_inputs
+from rawr_analytics.metrics.wowy.calculate.records import (
     WowyPlayerSeasonRecord,
     prepare_wowy_player_season_records,
 )

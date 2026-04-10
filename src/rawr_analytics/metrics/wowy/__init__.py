@@ -1,9 +1,24 @@
-"""WOWY metric package."""
+"""WOWY metric package.
 
-from rawr_analytics.metrics.wowy.analysis import (
+The public workflow interfaces live in subpackages:
+calculate turns normalized game records into WOWY player-season records, refresh
+builds metric-store rows for precomputed snapshots, and query resolves user
+filters into records, payloads, and exports.
+"""
+
+from rawr_analytics.metrics.wowy.cache import load_wowy_records
+from rawr_analytics.metrics.wowy.calculate.inputs import (
+    validate_filters,
+)
+from rawr_analytics.metrics.wowy.calculate.records import (
+    WowyPlayerSeasonRecord,
+    WowyPlayerSeasonValue,
+    build_player_season_records,
+    build_wowy_custom_query,
+    prepare_wowy_player_season_records,
+)
+from rawr_analytics.metrics.wowy.calculate.shrinkage import (
     DEFAULT_WOWY_SHRINKAGE_PRIOR_GAMES,
-    WowyGame,
-    WowyPlayerValue,
     compute_wowy_shrinkage_score,
 )
 from rawr_analytics.metrics.wowy.defaults import (
@@ -12,40 +27,23 @@ from rawr_analytics.metrics.wowy.defaults import (
     describe_wowy_metric,
     describe_wowy_shrunk_metric,
 )
-from rawr_analytics.metrics.wowy.inputs import (
-    WowyRequestDTO,
-    WowySeasonInputDTO,
-    build_wowy_request,
-    validate_filters,
-)
-from rawr_analytics.metrics.wowy.records import (
-    WowyPlayerSeasonRecord,
-    WowyPlayerSeasonValue,
-    build_player_season_records,
-    build_wowy_custom_query,
-    prepare_wowy_player_season_records,
-)
 from rawr_analytics.metrics.wowy.refresh.records import (
     build_wowy_refresh_records,
 )
 
 __all__ = [
     "DEFAULT_WOWY_SHRINKAGE_PRIOR_GAMES",
-    "WowyGame",
     "WowyPlayerSeasonRecord",
     "WowyPlayerSeasonValue",
-    "WowyPlayerValue",
-    "WowyRequestDTO",
-    "WowySeasonInputDTO",
     "build_player_season_records",
     "build_wowy_custom_query",
     "build_wowy_refresh_records",
-    "build_wowy_request",
     "compute_wowy_shrinkage_score",
     "default_filters",
     "describe_metric",
     "describe_wowy_metric",
     "describe_wowy_shrunk_metric",
+    "load_wowy_records",
     "prepare_wowy_player_season_records",
     "validate_filters",
 ]

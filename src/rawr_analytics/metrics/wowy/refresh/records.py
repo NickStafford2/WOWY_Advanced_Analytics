@@ -1,8 +1,8 @@
 from __future__ import annotations
 
 from rawr_analytics.metrics.wowy.cache import load_wowy_records
-from rawr_analytics.metrics.wowy.inputs import build_wowy_season_inputs
-from rawr_analytics.metrics.wowy.records import (
+from rawr_analytics.metrics.wowy.calculate.inputs import build_wowy_season_inputs
+from rawr_analytics.metrics.wowy.calculate.records import (
     WowyPlayerSeasonRecord,
     prepare_wowy_player_season_records,
 )

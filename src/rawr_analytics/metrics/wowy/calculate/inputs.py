@@ -5,7 +5,7 @@ from dataclasses import dataclass
 
 from rawr_analytics.metrics._player_context import PlayerSeasonContext
 from rawr_analytics.metrics._validation import validate_top_n_and_minutes
-from rawr_analytics.metrics.wowy.analysis import WowyGame
+from rawr_analytics.metrics.wowy.calculate._analysis import WowyGame
 from rawr_analytics.shared.game import NormalizedGamePlayerRecord, NormalizedGameRecord
 from rawr_analytics.shared.player import PlayerMinutes, PlayerSummary
 from rawr_analytics.shared.season import Season

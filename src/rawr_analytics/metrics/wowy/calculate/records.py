@@ -3,18 +3,20 @@ from __future__ import annotations
 from dataclasses import dataclass
 
 from rawr_analytics.metrics.constants import Metric
-from rawr_analytics.metrics.wowy.analysis import (
-    DEFAULT_WOWY_SHRINKAGE_PRIOR_GAMES,
+from rawr_analytics.metrics.wowy.calculate._analysis import (
     WowyPlayerValue,
     compute_wowy,
-    compute_wowy_shrinkage_score,
     filter_results,
 )
-from rawr_analytics.metrics.wowy.inputs import (
+from rawr_analytics.metrics.wowy.calculate.inputs import (
     WowyRequestDTO,
     WowySeasonInputDTO,
     build_wowy_request,
     validate_request,
+)
+from rawr_analytics.metrics.wowy.calculate.shrinkage import (
+    DEFAULT_WOWY_SHRINKAGE_PRIOR_GAMES,
+    compute_wowy_shrinkage_score,
 )
 from rawr_analytics.shared.player import PlayerMinutes, PlayerSummary
 from rawr_analytics.shared.season import Season
@@ -129,6 +131,33 @@ def build_wowy_custom_query(
         min_total_minutes=min_total_minutes,
     )
     return [_build_wowy_query_row(metric, record) for record in records]
+
+
+def build_wowy_player_season_value(
+    *,
+    season_id: str,
+    player: PlayerSummary,
+    minutes: PlayerMinutes,
+    games_with: int,
+    games_without: int,
+    avg_margin_with: float | None,
+    avg_margin_without: float | None,
+    value: float | None,
+    raw_value: float | None,
+) -> WowyPlayerSeasonValue:
+    return WowyPlayerSeasonValue(
+        season_id=season_id,
+        player=player,
+        minutes=minutes,
+        result=WowyPlayerValue(
+            games_with=games_with,
+            games_without=games_without,
+            avg_margin_with=avg_margin_with,
+            avg_margin_without=avg_margin_without,
+            value=value,
+            raw_value=raw_value,
+        ),
+    )
 
 
 def _build_wowy_query_row(

@@ -2,11 +2,11 @@ from __future__ import annotations
 
 from rawr_analytics.data.metric_store.wowy import WowyPlayerSeasonValueRow
 from rawr_analytics.metrics.constants import Metric
-from rawr_analytics.metrics.wowy.analysis import (
+from rawr_analytics.metrics.wowy.calculate.records import WowyPlayerSeasonRecord
+from rawr_analytics.metrics.wowy.calculate.shrinkage import (
     DEFAULT_WOWY_SHRINKAGE_PRIOR_GAMES,
     compute_wowy_shrinkage_score,
 )
-from rawr_analytics.metrics.wowy.records import WowyPlayerSeasonRecord
 from rawr_analytics.metrics.wowy.refresh.records import build_wowy_refresh_records
 from rawr_analytics.shared.season import Season, SeasonType
 from rawr_analytics.shared.team import Team
