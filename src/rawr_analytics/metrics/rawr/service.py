@@ -35,7 +35,7 @@ from rawr_analytics.metrics.rawr.presenters import (
     build_rawr_span_chart_payload as build_rawr_span_chart_payload_from_records,
 )
 from rawr_analytics.metrics.rawr.query import RawrQuery
-from rawr_analytics.metrics.rawr.refresh_records import load_rawr_records
+from rawr_analytics.metrics.rawr.refresh.records import load_rawr_records
 from rawr_analytics.shared import JSONDict
 from rawr_analytics.shared.player import PlayerMinutes, PlayerSummary
 from rawr_analytics.shared.season import Season

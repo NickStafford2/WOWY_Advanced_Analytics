@@ -14,7 +14,7 @@ from rawr_analytics.metrics.rawr.defaults import (
     DEFAULT_RAWR_TOP_N,
     RAWR_METRIC_SUMMARY,
 )
-from rawr_analytics.metrics.rawr.refresh_records import (
+from rawr_analytics.metrics.rawr.refresh.records import (
     RawrSeasonProgressFn,
     build_rawr_refresh_records,
     list_incomplete_rawr_season_warnings,
