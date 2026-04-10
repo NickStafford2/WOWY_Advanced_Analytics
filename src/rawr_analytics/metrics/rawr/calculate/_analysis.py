@@ -41,16 +41,14 @@ class _RidgeTuningSummary:
 def fit_player_rawr(
     observations: list[RawrObservation],
     *,
+    player_ids: list[int],
     season: Season,
-    min_games: int = 1,
     ridge_alpha: float = 1.0,
     shrinkage_mode: RawrShrinkageMode = RawrShrinkageMode.UNIFORM,
     shrinkage_strength: float = 1.0,
     shrinkage_minute_scale: float = 48.0,
     progress: _ProgressFn | None = None,
 ) -> dict[int, float]:
-    if min_games < 0:
-        raise ValueError("Minimum games filter must be non-negative")
     if ridge_alpha < 0:
         raise ValueError("Ridge alpha must be non-negative")
     shrinkage_mode = RawrShrinkageMode.validate(
@@ -60,17 +58,13 @@ def fit_player_rawr(
     )
     if not observations:
         raise ValueError("At least one RAWR observation is required")
-
-    games_by_player = count_player_season_games(observations)
-    included_player_ids = sorted(
-        player_id for player_id, games in games_by_player.items() if games >= min_games
-    )
-    if not included_player_ids:
-        raise ValueError("No players met the minimum games requirement")
+    if not player_ids:
+        raise ValueError("At least one RAWR player is required")
+    assert len(player_ids) == len(set(player_ids)), "RAWR player ids must be unique"
 
     model = _fit_regression_model(
         observations,
-        included_player_ids,
+        player_ids,
         season=season,
         ridge_alpha=ridge_alpha,
         shrinkage_mode=shrinkage_mode,
@@ -80,7 +74,7 @@ def fit_player_rawr(
     )
     return {
         player_id: model.coefficients[index + 2]
-        for index, player_id in enumerate(included_player_ids)
+        for index, player_id in enumerate(player_ids)
     }
 
 

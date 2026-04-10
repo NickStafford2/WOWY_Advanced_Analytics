@@ -46,16 +46,24 @@ def _build_season_records(
     request: RawrRequestDTO,
 ) -> list[RawrPlayerSeasonRecord]:
     player_contexts = season_input.players_by_id
+    games_by_player_id = count_player_season_games(season_input.observations)
+    eligible_player_ids = sorted(
+        player_id
+        for player_id, games in games_by_player_id.items()
+        if games >= request.min_games
+    )
+    if not eligible_player_ids:
+        return []
+
     coefficients_by_player_id = fit_player_rawr(
         season_input.observations,
+        player_ids=eligible_player_ids,
         season=season_input.season,
-        min_games=request.min_games,
         ridge_alpha=request.ridge_alpha,
         shrinkage_mode=request.shrinkage_mode,
         shrinkage_strength=request.shrinkage_strength,
         shrinkage_minute_scale=request.shrinkage_minute_scale,
     )
-    games_by_player_id = count_player_season_games(season_input.observations)
 
     records: list[RawrPlayerSeasonRecord] = []
     for player_id, coefficient in coefficients_by_player_id.items():
