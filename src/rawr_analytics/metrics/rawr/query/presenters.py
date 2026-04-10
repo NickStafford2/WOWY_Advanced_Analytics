@@ -7,8 +7,8 @@ from typing import Any, cast
 from rawr_analytics.metrics._span import build_span_payload
 from rawr_analytics.metrics.rawr.calculate.records import RawrPlayerSeasonRecord
 from rawr_analytics.metrics.rawr.query.request import RawrQuery
-from rawr_analytics.shared import JSONDict
-from rawr_analytics.shared.season import Season, SeasonType
+from rawr_analytics.shared.common import JSONDict
+from rawr_analytics.shared.season import Season
 from rawr_analytics.shared.team import Team
 
 
@@ -16,7 +16,6 @@ from rawr_analytics.shared.team import Team
 class RawrQueryFiltersDTO:
     team_filter: list[Team] | None
     season_filter: list[Season] | None
-    season_type: SeasonType
     top_n: int
     min_average_minutes: float
     min_total_minutes: float
@@ -34,7 +33,6 @@ class RawrQueryFiltersDTO:
         return cls(
             team_filter=query.teams,
             season_filter=query.seasons,
-            season_type=query.season_type,
             top_n=query.top_n,
             min_average_minutes=query.min_average_minutes,
             min_total_minutes=query.min_total_minutes,
@@ -47,7 +45,6 @@ class RawrQueryFiltersDTO:
         return RawrQueryFiltersDTO(
             team_filter=self.team_filter,
             season_filter=None,
-            season_type=self.season_type,
             top_n=self.top_n,
             min_average_minutes=self.min_average_minutes,
             min_total_minutes=self.min_total_minutes,
@@ -67,7 +64,6 @@ class RawrQueryFiltersDTO:
             "season_filter": None
             if self.season_filter is None
             else [season.year_string_nba_api for season in self.season_filter],
-            "season_type": self.season_type.to_nba_format(),
             "min_average_minutes": self.min_average_minutes,
             "min_total_minutes": self.min_total_minutes,
             "top_n": self.top_n,
@@ -122,19 +118,20 @@ def build_rawr_leaderboard_payload(
     *,
     metric: str,
     rows: Sequence[RawrPlayerSeasonRecord],
-    seasons: list[str],
+    seasons: list[Season],
     top_n: int,
     mode: str,
     available_seasons: list[Season] | None = None,
     available_teams: list[Team] | None = None,
 ) -> JSONDict:
+    season_ids = _season_ids(seasons)
     table_rows = _build_ranked_table_rows(rows=rows, seasons=seasons, top_n=top_n)
     payload = cast(
         JSONDict,
         {
             "mode": mode,
             "metric": metric,
-            "span": build_span_payload(seasons=seasons, top_n=top_n),
+            "span": build_span_payload(seasons=season_ids, top_n=top_n),
             "table_rows": [asdict(row) for row in table_rows],
             "series": _build_series_from_table_rows(table_rows),
         },
@@ -149,7 +146,7 @@ def build_rawr_leaderboard_payload(
 def build_rawr_export_rows(
     *,
     rows: Sequence[RawrPlayerSeasonRecord],
-    seasons: list[str],
+    seasons: list[Season],
 ) -> list[dict[str, Any]]:
     return [asdict(row) for row in _build_ranked_table_rows(rows=rows, seasons=seasons, top_n=None)]
 
@@ -158,18 +155,19 @@ def build_rawr_span_chart_payload(
     *,
     metric: str,
     rows: Sequence[RawrPlayerSeasonRecord],
-    seasons: list[str],
+    seasons: list[Season],
     top_n: int,
 ) -> JSONDict:
+    season_ids = _season_ids(seasons)
     table_rows = _build_ranked_table_rows(rows=rows, seasons=seasons, top_n=top_n)
     return cast(
         JSONDict,
         {
             "metric": metric,
             "span": {
-                "start_season": seasons[0] if seasons else None,
-                "end_season": seasons[-1] if seasons else None,
-                "available_seasons": seasons,
+                "start_season": season_ids[0] if season_ids else None,
+                "end_season": season_ids[-1] if season_ids else None,
+                "available_seasons": season_ids,
                 "top_n": top_n,
             },
             "series": _build_series_from_table_rows(table_rows),
@@ -196,14 +194,14 @@ def _build_player_season_row_dto(
 def _build_ranked_table_rows(
     *,
     rows: Sequence[RawrPlayerSeasonRecord],
-    seasons: list[str],
+    seasons: list[Season],
     top_n: int | None,
 ) -> list[RawrLeaderboardRowDTO]:
     rows_by_player: dict[int, list[RawrPlayerSeasonRecord]] = {}
     for row in rows:
         rows_by_player.setdefault(row.player.player_id, []).append(row)
 
-    ordered_seasons = sorted(dict.fromkeys(seasons))
+    ordered_seasons = _season_ids(seasons)
     full_span_length = len(ordered_seasons) or 1
     ranked_rows: list[RawrLeaderboardRowDTO] = []
     for player_id, player_rows in rows_by_player.items():
@@ -275,3 +273,7 @@ def _build_series_from_table_rows(
         }
         for row in table_rows
     ]
+
+
+def _season_ids(seasons: Sequence[Season]) -> list[str]:
+    return sorted(dict.fromkeys(season.year_string_nba_api for season in seasons))

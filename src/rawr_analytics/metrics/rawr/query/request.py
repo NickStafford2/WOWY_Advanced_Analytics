@@ -42,6 +42,8 @@ def build_rawr_query(
     ridge_alpha: float | None = None,
 ) -> RawrQuery:
     normalized_teams = normalize_teams(teams)
+    if not normalized_teams:
+        normalized_teams = Team.all()
     normalized_seasons = normalize_seasons(seasons)
     if not normalized_seasons:
         normalized_seasons = build_all_nba_history_seasons()

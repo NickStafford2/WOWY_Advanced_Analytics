@@ -56,33 +56,32 @@ def _summarize_rawr_cache_seasons(
 ) -> dict[Season, _SeasonCacheSummary]:
     season_filter = set(seasons)
     summaries: dict[Season, _SeasonCacheSummary] = {}
-    for season_type in {season.season_type for season in seasons}:
-        snapshot = load_cache_snapshot(season_type)
-        for entry in snapshot.entries:
-            scope = entry.scope
-            if scope.season not in season_filter:
-                continue
-            summary = summaries.setdefault(
-                scope.season,
-                _SeasonCacheSummary(
-                    team_labels=set(),
-                    incomplete_metadata_teams=set(),
-                    partial_teams={},
-                    skipped_teams={},
-                ),
+    snapshot = load_cache_snapshot()
+    for entry in snapshot.entries:
+        scope = entry.scope
+        if scope.season not in season_filter:
+            continue
+        summary = summaries.setdefault(
+            scope.season,
+            _SeasonCacheSummary(
+                team_labels=set(),
+                incomplete_metadata_teams=set(),
+                partial_teams={},
+                skipped_teams={},
+            ),
+        )
+        team_label = scope.team.abbreviation(season=scope.season)
+        summary.team_labels.add(team_label)
+        if entry.expected_games_count is None or entry.skipped_games_count is None:
+            summary.incomplete_metadata_teams.add(team_label)
+            continue
+        if entry.games_count != entry.expected_games_count:
+            summary.partial_teams[team_label] = (
+                entry.games_count,
+                entry.expected_games_count,
             )
-            team_label = scope.team.abbreviation(season=scope.season)
-            summary.team_labels.add(team_label)
-            if entry.expected_games_count is None or entry.skipped_games_count is None:
-                summary.incomplete_metadata_teams.add(team_label)
-                continue
-            if entry.games_count != entry.expected_games_count:
-                summary.partial_teams[team_label] = (
-                    entry.games_count,
-                    entry.expected_games_count,
-                )
-            if entry.skipped_games_count != 0:
-                summary.skipped_teams[team_label] = entry.skipped_games_count
+        if entry.skipped_games_count != 0:
+            summary.skipped_teams[team_label] = entry.skipped_games_count
     return summaries
 
 

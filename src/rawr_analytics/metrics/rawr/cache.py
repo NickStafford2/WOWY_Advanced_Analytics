@@ -8,7 +8,7 @@ from rawr_analytics.data.scope_resolver import resolve_team_seasons
 from rawr_analytics.metrics.rawr.cache_status import list_complete_rawr_seasons
 from rawr_analytics.shared.game import NormalizedGamePlayerRecord, NormalizedGameRecord
 from rawr_analytics.shared.scope import TeamSeasonScope
-from rawr_analytics.shared.season import Season, SeasonType, normalize_seasons
+from rawr_analytics.shared.season import Season, normalize_seasons
 from rawr_analytics.shared.team import Team
 
 type RawrSeasonProgressFn = Callable[[int, int, Season], None]
@@ -24,7 +24,7 @@ def load_rawr_records(
     dict[Season, list[NormalizedGamePlayerRecord]],
 ]:
     assert seasons, "RAWR record loading requires a non-empty season list"
-    requested_team_seasons = resolve_team_seasons(teams, seasons, season_type=season_type)
+    requested_team_seasons = resolve_team_seasons(teams, seasons)
     if not requested_team_seasons:
         raise ValueError("No cached data matched the requested RAWR scope")
 
@@ -48,7 +48,6 @@ def load_rawr_records(
         season_records = _load_rawr_season_records(
             teams=teams_by_season[season],
             season=season,
-            season_type=season_type,
         )
         if season_records is None:
             continue
@@ -71,10 +70,8 @@ def _load_rawr_season_records(
     *,
     teams: list[Team],
     season: Season,
-    season_type: SeasonType,
 ) -> tuple[list[NormalizedGameRecord], list[NormalizedGamePlayerRecord]] | None:
-    assert season.season_type == season_type, "RAWR season must match requested season_type"
-    requested_team_seasons = resolve_team_seasons(teams, [season], season_type=season_type)
+    requested_team_seasons = resolve_team_seasons(teams, [season])
     if not requested_team_seasons:
         return None
 

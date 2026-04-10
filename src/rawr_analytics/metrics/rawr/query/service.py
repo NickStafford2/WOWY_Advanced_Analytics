@@ -5,11 +5,11 @@ from dataclasses import dataclass
 from typing import Any, Literal
 
 from rawr_analytics.data.game_cache.store import load_cache_snapshot
-from rawr_analytics.data.metric_store import (
-    load_metric_scope_store_state,
+from rawr_analytics.data.metric_store._reads import load_metric_scope_store_state
+from rawr_analytics.data.metric_store.rawr import (
+    RawrPlayerSeasonValueRow,
     load_rawr_player_season_value_rows,
 )
-from rawr_analytics.data.metric_store.rawr import RawrPlayerSeasonValueRow
 from rawr_analytics.data.metric_store_scope import build_scope_key, build_team_filter, season_ids
 from rawr_analytics.metrics.constants import Metric
 from rawr_analytics.metrics.rawr.cache import load_rawr_records
@@ -37,9 +37,13 @@ from rawr_analytics.metrics.rawr.query.presenters import (
     build_rawr_span_chart_payload as build_rawr_span_chart_payload_from_records,
 )
 from rawr_analytics.metrics.rawr.query.request import RawrQuery
-from rawr_analytics.shared import JSONDict
+from rawr_analytics.shared.common import JSONDict
 from rawr_analytics.shared.player import PlayerMinutes, PlayerSummary
-from rawr_analytics.shared.season import Season
+from rawr_analytics.shared.season import (
+    Season,
+    build_all_nba_history_seasons,
+    normalize_seasons,
+)
 from rawr_analytics.shared.team import Team
 
 type RawrProgressFn = Callable[[int, int, Season], None]
@@ -50,7 +54,7 @@ type RawrResultSource = Literal["cache", "live"]
 @dataclass(frozen=True)
 class ResolvedRawrResultDTO:
     rows: list[RawrPlayerSeasonRecord]
-    seasons: list[str]
+    seasons: list[Season]
     source: RawrResultSource
     available_teams: list[Team] | None
     available_seasons: list[Season] | None
@@ -250,11 +254,12 @@ def _try_load_rawr_store_result(query: RawrQuery) -> ResolvedRawrResultDTO | Non
     )
 
 
-def _selected_rawr_seasons(query: RawrQuery, rows: list[RawrPlayerSeasonRecord]) -> list[str]:
-    selected_seasons = sorted({row.season.year_string_nba_api for row in rows})
+def _selected_rawr_seasons(query: RawrQuery, rows: list[RawrPlayerSeasonRecord]) -> list[Season]:
+    selected_seasons = normalize_seasons([row.season for row in rows]) or []
     if selected_seasons:
         return selected_seasons
-    return sorted({season.year_string_nba_api for season in query.seasons})
+    requested_seasons = query.seasons or build_all_nba_history_seasons()
+    return normalize_seasons(requested_seasons) or []
 
 
 def _build_rawr_record_from_store_row(
@@ -280,12 +285,13 @@ def _resolve_all_teams_snapshot_scope_key(query: RawrQuery) -> str | None:
     if team_filter:
         return None
 
-    cache_snapshot = load_cache_snapshot(query.season_type)
+    cache_snapshot = load_cache_snapshot()
     if not cache_snapshot.entries:
         return None
 
+    seasons = query.seasons or build_all_nba_history_seasons()
     return build_scope_key(
-        seasons=query.seasons,
+        seasons=seasons,
         team_filter=team_filter,
     )
 
@@ -306,24 +312,19 @@ def _try_load_current_metric_availability(
     if state is None:
         return None
 
-    cache_snapshot = load_cache_snapshot(query.season_type)
+    cache_snapshot = load_cache_snapshot()
     if not cache_snapshot.entries:
         return None
 
     if state.snapshot_state.source_fingerprint != cache_snapshot.fingerprint:
         return None
 
-    seasons = [
-        season
-        for season in query.seasons
-        if any(
-            team_id in state.catalog_row.available_team_ids
-            for team_id in state.catalog_row.available_team_ids
-        )
-    ]
-    teams = [
-        team for team in query.teams if any(team.is_active_during(season) for season in seasons)
-    ]
+    seasons = list(dict.fromkeys(query.seasons or build_all_nba_history_seasons()))
+    teams_by_id = {team.team_id: team for team in query.teams}
+    teams = list(teams_by_id.values())
+
+    seasons = [season for season in seasons if any(team.is_active_during(season) for team in teams)]
+    teams = [team for team in teams if any(team.is_active_during(season) for season in seasons)]
 
     return _CachedRawrAvailability(
         available_teams=teams,

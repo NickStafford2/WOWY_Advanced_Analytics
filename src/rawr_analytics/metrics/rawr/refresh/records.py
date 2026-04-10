@@ -11,13 +11,12 @@ from rawr_analytics.metrics.rawr.defaults import (
     DEFAULT_RAWR_SHRINKAGE_MODE,
     DEFAULT_RAWR_SHRINKAGE_STRENGTH,
 )
-from rawr_analytics.shared.season import Season, SeasonType
+from rawr_analytics.shared.season import Season
 from rawr_analytics.shared.team import Team
 
 
 def build_rawr_refresh_records(
     *,
-    season_type: SeasonType,
     seasons: list[Season],
     teams: list[Team] | None,
     ridge_alpha: float,
@@ -26,7 +25,6 @@ def build_rawr_refresh_records(
     season_games, season_game_players = load_rawr_records(
         teams=teams,
         seasons=seasons,
-        season_type=season_type,
     )
     request = build_rawr_request(
         season_games=season_games,

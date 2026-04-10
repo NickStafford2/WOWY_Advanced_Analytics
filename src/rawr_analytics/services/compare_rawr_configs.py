@@ -19,7 +19,7 @@ from rawr_analytics.metrics.wowy.calculate.records import (
     WowyPlayerSeasonRecord,
     prepare_wowy_player_season_records,
 )
-from rawr_analytics.shared.season import Season, SeasonType
+from rawr_analytics.shared.season import Season
 from rawr_analytics.shared.team import Team
 
 _DEFAULT_SHRINKAGE_MODES = (
@@ -64,7 +64,6 @@ def compare_rawr_configs(
     *,
     train_seasons: list[Season],
     holdout_season: Season,
-    season_type: SeasonType,
     aggregation: str = "mean",
     teams: list[Team] | None = None,
     rawr_ridge_values: list[float] | None = None,
@@ -96,11 +95,11 @@ def compare_rawr_configs(
     )
     completed_steps = 0
     normalized_shrinkage_modes = _normalize_shrinkage_modes(shrinkage_modes)
+    wowy_teams = teams or Team.all()
 
     holdout_games, holdout_game_players = load_wowy_records(
-        teams=teams,
+        teams=wowy_teams,
         seasons=[holdout_season],
-        season_type=season_type,
     )
     holdout_season_inputs = build_wowy_season_inputs(
         games=holdout_games,
@@ -123,9 +122,8 @@ def compare_rawr_configs(
     holdout_targets = _build_holdout_targets(holdout_records)
 
     training_wowy_games, training_wowy_game_players = load_wowy_records(
-        teams=teams,
+        teams=wowy_teams,
         seasons=train_seasons,
-        season_type=season_type,
     )
     training_wowy_season_inputs = build_wowy_season_inputs(
         games=training_wowy_games,
@@ -181,7 +179,6 @@ def compare_rawr_configs(
             season_games, season_game_players = load_rawr_records(
                 teams=teams,
                 seasons=train_seasons,
-                season_type=season_type,
             )
             rawr_request = build_rawr_request(
                 season_games=season_games,

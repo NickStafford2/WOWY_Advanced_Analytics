@@ -172,8 +172,11 @@ def _prepare_metric_store_refresh(
     season_type: SeasonType,
     rawr_ridge_alpha: float = DEFAULT_RAWR_RIDGE_ALPHA,
 ) -> _MetricStoreRefreshPlan:
-    cache_snapshot = load_cache_snapshot(season_type)
-    if not cache_snapshot.entries:
+    cache_snapshot = load_cache_snapshot()
+    cached_team_seasons = [
+        scope for scope in cache_snapshot.scopes if scope.season.season_type == season_type
+    ]
+    if not cached_team_seasons:
         return _MetricStoreRefreshPlan(
             build_version="",
             source_fingerprint="",
@@ -184,7 +187,6 @@ def _prepare_metric_store_refresh(
             ),
         )
 
-    cached_team_seasons = cache_snapshot.scopes
     available_teams = [scope.team for scope in cached_team_seasons]
     unique_available_teams = normalize_teams(available_teams) or []
     team_scopes: list[list[Team] | None] = [None]
@@ -258,7 +260,6 @@ def _refresh_metric_store_scope(
         rows = build_rawr_metric_store_rows(
             scope_key=scope.scope_key,
             team_filter=scope.catalog.team_filter,
-            season_type=season_type,
             seasons=seasons,
             teams=scope.teams,
             rawr_ridge_alpha=rawr_ridge_alpha,

@@ -4,7 +4,7 @@ from rawr_analytics.data.metric_store.rawr import RawrPlayerSeasonValueRow
 from rawr_analytics.metrics.constants import Metric
 from rawr_analytics.metrics.rawr.calculate.records import RawrPlayerSeasonRecord
 from rawr_analytics.metrics.rawr.refresh.records import build_rawr_refresh_records
-from rawr_analytics.shared.season import Season, SeasonType
+from rawr_analytics.shared.season import Season
 from rawr_analytics.shared.team import Team
 
 
@@ -12,13 +12,11 @@ def build_rawr_metric_store_rows(
     *,
     scope_key: str,
     team_filter: str,
-    season_type: SeasonType,
     seasons: list[Season],
     teams: list[Team] | None,
     rawr_ridge_alpha: float,
 ) -> list[RawrPlayerSeasonValueRow]:
     records = build_rawr_refresh_records(
-        season_type=season_type,
         seasons=seasons,
         teams=teams,
         ridge_alpha=rawr_ridge_alpha,
