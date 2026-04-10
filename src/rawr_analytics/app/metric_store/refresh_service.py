@@ -3,7 +3,6 @@ from __future__ import annotations
 from collections.abc import Callable
 from dataclasses import dataclass
 
-from rawr_analytics.app.metric_store.wowy_rows import build_wowy_cached_rows
 from rawr_analytics.data.game_cache import load_cache_snapshot
 from rawr_analytics.data.metric_store import clear_metric_scope_store, load_metric_scope_store_state
 from rawr_analytics.data.metric_store._catalog import (
@@ -21,6 +20,7 @@ from rawr_analytics.metrics.rawr.cache_status import (
 from rawr_analytics.metrics.rawr.defaults import RAWR_METRIC_SUMMARY
 from rawr_analytics.metrics.rawr.refresh.store_rows import build_rawr_metric_store_rows
 from rawr_analytics.metrics.wowy.defaults import describe_metric as describe_wowy_metric
+from rawr_analytics.metrics.wowy.refresh.store_rows import build_wowy_metric_store_rows
 from rawr_analytics.shared.scope import TeamSeasonScope
 from rawr_analytics.shared.season import Season, SeasonType, require_normalized_seasons
 from rawr_analytics.shared.team import Team, normalize_teams, to_normalized_team_ids
@@ -286,7 +286,7 @@ def _refresh_metric_store_scope(
         row_count = len(rows)
     else:
         seasons = _build_scope_seasons(scope=scope, season_type=season_type)
-        rows = build_wowy_cached_rows(
+        rows = build_wowy_metric_store_rows(
             metric=metric,
             scope_key=scope.scope_key,
             team_filter=scope.catalog.team_filter,
