@@ -4,6 +4,10 @@
 
 `seasons=None` should eventually disappear from most of the core metric path.
 
+It is acceptable to rebuild derived data after this refactor. Preserving
+existing metric-store snapshot compatibility is not required if rebuilding from
+the normalized cache is simpler and cleaner.
+
 Right now it is carrying too many meanings:
 
 - all cached seasons for one `season_type`
@@ -23,6 +27,8 @@ Ownership rule:
 - request parsers may leave seasons omitted
 - query builders should own omitted-season resolution
 - app services and deeper layers should assume seasons are already concrete
+- query builders should resolve omitted seasons from normalized cache
+  availability, not from metric-store catalogs
 
 ## Implication
 
@@ -46,9 +52,14 @@ If a field means "no explicit user filter was provided", it should be treated as
 
 ## Migration Direction
 
+- define and stabilize `Season` identity and normalization rules first
 - remove `seasons=None` branching from core metric and cache paths
 - pass explicit normalized `list[Season]` into scope resolution and metric execution
 - keep any optional season semantics only at the outer request/presenter layer
+- update live query paths before metric-store snapshot paths
+- redesign metric-store scope keys, catalog metadata, and span metadata after
+  live query season handling is stable
+- remove old single-`season_type` query plumbing last
 
 ## Season Identity
 
@@ -62,6 +73,10 @@ Examples:
 The NBA API year-only format should stay separate on the model as a distinct
 property, because it is not a unique season identity.
 
+Preferred property name:
+
+- `Season.year_string_nba_api`
+
 Examples:
 
 - `2019-20`
@@ -69,8 +84,19 @@ Examples:
 Implication:
 
 - code that needs exact season identity should use `Season.id`
-- code that needs the NBA API year string should use the year-only property
+- code that needs the NBA API year string should use `Season.year_string_nba_api`
 - payloads and keys should not treat the NBA year string as a unique season identifier
+
+Outward-facing API rule:
+
+- when a payload needs to identify a season, it should use `season_id`
+- outward-facing payloads should not use ambiguous year-only `season` values for identity
+- `Season.year_string_nba_api` may still be included later for display or grouping convenience, but `season_id` is the required identifier
+
+Internal API rule:
+
+- internal module boundaries may pass full `Season` objects directly
+- internal code should prefer passing `Season` dataclass values instead of splitting them into separate year and season-type fields unless a lower-level storage or serialization boundary requires it
 
 ## Metric Store Scope Key
 
@@ -92,6 +118,10 @@ Canonical rule going forward:
 Recommended rule:
 
 - RAWR completeness should be defined per exact `Season`
+- when a mixed query includes incomplete seasons, return results for the
+  complete seasons only
+- attach a warning listing the excluded incomplete seasons
+- write an error log entry documenting the excluded incomplete seasons
 
 This means completeness is attached to a concrete season value such as:
 
@@ -109,23 +139,28 @@ Reasoning:
 Migration direction:
 
 - replace season-type-based RAWR cache completeness logic with exact `Season` completeness checks
-- when a mixed query is requested, include only the exact seasons that are complete
 - treat incompleteness as a property of the requested season itself, not of a separate season-type bucket
 
 ## Metric Store Snapshot Policy
 
-For now, metric-store snapshots should only represent canonical query-shaped
-season sets.
+Metric-store snapshots should only represent fixed full-history season-set
+shapes.
 
 This means:
 
-- metric-store refresh should build only the defined canonical rebuilt season sets
-- metric-store snapshots should not be created for arbitrary exact season subsets
+- metric-store refresh should build snapshots only for full NBA history
+- full NBA history means all exact `Season` values currently present in the
+  normalized cache for the selected shape
+- teams are not part of metric-store snapshot identity
+- team-filtered metric queries should remain live-query only for now
 
-Examples of season subsets that should remain live-query only for now:
+For each metric, build exactly these stored season-set shapes:
 
-- `2019-20:REGULAR` + `2021-22:PLAYOFFS`
-- other sparse or ad hoc exact season combinations
+- `PRESEASON`
+- `REGULAR`
+- `PLAYOFFS`
+- `REGULAR + PLAYOFFS`
+- `PRESEASON + REGULAR + PLAYOFFS`
 
 Future direction:
 
@@ -149,3 +184,11 @@ Reasoning:
   year string is not precise enough for span boundaries
 - span metadata should follow the same canonical exact-season ordering used for
   keys and availability
+
+## Non-Goals
+
+- no team-scoped metric-store snapshots
+- no arbitrary stored exact season subsets
+- no outward-facing year-only `season` identifiers where exact season identity
+  is required
+- no long-lived mixed old/new season identity scheme during the migration
