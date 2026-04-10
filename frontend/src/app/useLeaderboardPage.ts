@@ -9,12 +9,17 @@ import {
   selectAllTeams,
   syncLeaderboardFiltersWithOptions,
   syncSelectedTeamIds,
+  toggleLeaderboardSeasonType,
   toggleSelectedTeam,
   updateLeaderboardFilterValue,
 } from './leaderboardQuery'
 import { metricDescriptionFor, metricLabelFor, metricStandsFor } from './metric'
 import type { LeaderboardPayload, TeamOption } from './leaderboardApiTypes'
-import type { LeaderboardFilters, LeaderboardNumberField } from './leaderboardTypes'
+import type {
+  LeaderboardFilters,
+  LeaderboardNumberField,
+  LeaderboardSeasonType,
+} from './leaderboardTypes'
 import type { MetricId } from './metricTypes'
 import { useLoadingPanel } from './useLoadingPanel'
 
@@ -36,6 +41,7 @@ type UseLeaderboardPageValue = {
   setMetric: (metric: MetricId) => void
   setStartSeason: (season: string) => void
   setEndSeason: (season: string) => void
+  toggleSeasonType: (seasonType: LeaderboardSeasonType) => void
   selectAllTeams: () => void
   toggleTeam: (teamId: number) => void
   setNumberFilter: (field: LeaderboardNumberField, value: number) => void
@@ -219,6 +225,13 @@ export function useLeaderboardPage(): UseLeaderboardPageValue {
     setFilters((current) => ({ ...current, endSeason: season }))
   }
 
+  function toggleSeasonType(seasonType: LeaderboardSeasonType): void {
+    setFilters((current) => ({
+      ...current,
+      seasonTypes: toggleLeaderboardSeasonType(current.seasonTypes, seasonType),
+    }))
+  }
+
   function handleSelectAllTeams(): void {
     setFilters((current) => ({
       ...current,
@@ -260,6 +273,7 @@ export function useLeaderboardPage(): UseLeaderboardPageValue {
     setMetric: handleMetricChange,
     setStartSeason,
     setEndSeason,
+    toggleSeasonType,
     selectAllTeams: handleSelectAllTeams,
     toggleTeam: handleToggleTeam,
     setNumberFilter,

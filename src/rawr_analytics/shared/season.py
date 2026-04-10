@@ -150,7 +150,7 @@ def build_all_nba_history_seasons(
     assert end_year >= NBA_FIRST_SEASON_START_YEAR, f"Invalid NBA history end year: {end_year!r}"
 
     if season_types is None or len(season_types) == 0:
-        season_types = [SeasonType.REGULAR]
+        season_types = [SeasonType.REGULAR, SeasonType.PLAYOFFS]
 
     result: list[Season] = []
     for season_type in season_types:

@@ -1,5 +1,9 @@
 import type { TeamOption } from '../app/leaderboardApiTypes'
-import type { LeaderboardFilters, LeaderboardNumberField } from '../app/leaderboardTypes'
+import type {
+  LeaderboardFilters,
+  LeaderboardNumberField,
+  LeaderboardSeasonType,
+} from '../app/leaderboardTypes'
 import { NumericField } from './NumericField'
 import { TeamSelector } from './TeamSelector'
 
@@ -14,6 +18,17 @@ type FilterFieldConfig = {
   step?: string
 }
 
+type SeasonTypeButtonConfig = {
+  key: LeaderboardSeasonType
+  label: string
+}
+
+const SEASON_TYPE_BUTTONS: SeasonTypeButtonConfig[] = [
+  { key: 'REGULAR', label: 'Regular season' },
+  { key: 'PLAYOFFS', label: 'Playoffs' },
+  { key: 'PRESEASON', label: 'Preseason' },
+]
+
 type LeaderboardFiltersPanelProps = {
   filters: LeaderboardFilters
   availableSeasons: string[]
@@ -23,6 +38,7 @@ type LeaderboardFiltersPanelProps = {
   isRawrMetric: boolean
   onStartSeasonChange: (season: string) => void
   onEndSeasonChange: (season: string) => void
+  onToggleSeasonType: (seasonType: LeaderboardSeasonType) => void
   onSelectAllTeams: () => void
   onToggleTeam: (teamId: number) => void
   onNumberChange: (field: LeaderboardNumberField, value: number) => void
@@ -38,6 +54,7 @@ export function LeaderboardFiltersPanel({
   isRawrMetric,
   onStartSeasonChange,
   onEndSeasonChange,
+  onToggleSeasonType,
   onSelectAllTeams,
   onToggleTeam,
   onNumberChange,
@@ -116,6 +133,37 @@ export function LeaderboardFiltersPanel({
           </label>
         </div>
 
+        <fieldset className="m-0 flex w-[18rem] flex-col gap-2 border-0 p-0 max-sm:w-full">
+          <legend className="mb-1 text-[0.9rem] text-[color:var(--text-secondary)]">
+            Season types
+          </legend>
+          <div className="flex flex-wrap gap-2">
+            {SEASON_TYPE_BUTTONS.map((seasonType) => {
+              const isSelected = filters.seasonTypes.includes(seasonType.key)
+              const isOnlySelected = isSelected && filters.seasonTypes.length === 1
+              return (
+                <button
+                  key={seasonType.key}
+                  type="button"
+                  className={
+                    isSelected
+                      ? 'min-h-[38px] cursor-pointer rounded-lg border border-[color:var(--accent-border)] [background:var(--accent-gradient)] px-3 text-sm font-bold text-[color:var(--text-inverse)] disabled:cursor-not-allowed disabled:opacity-70'
+                      : 'min-h-[38px] cursor-pointer rounded-lg border border-[color:var(--control-border)] bg-[var(--input-background)] px-3 text-sm font-bold text-[color:var(--text-secondary)] transition-colors disabled:cursor-not-allowed disabled:opacity-60'
+                  }
+                  aria-pressed={isSelected}
+                  disabled={isDisabled || isOnlySelected}
+                  onClick={() => onToggleSeasonType(seasonType.key)}
+                >
+                  {seasonType.label}
+                </button>
+              )
+            })}
+          </div>
+          <p className="m-0 text-xs leading-[1.45] text-[color:var(--text-muted)]">
+            One game type is required.
+          </p>
+        </fieldset>
+
         <div className="w-36">
           <NumericField
             label="Query top players"
@@ -184,7 +232,13 @@ export function LeaderboardFiltersPanel({
           type="button"
           className="min-h-[42px] w-full cursor-pointer rounded-[14px] [background:var(--accent-gradient)] px-[18px] font-bold text-[color:var(--text-inverse)] transition-opacity disabled:cursor-not-allowed disabled:opacity-60"
           onClick={onRefresh}
-          disabled={isDisabled || !filters.startSeason || !filters.endSeason || !hasSelectedTeams}
+          disabled={
+            isDisabled ||
+            !filters.startSeason ||
+            !filters.endSeason ||
+            filters.seasonTypes.length === 0 ||
+            !hasSelectedTeams
+          }
         >
           {isLoading ? 'Refreshing...' : 'Refresh leaderboard'}
         </button>

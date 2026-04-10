@@ -24,6 +24,7 @@ function App() {
     setMetric,
     setStartSeason,
     setEndSeason,
+    toggleSeasonType,
     selectAllTeams,
     toggleTeam,
     setNumberFilter,
@@ -52,6 +53,7 @@ function App() {
             isRawrMetric={isRawrMetric}
             onStartSeasonChange={setStartSeason}
             onEndSeasonChange={setEndSeason}
+            onToggleSeasonType={toggleSeasonType}
             onSelectAllTeams={selectAllTeams}
             onToggleTeam={toggleTeam}
             onNumberChange={setNumberFilter}

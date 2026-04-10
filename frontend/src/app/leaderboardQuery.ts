@@ -1,11 +1,19 @@
 import type { MetricOptionsPayload, TeamOption } from './leaderboardApiTypes'
-import type { LeaderboardFilters, LeaderboardNumberField } from './leaderboardTypes'
+import type {
+  LeaderboardFilters,
+  LeaderboardNumberField,
+  LeaderboardSeasonType,
+} from './leaderboardTypes'
 import type { MetricId } from './metricTypes'
+
+export const DEFAULT_SEASON_TYPES: LeaderboardSeasonType[] = ['REGULAR', 'PLAYOFFS']
+const SEASON_TYPE_ORDER: LeaderboardSeasonType[] = ['REGULAR', 'PLAYOFFS', 'PRESEASON']
 
 export function defaultLeaderboardFilters(): LeaderboardFilters {
   return {
     startSeason: '',
     endSeason: '',
+    seasonTypes: [...DEFAULT_SEASON_TYPES],
     teamIds: null,
     topN: 100,
     minGames: 35,
@@ -33,6 +41,7 @@ export function syncLeaderboardFiltersWithOptions(
     endSeason: payload.available_seasons.includes(current.endSeason)
       ? current.endSeason
       : defaultEndSeason,
+    seasonTypes: current.seasonTypes.length > 0 ? current.seasonTypes : [...DEFAULT_SEASON_TYPES],
     teamIds: selectedTeamIds,
     topN: current.topN || payload.filters.top_n,
     minGames: payload.metric === 'rawr' ? payload.filters.min_games : current.minGames,
@@ -169,6 +178,7 @@ export function buildLeaderboardParams(
   availableTeams: TeamOption[],
 ): URLSearchParams {
   const selectedSeasonSpan = seasonSpan(filters.startSeason, filters.endSeason, availableSeasons)
+  const selectedSeasonIds = buildSelectedSeasonIds(selectedSeasonSpan, filters.seasonTypes)
   const selectedTeamIds = filterSelectedTeamIdsForAvailableTeams(filters.teamIds, availableTeams)
   const params = new URLSearchParams({
     top_n: String(filters.topN),
@@ -184,9 +194,6 @@ export function buildLeaderboardParams(
     params.set('min_games_without', String(filters.minGamesWithout))
   }
 
-  const isFullSeasonSpan =
-    selectedSeasonSpan.length === availableSeasons.length &&
-    selectedSeasonSpan.every((season, index) => season === availableSeasons[index])
   const isAllTeamsSelected = isAllTeamsSelection(filters.teamIds, availableTeams)
 
   if (!isAllTeamsSelected) {
@@ -195,13 +202,42 @@ export function buildLeaderboardParams(
     }
   }
 
-  if (!isFullSeasonSpan) {
-    for (const season of selectedSeasonSpan) {
-      params.append('season', season)
-    }
+  for (const seasonId of selectedSeasonIds) {
+    params.append('season', seasonId)
   }
 
   return params
+}
+
+export function buildSelectedSeasonIds(
+  seasons: string[],
+  seasonTypes: LeaderboardSeasonType[],
+): string[] {
+  const selectedSeasonTypes = seasonTypes.length > 0 ? seasonTypes : DEFAULT_SEASON_TYPES
+  const seasonIds: string[] = []
+  for (const season of seasons) {
+    for (const seasonType of selectedSeasonTypes) {
+      seasonIds.push(`${season}:${seasonType}`)
+    }
+  }
+  return seasonIds
+}
+
+export function toggleLeaderboardSeasonType(
+  selectedSeasonTypes: LeaderboardSeasonType[],
+  seasonType: LeaderboardSeasonType,
+): LeaderboardSeasonType[] {
+  if (!selectedSeasonTypes.includes(seasonType)) {
+    return _orderSeasonTypes([...selectedSeasonTypes, seasonType])
+  }
+  if (selectedSeasonTypes.length === 1) {
+    return selectedSeasonTypes
+  }
+  return selectedSeasonTypes.filter((selectedSeasonType) => selectedSeasonType !== seasonType)
+}
+
+function _orderSeasonTypes(seasonTypes: LeaderboardSeasonType[]): LeaderboardSeasonType[] {
+  return SEASON_TYPE_ORDER.filter((seasonType) => seasonTypes.includes(seasonType))
 }
 
 export function updateLeaderboardFilterValue(
