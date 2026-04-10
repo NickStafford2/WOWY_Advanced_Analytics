@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from rawr_analytics.data.metric_store.rawr import RawrPlayerSeasonValueRow
 from rawr_analytics.metrics.constants import Metric
-from rawr_analytics.metrics.rawr.records import RawrPlayerSeasonRecord
+from rawr_analytics.metrics.rawr.calculate.records import RawrPlayerSeasonRecord
 from rawr_analytics.metrics.rawr.refresh_records import build_rawr_refresh_records
 from rawr_analytics.shared.season import Season, SeasonType
 from rawr_analytics.shared.team import Team

@@ -5,8 +5,11 @@ from dataclasses import dataclass
 
 from rawr_analytics.metrics._player_context import PlayerSeasonContext
 from rawr_analytics.metrics._validation import validate_top_n_and_minutes
-from rawr_analytics.metrics.rawr._observations import RawrObservation, build_rawr_observations
-from rawr_analytics.metrics.rawr._shrinkage import RawrShrinkageMode
+from rawr_analytics.metrics.rawr.calculate._observations import (
+    RawrObservation,
+    build_rawr_observations,
+)
+from rawr_analytics.metrics.rawr.calculate.shrinkage import RawrShrinkageMode
 from rawr_analytics.shared.game import NormalizedGamePlayerRecord, NormalizedGameRecord
 from rawr_analytics.shared.player import PlayerMinutes, PlayerSummary
 from rawr_analytics.shared.season import Season

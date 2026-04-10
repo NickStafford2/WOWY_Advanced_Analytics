@@ -2,13 +2,16 @@ from __future__ import annotations
 
 from rawr_analytics.metrics.rawr._cache import RawrSeasonProgressFn, load_rawr_records
 from rawr_analytics.metrics.rawr._cache_status import list_incomplete_rawr_season_warnings
+from rawr_analytics.metrics.rawr.calculate.inputs import build_rawr_request
+from rawr_analytics.metrics.rawr.calculate.records import (
+    RawrPlayerSeasonRecord,
+    build_player_season_records,
+)
 from rawr_analytics.metrics.rawr.defaults import (
     DEFAULT_RAWR_SHRINKAGE_MINUTE_SCALE,
     DEFAULT_RAWR_SHRINKAGE_MODE,
     DEFAULT_RAWR_SHRINKAGE_STRENGTH,
 )
-from rawr_analytics.metrics.rawr.inputs import build_rawr_request
-from rawr_analytics.metrics.rawr.records import RawrPlayerSeasonRecord, build_player_season_records
 from rawr_analytics.shared.season import Season, SeasonType
 from rawr_analytics.shared.team import Team
 

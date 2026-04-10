@@ -3,6 +3,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 
 from rawr_analytics.metrics._query_seasons import resolve_query_seasons
+from rawr_analytics.metrics.rawr.calculate.inputs import validate_filters
 from rawr_analytics.metrics.rawr.defaults import (
     DEFAULT_RAWR_MIN_AVERAGE_MINUTES,
     DEFAULT_RAWR_MIN_GAMES,
@@ -10,7 +11,6 @@ from rawr_analytics.metrics.rawr.defaults import (
     DEFAULT_RAWR_RIDGE_ALPHA,
     DEFAULT_RAWR_TOP_N,
 )
-from rawr_analytics.metrics.rawr.inputs import validate_filters
 from rawr_analytics.shared.season import Season, SeasonType
 from rawr_analytics.shared.team import Team, normalize_teams
 

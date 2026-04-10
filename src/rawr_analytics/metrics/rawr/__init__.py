@@ -1,6 +1,11 @@
 """RAWR metric package."""
 
-from rawr_analytics.metrics.rawr._shrinkage import RawrShrinkageMode
+from rawr_analytics.metrics.rawr.calculate.inputs import validate_filters
+from rawr_analytics.metrics.rawr.calculate.records import (
+    RawrPlayerSeasonRecord,
+    build_player_season_records,
+)
+from rawr_analytics.metrics.rawr.calculate.shrinkage import RawrShrinkageMode
 from rawr_analytics.metrics.rawr.defaults import (
     DEFAULT_RAWR_RIDGE_ALPHA,
     DEFAULT_RAWR_SHRINKAGE_MINUTE_SCALE,
@@ -9,8 +14,6 @@ from rawr_analytics.metrics.rawr.defaults import (
     DEFAULT_RAWR_TOP_N,
     RAWR_METRIC_SUMMARY,
 )
-from rawr_analytics.metrics.rawr.inputs import validate_filters
-from rawr_analytics.metrics.rawr.records import RawrPlayerSeasonRecord, build_player_season_records
 from rawr_analytics.metrics.rawr.refresh_records import (
     RawrSeasonProgressFn,
     build_rawr_refresh_records,

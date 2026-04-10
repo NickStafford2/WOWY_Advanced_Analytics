@@ -6,12 +6,12 @@ from statistics import mean
 
 import numpy as np
 
-from rawr_analytics.metrics.rawr._observations import (
+from rawr_analytics.metrics.rawr.calculate._observations import (
     RawrObservation,
     count_player_season_games,
     count_player_season_minutes,
 )
-from rawr_analytics.metrics.rawr._shrinkage import RawrShrinkageMode
+from rawr_analytics.metrics.rawr.calculate.shrinkage import RawrShrinkageMode
 from rawr_analytics.shared.season import Season
 from rawr_analytics.shared.team import Team
 
