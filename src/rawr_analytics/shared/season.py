@@ -5,6 +5,11 @@ from dataclasses import dataclass
 from enum import Enum
 
 _SEASON_YEAR_PATTERN = re.compile(r"^(?P<start>\d{4})(?:-(?P<end>\d{2}))?$")
+_SEASON_TYPE_ORDER = {
+    "PRESEASON": 0,
+    "REGULAR": 1,
+    "PLAYOFFS": 2,
+}
 
 
 class SeasonType(Enum):
@@ -138,6 +143,6 @@ def build_season_list(start_year: int, first_year: int, season_type_str: str) ->
 def normalize_seasons(seasons: list[Season] | None) -> list[Season] | None:
     normalized_seasons = sorted(
         {(season.start_year, season.season_type): season for season in seasons or []}.values(),
-        key=lambda season: (season.year_string_nba_api, season.season_type.value),
+        key=lambda season: (season.start_year, _SEASON_TYPE_ORDER[season.season_type.value]),
     )
     return normalized_seasons or None

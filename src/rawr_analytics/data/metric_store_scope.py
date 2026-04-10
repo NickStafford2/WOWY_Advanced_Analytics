@@ -54,6 +54,8 @@ def validate_metric_scope(*, scope_key: str, team_filter: str, season_type: str)
 
 
 def season_ids(seasons: list[Season] | None) -> list[str] | None:
-    if not seasons:
+    if seasons is None:
         return None
+    if not seasons:
+        return []
     return sorted({season.year_string_nba_api for season in seasons})

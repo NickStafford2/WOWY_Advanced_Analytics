@@ -21,6 +21,8 @@ That is a boundary smell. One value is representing multiple concepts.
 - External request/input boundaries may omit seasons.
 - Query normalization should resolve omitted seasons into an explicit normalized `list[Season]`.
 - Core metric/data boundaries should receive an explicit `list[Season]`, not `None`.
+- Core normalized query objects should carry one `seasons: list[Season]` field only.
+  Do not keep both `requested_seasons` and resolved `seasons` on the same core query object.
 
 Ownership rule:
 
@@ -40,6 +42,10 @@ In other words:
 - app/query boundary: omission becomes an explicit season list
 - metric/cache/data boundary: `seasons` is always concrete
 
+If the program still needs to preserve "user did not explicitly choose seasons",
+that should live in a separate outer request/filter DTO, not in the normalized
+core metric query object.
+
 ## Where `None` May Still Make Sense
 
 `None` may still be acceptable at outer boundaries where the distinction matters:
@@ -47,8 +53,19 @@ In other words:
 - request parsing
 - presenter/filter DTOs that need to preserve "user did not select seasons"
 - possibly rebuild/admin entrypoints before season selection is resolved
+- lower-level storage/query helpers where `None` has one precise meaning:
+  omit the season filter entirely
 
 If a field means "no explicit user filter was provided", it should be treated as a different concept from the normalized metric query season list.
+
+Important distinction:
+
+- `None` means the season filter is omitted and still unresolved
+- `[]` means the season set has been resolved and is empty
+
+`[]` is a valid internal normalized value. It must not silently widen into "all
+seasons". If a lower-level query helper receives `[]`, it should return no rows
+or no scopes rather than dropping the season filter.
 
 ## Migration Direction
 
@@ -86,6 +103,9 @@ Implication:
 - code that needs exact season identity should use `Season.id`
 - code that needs the NBA API year string should use `Season.year_string_nba_api`
 - payloads and keys should not treat the NBA year string as a unique season identifier
+- until mixed season-type query payloads are actually supported, outward-facing
+  APIs may still emit year strings where the current contract is year-only; do
+  not introduce a half-migrated outward payload scheme prematurely
 
 Outward-facing API rule:
 

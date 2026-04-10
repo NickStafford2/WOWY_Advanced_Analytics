@@ -28,6 +28,8 @@ def resolve_team_seasons(
             teams=normalized_teams,
             season_type=resolved_season_type,
         )
+    if not requested_seasons:
+        return []
 
     cached_requested_team_seasons = list_cached_scopes(
         teams=normalized_teams,
@@ -50,13 +52,19 @@ def _normalize_requested_seasons(
     seasons: list[Season] | None,
     season_type: SeasonType,
 ) -> list[Season] | None:
+    if seasons is None:
+        return None
     normalized_seasons = normalize_seasons(seasons)
     if normalized_seasons is None:
-        return None
-    return [
-        Season.parse(season.year_string_nba_api, season_type.to_nba_format())
-        for season in normalized_seasons
+        return []
+    invalid_seasons = [
+        season.id for season in normalized_seasons if season.season_type != season_type
     ]
+    assert not invalid_seasons, (
+        "Mixed season types are not supported by the current scope resolver: "
+        f"{invalid_seasons!r}"
+    )
+    return normalized_seasons
 
 
 def _resolve_cached_team_seasons(

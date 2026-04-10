@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
+from rawr_analytics.app._query_seasons import resolve_query_seasons
 from rawr_analytics.metrics.wowy.defaults import default_filters
 from rawr_analytics.metrics.wowy.inputs import validate_filters
 from rawr_analytics.shared.season import Season, SeasonType, normalize_seasons
@@ -12,7 +13,7 @@ from rawr_analytics.shared.team import Team, normalize_teams
 class WowyQuery:
     season_type: SeasonType
     teams: list[Team] | None
-    seasons: list[Season] | None
+    seasons: list[Season]
     top_n: int
     min_average_minutes: float
     min_total_minutes: float
@@ -32,10 +33,16 @@ def build_wowy_query(
     min_games_without: int | None = None,
 ) -> WowyQuery:
     defaults = default_filters()
+    normalized_teams = normalize_teams(teams)
+    normalized_requested_seasons = normalize_seasons(seasons)
     normalized_query = WowyQuery(
         season_type=season_type,
-        teams=normalize_teams(teams),
-        seasons=normalize_seasons(seasons),
+        teams=normalized_teams,
+        seasons=resolve_query_seasons(
+            teams=normalized_teams,
+            seasons=normalized_requested_seasons,
+            season_type=season_type,
+        ),
         top_n=int(top_n if top_n is not None else defaults["top_n"]),
         min_average_minutes=float(
             min_average_minutes

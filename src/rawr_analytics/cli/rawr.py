@@ -52,7 +52,7 @@ def main(argv: list[str] | None = None) -> int:
             "Cache is used when available unless --recalculate is set.",
         ],
     )
-    total_seasons = len(query.seasons or [])
+    total_seasons = len(query.seasons)
     load_bar = TerminalProgressBar("Season load", total=max(1, total_seasons))
     print("[1/3] loading season inputs", flush=True)
     progress_fn = _build_progress_updater(load_bar)

@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
+from rawr_analytics.app._query_seasons import resolve_query_seasons
 from rawr_analytics.metrics.rawr.defaults import (
     DEFAULT_RAWR_MIN_AVERAGE_MINUTES,
     DEFAULT_RAWR_MIN_GAMES,
@@ -18,7 +19,7 @@ from rawr_analytics.shared.team import Team, normalize_teams
 class RawrQuery:
     season_type: SeasonType
     teams: list[Team] | None
-    seasons: list[Season] | None
+    seasons: list[Season]
     top_n: int
     min_average_minutes: float
     min_total_minutes: float
@@ -37,10 +38,16 @@ def build_rawr_query(
     min_games: int | None = None,
     ridge_alpha: float | None = None,
 ) -> RawrQuery:
+    normalized_teams = normalize_teams(teams)
+    normalized_requested_seasons = normalize_seasons(seasons)
     normalized_query = RawrQuery(
         season_type=season_type,
-        teams=normalize_teams(teams),
-        seasons=normalize_seasons(seasons),
+        teams=normalized_teams,
+        seasons=resolve_query_seasons(
+            teams=normalized_teams,
+            seasons=normalized_requested_seasons,
+            season_type=season_type,
+        ),
         top_n=int(top_n if top_n is not None else DEFAULT_RAWR_TOP_N),
         min_average_minutes=float(
             min_average_minutes

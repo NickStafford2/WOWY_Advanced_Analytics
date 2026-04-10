@@ -191,9 +191,10 @@ def _selected_wowy_seasons(
     query: WowyQuery,
     rows: list[WowyPlayerSeasonValue],
 ) -> list[str]:
-    if query.seasons is not None:
-        return sorted({season.year_string_nba_api for season in query.seasons})
-    return sorted({row.season_id for row in rows})
+    selected_seasons = sorted({row.season_id for row in rows})
+    if selected_seasons:
+        return selected_seasons
+    return sorted({season.year_string_nba_api for season in query.seasons})
 
 
 def _require_wowy_metric(metric: Metric) -> None:

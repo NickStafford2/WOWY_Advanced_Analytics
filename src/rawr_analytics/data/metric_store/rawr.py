@@ -32,6 +32,8 @@ def load_rawr_player_season_value_rows(
     min_total_minutes: float | None = None,
     min_games: int | None = None,
 ) -> list[RawrPlayerSeasonValueRow]:
+    if seasons == []:
+        return []
     initialize_player_metrics_db()
     query = """
         SELECT
@@ -53,7 +55,7 @@ def load_rawr_player_season_value_rows(
         WHERE snapshot.metric_id = 'rawr' AND snapshot.scope_key = ?
     """
     params: list[object] = [scope_key]
-    if seasons:
+    if seasons is not None:
         query += f" AND season_id IN ({','.join('?' for _ in seasons)})"
         params.extend(seasons)
     if min_average_minutes is not None:
