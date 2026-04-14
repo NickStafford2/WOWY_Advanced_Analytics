@@ -18,7 +18,7 @@ def register_error_handlers(app: Flask) -> None:
         return jsonify({"error": str(exc)}), 400
 
 
-def require_metric[T](metric: T) -> T:
+def _require_metric[T](metric: T) -> T:
     if not isinstance(metric, Metric):
         raise _WebBadRequestError("invalid metric")
     return metric
