@@ -16,7 +16,7 @@ from rawr_analytics.sources.nba_api.download._parsers import (
     parse_box_score_payload,
     parse_league_schedule_payload,
 )
-from rawr_analytics.sources.nba_api.download.rules import (
+from rawr_analytics.sources.nba_api.download._rules import (
     classify_source_player_row,
     classify_source_schedule_row,
     classify_source_team_row,

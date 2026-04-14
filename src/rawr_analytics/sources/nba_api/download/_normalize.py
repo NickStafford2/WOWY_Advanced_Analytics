@@ -10,7 +10,7 @@ from rawr_analytics.sources.nba_api.download._models import (
     SourceBoxScoreTeam,
     SourceLeagueGame,
 )
-from rawr_analytics.sources.nba_api.download.rules import (
+from rawr_analytics.sources.nba_api.download._rules import (
     classify_source_player_row,
     format_source_row,
     format_source_rows,

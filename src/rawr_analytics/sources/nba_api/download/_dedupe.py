@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from rawr_analytics.sources.nba_api.download._models import SourceLeagueGame
-from rawr_analytics.sources.nba_api.download.rules import format_source_row
+from rawr_analytics.sources.nba_api.download._rules import format_source_row
 
 
 def dedupe_schedule_games(games: list[SourceLeagueGame]) -> list[SourceLeagueGame]:

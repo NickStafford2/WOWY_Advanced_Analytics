@@ -15,7 +15,7 @@ from rawr_analytics.sources.nba_api.download._models import (
     SourceLeagueGame,
     SourceLeagueSchedule,
 )
-from rawr_analytics.sources.nba_api.download.rules import (
+from rawr_analytics.sources.nba_api.download._rules import (
     classify_source_player_row,
     classify_source_schedule_row,
     classify_source_team_row,
