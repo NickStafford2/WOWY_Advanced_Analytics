@@ -10,7 +10,7 @@ from rawr_analytics.shared.season import Season
 
 
 @dataclass(frozen=True)
-class TeamSeason:
+class _TeamSeason:
     team_id: int
     start_year: int
     city: str
@@ -25,7 +25,7 @@ class TeamSeason:
 @dataclass(frozen=True)
 class Team:
     team_id: int
-    seasons: Mapping[int, TeamSeason]
+    seasons: Mapping[int, _TeamSeason]
 
     @staticmethod
     def from_id(team_id: int) -> Team:
@@ -77,7 +77,7 @@ class Team:
             key=lambda team: team.abbreviation(season=start_year),
         )
 
-    def for_season(self, season: Season | int) -> TeamSeason:
+    def for_season(self, season: Season | int) -> _TeamSeason:
         start_year = season if isinstance(season, int) else season.start_year
         team_season = self.seasons.get(start_year)
         assert team_season is not None, (
@@ -85,7 +85,7 @@ class Team:
         )
         return team_season
 
-    def for_date(self, game_date: str) -> TeamSeason:
+    def for_date(self, game_date: str) -> _TeamSeason:
         return self.for_season(_season_start_year_from_game_date(game_date))
 
     def abbreviation(
@@ -107,7 +107,7 @@ class Team:
         return (season if isinstance(season, int) else season.start_year) in self.seasons
 
     @property
-    def current(self) -> TeamSeason:
+    def current(self) -> _TeamSeason:
         return self.seasons[max(self.seasons)]
 
     def validate(self):
@@ -215,11 +215,11 @@ for spans in _SPANS_BY_TEAM_ID.values():
 _TEAMS_BY_ID: dict[int, Team] = {}
 
 for team_id, spans in _SPANS_BY_TEAM_ID.items():
-    seasons: dict[int, TeamSeason] = {}
+    seasons: dict[int, _TeamSeason] = {}
     for span in spans:
         end_year = span.season_end or max(span.season_start, date.today().year)
         for start_year in range(span.season_start, end_year + 1):
-            seasons[start_year] = TeamSeason(
+            seasons[start_year] = _TeamSeason(
                 team_id=team_id,
                 start_year=start_year,
                 city=span.city,
@@ -246,8 +246,8 @@ def _season_start_year_from_game_date(game_date: str) -> int:
     return parsed_date.year if parsed_date.month >= 7 else parsed_date.year - 1
 
 
-def _team_label(team: Team | TeamSeason) -> str:
-    if isinstance(team, TeamSeason):
+def _team_label(team: Team | _TeamSeason) -> str:
+    if isinstance(team, _TeamSeason):
         return f"{team.abbreviation} ({team.team_id})"
     return f"{team.current.abbreviation} ({team.team_id})"
 
