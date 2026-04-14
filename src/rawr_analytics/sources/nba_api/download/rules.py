@@ -12,40 +12,40 @@ from rawr_analytics.sources.nba_api.download._models import (
 
 
 @dataclass(frozen=True)
-class SourcePlayerRowClassification:
+class _SourcePlayerRowClassification:
     kind: str
     should_skip: bool = False
 
 
 @dataclass(frozen=True)
-class SourceTeamRowClassification:
+class _SourceTeamRowClassification:
     kind: str
     should_skip: bool = False
 
 
 @dataclass(frozen=True)
-class SourceScheduleRowClassification:
+class _SourceScheduleRowClassification:
     kind: str
     should_skip: bool = False
 
 
-PLAYER_DID_NOT_PLAY_PLACEHOLDER = SourcePlayerRowClassification(
+_PLAYER_DID_NOT_PLAY_PLACEHOLDER = _SourcePlayerRowClassification(
     kind="player_did_not_play_placeholder",
     should_skip=True,
 )
-INACTIVE_PLAYER_STATUS_ROW = SourcePlayerRowClassification(
+_INACTIVE_PLAYER_STATUS_ROW = _SourcePlayerRowClassification(
     kind="inactive_player_status_row",
     should_skip=True,
 )
-CANONICAL_PLAYER_SOURCE_ROW = SourcePlayerRowClassification(
+_CANONICAL_PLAYER_SOURCE_ROW = _SourcePlayerRowClassification(
     kind="canonical_player_source_row",
     should_skip=False,
 )
-CANONICAL_TEAM_SOURCE_ROW = SourceTeamRowClassification(
+_CANONICAL_TEAM_SOURCE_ROW = _SourceTeamRowClassification(
     kind="canonical_team_source_row",
     should_skip=False,
 )
-CANONICAL_SCHEDULE_SOURCE_ROW = SourceScheduleRowClassification(
+_CANONICAL_SCHEDULE_SOURCE_ROW = _SourceScheduleRowClassification(
     kind="canonical_schedule_source_row",
     should_skip=False,
 )
@@ -112,27 +112,27 @@ def parse_minutes_to_float(minutes: object) -> float | None:
 # todo: find out why I made this.
 def classify_source_team_row(
     row: SourceBoxScoreTeam,
-) -> SourceTeamRowClassification:
-    return CANONICAL_TEAM_SOURCE_ROW
+) -> _SourceTeamRowClassification:
+    return _CANONICAL_TEAM_SOURCE_ROW
 
 
 # todo: find out why I made this.
 def classify_source_schedule_row(
     row: dict[str, object],
-) -> SourceScheduleRowClassification:
-    return CANONICAL_SCHEDULE_SOURCE_ROW
+) -> _SourceScheduleRowClassification:
+    return _CANONICAL_SCHEDULE_SOURCE_ROW
 
 
 def classify_source_player_row(
     row: SourceBoxScorePlayer,
-) -> SourcePlayerRowClassification:
+) -> _SourcePlayerRowClassification:
     if _is_skip_player_row(row):
-        return PLAYER_DID_NOT_PLAY_PLACEHOLDER
+        return _PLAYER_DID_NOT_PLAY_PLACEHOLDER
     if _is_player_did_not_play_placeholder(row):
-        return PLAYER_DID_NOT_PLAY_PLACEHOLDER
+        return _PLAYER_DID_NOT_PLAY_PLACEHOLDER
     if not source_player_played_in_game(row):
-        return INACTIVE_PLAYER_STATUS_ROW
-    return CANONICAL_PLAYER_SOURCE_ROW
+        return _INACTIVE_PLAYER_STATUS_ROW
+    return _CANONICAL_PLAYER_SOURCE_ROW
 
 
 def format_source_row(row: dict[str, object]) -> str:
@@ -236,15 +236,6 @@ def _row_has_any_box_score_stats(raw_row: dict[str, object]) -> bool:
 
 
 __all__ = [
-    "CANONICAL_PLAYER_SOURCE_ROW",
-    "CANONICAL_SCHEDULE_SOURCE_ROW",
-    "CANONICAL_TEAM_SOURCE_ROW",
-    "INACTIVE_PLAYER_STATUS_ROW",
-    "PLAYER_DID_NOT_PLAY_PLACEHOLDER",
-    "SourcePlayerRowClassification",
-    "SourceScheduleRowClassification",
-    "SourceTeamRowClassification",
-    "_played_in_game",
     "classify_source_player_row",
     "classify_source_schedule_row",
     "classify_source_team_row",

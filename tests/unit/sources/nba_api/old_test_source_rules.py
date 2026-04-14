@@ -5,7 +5,7 @@ import math
 import pytest
 
 from rawr_analytics.sources.nba_api.models import SourceBoxScorePlayer, SourceBoxScoreTeam
-from rawr_analytics.sources.nba_api.rules import (
+from rawr_analytics.sources.nba_api.download/_rules import (
     CANONICAL_PLAYER_SOURCE_ROW,
     CANONICAL_SCHEDULE_SOURCE_ROW,
     CANONICAL_TEAM_SOURCE_ROW,
