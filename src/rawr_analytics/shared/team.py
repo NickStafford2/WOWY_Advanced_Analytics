@@ -197,39 +197,48 @@ _SPANS_BY_TEAM_ID: dict[int, list[_TeamSpan]] = {}
 _SPANS_BY_ABBREVIATION: dict[str, list[_TeamSpan]] = {}
 _LOOKUP_ABBREVIATION_BY_ALIAS: dict[str, str] = {}
 _TEAM_ID_BY_LOOKUP_ABBREVIATION: dict[str, int] = {}
-
-for span in _TEAM_SPANS:
-    _SPANS_BY_TEAM_ID.setdefault(span.team_id, []).append(span)
-    _SPANS_BY_ABBREVIATION.setdefault(span.abbreviation, []).append(span)
-    _LOOKUP_ABBREVIATION_BY_ALIAS[span.abbreviation] = span.lookup_abbreviation or span.abbreviation
-
-for spans in _SPANS_BY_ABBREVIATION.values():
-    spans.sort(key=lambda span: (span.season_start, span.season_end or 9999))
-
-for spans in _SPANS_BY_TEAM_ID.values():
-    spans.sort(key=lambda span: (span.season_start, span.season_end or 9999))
-    latest_span = max(spans, key=lambda span: (span.season_end or 9999, span.season_start))
-    lookup_abbreviation = latest_span.lookup_abbreviation or latest_span.abbreviation
-    _TEAM_ID_BY_LOOKUP_ABBREVIATION[lookup_abbreviation] = latest_span.team_id
-
 _TEAMS_BY_ID: dict[int, Team] = {}
 
-for team_id, spans in _SPANS_BY_TEAM_ID.items():
-    seasons: dict[int, _TeamSeason] = {}
-    for span in spans:
-        end_year = span.season_end or max(span.season_start, date.today().year)
-        for start_year in range(span.season_start, end_year + 1):
-            seasons[start_year] = _TeamSeason(
-                team_id=team_id,
-                start_year=start_year,
-                city=span.city,
-                nickname=span.nickname,
-                abbreviation=span.abbreviation,
-            )
-    _TEAMS_BY_ID[team_id] = Team(
-        team_id=team_id,
-        seasons=MappingProxyType(dict(sorted(seasons.items()))),
-    )
+
+def _build_span_indexes() -> None:
+    for span in _TEAM_SPANS:
+        _SPANS_BY_TEAM_ID.setdefault(span.team_id, []).append(span)
+        _SPANS_BY_ABBREVIATION.setdefault(span.abbreviation, []).append(span)
+        _LOOKUP_ABBREVIATION_BY_ALIAS[span.abbreviation] = (
+            span.lookup_abbreviation or span.abbreviation
+        )
+
+    for spans in _SPANS_BY_ABBREVIATION.values():
+        spans.sort(key=lambda span: (span.season_start, span.season_end or 9999))
+
+    for spans in _SPANS_BY_TEAM_ID.values():
+        spans.sort(key=lambda span: (span.season_start, span.season_end or 9999))
+        latest_span = max(spans, key=lambda span: (span.season_end or 9999, span.season_start))
+        lookup_abbreviation = latest_span.lookup_abbreviation or latest_span.abbreviation
+        _TEAM_ID_BY_LOOKUP_ABBREVIATION[lookup_abbreviation] = latest_span.team_id
+
+
+def _build_teams_by_id() -> None:
+    for team_id, spans in _SPANS_BY_TEAM_ID.items():
+        seasons: dict[int, _TeamSeason] = {}
+        for span in spans:
+            end_year = span.season_end or max(span.season_start, date.today().year)
+            for start_year in range(span.season_start, end_year + 1):
+                seasons[start_year] = _TeamSeason(
+                    team_id=team_id,
+                    start_year=start_year,
+                    city=span.city,
+                    nickname=span.nickname,
+                    abbreviation=span.abbreviation,
+                )
+        _TEAMS_BY_ID[team_id] = Team(
+            team_id=team_id,
+            seasons=MappingProxyType(dict(sorted(seasons.items()))),
+        )
+
+
+_build_span_indexes()
+_build_teams_by_id()
 
 
 def _resolve_span_for_abbreviation_and_year(abbreviation: str, season_start_year: int) -> _TeamSpan:
