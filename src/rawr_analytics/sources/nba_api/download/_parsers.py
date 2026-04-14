@@ -208,7 +208,7 @@ def _parse_live_player_row(
     return parsed_row
 
 
-LeagueGameFinderResults = [
+_LeagueGameFinderResults = [
     "SEASON_ID",
     "TEAM_ID",
     "TEAM_ABBREVIATION",
