@@ -22,24 +22,24 @@ from rawr_analytics.sources.nba_api.download._rules import (
     classify_source_team_row,
 )
 
-AuditProgressFn = Callable[[int, int, str], None]
+_AuditProgressFn = Callable[[int, int, str], None]
 _LAST_PROGRESS_LINE_LENGTH = 0
 
 
 @dataclass(frozen=True)
-class SourceAuditFailure:
+class _SourceAuditFailure:
     category: str
     source_path: str
     message: str
 
 
 @dataclass(frozen=True)
-class SourceAuditReport:
+class _SourceAuditReport:
     scanned_schedule_files: int
     scanned_box_score_files: int
     classification_counts: dict[str, int]
     failure_counts: dict[str, int]
-    failure_examples: list[SourceAuditFailure]
+    failure_examples: list[_SourceAuditFailure]
 
     @property
     def ok(self) -> bool:
@@ -66,8 +66,8 @@ class SourceAuditReport:
 def _audit_nba_api(
     source_dir: Path = DEFAULT_NBA_API_DATA_DIR,
     *,
-    progress: AuditProgressFn | None = None,
-) -> SourceAuditReport:
+    progress: _AuditProgressFn | None = None,
+) -> _SourceAuditReport:
     source_dir = Path(source_dir)
     schedule_paths = sorted((source_dir / "team_seasons").glob("*_leaguegamefinder.json"))
     box_score_paths = sorted((source_dir / "boxscores").glob("*.json"))
@@ -76,7 +76,7 @@ def _audit_nba_api(
 
     classification_counts: Counter[str] = Counter()
     failure_counts: Counter[str] = Counter()
-    failure_examples: list[SourceAuditFailure] = []
+    failure_examples: list[_SourceAuditFailure] = []
 
     def report_progress(label: str) -> None:
         if progress is not None:
@@ -131,7 +131,7 @@ def _audit_nba_api(
                 message=str(exc),
             )
 
-    return SourceAuditReport(
+    return _SourceAuditReport(
         scanned_schedule_files=len(schedule_paths),
         scanned_box_score_files=len(box_score_paths),
         classification_counts=dict(sorted(classification_counts.items())),
@@ -140,7 +140,7 @@ def _audit_nba_api(
     )
 
 
-def _render_source_audit_report(report: SourceAuditReport) -> str:
+def _render_source_audit_report(report: _SourceAuditReport) -> str:
     lines = [
         f"Source audit status: {'ok' if report.ok else 'invalid'}",
         f"Scanned schedule files: {report.scanned_schedule_files}",
@@ -242,7 +242,7 @@ def _scope_from_schedule_path(path: Path) -> tuple[Team, Season]:
 def _record_failure(
     *,
     failure_counts: Counter[str],
-    failure_examples: list[SourceAuditFailure],
+    failure_examples: list[_SourceAuditFailure],
     category: str,
     source_path: Path,
     message: str,
@@ -251,7 +251,7 @@ def _record_failure(
     if len([failure for failure in failure_examples if failure.category == category]) >= 5:
         return
     failure_examples.append(
-        SourceAuditFailure(
+        _SourceAuditFailure(
             category=category,
             source_path=str(source_path),
             message=message,
