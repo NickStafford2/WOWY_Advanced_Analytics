@@ -12,6 +12,7 @@ from nba_api.stats.endpoints import (
     boxscoretraditionalv3,
     leaguegamefinder,
 )
+
 from rawr_analytics.shared.common import LogFn
 from rawr_analytics.shared.ingest import BoxScoreFetchError, LeagueGamesFetchError
 from rawr_analytics.shared.season import Season
@@ -21,12 +22,12 @@ DEFAULT_NBA_API_DATA_DIR = Path("data/source/nba_api")
 _LEAGUE_GAMES_REQUEST_RETRIES = 3
 _LEAGUE_GAMES_RETRY_BACKOFF_SECONDS = 2.0
 _LEAGUE_GAMES_REQUEST_DELAY_SECONDS = 0.6
-LEAGUE_GAMES_REQUEST_TIMEOUT_SECONDS = 60
+_LEAGUE_GAMES_REQUEST_TIMEOUT_SECONDS = 60
 _BOX_SCORE_REQUEST_RETRIES = 5
 _BOX_SCORE_RETRY_BACKOFF_SECONDS = 2.0
 _BOX_SCORE_REQUEST_DELAY_SECONDS = 0.6
-BOX_SCORE_REQUEST_TIMEOUT_SECONDS = 60
-PayloadValidator = Callable[[dict], bool]
+_BOX_SCORE_REQUEST_TIMEOUT_SECONDS = 60
+_PayloadValidator = Callable[[dict], bool]
 
 
 def _fetch(
@@ -42,7 +43,7 @@ def _fetch(
         team_id_nullable=str(team.team_id),
         season_nullable=season.to_nba_api_format(),
         season_type_nullable=season.season_type.to_nba_format(),
-        timeout=LEAGUE_GAMES_REQUEST_TIMEOUT_SECONDS,
+        timeout=_LEAGUE_GAMES_REQUEST_TIMEOUT_SECONDS,
     )
     return finder.get_dict()
 
@@ -108,7 +109,7 @@ def load_or_fetch_box_score_cache(
             log_fn(f"api box_score {game_id} attempt={attempt}")
         box_score = boxscoretraditionalv2.BoxScoreTraditionalV2(
             game_id=game_id,
-            timeout=BOX_SCORE_REQUEST_TIMEOUT_SECONDS,
+            timeout=_BOX_SCORE_REQUEST_TIMEOUT_SECONDS,
         )
         payload = box_score.get_dict()
         if not box_score_payload_is_empty(payload):
@@ -121,7 +122,7 @@ def load_or_fetch_box_score_cache(
             log_fn(f"api box_score {game_id} attempt={attempt} empty-v2 fallback=v3")
         v3_payload = boxscoretraditionalv3.BoxScoreTraditionalV3(
             game_id=game_id,
-            timeout=BOX_SCORE_REQUEST_TIMEOUT_SECONDS,
+            timeout=_BOX_SCORE_REQUEST_TIMEOUT_SECONDS,
         ).get_dict()
         if not box_score_payload_is_empty(v3_payload):
             _write_cached_payload(
@@ -133,7 +134,7 @@ def load_or_fetch_box_score_cache(
             log_fn(f"api box_score {game_id} attempt={attempt} empty-v3 fallback=live")
         live_payload = live_boxscore.BoxScore(
             game_id=game_id,
-            timeout=BOX_SCORE_REQUEST_TIMEOUT_SECONDS,
+            timeout=_BOX_SCORE_REQUEST_TIMEOUT_SECONDS,
         ).get_dict()
         if not box_score_payload_is_empty(live_payload):
             _write_cached_payload(
@@ -193,7 +194,7 @@ def _box_score_cache_paths(game_id: str) -> tuple[Path, Path, Path]:
 def load_cached_payload(
     cache_path: Path,
     *,
-    validator: PayloadValidator | None = None,
+    validator: _PayloadValidator | None = None,
     log_fn: LogFn | None = print,
 ) -> dict | None:
     return _load_cached_payload(cache_path, validator=validator, log_fn=log_fn)
@@ -211,7 +212,7 @@ def _discard_invalid_cached_payload(
 def _load_cached_payload(
     cache_path: Path,
     *,
-    validator: PayloadValidator | None = None,
+    validator: _PayloadValidator | None = None,
     log_fn: LogFn | None = print,
 ) -> dict | None:
     if not cache_path.exists():
@@ -286,9 +287,9 @@ def box_score_payload_is_empty(payload: dict) -> bool:
 
 
 __all__ = [
-    "BOX_SCORE_REQUEST_TIMEOUT_SECONDS",
+    "_BOX_SCORE_REQUEST_TIMEOUT_SECONDS",
     "DEFAULT_NBA_API_DATA_DIR",
-    "LEAGUE_GAMES_REQUEST_TIMEOUT_SECONDS",
+    "_LEAGUE_GAMES_REQUEST_TIMEOUT_SECONDS",
     "_box_score_cache_path",
     "_box_score_cache_paths",
     "_box_score_live_cache_path",
