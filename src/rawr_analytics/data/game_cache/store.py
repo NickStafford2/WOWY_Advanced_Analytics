@@ -159,8 +159,6 @@ def _team_season_keys(team_seasons: list[TeamSeasonScope]) -> set[tuple[int, str
 
 
 __all__ = [
-    "GameCacheSnapshot",
-    "TeamSeasonCacheEntry",
     "list_cached_scopes",
     "load_cache_snapshot",
     "load_team_season_cache",
