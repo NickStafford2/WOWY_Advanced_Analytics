@@ -1,6 +1,8 @@
 # My Custom Tools
 context-export.toml
 out.txt
+.codex/
+.codex
 
 # Python
 __pycache__/
