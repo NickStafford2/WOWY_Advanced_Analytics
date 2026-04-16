@@ -310,11 +310,13 @@ def validate_metric_full_span_rows(
     *,
     metric_id: str,
     scope_key: str,
+    season_type: str,
     series_rows: list[MetricFullSpanSeriesRow],
     point_rows: list[MetricFullSpanPointRow],
 ) -> None:
     validate_required_text(metric_id, "metric_id")
     validate_required_text(scope_key, "scope_key")
+    canonical_season_type = SeasonType.parse(season_type)
     if not series_rows and point_rows:
         raise ValueError("Full-span points require matching series rows")
 
@@ -358,7 +360,7 @@ def validate_metric_full_span_rows(
             raise ValueError(f"Full-span point row for unknown player {row.player_id!r}")
         canonical_season_id = Season.parse(
             row.season_id,
-            SeasonType.REGULAR.value,
+            canonical_season_type.value,
         ).year_string_nba_api
         if canonical_season_id != row.season_id:
             raise ValueError(

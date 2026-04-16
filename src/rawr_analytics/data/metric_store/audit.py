@@ -63,6 +63,7 @@ def audit_metric_store_tables(
     full_span_groups = _audit_metric_full_span_tables(
         connection,
         issues,
+        catalog_rows,
     )
     return MetricStoreAuditState(
         rawr_row_groups=rawr_row_groups,
@@ -335,6 +336,7 @@ def _audit_metric_scope_catalog_table(
 def _audit_metric_full_span_tables(
     connection: sqlite3.Connection,
     issues: list[ValidationIssue],
+    catalog_rows: dict[tuple[str, str], MetricScopeCatalogRow],
 ) -> dict[tuple[str, str], tuple[list[MetricFullSpanSeriesRow], list[MetricFullSpanPointRow]]]:
     series_rows = connection.execute(
         """
@@ -384,10 +386,21 @@ def _audit_metric_full_span_tables(
         series = series_groups.get(key, [])
         points = point_groups.get(key, [])
         groups[key] = (series, points)
+        catalog_row = catalog_rows.get(key)
+        if catalog_row is None:
+            issues.append(
+                ValidationIssue(
+                    "metric_full_span",
+                    f"metric={key[0]!r},scope_key={key[1]!r}",
+                    "Full-span rows are missing a matching metric_scope_catalog row",
+                )
+            )
+            continue
         try:
             validate_metric_full_span_rows(
                 metric_id=key[0],
                 scope_key=key[1],
+                season_type=catalog_row.season_type,
                 series_rows=series,
                 point_rows=points,
             )

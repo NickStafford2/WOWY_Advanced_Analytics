@@ -121,6 +121,7 @@ def _validate_metric_scope_snapshot(
     validate_metric_full_span_rows(
         metric_id=metric_id,
         scope_key=scope_key,
+        season_type=catalog_row.season_type,
         series_rows=series_rows,
         point_rows=point_rows,
     )
