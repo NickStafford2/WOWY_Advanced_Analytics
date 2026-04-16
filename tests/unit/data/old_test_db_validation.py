@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from rawr_analytics.data._validation_issue import ValidationIssue
+from rawr_analytics.data._validation import ValidationIssue
 from rawr_analytics.data.audit.reporting import (
     DatabaseValidationReport,
     render_validation_summary,

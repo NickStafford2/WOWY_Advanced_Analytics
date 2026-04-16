@@ -5,7 +5,7 @@ from collections import defaultdict
 from dataclasses import dataclass
 from typing import cast
 
-from rawr_analytics.data._validation_issue import ValidationIssue
+from rawr_analytics.data._validation import ValidationIssue
 from rawr_analytics.data.metric_store._catalog import MetricCacheCatalogRow, catalog_seasons
 from rawr_analytics.data.metric_store._tables import (
     RawrPlayerSeasonValueRow,

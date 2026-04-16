@@ -4,7 +4,7 @@ import sqlite3
 from collections.abc import Callable
 
 from rawr_analytics.data._paths import METRIC_STORE_DB_PATH, NORMALIZED_CACHE_DB_PATH
-from rawr_analytics.data._validation_issue import ValidationIssue
+from rawr_analytics.data._validation import ValidationIssue
 from rawr_analytics.data.audit._relations import validate_metric_store_relations
 from rawr_analytics.data.audit.reporting import DatabaseValidationReport
 from rawr_analytics.data.game_cache._schema import initialize_game_cache_db

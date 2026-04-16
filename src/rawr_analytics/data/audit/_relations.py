@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from rawr_analytics.data._validation_issue import ValidationIssue
+from rawr_analytics.data._validation import ValidationIssue
 from rawr_analytics.data.game_cache.store import load_game_cache_snapshot
 from rawr_analytics.data.metric_store._catalog import MetricCacheCatalogRow
 from rawr_analytics.data.metric_store._tables import (

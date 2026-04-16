@@ -7,11 +7,11 @@ from datetime import date
 from typing import cast
 
 from rawr_analytics.data._validation import (
+    ValidationIssue,
     validate_iso_datetime,
     validate_optional_non_negative_int,
     validate_required_text,
 )
-from rawr_analytics.data._validation_issue import ValidationIssue
 from rawr_analytics.shared.game import NormalizedGamePlayerRecord, NormalizedGameRecord
 from rawr_analytics.shared.player import PlayerSummary
 from rawr_analytics.shared.season import Season, SeasonType

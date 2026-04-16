@@ -4,7 +4,7 @@ import re
 from collections import Counter, defaultdict
 from dataclasses import dataclass
 
-from rawr_analytics.data._validation_issue import ValidationIssue
+from rawr_analytics.data._validation import ValidationIssue
 
 
 @dataclass(frozen=True)
