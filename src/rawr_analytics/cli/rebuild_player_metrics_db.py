@@ -2,7 +2,6 @@ from __future__ import annotations
 
 import argparse
 import sys
-from collections.abc import Sequence
 
 from rawr_analytics.refresh_metrics.rebuild import (
     format_rebuild_validation_summary,
@@ -15,7 +14,6 @@ from rawr_analytics.cli._ingest_terminal import (
 from rawr_analytics.cli._rebuild_terminal import (
     render_rebuild_event,
 )
-from rawr_analytics.sources.nba_api.ingest._models import SeasonRangeFailure
 
 _DEFAULT_START_YEAR = 2025
 _DEFAULT_END_YEAR = 1998
@@ -88,7 +86,10 @@ def main(argv: list[str] | None = None) -> int:
         f"{result.ingest_result.completed_team_seasons}/"
         f"{result.ingest_result.attempted_team_seasons} team-seasons"
     )
-    _render_failure_summary(result.ingest_result.failures)
+    _render_failure_summary(
+        failure_counts=result.ingest_result.failure_counts,
+        failed_scopes=result.ingest_result.failed_scopes,
+    )
 
     print("\n== Metric-store refresh ==")
     for metric_result in result.metric_results:
@@ -109,15 +110,16 @@ def main(argv: list[str] | None = None) -> int:
     return 0
 
 
-def _render_failure_summary(failures: Sequence[SeasonRangeFailure]) -> None:
-    if not failures:
+def _render_failure_summary(
+    *,
+    failure_counts: dict[str, int],
+    failed_scopes: list[str],
+) -> None:
+    if not failed_scopes:
         return
-    counts: dict[str, int] = {}
-    for failure in failures:
-        counts[failure.failure_kind] = counts.get(failure.failure_kind, 0) + 1
     render_failure_summary(
-        failure_counts=counts,
-        failed_scopes=[failure.scope for failure in failures],
+        failure_counts=failure_counts,
+        failed_scopes=failed_scopes,
     )
 
 

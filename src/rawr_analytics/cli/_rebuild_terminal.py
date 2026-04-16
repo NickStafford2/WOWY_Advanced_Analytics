@@ -5,39 +5,35 @@ import sys
 from rawr_analytics.refresh_metrics.rebuild import (
     RebuildEvent,
     RebuildMetricRefreshProgressEvent,
+    RebuildSeasonStartedEvent,
+    RebuildTeamCompletedEvent,
     RebuildTeamFailureEvent,
+    RebuildTeamProgressEvent,
     RebuildValidationProgressEvent,
 )
 from rawr_analytics.cli._ingest_terminal import (
     format_partial_failure_details,
     render_progress_line,
-    render_team_complete_line,
     render_team_fetch_failed_line,
     render_team_partial_failed_line,
     render_team_validation_failed_line,
 )
 from rawr_analytics.cli._progress_bar import TerminalProgressBar
-from rawr_analytics.sources.nba_api.ingest._models import (
-    IngestSeasonStartedEvent,
-    IngestTeamCompletedEvent,
-    IngestTeamProgressEvent,
-)
 
 _METRIC_PROGRESS_BARS: dict[str, TerminalProgressBar] = {}
 _VALIDATION_PROGRESS_BAR: TerminalProgressBar | None = None
 
 
 def render_rebuild_event(event: RebuildEvent) -> None:
-    if isinstance(event, IngestSeasonStartedEvent):
+    if isinstance(event, RebuildSeasonStartedEvent):
         if event.season_total > 1:
-            print(f"[{event.season_index}/{event.season_total}] caching {event.season}")
+            print(f"[{event.season_index}/{event.season_total}] caching {event.season_label}")
         return
-    if isinstance(event, IngestTeamProgressEvent):
+    if isinstance(event, RebuildTeamProgressEvent):
         render_progress_line(event.team_index, event.team_total, event.progress)
         return
-    if isinstance(event, IngestTeamCompletedEvent):
-        render_team_complete_line(event.team_index, event.team_total, event.result)
-        sys.stdout.write("\n")
+    if isinstance(event, RebuildTeamCompletedEvent):
+        _render_team_completed(event)
         return
     if isinstance(event, RebuildTeamFailureEvent):
         render_rebuild_team_failure(event)
@@ -105,6 +101,19 @@ def render_rebuild_team_failure(event: RebuildTeamFailureEvent) -> None:
     sys.stdout.write("\n")
     sys.stderr.write(f"Validation failed for {event.scope}: {event.reason}\n")
     sys.stderr.flush()
+
+
+def _render_team_completed(event: RebuildTeamCompletedEvent) -> None:
+    line = (
+        f"  [{event.team_index:>2}/{event.team_total}] "
+        f"{event.team_label} {event.season_label} "
+        f"{event.processed_games}/{event.total_games} "
+        f"league={'cached' if event.league_games_source == 'cached' else 'fetched'} "
+        f"boxscores={event.fetched_box_scores} fetched, {event.cached_box_scores} cached "
+    )
+    sys.stdout.write(f"\r{' ' * 200}\r{line}")
+    sys.stdout.write("\n")
+    sys.stdout.flush()
 
 
 def render_metric_progress(metric: str, current: int, total: int, detail: str) -> None:

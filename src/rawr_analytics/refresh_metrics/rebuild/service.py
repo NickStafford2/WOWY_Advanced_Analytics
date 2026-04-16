@@ -1,6 +1,10 @@
 from __future__ import annotations
 
-from rawr_analytics.refresh_metrics.rebuild._events import RebuildEventFn, RebuildResult
+from rawr_analytics.refresh_metrics.rebuild._events import (
+    RebuildEventFn,
+    RebuildFailureLogFn,
+    RebuildResult,
+)
 from rawr_analytics.refresh_metrics.rebuild._ingest import refresh_rebuild_ingest
 from rawr_analytics.refresh_metrics.rebuild._metric_refresh import (
     default_rebuild_metrics,
@@ -10,7 +14,6 @@ from rawr_analytics.refresh_metrics.rebuild._validation import validate_rebuild_
 from rawr_analytics.data import prepare_rebuild_storage
 from rawr_analytics.metrics.constants import Metric
 from rawr_analytics.shared.season import SeasonType
-from rawr_analytics.sources.nba_api.ingest._models import FailureLogFn
 
 
 def rebuild_player_metrics_db(
@@ -22,7 +25,7 @@ def rebuild_player_metrics_db(
     metrics: list[str] | None,
     keep_existing_db: bool,
     event_fn: RebuildEventFn | None = None,
-    failure_log_fn: FailureLogFn | None = None,
+    failure_log_fn: RebuildFailureLogFn | None = None,
 ) -> RebuildResult:
     if start_year < end_year:
         raise ValueError("Start year must be greater than or equal to end year")

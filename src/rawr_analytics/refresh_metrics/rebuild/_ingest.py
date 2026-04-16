@@ -2,13 +2,21 @@ from __future__ import annotations
 
 from rawr_analytics.refresh_metrics.rebuild._events import (
     RebuildEventFn,
+    RebuildFailureLogFn,
+    RebuildIngestFailure,
+    RebuildIngestResult,
+    RebuildSeasonStartedEvent,
+    RebuildTeamCompletedEvent,
+    RebuildTeamProgressEvent,
     RebuildTeamFailureEvent,
 )
 from rawr_analytics.shared.ingest import FetchError, PartialTeamSeasonError
 from rawr_analytics.sources.nba_api.ingest._models import (
-    FailureLogFn,
     IngestEvent,
+    IngestSeasonStartedEvent,
+    IngestTeamCompletedEvent,
     IngestTeamFailedEvent,
+    IngestTeamProgressEvent,
     SeasonRangeFailure,
     SeasonRangeResult,
 )
@@ -22,26 +30,63 @@ def refresh_rebuild_ingest(
     season_type: str,
     teams: list[str] | None,
     event_fn: RebuildEventFn | None,
-    failure_log_fn: FailureLogFn | None,
-) -> SeasonRangeResult:
+    failure_log_fn: RebuildFailureLogFn | None,
+) -> RebuildIngestResult:
     def _emit_ingest_event(event: IngestEvent) -> None:
         assert event_fn is not None
         forward_rebuild_ingest_event(event_fn, event)
 
-    return refresh_season_range(
+    source_result = refresh_season_range(
         start_year=start_year,
         end_year=end_year,
         season_type=season_type,
         team_abbreviations=teams,
         event_fn=None if event_fn is None else _emit_ingest_event,
-        failure_log_fn=failure_log_fn,
+        failure_log_fn=_build_failure_log_fn(failure_log_fn),
     )
+    return _build_rebuild_ingest_result(source_result)
 
 
 def forward_rebuild_ingest_event(
     event_fn: RebuildEventFn,
     event: IngestEvent,
 ) -> None:
+    if isinstance(event, IngestSeasonStartedEvent):
+        event_fn(
+            RebuildSeasonStartedEvent(
+                season_index=event.season_index,
+                season_total=event.season_total,
+                season_label=str(event.season),
+            )
+        )
+        return
+    if isinstance(event, IngestTeamProgressEvent):
+        event_fn(
+            RebuildTeamProgressEvent(
+                team_index=event.team_index,
+                team_total=event.team_total,
+                progress=event.progress,
+            )
+        )
+        return
+    if isinstance(event, IngestTeamCompletedEvent):
+        result = event.result
+        request = result.request
+        summary = result.summary
+        event_fn(
+            RebuildTeamCompletedEvent(
+                team_index=event.team_index,
+                team_total=event.team_total,
+                team_label=request.team.abbreviation(season=request.season),
+                season_label=str(request.season),
+                processed_games=summary.processed_games,
+                total_games=summary.total_games,
+                league_games_source=summary.league_games_source,
+                fetched_box_scores=summary.fetched_box_scores,
+                cached_box_scores=summary.cached_box_scores,
+            )
+        )
+        return
     if isinstance(event, IngestTeamFailedEvent):
         event_fn(
             build_rebuild_team_failure_event(
@@ -51,7 +96,6 @@ def forward_rebuild_ingest_event(
             )
         )
         return
-    event_fn(event)
 
 
 def build_rebuild_team_failure_event(
@@ -123,4 +167,34 @@ def build_rebuild_team_failure_event(
         failed_games=None,
         total_games=None,
         reason=str(error),
+    )
+
+
+def _build_failure_log_fn(
+    failure_log_fn: RebuildFailureLogFn | None,
+):
+    if failure_log_fn is None:
+        return None
+
+    def _append_failure_log(failure: SeasonRangeFailure) -> None:
+        failure_log_fn(_build_rebuild_ingest_failure(failure))
+
+    return _append_failure_log
+
+
+def _build_rebuild_ingest_result(result: SeasonRangeResult) -> RebuildIngestResult:
+    return RebuildIngestResult(
+        attempted_team_seasons=result.attempted_team_seasons,
+        completed_team_seasons=result.completed_team_seasons,
+        failures=[_build_rebuild_ingest_failure(failure) for failure in result.failures],
+    )
+
+
+def _build_rebuild_ingest_failure(failure: SeasonRangeFailure) -> RebuildIngestFailure:
+    request = failure.request
+    return RebuildIngestFailure(
+        team=request.team,
+        season=request.season,
+        failure_kind=failure.failure_kind,
+        error=failure.error,
     )
