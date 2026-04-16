@@ -74,11 +74,13 @@ def _as_result_set_payload(value: Any) -> ResultSetPayload | None:
     return None
 
 
-def _as_result_set_payload_list(value: Any) -> list[ResultSetPayload] | None:
+def _as_result_set_payload_list(value: object) -> list[ResultSetPayload] | None:
     if not isinstance(value, list):
         return None
+
+    raw_items = cast(list[object], value)
     result: list[ResultSetPayload] = []
-    for item in value:
+    for item in raw_items:
         result_set = _as_result_set_payload(item)
         if result_set is None:
             return None
@@ -165,11 +167,13 @@ def _fetch_box_score_live(
     if log_fn is not None:
         log_fn(f"api box_score {game_id} attempt={attempt} empty-v3 fallback=live")
 
-    raw = live_boxscore.BoxScore(
-        game_id=game_id,
-        timeout=_BOX_SCORE_REQUEST_TIMEOUT_SECONDS,
-    ).get_dict()
-    return cast(BoxScorePayload, raw)
+    return cast(
+        BoxScorePayload,
+        live_boxscore.BoxScore(
+            game_id=game_id,
+            timeout=_BOX_SCORE_REQUEST_TIMEOUT_SECONDS,
+        ).get_dict(),
+    )
 
 
 def load_or_fetch_league_games(
