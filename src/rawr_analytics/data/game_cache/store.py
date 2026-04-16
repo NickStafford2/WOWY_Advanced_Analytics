@@ -89,7 +89,9 @@ def list_cached_scopes(
     return [entry.scope for entry in entries if entry.is_available]
 
 
-def load_cache_snapshot() -> GameCacheSnapshot:  # todo? probably pass info if this is ever used.
+def load_game_cache_snapshot() -> (
+    GameCacheSnapshot
+):  # todo? probably pass info if this is ever used.
     entries = _list_cache_entries()  # todo? probably pass info if this is ever used.
     return GameCacheSnapshot(
         # season_type=season_type,
@@ -160,7 +162,7 @@ def _team_season_keys(team_seasons: list[TeamSeasonScope]) -> set[tuple[int, str
 
 __all__ = [
     "list_cached_scopes",
-    "load_cache_snapshot",
+    "load_game_cache_snapshot",
     "load_team_season_cache",
     "store_team_season_cache",
 ]

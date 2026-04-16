@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
-from rawr_analytics.data.game_cache.store import load_cache_snapshot
+from rawr_analytics.data.game_cache.store import load_game_cache_snapshot
 from rawr_analytics.shared.season import Season, normalize_seasons
 from rawr_analytics.shared.team import Team
 
@@ -56,7 +56,7 @@ def _summarize_rawr_cache_seasons(
 ) -> dict[Season, _SeasonCacheSummary]:
     season_filter = set(seasons)
     summaries: dict[Season, _SeasonCacheSummary] = {}
-    snapshot = load_cache_snapshot()
+    snapshot = load_game_cache_snapshot()
     for entry in snapshot.entries:
         scope = entry.scope
         if scope.season not in season_filter:
@@ -121,7 +121,4 @@ def _build_rawr_warning_messages(*, season: Season, summary: _SeasonCacheSummary
 
 
 def _list_expected_rawr_teams_for_season(season: Season) -> list[str]:
-    return [
-        team.abbreviation(season=season)
-        for team in Team.all_active_in_season(season)
-    ]
+    return [team.abbreviation(season=season) for team in Team.all_active_in_season(season)]

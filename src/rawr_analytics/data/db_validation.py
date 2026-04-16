@@ -15,14 +15,16 @@ from rawr_analytics.data.game_cache._validation import (
     validate_normalized_game_players_table,
     validate_normalized_games_table,
 )
-from rawr_analytics.data.game_cache.store import load_cache_snapshot
+from rawr_analytics.data.game_cache.store import load_game_cache_snapshot
 from rawr_analytics.data.metric_store._catalog import MetricScopeCatalogRow
 from rawr_analytics.data.metric_store._tables import (
     RawrPlayerSeasonValueRow,
     WowyPlayerSeasonValueRow,
 )
-from rawr_analytics.data.metric_store.audit import MetricStoreAuditMetadata
-from rawr_analytics.data.metric_store.audit import audit_metric_store_tables
+from rawr_analytics.data.metric_store.audit import (
+    MetricStoreAuditMetadata,
+    audit_metric_store_tables,
+)
 from rawr_analytics.data.metric_store.schema import initialize_metric_store_db
 from rawr_analytics.shared.season import SeasonType
 
@@ -321,11 +323,7 @@ def _validate_metric_store_relations(
             )
 
     all_scopes = (
-        metric_scopes
-        | metadata_scopes
-        | catalog_scopes
-        | scope_season_scopes
-        | scope_team_scopes
+        metric_scopes | metadata_scopes | catalog_scopes | scope_season_scopes | scope_team_scopes
     )
     for key in sorted(all_scopes):
         metric, scope_key = key
@@ -409,7 +407,7 @@ def _load_normalized_cache_state() -> tuple[dict[str, int], dict[str, str]]:
     counts: dict[str, int] = {}
     fingerprints: dict[str, str] = {}
     for season_type in SeasonType:
-        snapshot = load_cache_snapshot()
+        snapshot = load_game_cache_snapshot()
         counts[season_type.value] = len(snapshot.entries)
         if snapshot.entries:
             fingerprints[season_type.value] = snapshot.fingerprint

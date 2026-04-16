@@ -3,7 +3,7 @@ from __future__ import annotations
 from collections.abc import Callable
 from dataclasses import dataclass
 
-from rawr_analytics.data.game_cache.store import load_cache_snapshot
+from rawr_analytics.data.game_cache.store import load_game_cache_snapshot
 from rawr_analytics.data.metric_store.rawr import replace_rawr_scope_snapshot
 from rawr_analytics.data.metric_store.store import load_metric_scope_store_state
 from rawr_analytics.data.metric_store.wowy import replace_wowy_scope_snapshot
@@ -73,10 +73,10 @@ def refresh_metric_store(
         SeasonType.parse(season_type) if isinstance(season_type, str) else season_type
     )
 
-    cache_snapshot = load_cache_snapshot()
+    game_cache_snapshot = load_game_cache_snapshot()
     cached_team_seasons = [
         scope
-        for scope in cache_snapshot.scopes
+        for scope in game_cache_snapshot.scopes
         if scope.season.season_type == normalized_season_type
     ]
     if not cached_team_seasons:
@@ -115,7 +115,7 @@ def refresh_metric_store(
         scope=scope,
         season_type=normalized_season_type,
         available_teams=available_teams,
-        source_fingerprint=cache_snapshot.fingerprint,
+        source_fingerprint=game_cache_snapshot.fingerprint,
         build_version=build_version,
         rawr_ridge_alpha=rawr_ridge_alpha,
     )

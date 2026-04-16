@@ -3,8 +3,8 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Literal
 
-from rawr_analytics.data.game_cache.store import load_cache_snapshot
-from rawr_analytics.data.metric_store._reads import load_metric_scope_store_state
+from rawr_analytics.data.game_cache.store import load_game_cache_snapshot
+from rawr_analytics.data.metric_store.store import load_metric_scope_store_state
 from rawr_analytics.data.metric_store.wowy import (
     WowyPlayerSeasonValueRow,
     load_wowy_player_season_value_rows,
@@ -234,6 +234,7 @@ def _try_load_wowy_store_result(
     )
 
 
+# do i need this at all? i think this should be removed. I don't know if this behavior is desirable
 def _selected_wowy_seasons(
     query: WowyQuery,
     rows: list[WowyPlayerSeasonValue],
@@ -284,7 +285,7 @@ def _resolve_all_teams_snapshot_scope_key(query: WowyQuery) -> str | None:
     if team_filter:
         return None
 
-    cache_snapshot = load_cache_snapshot()
+    cache_snapshot = load_game_cache_snapshot()
     if not cache_snapshot.entries:
         return None
 
@@ -311,7 +312,7 @@ def _try_load_current_metric_availability(
     if state is None:
         return None
 
-    cache_snapshot = load_cache_snapshot()
+    cache_snapshot = load_game_cache_snapshot()
     if not cache_snapshot.entries:
         return None
 

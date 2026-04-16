@@ -4,7 +4,7 @@ from collections.abc import Callable
 from dataclasses import dataclass
 from typing import Any, Literal
 
-from rawr_analytics.data.game_cache.store import load_cache_snapshot
+from rawr_analytics.data.game_cache.store import load_game_cache_snapshot
 from rawr_analytics.data.metric_store._reads import load_metric_scope_store_state
 from rawr_analytics.data.metric_store.rawr import (
     RawrPlayerSeasonValueRow,
@@ -243,6 +243,7 @@ def _try_load_rawr_store_result(query: RawrQuery) -> ResolvedRawrResultDTO | Non
     )
 
 
+# do i need this at all? i think this should be removed. I don't know if this behavior is desirable
 def _selected_rawr_seasons(query: RawrQuery, rows: list[RawrPlayerSeasonRecord]) -> list[Season]:
     selected_seasons = normalize_seasons([row.season for row in rows]) or []
     if selected_seasons:
@@ -279,7 +280,7 @@ def _resolve_all_teams_snapshot_scope_key(query: RawrQuery) -> str | None:
     if team_filter:
         return None
 
-    cache_snapshot = load_cache_snapshot()
+    cache_snapshot = load_game_cache_snapshot()
     if not cache_snapshot.entries:
         return None
 
@@ -306,7 +307,7 @@ def _try_load_current_metric_availability(
     if state is None:
         return None
 
-    cache_snapshot = load_cache_snapshot()
+    cache_snapshot = load_game_cache_snapshot()
     if not cache_snapshot.entries:
         return None
 
