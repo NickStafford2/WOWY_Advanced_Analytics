@@ -89,12 +89,16 @@ def list_cached_scopes(
     return [entry.scope for entry in entries if entry.is_available]
 
 
-def load_game_cache_snapshot() -> (
-    GameCacheSnapshot
-):  # todo? probably pass info if this is ever used.
-    entries = _list_cache_entries()  # todo? probably pass info if this is ever used.
+def load_game_cache_snapshot(
+    *,
+    seasons: list[Season] | None = None,
+    teams: list[Team] | None = None,
+) -> GameCacheSnapshot:
+    entries = _list_cache_entries(
+        seasons=seasons,
+        teams=teams,
+    )
     return GameCacheSnapshot(
-        # season_type=season_type,
         fingerprint=build_cache_fingerprint(entries),
         entries=entries,
     )

@@ -122,10 +122,14 @@ def refresh_metric_store(
         total=1,
         detail=f"building {cache.cache_label}",
     )
+    refresh_snapshot = load_game_cache_snapshot(
+        teams=cache.teams,
+        seasons=cache.seasons,
+    )
     cache_result = _refresh_cache(
         metric=normalized_metric,
         cache=cache,
-        source_fingerprint=game_cache_snapshot.fingerprint,
+        source_fingerprint=refresh_snapshot.fingerprint,
         build_version=build_version,
         rawr_ridge_alpha=rawr_ridge_alpha,
     )

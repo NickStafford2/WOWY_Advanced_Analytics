@@ -275,7 +275,10 @@ def _resolve_cached_rawr_key(query: RawrQuery) -> str | None:
     if team_filter:
         return None
 
-    cache_snapshot = load_game_cache_snapshot()
+    cache_snapshot = load_game_cache_snapshot(
+        teams=query.calc_vars.teams,
+        seasons=query.calc_vars.seasons,
+    )
     if not cache_snapshot.entries:
         return None
 
@@ -298,7 +301,10 @@ def _try_load_current_metric_availability(
     if state is None:
         return None
 
-    cache_snapshot = load_game_cache_snapshot()
+    cache_snapshot = load_game_cache_snapshot(
+        teams=query.calc_vars.teams,
+        seasons=query.calc_vars.seasons,
+    )
     if not cache_snapshot.entries:
         return None
 

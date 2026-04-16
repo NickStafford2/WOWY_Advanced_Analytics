@@ -8,7 +8,7 @@ from rawr_analytics.data.metric_store._tables import (
     WowyPlayerSeasonValueRow,
 )
 from rawr_analytics.data.metric_store.audit import MetricStoreAuditMetadata
-from rawr_analytics.shared.season import Season, SeasonType
+from rawr_analytics.shared.season import Season
 
 
 def validate_metric_store_relations(
@@ -25,7 +25,6 @@ def validate_metric_store_relations(
     metadata_cache_keys = set(metadata_rows)
     catalog_cache_keys = set(catalog_rows)
     catalog_season_cache_keys = set(catalog_season_rows)
-    _, fingerprint_by_season_type = _load_normalized_cache_state()
 
     for key, rows in metric_row_groups.items():
         metric, metric_cache_key = key
@@ -100,12 +99,7 @@ def validate_metric_store_relations(
         if not seasons:
             continue
 
-        season_types = {Season.parse_id(season_id).season_type.value for season_id in seasons}
-        if len(season_types) != 1:
-            continue
-
-        season_type = next(iter(season_types))
-        current_fingerprint = fingerprint_by_season_type.get(season_type)
+        current_fingerprint = _load_current_fingerprint(seasons)
         if current_fingerprint is None:
             continue
 
@@ -114,10 +108,7 @@ def validate_metric_store_relations(
                 ValidationIssue(
                     table=metadata_row.source_table,
                     key=f"metric={metric!r},metric_cache_key={metric_cache_key!r}",
-                    message=(
-                        "source_fingerprint does not match normalized cache for "
-                        f"season_type {season_type!r}"
-                    ),
+                    message="source_fingerprint does not match normalized cache for catalog seasons",
                 )
             )
 
@@ -150,14 +141,9 @@ def validate_metric_store_relations(
         )
 
 
-def _load_normalized_cache_state() -> tuple[dict[str, int], dict[str, str]]:
-    counts: dict[str, int] = {}
-    fingerprints: dict[str, str] = {}
-
-    for season_type in SeasonType:
-        snapshot = load_game_cache_snapshot()
-        counts[season_type.value] = len(snapshot.entries)
-        if snapshot.entries:
-            fingerprints[season_type.value] = snapshot.fingerprint
-
-    return counts, fingerprints
+def _load_current_fingerprint(season_ids: list[str]) -> str | None:
+    seasons = [Season.parse_id(season_id) for season_id in season_ids]
+    snapshot = load_game_cache_snapshot(seasons=seasons)
+    if not snapshot.entries:
+        return None
+    return snapshot.fingerprint
