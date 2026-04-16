@@ -10,6 +10,14 @@ from rawr_analytics.refresh_metrics.service import (
     refresh_metric_store,
 )
 
+"""
+  - Recomputes and writes metric-store tables.
+  - Uses the existing normalized cache as input.
+  - Does not delete DBs.
+  - Does not fetch source data.
+  - Does not rebuild everything.
+"""
+
 _choices = [m.value for m in Metric]
 
 

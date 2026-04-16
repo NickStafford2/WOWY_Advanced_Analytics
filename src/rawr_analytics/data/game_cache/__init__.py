@@ -1,4 +1,7 @@
-"""Public package API for normalized game-cache operations."""
+"""Public package API for normalized game-cache operations.
+- Stores and reads the normalized cache DB.
+- This is where ingested source data lives after normalization.
+"""
 
 from __future__ import annotations
 
