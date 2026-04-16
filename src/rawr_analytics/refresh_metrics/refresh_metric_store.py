@@ -4,8 +4,8 @@ from collections.abc import Callable
 from dataclasses import dataclass
 
 from rawr_analytics.data.game_cache.store import load_cache_snapshot
-from rawr_analytics.data.metric_store._reads import load_metric_scope_store_state
 from rawr_analytics.data.metric_store.rawr import replace_rawr_scope_snapshot
+from rawr_analytics.data.metric_store.store import load_metric_scope_store_state
 from rawr_analytics.data.metric_store.wowy import replace_wowy_scope_snapshot
 from rawr_analytics.data.metric_store_scope import build_scope_key, build_team_filter
 from rawr_analytics.metrics.constants import Metric, MetricSummary
