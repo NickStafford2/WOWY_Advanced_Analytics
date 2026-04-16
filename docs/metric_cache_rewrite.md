@@ -1,5 +1,34 @@
 # Metric Cache Rewrite
 
+## Current Status
+
+Done:
+
+- metric queries now split into `calc_vars` and `post_calc_filters`
+- canonical `MetricCacheKey` exists and is used in refresh and query paths
+- exact `Season.id` values now flow through metric-store cache identity
+- RAWR `ridge_alpha` is part of cache identity, not `build_version`
+- most Python/store naming has been moved from `scope`/`snapshot` to `cache`
+- dead `data/metric_store_scope.py` was removed
+
+Not done:
+
+- combined `REGULAR + PLAYOFFS` cache semantics are still incomplete
+- catalog is still overbuilt and may be mostly removable
+- `db_validation.py` still has a lot of old `scope_*` naming
+
+Recommended next steps:
+
+1. decide whether `metric_cache_catalog` should be reduced heavily or deleted
+2. if catalog stays, keep only runtime-needed metadata
+3. clean `db_validation.py` naming after the catalog decision
+
+Important note:
+
+- clarity is more important than compatibility here
+- rebuilding `metric_store.sqlite3` is acceptable
+- do not preserve redundant metadata just because old audit code expects it
+
 ## Goal
 
 The metric cache should behave like a true cache.
@@ -257,6 +286,29 @@ Instead:
 - all metric queries use the same metric-row cache pipeline
 - cache miss means compute the exact missing `MetricCacheKey`, then store it
 - cached and live paths must share the same calculation code
+
+## Catalog Note
+
+Based on the current code, `metric_cache_catalog` does not appear to be a core
+runtime concept.
+
+Current runtime value seems limited to:
+
+- existence checks alongside cache-entry state
+- available season ids for span reads
+
+Much of the rest looks redundant or mainly useful for audit/validation:
+
+- `label`
+- `team_filter`
+- available team rows
+- full-span start/end season ids
+
+Strong suspicion:
+
+- `metric_cache_catalog` should be replaced by a much smaller metadata record or removed
+- `metric_cache_team` is probably removable
+- `metric_cache_season` may also be removable if season ids can be derived from the key or rows
 
 ## Refresh Policy
 
