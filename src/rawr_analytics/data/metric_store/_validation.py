@@ -11,12 +11,14 @@ from rawr_analytics.data._validation import (
     validate_required_text,
 )
 from rawr_analytics.data.metric_store._catalog import MetricScopeCatalogRow
+from rawr_analytics.data.metric_store._tables import (
+    RawrPlayerSeasonValueRow,
+    WowyPlayerSeasonValueRow,
+)
 from rawr_analytics.data.metric_store.full_span import (
     MetricFullSpanPointRow,
     MetricFullSpanSeriesRow,
 )
-from rawr_analytics.data.metric_store.rawr import RawrPlayerSeasonValueRow
-from rawr_analytics.data.metric_store.wowy import WowyPlayerSeasonValueRow
 from rawr_analytics.data.metric_store_scope import validate_metric_scope
 from rawr_analytics.shared.season import Season, SeasonType
 from rawr_analytics.shared.team import canonicalize_metric_team_filter
@@ -131,8 +133,7 @@ def _validate_common_metric_row(
     scope_season_ids = {season.year_string_nba_api for season in seasons}
     if canonical_season_id not in scope_season_ids:
         raise ValueError(
-            f"Metric row for player {player_id!r} is outside scope seasons: "
-            f"{row.season_id!r}"
+            f"Metric row for player {player_id!r} is outside scope seasons: {row.season_id!r}"
         )
 
     if state.expected_team_filter is None:
@@ -249,8 +250,7 @@ def _validate_metric_catalog(
     ]
     if invalid_seasons:
         raise ValueError(
-            "Catalog available_seasons must match catalog season_type: "
-            f"{invalid_seasons!r}"
+            f"Catalog available_seasons must match catalog season_type: {invalid_seasons!r}"
         )
     canonical_seasons = [season.year_string_nba_api for season in scope_seasons]
     validate_metric_scope(

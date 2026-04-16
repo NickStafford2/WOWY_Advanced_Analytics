@@ -21,13 +21,15 @@ from rawr_analytics.data.metric_store import (
     initialize_player_metrics_db,
 )
 from rawr_analytics.data.metric_store._catalog import MetricScopeCatalogRow
+from rawr_analytics.data.metric_store._tables import (
+    RawrPlayerSeasonValueRow,
+    WowyPlayerSeasonValueRow,
+)
 from rawr_analytics.data.metric_store.audit import MetricStoreAuditMetadata
 from rawr_analytics.data.metric_store.full_span import (
     MetricFullSpanPointRow,
     MetricFullSpanSeriesRow,
 )
-from rawr_analytics.data.metric_store.rawr import RawrPlayerSeasonValueRow
-from rawr_analytics.data.metric_store.wowy import WowyPlayerSeasonValueRow
 from rawr_analytics.shared.season import SeasonType
 
 

@@ -3,13 +3,15 @@ from __future__ import annotations
 import sqlite3
 
 from rawr_analytics.data.metric_store._catalog import MetricScopeCatalogRow
-from rawr_analytics.data.metric_store._tables import metric_values_table
+from rawr_analytics.data.metric_store._tables import (
+    RawrPlayerSeasonValueRow,
+    WowyPlayerSeasonValueRow,
+    metric_values_table,
+)
 from rawr_analytics.data.metric_store.full_span import (
     MetricFullSpanPointRow,
     MetricFullSpanSeriesRow,
 )
-from rawr_analytics.data.metric_store.rawr import RawrPlayerSeasonValueRow
-from rawr_analytics.data.metric_store.wowy import WowyPlayerSeasonValueRow
 
 
 def delete_metric_full_span_rows(

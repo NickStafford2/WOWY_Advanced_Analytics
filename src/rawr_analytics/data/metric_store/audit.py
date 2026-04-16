@@ -7,6 +7,10 @@ from typing import cast
 
 from rawr_analytics.data._validation_issue import ValidationIssue
 from rawr_analytics.data.metric_store._catalog import MetricScopeCatalogRow, catalog_seasons
+from rawr_analytics.data.metric_store._tables import (
+    RawrPlayerSeasonValueRow,
+    WowyPlayerSeasonValueRow,
+)
 from rawr_analytics.data.metric_store._validation import (
     validate_metric_full_span_rows,
     validate_metric_scope_catalog_row,
@@ -17,8 +21,6 @@ from rawr_analytics.data.metric_store.full_span import (
     MetricFullSpanPointRow,
     MetricFullSpanSeriesRow,
 )
-from rawr_analytics.data.metric_store.rawr import RawrPlayerSeasonValueRow
-from rawr_analytics.data.metric_store.wowy import WowyPlayerSeasonValueRow
 
 
 @dataclass(frozen=True)

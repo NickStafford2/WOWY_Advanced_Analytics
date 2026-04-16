@@ -1,29 +1,13 @@
 from __future__ import annotations
 
 import sqlite3
-from dataclasses import dataclass
 from typing import cast
 
 from rawr_analytics.data._paths import METRIC_STORE_DB_PATH
+from rawr_analytics.data.metric_store._tables import RawrPlayerSeasonValueRow
 from rawr_analytics.data.metric_store.schema import connect, initialize_player_metrics_db
 from rawr_analytics.shared.season import Season, SeasonType
 from rawr_analytics.shared.team import Team
-
-
-@dataclass(frozen=True)
-class RawrPlayerSeasonValueRow:
-    snapshot_id: int | None
-    metric_id: str
-    scope_key: str
-    team_filter: str
-    season_type: str
-    season_id: str
-    player_id: int
-    player_name: str
-    games: int
-    coefficient: float
-    average_minutes: float | None
-    total_minutes: float | None
 
 
 def load_rawr_player_season_value_rows(
