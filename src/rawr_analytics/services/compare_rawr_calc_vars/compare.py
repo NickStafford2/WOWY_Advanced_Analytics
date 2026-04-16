@@ -4,22 +4,20 @@ from collections.abc import Callable
 from dataclasses import dataclass
 from itertools import product
 
-import numpy as np
-
 from rawr_analytics.metrics._player_context import PlayerSeasonFilters
 from rawr_analytics.metrics.rawr.cache import load_rawr_records
 from rawr_analytics.metrics.rawr.calculate.inputs import RawrEligibility, build_rawr_request
-from rawr_analytics.metrics.rawr.calculate.records import (
-    RawrPlayerSeasonRecord,
-    build_player_season_records,
-)
+from rawr_analytics.metrics.rawr.calculate.records import build_player_season_records
 from rawr_analytics.metrics.rawr.calculate.shrinkage import RawrShrinkageMode
 from rawr_analytics.metrics.wowy.cache import load_wowy_records
 from rawr_analytics.metrics.wowy.calculate.inputs import WowyEligibility, build_wowy_season_inputs
-from rawr_analytics.metrics.wowy.calculate.records import (
-    WowyPlayerSeasonRecord,
-    prepare_wowy_player_season_records,
+from rawr_analytics.metrics.wowy.calculate.records import prepare_wowy_player_season_records
+from rawr_analytics.services.compare_rawr_calc_vars._aggregation import (
+    aggregate_rawr_training_records,
+    aggregate_wowy_training_records,
+    build_holdout_targets,
 )
+from rawr_analytics.services.compare_rawr_calc_vars._scoring import build_comparison_result
 from rawr_analytics.shared.season import Season
 from rawr_analytics.shared.team import Team
 
@@ -28,14 +26,6 @@ _DEFAULT_SHRINKAGE_MODES = (
     RawrShrinkageMode.GAME_COUNT,
     RawrShrinkageMode.MINUTES,
 )
-
-
-@dataclass(frozen=True)
-class _AggregatedPlayerValue:
-    player_id: int
-    player_name: str
-    value: float
-    season_count: int
 
 
 @dataclass(frozen=True)
@@ -127,7 +117,7 @@ def compare_rawr_configs(
         total=total_steps,
         detail=f"holdout {holdout_season}",
     )
-    holdout_targets = _build_holdout_targets(holdout_records)
+    holdout_targets = build_holdout_targets(holdout_records)
 
     training_wowy_games, training_wowy_game_players = load_wowy_records(
         teams=wowy_teams,
@@ -149,10 +139,12 @@ def compare_rawr_configs(
         total=total_steps,
         detail="training WOWY",
     )
+
     results = [
-        _build_comparison_result(
+        build_comparison_result(
+            result_type=ComparisonResult,
             model="wowy-baseline",
-            training_scores=_aggregate_wowy_training_records(
+            training_scores=aggregate_wowy_training_records(
                 training_wowy_records,
                 aggregation=aggregation,
             ),
@@ -182,6 +174,7 @@ def compare_rawr_configs(
             detail = f"alpha={ridge_alpha:.2f} mode={shrinkage_mode}"
             if shrinkage_mode == RawrShrinkageMode.MINUTES:
                 detail += f" min_scale={minute_scale:.1f}"
+
             season_games, season_game_players = load_rawr_records(
                 teams=teams or Team.all(),
                 seasons=train_seasons,
@@ -197,6 +190,7 @@ def compare_rawr_configs(
                 shrinkage_minute_scale=minute_scale,
             )
             rawr_records = build_player_season_records(rawr_request)
+
             completed_steps += 1
             _emit_progress(
                 event_fn,
@@ -204,10 +198,12 @@ def compare_rawr_configs(
                 total=total_steps,
                 detail=detail,
             )
+
             results.append(
-                _build_comparison_result(
+                build_comparison_result(
+                    result_type=ComparisonResult,
                     model="rawr",
-                    training_scores=_aggregate_rawr_training_records(
+                    training_scores=aggregate_rawr_training_records(
                         rawr_records,
                         aggregation=aggregation,
                     ),
@@ -246,8 +242,10 @@ def _validate_request(
     assert rawr_ridge_values is not None
     assert shrinkage_strength_values is not None
     assert shrinkage_minute_scale_values is not None
+
     if top_n <= 0:
         raise ValueError("top_n must be positive")
+
     train_season_ids = {season.year_string_nba_api for season in train_seasons}
     if holdout_season.year_string_nba_api in train_season_ids:
         raise ValueError("holdout season must not be included in training seasons")
@@ -271,178 +269,6 @@ def _normalize_shrinkage_modes(
     if shrinkage_modes is None:
         return list(_DEFAULT_SHRINKAGE_MODES)
     return [RawrShrinkageMode.parse(mode) for mode in shrinkage_modes]
-
-
-def _aggregate_wowy_training_records(
-    records: list[WowyPlayerSeasonRecord],
-    aggregation: str,
-) -> dict[int, _AggregatedPlayerValue]:
-    grouped: dict[int, list[WowyPlayerSeasonRecord]] = {}
-    for record in records:
-        grouped.setdefault(record.player.player_id, []).append(record)
-    return {
-        player_id: _AggregatedPlayerValue(
-            player_id=player_id,
-            player_name=player_records[0].player.player_name,
-            value=_aggregate_values(
-                [
-                    record.result.value
-                    for record in player_records
-                    if record.result.value is not None
-                ],
-                [record.season for record in player_records if record.result.value is not None],
-                aggregation,
-            ),
-            season_count=len(player_records),
-        )
-        for player_id, player_records in grouped.items()
-    }
-
-
-def _aggregate_rawr_training_records(
-    records: list[RawrPlayerSeasonRecord],
-    aggregation: str,
-) -> dict[int, _AggregatedPlayerValue]:
-    grouped: dict[int, list[RawrPlayerSeasonRecord]] = {}
-    for record in records:
-        grouped.setdefault(record.player.player_id, []).append(record)
-    return {
-        player_id: _AggregatedPlayerValue(
-            player_id=player_id,
-            player_name=player_records[0].player.player_name,
-            value=_aggregate_values(
-                [record.coefficient for record in player_records],
-                [record.season for record in player_records],
-                aggregation,
-            ),
-            season_count=len(player_records),
-        )
-        for player_id, player_records in grouped.items()
-    }
-
-
-def _aggregate_values(
-    values: list[float],
-    seasons: list[Season],
-    aggregation: str,
-) -> float:
-    if aggregation == "mean":
-        return sum(values) / len(values)
-    if aggregation == "max":
-        return max(values)
-    if aggregation == "latest":
-        latest_index = max(
-            range(len(seasons)),
-            key=lambda index: (seasons[index].start_year, seasons[index].season_type.value),
-        )
-        return values[latest_index]
-    raise ValueError(f"Unsupported aggregation: {aggregation}")
-
-
-def _build_holdout_targets(
-    records: list[WowyPlayerSeasonRecord],
-) -> dict[int, _AggregatedPlayerValue]:
-    targets: dict[int, _AggregatedPlayerValue] = {}
-    for record in records:
-        if record.result.value is None:
-            continue
-        targets[record.player.player_id] = _AggregatedPlayerValue(
-            player_id=record.player.player_id,
-            player_name=record.player.player_name,
-            value=record.result.value,
-            season_count=1,
-        )
-    return targets
-
-
-def _build_comparison_result(
-    *,
-    model: str,
-    training_scores: dict[int, _AggregatedPlayerValue],
-    holdout_targets: dict[int, _AggregatedPlayerValue],
-    top_n: int,
-    ridge_alpha: float | None = None,
-    shrinkage_mode: RawrShrinkageMode | None = None,
-    shrinkage_strength: float | None = None,
-    shrinkage_minute_scale: float | None = None,
-) -> ComparisonResult:
-    shared_player_ids = sorted(set(training_scores) & set(holdout_targets))
-    train_values = [training_scores[player_id].value for player_id in shared_player_ids]
-    holdout_values = [holdout_targets[player_id].value for player_id in shared_player_ids]
-
-    return ComparisonResult(
-        model=model,
-        ridge_alpha=ridge_alpha,
-        shrinkage_mode=shrinkage_mode,
-        shrinkage_strength=shrinkage_strength,
-        shrinkage_minute_scale=shrinkage_minute_scale,
-        players=len(shared_player_ids),
-        pearson=_pearson_correlation(train_values, holdout_values),
-        spearman=_spearman_correlation(train_values, holdout_values),
-        top_n_overlap=_top_n_overlap(training_scores, holdout_targets, top_n=top_n),
-    )
-
-
-def _pearson_correlation(xs: list[float], ys: list[float]) -> float | None:
-    if len(xs) < 2 or len(ys) < 2:
-        return None
-    if len(set(xs)) <= 1 or len(set(ys)) <= 1:
-        return None
-    return float(np.corrcoef(xs, ys)[0][1])
-
-
-def _spearman_correlation(xs: list[float], ys: list[float]) -> float | None:
-    if len(xs) < 2 or len(ys) < 2:
-        return None
-    ranked_xs = _rank_values(xs)
-    ranked_ys = _rank_values(ys)
-    return _pearson_correlation(ranked_xs, ranked_ys)
-
-
-def _rank_values(values: list[float]) -> list[float]:
-    indexed = sorted(enumerate(values), key=lambda item: item[1])
-    ranks = [0.0] * len(values)
-    position = 0
-    while position < len(indexed):
-        end = position
-        while end + 1 < len(indexed) and indexed[end + 1][1] == indexed[position][1]:
-            end += 1
-        average_rank = (position + end + 2) / 2.0
-        for tie_index in range(position, end + 1):
-            original_index = indexed[tie_index][0]
-            ranks[original_index] = average_rank
-        position = end + 1
-    return ranks
-
-
-def _top_n_overlap(
-    training_scores: dict[int, _AggregatedPlayerValue],
-    holdout_targets: dict[int, _AggregatedPlayerValue],
-    *,
-    top_n: int,
-) -> int:
-    if top_n <= 0:
-        raise ValueError("top_n must be positive")
-    shared_player_ids = set(training_scores) & set(holdout_targets)
-    if not shared_player_ids:
-        return 0
-    ranked_train = sorted(
-        shared_player_ids,
-        key=lambda player_id: (
-            training_scores[player_id].value,
-            training_scores[player_id].player_name,
-        ),
-        reverse=True,
-    )[:top_n]
-    ranked_holdout = sorted(
-        shared_player_ids,
-        key=lambda player_id: (
-            holdout_targets[player_id].value,
-            holdout_targets[player_id].player_name,
-        ),
-        reverse=True,
-    )[:top_n]
-    return len(set(ranked_train) & set(ranked_holdout))
 
 
 def _count_evaluation_steps(
