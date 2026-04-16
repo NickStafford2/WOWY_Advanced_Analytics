@@ -3,16 +3,16 @@ from __future__ import annotations
 import argparse
 import sys
 
-from rawr_analytics.refresh_metrics.rebuild import (
-    format_rebuild_validation_summary,
-    rebuild_player_metrics_db,
-)
 from rawr_analytics.cli._failure_logging import append_failure_log_entry
 from rawr_analytics.cli._ingest_terminal import (
     render_failure_summary,
 )
 from rawr_analytics.cli._rebuild_terminal import (
     render_rebuild_event,
+)
+from rawr_analytics.refresh_metrics.rebuild import (
+    format_rebuild_validation_summary,
+    rebuild_player_metrics_db,
 )
 
 _DEFAULT_START_YEAR = 2025
@@ -94,7 +94,7 @@ def main(argv: list[str] | None = None) -> int:
     print("\n== Metric-store refresh ==")
     for metric_result in result.metric_results:
         status = "ok" if metric_result.ok else "failed"
-        print(f"{metric_result.metric.value}: {status} ({metric_result.total_rows} rows)")
+        print(f"{metric_result.metric}: {status} ({metric_result.total_rows} rows)")
         for warning in metric_result.warnings:
             print(f"warning: {warning}")
 
