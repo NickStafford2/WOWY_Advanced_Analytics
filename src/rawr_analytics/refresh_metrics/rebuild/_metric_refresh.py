@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from rawr_analytics.metrics.constants import Metric
 from rawr_analytics.refresh_metrics.rebuild._events import (
     RebuildEventFn,
     RebuildMetricRefreshProgressEvent,
@@ -10,7 +11,6 @@ from rawr_analytics.refresh_metrics.service import (
     RefreshMetricStoreResult,
     refresh_metric_store,
 )
-from rawr_analytics.metrics.constants import Metric
 from rawr_analytics.shared.season import SeasonType
 
 
