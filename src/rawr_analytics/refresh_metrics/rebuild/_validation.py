@@ -1,11 +1,19 @@
 from __future__ import annotations
 
-from rawr_analytics.data.audit.reporting import DatabaseValidationSummary, render_validation_summary
-from rawr_analytics.data.rebuild import validate_rebuild_storage
+from collections.abc import Callable
+
+from rawr_analytics.data.audit.audit import audit_player_metrics_db
+from rawr_analytics.data.audit.reporting import (
+    DatabaseValidationSummary,
+    render_validation_summary,
+    summarize_validation_report,
+)
 from rawr_analytics.refresh_metrics.rebuild._events import (
     RebuildEventFn,
     RebuildValidationProgressEvent,
 )
+
+ValidationProgressFn = Callable[[int, int, str], None]
 
 
 def format_rebuild_validation_summary(
@@ -30,6 +38,12 @@ def validate_rebuild_result(
             )
         )
 
-    return validate_rebuild_storage(
+    return _validate_rebuild_storage(
         progress=None if event_fn is None else _emit_validation_progress
     )
+
+
+def _validate_rebuild_storage(
+    progress: ValidationProgressFn | None = None,
+) -> DatabaseValidationSummary:
+    return summarize_validation_report(audit_player_metrics_db(progress=progress))

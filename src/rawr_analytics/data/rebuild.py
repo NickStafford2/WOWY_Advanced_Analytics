@@ -1,19 +1,10 @@
 from __future__ import annotations
 
-from collections.abc import Callable
-
 from rawr_analytics.data._paths import (
     LEGACY_MIXED_DATA_DB_PATH,
     METRIC_STORE_DB_PATH,
     NORMALIZED_CACHE_DB_PATH,
 )
-from rawr_analytics.data.audit.audit import audit_player_metrics_db
-from rawr_analytics.data.audit.reporting import (
-    DatabaseValidationSummary,
-    summarize_validation_report,
-)
-
-ValidationProgressFn = Callable[[int, int, str], None]
 
 
 def prepare_rebuild_storage(*, keep_existing_db: bool) -> bool:
@@ -31,14 +22,4 @@ def prepare_rebuild_storage(*, keep_existing_db: bool) -> bool:
     return deleted_existing_db
 
 
-def validate_rebuild_storage(
-    progress: ValidationProgressFn | None = None,
-) -> DatabaseValidationSummary:
-    return summarize_validation_report(audit_player_metrics_db(progress=progress))
-
-
-__all__ = [
-    "ValidationProgressFn",
-    "prepare_rebuild_storage",
-    "validate_rebuild_storage",
-]
+__all__ = ["prepare_rebuild_storage"]
