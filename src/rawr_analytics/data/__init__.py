@@ -10,13 +10,11 @@ Examples:
 """
 
 from rawr_analytics.data.rebuild import (
-    ValidationProgressFn,
     prepare_rebuild_storage,
     validate_rebuild_storage,
 )
 
 __all__ = [
-    "ValidationProgressFn",
     "prepare_rebuild_storage",
     "validate_rebuild_storage",
 ]
