@@ -75,8 +75,7 @@ def replace_rawr_scope_snapshot(
         build_metric_scope_catalog,
         build_metric_scope_catalog_row,
     )
-    from rawr_analytics.data.metric_store._replace import replace_metric_scope_snapshot
-    from rawr_analytics.data.metric_store._sql_writes import insert_rawr_rows
+    from rawr_analytics.data.metric_store._replace import replace_rawr_scope_snapshot
     from rawr_analytics.data.metric_store._validation import validate_rawr_rows
     from rawr_analytics.data.metric_store.full_span import (
         MetricStorePlayerSeasonValue,
@@ -112,8 +111,7 @@ def replace_rawr_scope_snapshot(
             for row in rows
         ],
     )
-    replace_metric_scope_snapshot(
-        metric_id="rawr",
+    replace_rawr_scope_snapshot(
         scope_key=scope_key,
         build_version=build_version,
         source_fingerprint=source_fingerprint,
@@ -126,10 +124,6 @@ def replace_rawr_scope_snapshot(
         ),
         series_rows=series_rows,
         point_rows=point_rows,
-        insert_rows=lambda connection, snapshot_id: insert_rawr_rows(
-            connection,
-            rows,
-            snapshot_id,
-        ),
+        rows=rows,
         row_count=len(rows),
     )

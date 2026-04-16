@@ -86,8 +86,7 @@ def replace_wowy_scope_snapshot(
         build_metric_scope_catalog,
         build_metric_scope_catalog_row,
     )
-    from rawr_analytics.data.metric_store._replace import replace_metric_scope_snapshot
-    from rawr_analytics.data.metric_store._sql_writes import insert_wowy_rows
+    from rawr_analytics.data.metric_store._replace import replace_wowy_scope_snapshot
     from rawr_analytics.data.metric_store._validation import validate_wowy_rows
     from rawr_analytics.data.metric_store.full_span import build_metric_full_span_rows
 
@@ -113,7 +112,7 @@ def replace_wowy_scope_snapshot(
         season_ids=catalog.availability.season_ids,
         player_season_values=_build_player_season_values(rows),
     )
-    replace_metric_scope_snapshot(
+    replace_wowy_scope_snapshot(
         metric_id=metric_id,
         scope_key=scope_key,
         build_version=build_version,
@@ -127,11 +126,7 @@ def replace_wowy_scope_snapshot(
         ),
         series_rows=series_rows,
         point_rows=point_rows,
-        insert_rows=lambda connection, snapshot_id: insert_wowy_rows(
-            connection,
-            rows,
-            snapshot_id,
-        ),
+        rows=rows,
         row_count=len(rows),
     )
 
