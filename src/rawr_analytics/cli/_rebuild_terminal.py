@@ -2,15 +2,6 @@ from __future__ import annotations
 
 import sys
 
-from rawr_analytics.refresh_metrics.rebuild import (
-    RebuildEvent,
-    RebuildMetricRefreshProgressEvent,
-    RebuildSeasonStartedEvent,
-    RebuildTeamCompletedEvent,
-    RebuildTeamFailureEvent,
-    RebuildTeamProgressEvent,
-    RebuildValidationProgressEvent,
-)
 from rawr_analytics.cli._ingest_terminal import (
     format_partial_failure_details,
     render_progress_line,
@@ -19,6 +10,15 @@ from rawr_analytics.cli._ingest_terminal import (
     render_team_validation_failed_line,
 )
 from rawr_analytics.cli._progress_bar import TerminalProgressBar
+from rawr_analytics.refresh_metrics.rebuild._events import (
+    RebuildEvent,
+    RebuildMetricRefreshProgressEvent,
+    RebuildSeasonStartedEvent,
+    RebuildTeamCompletedEvent,
+    RebuildTeamFailureEvent,
+    RebuildTeamProgressEvent,
+    RebuildValidationProgressEvent,
+)
 
 _METRIC_PROGRESS_BARS: dict[str, TerminalProgressBar] = {}
 _VALIDATION_PROGRESS_BAR: TerminalProgressBar | None = None
