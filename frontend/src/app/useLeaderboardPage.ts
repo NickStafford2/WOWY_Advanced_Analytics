@@ -62,8 +62,7 @@ type MetricOptionsState = {
 export function useLeaderboardPage(): UseLeaderboardPageValue {
   const metricRef = useRef<MetricId>('wowy')
   const bootstrapAbortRef = useRef<AbortController | null>(null)
-  const seasonOptionsAbortRef = useRef<AbortController | null>(null)
-  const teamOptionsAbortRef = useRef<AbortController | null>(null)
+  const scopedOptionsAbortRef = useRef<AbortController | null>(null)
   const leaderboardAbortRef = useRef<AbortController | null>(null)
   const [metric, setMetricState] = useState<MetricId>('wowy')
   const [filters, setFilters] = useState<LeaderboardFilters>(defaultLeaderboardFilters)
@@ -95,8 +94,7 @@ export function useLeaderboardPage(): UseLeaderboardPageValue {
   useEffect(() => {
     return () => {
       bootstrapAbortRef.current?.abort()
-      seasonOptionsAbortRef.current?.abort()
-      teamOptionsAbortRef.current?.abort()
+      scopedOptionsAbortRef.current?.abort()
       leaderboardAbortRef.current?.abort()
     }
   }, [])
@@ -134,43 +132,41 @@ export function useLeaderboardPage(): UseLeaderboardPageValue {
     }),
   )
 
-  const _refreshSeasonOptions = useEffectEvent(async (nextMetric: MetricId, selectedTeamIds: number[] | null) =>
+  const _refreshScopedOptions = useEffectEvent(async (nextMetric: MetricId, nextFilters: LeaderboardFilters) =>
     _runAbortableRequest({
-      abortRef: seasonOptionsAbortRef,
+      abortRef: scopedOptionsAbortRef,
       metricRef,
       expectedMetric: nextMetric,
       onStart: () => {},
       onFinish: () => {},
-      request: (signal) =>
-        fetchMetricOptions(nextMetric, buildMetricOptionsParamsForTeams(selectedTeamIds), signal),
-      onSuccess: (payload) => {
-        setAvailableSeasons(payload.available_seasons)
-        setFilters((current) => syncScopedLeaderboardFiltersWithOptions(current, payload))
-        return payload
-      },
-      onError: (message) => {
-        setError(message)
-        return null
-      },
-    }),
-  )
-
-  const _refreshTeamOptions = useEffectEvent(async (nextMetric: MetricId, nextFilters: LeaderboardFilters, seasons: string[]) =>
-    _runAbortableRequest({
-      abortRef: teamOptionsAbortRef,
-      metricRef,
-      expectedMetric: nextMetric,
-      onStart: () => {},
-      onFinish: () => {},
-      request: (signal) =>
-        fetchMetricOptions(
+      request: async (signal) => {
+        const seasonsPayload = await fetchMetricOptions(
           nextMetric,
-          buildMetricOptionsParamsForSeasonSpan(nextFilters, seasons),
+          buildMetricOptionsParamsForTeams(nextFilters.teamIds),
           signal,
-        ),
+        )
+        const seasons = seasonsPayload.available_seasons
+        const filtersAfterSeasonScope = syncScopedLeaderboardFiltersWithOptions(
+          nextFilters,
+          seasonsPayload,
+        )
+        const teamsPayload = await fetchMetricOptions(
+          nextMetric,
+          buildMetricOptionsParamsForSeasonSpan(filtersAfterSeasonScope, seasons),
+          signal,
+        )
+
+        return {
+          filters: syncScopedLeaderboardFiltersWithOptions(filtersAfterSeasonScope, teamsPayload),
+          seasons,
+          teams: teamsPayload.team_options,
+        }
+      },
       onSuccess: (payload) => {
-        setTeamOptions(payload.team_options)
-        setFilters((current) => syncScopedLeaderboardFiltersWithOptions(current, payload))
+        setError('')
+        setAvailableSeasons(payload.seasons)
+        setTeamOptions(payload.teams)
+        setFilters(payload.filters)
         return payload
       },
       onError: (message) => {
@@ -246,15 +242,15 @@ export function useLeaderboardPage(): UseLeaderboardPageValue {
     if (isBootstrapping) {
       return
     }
-    void _refreshSeasonOptions(metric, filters.teamIds)
-  }, [filters.teamIds, isBootstrapping, metric, _refreshSeasonOptions])
-
-  useEffect(() => {
-    if (isBootstrapping) {
-      return
-    }
-    void _refreshTeamOptions(metric, filters, availableSeasons)
-  }, [availableSeasons, filters.endSeason, filters.startSeason, isBootstrapping, metric, _refreshTeamOptions])
+    void _refreshScopedOptions(metric, filters)
+  }, [
+    filters.endSeason,
+    filters.startSeason,
+    filters.teamIds,
+    isBootstrapping,
+    metric,
+    _refreshScopedOptions,
+  ])
 
   async function refresh(): Promise<void> {
     await _runLeaderboardRequest(metric, filters, availableSeasons, teamOptions)
