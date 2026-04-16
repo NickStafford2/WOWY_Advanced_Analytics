@@ -6,7 +6,7 @@ from dataclasses import dataclass
 from rawr_analytics.data.game_cache.store import load_game_cache_snapshot
 from rawr_analytics.data.metric_store._mutations import prune_metric_caches
 from rawr_analytics.data.metric_store.rawr import replace_rawr_metric_cache
-from rawr_analytics.data.metric_store.store import list_metric_cache_keys, load_metric_cache_store_state
+from rawr_analytics.data.metric_store.store import load_metric_cache_store_state
 from rawr_analytics.data.metric_store.usage import list_metric_cache_keys_by_usage
 from rawr_analytics.data.metric_store.wowy import replace_wowy_metric_cache
 from rawr_analytics.metrics._metric_cache_key import MetricCacheKey, build_rawr_metric_cache_key
@@ -91,12 +91,13 @@ def refresh_metric_store(
     )
 
     game_cache_snapshot = load_game_cache_snapshot()
-    cached_team_seasons = [
+    cached_team_seasons = game_cache_snapshot.scopes
+    requested_team_seasons = [
         scope
-        for scope in game_cache_snapshot.scopes
+        for scope in cached_team_seasons
         if scope.season.season_type == normalized_season_type
     ]
-    if not cached_team_seasons:
+    if not requested_team_seasons:
         return RefreshMetricStoreResult(
             metric=normalized_metric,
             cache_results=[],
@@ -159,11 +160,7 @@ def refresh_metric_store(
     )
     prune_metric_caches(
         metric_id=normalized_metric.value,
-        retained_metric_cache_keys=_retained_metric_cache_keys_for_prune(
-            metric=normalized_metric,
-            season_type=normalized_season_type,
-            retained_refresh_caches=caches,
-        ),
+        retained_metric_cache_keys=[cache.metric_cache_key for cache in caches],
     )
     _emit_progress(
         event_fn,
@@ -201,6 +198,7 @@ def _build_all_teams_refresh_cache(
     metric: Metric,
     cached_team_seasons: list[TeamSeasonScope],
     rawr_ridge_alpha: float,
+    cache_label: str,
 ) -> _RefreshCache:
     seasons = require_normalized_seasons([scope.season for scope in cached_team_seasons])
     teams = _available_cache_teams(cached_team_seasons)
@@ -228,7 +226,7 @@ def _build_all_teams_refresh_cache(
     )
     return _RefreshCache(
         metric_cache_key=metric_cache_key,
-        cache_label="all-teams",
+        cache_label=cache_label,
         seasons=seasons,
         teams=teams,
         rawr_calc_vars=rawr_calc_vars,
@@ -242,13 +240,12 @@ def _build_retained_refresh_caches(
     cached_team_seasons: list[TeamSeasonScope],
     rawr_ridge_alpha: float,
 ) -> list[_RefreshCache]:
-    pinned_cache = _build_all_teams_refresh_cache(
+    retained_caches = _build_pinned_refresh_caches(
         metric=metric,
         cached_team_seasons=cached_team_seasons,
         rawr_ridge_alpha=rawr_ridge_alpha,
     )
-    retained_caches = [pinned_cache]
-    retained_metric_cache_keys = {pinned_cache.metric_cache_key}
+    retained_metric_cache_keys = {cache.metric_cache_key for cache in retained_caches}
     for metric_cache_key in list_metric_cache_keys_by_usage(metric_id=metric.value):
         if len(retained_caches) >= DEFAULT_RETAINED_METRIC_CACHE_KEY_LIMIT:
             break
@@ -263,6 +260,41 @@ def _build_retained_refresh_caches(
             continue
         retained_caches.append(cache)
         retained_metric_cache_keys.add(cache.metric_cache_key)
+    return retained_caches
+
+
+def _build_pinned_refresh_caches(
+    *,
+    metric: Metric,
+    cached_team_seasons: list[TeamSeasonScope],
+    rawr_ridge_alpha: float,
+) -> list[_RefreshCache]:
+    retained_caches: list[_RefreshCache] = []
+    regular_team_seasons = _filter_team_seasons_by_type(
+        cached_team_seasons=cached_team_seasons,
+        season_type=SeasonType.REGULAR,
+    )
+    playoff_team_seasons = _filter_team_seasons_by_type(
+        cached_team_seasons=cached_team_seasons,
+        season_type=SeasonType.PLAYOFFS,
+    )
+    combined_team_seasons = _build_combined_team_seasons(cached_team_seasons)
+
+    for cache_label, selected_team_seasons in [
+        ("all-teams regular", regular_team_seasons),
+        ("all-teams playoffs", playoff_team_seasons),
+        ("all-teams combined", combined_team_seasons),
+    ]:
+        if not selected_team_seasons:
+            continue
+        retained_caches.append(
+            _build_all_teams_refresh_cache(
+                metric=metric,
+                cached_team_seasons=selected_team_seasons,
+                rawr_ridge_alpha=rawr_ridge_alpha,
+                cache_label=cache_label,
+            )
+        )
     return retained_caches
 
 
@@ -466,37 +498,38 @@ def _warning_seasons(caches: list[_RefreshCache]) -> list[Season]:
     return seasons
 
 
-def _retained_metric_cache_keys_for_prune(
+def _filter_team_seasons_by_type(
     *,
-    metric: Metric,
+    cached_team_seasons: list[TeamSeasonScope],
     season_type: SeasonType,
-    retained_refresh_caches: list[_RefreshCache],
-) -> list[str]:
-    retained_metric_cache_keys = {
-        cache.metric_cache_key for cache in retained_refresh_caches
+) -> list[TeamSeasonScope]:
+    return [
+        scope for scope in cached_team_seasons if scope.season.season_type == season_type
+    ]
+
+
+def _build_combined_team_seasons(
+    cached_team_seasons: list[TeamSeasonScope],
+) -> list[TeamSeasonScope]:
+    regular_years = {
+        scope.season.start_year
+        for scope in cached_team_seasons
+        if scope.season.season_type == SeasonType.REGULAR
     }
-    for metric_cache_key in list_metric_cache_keys(metric.value):
-        if metric_cache_key in retained_metric_cache_keys:
-            continue
-        if not _is_prunable_metric_cache_key(metric_cache_key, season_type=season_type):
-            retained_metric_cache_keys.add(metric_cache_key)
-    return sorted(retained_metric_cache_keys)
-
-
-def _is_prunable_metric_cache_key(
-    metric_cache_key: str,
-    *,
-    season_type: SeasonType,
-) -> bool:
-    try:
-        cache_key = MetricCacheKey.parse(metric_cache_key)
-    except ValueError:
-        return False
-    if not cache_key.season_ids:
-        return False
-    return all(
-        Season.parse_id(season_id).season_type == season_type for season_id in cache_key.season_ids
-    )
+    playoff_years = {
+        scope.season.start_year
+        for scope in cached_team_seasons
+        if scope.season.season_type == SeasonType.PLAYOFFS
+    }
+    combined_years = regular_years & playoff_years
+    if not combined_years:
+        return []
+    return [
+        scope
+        for scope in cached_team_seasons
+        if scope.season.start_year in combined_years
+        and scope.season.season_type in {SeasonType.REGULAR, SeasonType.PLAYOFFS}
+    ]
 
 
 def _cache_seasons_for_refresh(
