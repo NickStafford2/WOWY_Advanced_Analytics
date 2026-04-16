@@ -34,9 +34,9 @@ MetricStoreRefreshEventFn = Callable[["MetricStoreRefreshProgressEvent"], None]
 
 
 @dataclass(frozen=True)
-class RefreshScopeResult:
+class RefreshCacheResult:
     metric_cache_key: str
-    scope_label: str
+    cache_label: str
     row_count: int
     status: str
 
@@ -51,7 +51,7 @@ class MetricStoreRefreshProgressEvent:
 @dataclass(frozen=True)
 class RefreshMetricStoreResult:
     metric: Metric
-    scope_results: list[RefreshScopeResult]
+    cache_results: list[RefreshCacheResult]
     warnings: list[str]
     failure_message: str | None = None
 
@@ -61,13 +61,13 @@ class RefreshMetricStoreResult:
 
     @property
     def total_rows(self) -> int:
-        return sum(scope.row_count for scope in self.scope_results)
+        return sum(cache.row_count for cache in self.cache_results)
 
 
 @dataclass(frozen=True)
-class _RefreshScope:
+class _RefreshCache:
     metric_cache_key: str
-    scope_label: str
+    cache_label: str
     team_filter: str
     seasons: list[Season]
     teams: list[Team]
@@ -94,7 +94,7 @@ def refresh_metric_store(
     if not cached_team_seasons:
         return RefreshMetricStoreResult(
             metric=normalized_metric,
-            scope_results=[],
+            cache_results=[],
             warnings=[],
             failure_message=(
                 "Normalized cache is empty for the requested season type. "
@@ -102,7 +102,7 @@ def refresh_metric_store(
             ),
         )
 
-    scope = _build_all_teams_refresh_scope(
+    cache = _build_all_teams_refresh_cache(
         metric=normalized_metric,
         cached_team_seasons=cached_team_seasons,
         rawr_ridge_alpha=rawr_ridge_alpha,
@@ -113,7 +113,7 @@ def refresh_metric_store(
         metric_info=metric_info,
     )
     warnings = (
-        list_incomplete_rawr_season_warnings(seasons=scope.seasons)
+        list_incomplete_rawr_season_warnings(seasons=cache.seasons)
         if normalized_metric == Metric.RAWR
         else []
     )
@@ -122,11 +122,11 @@ def refresh_metric_store(
         event_fn,
         current=0,
         total=1,
-        detail=f"building {scope.scope_label}",
+        detail=f"building {cache.cache_label}",
     )
-    scope_result = _refresh_scope(
+    cache_result = _refresh_cache(
         metric=normalized_metric,
-        scope=scope,
+        cache=cache,
         season_type=normalized_season_type,
         available_teams=available_teams,
         source_fingerprint=game_cache_snapshot.fingerprint,
@@ -137,11 +137,11 @@ def refresh_metric_store(
         event_fn,
         current=1,
         total=1,
-        detail=f"{scope_result.status} {scope.scope_label}",
+        detail=f"{cache_result.status} {cache.cache_label}",
     )
     return RefreshMetricStoreResult(
         metric=normalized_metric,
-        scope_results=[scope_result],
+        cache_results=[cache_result],
         warnings=warnings,
     )
 
@@ -164,12 +164,12 @@ def _emit_progress(
     )
 
 
-def _build_all_teams_refresh_scope(
+def _build_all_teams_refresh_cache(
     *,
     metric: Metric,
     cached_team_seasons: list[TeamSeasonScope],
     rawr_ridge_alpha: float,
-) -> _RefreshScope:
+) -> _RefreshCache:
     seasons = require_normalized_seasons([scope.season for scope in cached_team_seasons])
     teams = _available_cache_teams(cached_team_seasons)
     assert teams, "metric store refresh requires cached teams"
@@ -179,9 +179,9 @@ def _build_all_teams_refresh_scope(
         seasons=seasons,
         rawr_ridge_alpha=rawr_ridge_alpha,
     )
-    return _RefreshScope(
+    return _RefreshCache(
         metric_cache_key=metric_cache_key,
-        scope_label="all-teams",
+        cache_label="all-teams",
         team_filter=team_filter,
         seasons=seasons,
         teams=teams,
@@ -224,42 +224,42 @@ def _build_refresh_cache_key(
     )
 
 
-def _refresh_scope(
+def _refresh_cache(
     *,
     metric: Metric,
-    scope: _RefreshScope,
+    cache: _RefreshCache,
     season_type: SeasonType,
     available_teams: list[Team],
     source_fingerprint: str,
     build_version: str,
     rawr_ridge_alpha: float,
-) -> RefreshScopeResult:
-    state = load_metric_cache_store_state(metric.value, scope.metric_cache_key)
+) -> RefreshCacheResult:
+    state = load_metric_cache_store_state(metric.value, cache.metric_cache_key)
     if (
         state is not None
         and state.cache_entry_state.source_fingerprint == source_fingerprint
         and state.cache_entry_state.build_version == build_version
         and state.cache_entry_state.row_count > 0
     ):
-        return RefreshScopeResult(
-            metric_cache_key=scope.metric_cache_key,
-            scope_label=scope.scope_label,
+        return RefreshCacheResult(
+            metric_cache_key=cache.metric_cache_key,
+            cache_label=cache.cache_label,
             row_count=state.cache_entry_state.row_count,
             status="cached",
         )
 
     if metric == Metric.RAWR:
         rows = build_rawr_metric_store_rows(
-            seasons=scope.seasons,
-            teams=scope.teams,
+            seasons=cache.seasons,
+            teams=cache.teams,
             rawr_ridge_alpha=rawr_ridge_alpha,
         )
         replace_rawr_metric_cache(
-            metric_cache_key=scope.metric_cache_key,
+            metric_cache_key=cache.metric_cache_key,
             label=metric.value,
-            team_filter=scope.team_filter,
+            team_filter=cache.team_filter,
             season_type=season_type,
-            seasons=scope.seasons,
+            seasons=cache.seasons,
             available_teams=available_teams,
             build_version=build_version,
             source_fingerprint=source_fingerprint,
@@ -268,24 +268,24 @@ def _refresh_scope(
     else:
         rows = build_wowy_metric_store_rows(
             metric=metric,
-            seasons=scope.seasons,
-            teams=scope.teams,
+            seasons=cache.seasons,
+            teams=cache.teams,
         )
         replace_wowy_metric_cache(
             metric_id=metric.value,
-            metric_cache_key=scope.metric_cache_key,
+            metric_cache_key=cache.metric_cache_key,
             label=metric.value,
-            team_filter=scope.team_filter,
+            team_filter=cache.team_filter,
             season_type=season_type,
-            seasons=scope.seasons,
+            seasons=cache.seasons,
             available_teams=available_teams,
             build_version=build_version,
             source_fingerprint=source_fingerprint,
             rows=rows,
         )
-    return RefreshScopeResult(
-        metric_cache_key=scope.metric_cache_key,
-        scope_label=scope.scope_label,
+    return RefreshCacheResult(
+        metric_cache_key=cache.metric_cache_key,
+        cache_label=cache.cache_label,
         row_count=len(rows),
         status="built",
     )
