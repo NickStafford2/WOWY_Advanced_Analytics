@@ -1,6 +1,6 @@
 """Public repository interface for metric store storage."""
 
-from rawr_analytics.data.metric_store._reads import (
+from rawr_analytics.data.metric_store.store import (
     load_metric_scope_store_state,
     load_metric_span_store_rows,
 )
