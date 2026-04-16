@@ -31,6 +31,47 @@ class MetricCacheKey:
             parts.append(settings_part)
         return "|".join(parts)
 
+    @classmethod
+    def parse(cls, value: str) -> MetricCacheKey:
+        metric_id = ""
+        metric_variant = ""
+        season_ids: list[str] = []
+        team_ids: list[int] = []
+        calc_settings: list[tuple[str, str]] = []
+        for part in value.split("|"):
+            key, separator, raw_value = part.partition("=")
+            if separator != "=":
+                raise ValueError(f"Invalid metric cache key part {part!r}")
+            if key == "metric":
+                metric_id = raw_value
+                continue
+            if key == "variant":
+                metric_variant = raw_value
+                continue
+            if key == "team_ids":
+                if raw_value == "all-teams":
+                    team_ids = []
+                else:
+                    team_ids = [int(team_id) for team_id in raw_value.split(",") if team_id]
+                continue
+            if key == "season_ids":
+                season_ids = [season_id for season_id in raw_value.split(",") if season_id]
+                continue
+            calc_settings.append((key, raw_value))
+        if not metric_id:
+            raise ValueError("Metric cache key is missing metric id")
+        if not metric_variant:
+            raise ValueError("Metric cache key is missing metric variant")
+        if not season_ids:
+            raise ValueError("Metric cache key is missing season ids")
+        return cls(
+            metric_id=metric_id,
+            metric_variant=metric_variant,
+            season_ids=season_ids,
+            team_ids=team_ids,
+            calc_settings=tuple(calc_settings),
+        )
+
 
 def build_rawr_metric_cache_key(calc_vars: RawrCalcVars) -> str:
     return MetricCacheKey(

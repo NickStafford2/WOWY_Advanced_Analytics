@@ -31,7 +31,7 @@ def audit_player_metrics_db(
         "normalized cache loads",
         "normalized cache relations",
         "metric player season values",
-        "metric cache catalog",
+        "metric cache keys",
         "metric store relations",
     )
     total_steps = len(steps)
@@ -72,7 +72,7 @@ def audit_player_metrics_db(
         )
 
         current_step = 6
-        report_progress("Validating metric cache catalog")
+        report_progress("Validating metric cache keys")
 
         current_step = 7
         report_progress("Validating metric store relations")
@@ -80,8 +80,7 @@ def audit_player_metrics_db(
             rawr_row_groups=metric_audit_state.rawr_row_groups,
             wowy_row_groups=metric_audit_state.wowy_row_groups,
             metadata_rows=metric_audit_state.metadata_rows,
-            catalog_rows=metric_audit_state.catalog_rows,
-            catalog_season_rows=metric_audit_state.catalog_season_rows,
+            cache_keys=metric_audit_state.cache_keys,
             issues=issues,
         )
 

@@ -2,12 +2,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
-from rawr_analytics.data.metric_store._catalog import MetricCacheCatalogRow
-from rawr_analytics.data.metric_store._queries import (
-    MetricCacheEntryState,
-    load_metric_cache_catalog_row,
-    load_metric_cache_entry_state,
-)
+from rawr_analytics.data.metric_store._queries import MetricCacheEntryState, load_metric_cache_entry_state
 from rawr_analytics.data.metric_store.full_span import (
     MetricFullSpanSeries,
     MetricStorePlayerSeasonValue,
@@ -15,11 +10,12 @@ from rawr_analytics.data.metric_store.full_span import (
 )
 from rawr_analytics.data.metric_store.rawr import load_rawr_player_season_value_rows
 from rawr_analytics.data.metric_store.wowy import load_wowy_player_season_value_rows
+from rawr_analytics.metrics._metric_cache_key import MetricCacheKey
 
 
 @dataclass(frozen=True)
 class MetricCacheStoreState:
-    catalog_row: MetricCacheCatalogRow
+    cache_key: MetricCacheKey
     cache_entry_state: MetricCacheEntryState
 
 
@@ -32,14 +28,11 @@ def load_metric_cache_store_state(
     metric: str,
     metric_cache_key: str,
 ) -> MetricCacheStoreState | None:
-    catalog_row = load_metric_cache_catalog_row(metric, metric_cache_key)
-    if catalog_row is None:
-        return None
     cache_entry_state = load_metric_cache_entry_state(metric, metric_cache_key)
     if cache_entry_state is None:
         return None
     return MetricCacheStoreState(
-        catalog_row=catalog_row,
+        cache_key=MetricCacheKey.parse(metric_cache_key),
         cache_entry_state=cache_entry_state,
     )
 
@@ -50,16 +43,15 @@ def load_metric_cache_span_rows(
     metric_cache_key: str,
     top_n: int | None = None,
 ) -> MetricSpanStoreRows:
-    catalog_row = load_metric_cache_catalog_row(metric, metric_cache_key)
-    assert catalog_row is not None, "metric span reads require an existing catalog row"
+    cache_key = MetricCacheKey.parse(metric_cache_key)
     player_season_values = _load_metric_player_season_values(
         metric=metric,
         metric_cache_key=metric_cache_key,
-        season_ids=catalog_row.season_ids,
+        season_ids=cache_key.season_ids,
     )
     return MetricSpanStoreRows(
         series=build_metric_full_span_series(
-            season_ids=catalog_row.season_ids,
+            season_ids=cache_key.season_ids,
             player_season_values=player_season_values,
             top_n=top_n,
         )

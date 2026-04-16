@@ -71,7 +71,6 @@ def replace_wowy_metric_cache(
 ) -> None:
     from datetime import UTC, datetime
 
-    from rawr_analytics.data.metric_store._catalog import build_metric_cache_catalog_row
     from rawr_analytics.data.metric_store._mutations import replace_wowy_metric_cache
     from rawr_analytics.data.metric_store._validation import validate_wowy_rows
 
@@ -90,12 +89,6 @@ def replace_wowy_metric_cache(
         build_version=build_version,
         source_fingerprint=source_fingerprint,
         updated_at=updated_at,
-        catalog_row=build_metric_cache_catalog_row(
-            metric_id=metric_id,
-            metric_cache_key=metric_cache_key,
-            seasons=seasons,
-            updated_at=updated_at,
-        ),
         rows=rows,
         row_count=len(rows),
     )

@@ -6,18 +6,15 @@ from dataclasses import dataclass
 from typing import cast
 
 from rawr_analytics.data._validation import ValidationIssue
-from rawr_analytics.data.metric_store._catalog import MetricCacheCatalogRow, catalog_seasons
 from rawr_analytics.data.metric_store._tables import (
     RawrPlayerSeasonValueRow,
     WowyPlayerSeasonValueRow,
     build_rawr_player_season_value_row,
     build_wowy_player_season_value_row,
 )
-from rawr_analytics.data.metric_store._validation import (
-    validate_metric_cache_catalog_row,
-    validate_rawr_rows,
-    validate_wowy_rows,
-)
+from rawr_analytics.data.metric_store._validation import validate_rawr_rows, validate_wowy_rows
+from rawr_analytics.metrics._metric_cache_key import MetricCacheKey
+from rawr_analytics.shared.season import Season
 
 
 @dataclass(frozen=True)
@@ -34,42 +31,38 @@ class MetricStoreAuditState:
     rawr_row_groups: dict[tuple[str, str], list[RawrPlayerSeasonValueRow]]
     wowy_row_groups: dict[tuple[str, str], list[WowyPlayerSeasonValueRow]]
     metadata_rows: dict[tuple[str, str], MetricStoreAuditMetadata]
-    catalog_rows: dict[tuple[str, str], MetricCacheCatalogRow]
-    catalog_season_rows: dict[tuple[str, str], list[str]]
+    cache_keys: dict[tuple[str, str], MetricCacheKey]
 
 
 def audit_metric_store_tables(
     connection: sqlite3.Connection,
     issues: list[ValidationIssue],
 ) -> MetricStoreAuditState:
-    catalog_rows, catalog_season_rows = _audit_metric_cache_catalog_table(
-        connection,
-        issues,
-    )
-    rawr_row_groups, wowy_row_groups, metadata_rows = _audit_metric_player_season_values_table(
-        connection,
-        issues,
-        catalog_rows,
+    cache_keys, metadata_rows = _load_cache_metadata(connection, issues)
+    rawr_row_groups, wowy_row_groups = _load_metric_player_season_values(connection)
+    _validate_metric_player_season_values(
+        issues=issues,
+        rawr_row_groups=rawr_row_groups,
+        wowy_row_groups=wowy_row_groups,
+        metadata_rows=metadata_rows,
+        cache_keys=cache_keys,
     )
     return MetricStoreAuditState(
         rawr_row_groups=rawr_row_groups,
         wowy_row_groups=wowy_row_groups,
         metadata_rows=metadata_rows,
-        catalog_rows=catalog_rows,
-        catalog_season_rows=catalog_season_rows,
+        cache_keys=cache_keys,
     )
 
 
-def _audit_metric_player_season_values_table(
+def _load_cache_metadata(
     connection: sqlite3.Connection,
     issues: list[ValidationIssue],
-    catalog_rows: dict[tuple[str, str], MetricCacheCatalogRow],
 ) -> tuple[
-    dict[tuple[str, str], list[RawrPlayerSeasonValueRow]],
-    dict[tuple[str, str], list[WowyPlayerSeasonValueRow]],
+    dict[tuple[str, str], MetricCacheKey],
     dict[tuple[str, str], MetricStoreAuditMetadata],
 ]:
-    cache_entry_rows = connection.execute(
+    rows = connection.execute(
         """
         SELECT
             metric_cache_entry_id,
@@ -79,109 +72,42 @@ def _audit_metric_player_season_values_table(
             source_fingerprint,
             row_count
         FROM metric_cache_entry
+        ORDER BY metric_id, metric_cache_key
         """
     ).fetchall()
-    metadata_by_key = {
-        (cast(str, row["metric_id"]), cast(str, row["metric_cache_key"])): MetricStoreAuditMetadata(
+    cache_keys: dict[tuple[str, str], MetricCacheKey] = {}
+    metadata_rows: dict[tuple[str, str], MetricStoreAuditMetadata] = {}
+    for row in rows:
+        key = _metric_store_key(row)
+        metadata_rows[key] = MetricStoreAuditMetadata(
             source_table="metric_cache_entry",
             metric_cache_entry_id=cast(int | None, row["metric_cache_entry_id"]),
             build_version=cast(str, row["build_version"]),
             source_fingerprint=cast(str, row["source_fingerprint"]),
             row_count=cast(int, row["row_count"]),
         )
-        for row in cache_entry_rows
-    }
+        try:
+            cache_keys[key] = MetricCacheKey.parse(cast(str, row["metric_cache_key"]))
+        except ValueError as exc:
+            issues.append(
+                ValidationIssue(
+                    "metric_cache_entry",
+                    f"metric={key[0]!r},metric_cache_key={key[1]!r}",
+                    str(exc),
+                )
+            )
+    return cache_keys, metadata_rows
 
+
+def _load_metric_player_season_values(
+    connection: sqlite3.Connection,
+) -> tuple[
+    dict[tuple[str, str], list[RawrPlayerSeasonValueRow]],
+    dict[tuple[str, str], list[WowyPlayerSeasonValueRow]],
+]:
     rawr_groups: dict[tuple[str, str], list[RawrPlayerSeasonValueRow]] = defaultdict(list)
     wowy_groups: dict[tuple[str, str], list[WowyPlayerSeasonValueRow]] = defaultdict(list)
-    _load_rawr_metric_rows(connection, rawr_groups)
-    _load_wowy_metric_rows(connection, wowy_groups)
-
-    for key, group_rows in rawr_groups.items():
-        metadata_row = metadata_by_key.get(
-            key,
-            MetricStoreAuditMetadata(
-                source_table="metric_cache_entry",
-                metric_cache_entry_id=None,
-                build_version="missing-metadata",
-                source_fingerprint="missing-metadata",
-                row_count=-1,
-            ),
-        )
-        catalog_row = catalog_rows.get(key)
-        if catalog_row is None:
-            issues.append(
-                ValidationIssue(
-                    "rawr_player_season_values",
-                    f"metric={key[0]!r},metric_cache_key={key[1]!r}",
-                    "Metric rows are missing a matching metric_cache_catalog row",
-                )
-            )
-            continue
-        try:
-            validate_rawr_rows(
-                metric_cache_key=key[1],
-                seasons=catalog_seasons(catalog_row),
-                build_version=metadata_row.build_version,
-                source_fingerprint=metadata_row.source_fingerprint,
-                rows=group_rows,
-            )
-        except ValueError as exc:
-            issues.append(
-                ValidationIssue(
-                    "rawr_player_season_values",
-                    f"metric={key[0]!r},metric_cache_key={key[1]!r}",
-                    str(exc),
-                )
-            )
-
-    for key, group_rows in wowy_groups.items():
-        metadata_row = metadata_by_key.get(
-            key,
-            MetricStoreAuditMetadata(
-                source_table="metric_cache_entry",
-                metric_cache_entry_id=None,
-                build_version="missing-metadata",
-                source_fingerprint="missing-metadata",
-                row_count=-1,
-            ),
-        )
-        catalog_row = catalog_rows.get(key)
-        if catalog_row is None:
-            issues.append(
-                ValidationIssue(
-                    "wowy_player_season_values",
-                    f"metric={key[0]!r},metric_cache_key={key[1]!r}",
-                    "Metric rows are missing a matching metric_cache_catalog row",
-                )
-            )
-            continue
-        try:
-            validate_wowy_rows(
-                metric_id=key[0],
-                metric_cache_key=key[1],
-                seasons=catalog_seasons(catalog_row),
-                build_version=metadata_row.build_version,
-                source_fingerprint=metadata_row.source_fingerprint,
-                rows=group_rows,
-            )
-        except ValueError as exc:
-            issues.append(
-                ValidationIssue(
-                    "wowy_player_season_values",
-                    f"metric={key[0]!r},metric_cache_key={key[1]!r}",
-                    str(exc),
-                )
-            )
-
-    return rawr_groups, wowy_groups, metadata_by_key
-
-
-def _load_rawr_metric_rows(
-    connection: sqlite3.Connection,
-    groups: dict[tuple[str, str], list[RawrPlayerSeasonValueRow]],
-) -> None:
-    rows = connection.execute(
+    rawr_rows = connection.execute(
         """
         SELECT
             cache_entry.metric_id,
@@ -199,15 +125,9 @@ def _load_rawr_metric_rows(
         ORDER BY metric_id, metric_cache_key, rawr.season_id, rawr.player_id
         """
     ).fetchall()
-    for row in rows:
-        groups[_metric_store_key(row)].append(build_rawr_player_season_value_row(row))
-
-
-def _load_wowy_metric_rows(
-    connection: sqlite3.Connection,
-    groups: dict[tuple[str, str], list[WowyPlayerSeasonValueRow]],
-) -> None:
-    rows = connection.execute(
+    for row in rawr_rows:
+        rawr_groups[_metric_store_key(row)].append(build_rawr_player_season_value_row(row))
+    wowy_rows = connection.execute(
         """
         SELECT
             cache_entry.metric_id,
@@ -229,62 +149,99 @@ def _load_wowy_metric_rows(
         ORDER BY metric_id, metric_cache_key, wowy.season_id, wowy.player_id
         """
     ).fetchall()
-    for row in rows:
-        groups[_metric_store_key(row)].append(build_wowy_player_season_value_row(row))
+    for row in wowy_rows:
+        wowy_groups[_metric_store_key(row)].append(build_wowy_player_season_value_row(row))
+    return rawr_groups, wowy_groups
 
 
-def _audit_metric_cache_catalog_table(
-    connection: sqlite3.Connection,
+def _validate_metric_player_season_values(
+    *,
     issues: list[ValidationIssue],
-) -> tuple[
-    dict[tuple[str, str], MetricCacheCatalogRow],
-    dict[tuple[str, str], list[str]],
-]:
-    rows = connection.execute(
-        """
-        SELECT
-            metric_id,
-            metric_cache_key,
-            updated_at
-        FROM metric_cache_catalog
-        ORDER BY metric_id, metric_cache_key
-        """
-    ).fetchall()
-    season_rows = connection.execute(
-        """
-        SELECT
-            metric_id,
-            metric_cache_key,
-            season_id
-        FROM metric_cache_season
-        ORDER BY metric_id, metric_cache_key, season_id
-        """
-    ).fetchall()
-    cache_season_rows: dict[tuple[str, str], list[str]] = defaultdict(list)
-    for row in season_rows:
-        cache_season_rows[_metric_store_key(row)].append(cast(str, row["season_id"]))
-    catalog_rows: dict[tuple[str, str], MetricCacheCatalogRow] = {}
-    for row in rows:
-        key = _metric_store_key(row)
-        catalog_row = MetricCacheCatalogRow(
-            metric_id=cast(str, row["metric_id"]),
-            metric_cache_key=cast(str, row["metric_cache_key"]),
-            season_ids=list(cache_season_rows.get(key, [])),
-            updated_at=cast(str, row["updated_at"]),
+    rawr_row_groups: dict[tuple[str, str], list[RawrPlayerSeasonValueRow]],
+    wowy_row_groups: dict[tuple[str, str], list[WowyPlayerSeasonValueRow]],
+    metadata_rows: dict[tuple[str, str], MetricStoreAuditMetadata],
+    cache_keys: dict[tuple[str, str], MetricCacheKey],
+) -> None:
+    for key, group_rows in rawr_row_groups.items():
+        metadata_row = metadata_rows.get(
+            key,
+            MetricStoreAuditMetadata(
+                source_table="metric_cache_entry",
+                metric_cache_entry_id=None,
+                build_version="missing-metadata",
+                source_fingerprint="missing-metadata",
+                row_count=-1,
+            ),
         )
-        catalog_rows[key] = catalog_row
+        cache_key = cache_keys.get(key)
+        if cache_key is None:
+            issues.append(
+                ValidationIssue(
+                    "rawr_player_season_values",
+                    f"metric={key[0]!r},metric_cache_key={key[1]!r}",
+                    "Metric rows are missing a parseable metric cache key",
+                )
+            )
+            continue
         try:
-            validate_metric_cache_catalog_row(catalog_row)
+            validate_rawr_rows(
+                metric_cache_key=key[1],
+                seasons=_parse_seasons(cache_key.season_ids),
+                build_version=metadata_row.build_version,
+                source_fingerprint=metadata_row.source_fingerprint,
+                rows=group_rows,
+            )
         except ValueError as exc:
             issues.append(
                 ValidationIssue(
-                    "metric_cache_catalog",
-                    f"metric={catalog_row.metric_id!r},metric_cache_key={catalog_row.metric_cache_key!r}",
+                    "rawr_player_season_values",
+                    f"metric={key[0]!r},metric_cache_key={key[1]!r}",
                     str(exc),
                 )
             )
-    return catalog_rows, dict(cache_season_rows)
+    for key, group_rows in wowy_row_groups.items():
+        metadata_row = metadata_rows.get(
+            key,
+            MetricStoreAuditMetadata(
+                source_table="metric_cache_entry",
+                metric_cache_entry_id=None,
+                build_version="missing-metadata",
+                source_fingerprint="missing-metadata",
+                row_count=-1,
+            ),
+        )
+        cache_key = cache_keys.get(key)
+        if cache_key is None:
+            issues.append(
+                ValidationIssue(
+                    "wowy_player_season_values",
+                    f"metric={key[0]!r},metric_cache_key={key[1]!r}",
+                    "Metric rows are missing a parseable metric cache key",
+                )
+            )
+            continue
+        try:
+            validate_wowy_rows(
+                metric_id=key[0],
+                metric_cache_key=key[1],
+                seasons=_parse_seasons(cache_key.season_ids),
+                build_version=metadata_row.build_version,
+                source_fingerprint=metadata_row.source_fingerprint,
+                rows=group_rows,
+            )
+        except ValueError as exc:
+            issues.append(
+                ValidationIssue(
+                    "wowy_player_season_values",
+                    f"metric={key[0]!r},metric_cache_key={key[1]!r}",
+                    str(exc),
+                )
+            )
 
 
 def _metric_store_key(row: sqlite3.Row) -> tuple[str, str]:
     return (cast(str, row["metric_id"]), cast(str, row["metric_cache_key"]))
+
+
+def _parse_seasons(season_ids: list[str]) -> list[Season]:
+    return [Season.parse_id(season_id) for season_id in season_ids]

@@ -14,6 +14,8 @@ def initialize_metric_store_db() -> None:
             DROP INDEX IF EXISTS idx_metric_full_span_points_snapshot_player;
             DROP TABLE IF EXISTS metric_full_span_series;
             DROP TABLE IF EXISTS metric_full_span_points;
+            DROP TABLE IF EXISTS metric_cache_catalog;
+            DROP TABLE IF EXISTS metric_cache_season;
 
             CREATE TABLE IF NOT EXISTS metric_cache_entry (
                 metric_cache_entry_id INTEGER PRIMARY KEY,
@@ -60,22 +62,6 @@ def initialize_metric_store_db() -> None:
             CREATE INDEX IF NOT EXISTS idx_wowy_player_season_values_cache_entry
             ON wowy_player_season_values (metric_cache_entry_id, season_id, player_id);
 
-            CREATE TABLE IF NOT EXISTS metric_cache_catalog (
-                metric_id TEXT NOT NULL,
-                metric_cache_key TEXT NOT NULL,
-                updated_at TEXT NOT NULL,
-                PRIMARY KEY (metric_id, metric_cache_key)
-            );
-
-            CREATE TABLE IF NOT EXISTS metric_cache_season (
-                metric_id TEXT NOT NULL,
-                metric_cache_key TEXT NOT NULL,
-                season_id TEXT NOT NULL,
-                PRIMARY KEY (metric_id, metric_cache_key, season_id)
-            );
-
-            CREATE INDEX IF NOT EXISTS idx_metric_cache_season_metric_cache
-            ON metric_cache_season (metric_id, metric_cache_key);
             """
         )
 

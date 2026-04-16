@@ -4,12 +4,10 @@ import math
 from dataclasses import dataclass
 
 from rawr_analytics.data._validation import (
-    validate_iso_datetime,
     validate_optional_non_negative_float,
     validate_optional_non_negative_int,
     validate_required_text,
 )
-from rawr_analytics.data.metric_store._catalog import MetricCacheCatalogRow
 from rawr_analytics.data.metric_store._tables import (
     RawrPlayerSeasonValueRow,
     WowyPlayerSeasonValueRow,
@@ -168,24 +166,7 @@ def _validate_wowy_value_row(row: WowyPlayerSeasonValueRow) -> None:
         )
     if row.raw_wowy_score is not None and not math.isfinite(row.raw_wowy_score):
         raise ValueError(f"Metric row for player {row.player_id!r} has non-finite raw_wowy_score")
-
-
-def validate_metric_cache_catalog_row(row: MetricCacheCatalogRow) -> None:
-    validate_required_text(row.metric_id, "metric_id")
-    validate_required_text(row.metric_cache_key, "metric_cache_key")
-    _validate_metric_catalog_seasons(row.season_ids)
-    validate_iso_datetime(row.updated_at, "catalog updated_at")
-
-
-def _validate_metric_catalog_seasons(season_ids: list[str]) -> None:
-    seasons = [Season.parse_id(season_id) for season_id in season_ids]
-    canonical_season_ids = [season.id for season in seasons]
-    if canonical_season_ids != season_ids:
-        raise ValueError("Catalog season_ids must use canonical season strings")
-    if canonical_season_ids != sorted(set(canonical_season_ids)):
-        raise ValueError("Catalog season_ids must be unique and sorted")
 __all__ = [
-    "validate_metric_cache_catalog_row",
     "validate_rawr_rows",
     "validate_wowy_rows",
 ]

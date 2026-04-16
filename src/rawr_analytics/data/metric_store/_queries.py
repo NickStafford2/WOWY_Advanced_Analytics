@@ -4,7 +4,6 @@ from dataclasses import dataclass
 from typing import cast
 
 from rawr_analytics.data._paths import METRIC_STORE_DB_PATH
-from rawr_analytics.data.metric_store._catalog import MetricCacheCatalogRow
 from rawr_analytics.data.metric_store.schema import connect, initialize_metric_store_db
 
 
@@ -49,41 +48,5 @@ def load_metric_cache_entry_state(
         build_version=cast(str, row["build_version"]),
         source_fingerprint=cast(str, row["source_fingerprint"]),
         row_count=cast(int, row["row_count"]),
-        updated_at=cast(str, row["updated_at"]),
-    )
-
-
-def load_metric_cache_catalog_row(
-    metric: str,
-    metric_cache_key: str,
-) -> MetricCacheCatalogRow | None:
-    initialize_metric_store_db()
-    with connect(METRIC_STORE_DB_PATH) as connection:
-        row = connection.execute(
-            """
-            SELECT
-                metric_id,
-                metric_cache_key,
-                updated_at
-            FROM metric_cache_catalog
-            WHERE metric_id = ? AND metric_cache_key = ?
-            """,
-            (metric, metric_cache_key),
-        ).fetchone()
-        if row is None:
-            return None
-        season_rows = connection.execute(
-            """
-            SELECT season_id
-            FROM metric_cache_season
-            WHERE metric_id = ? AND metric_cache_key = ?
-            ORDER BY season_id
-            """,
-            (metric, metric_cache_key),
-        ).fetchall()
-    return MetricCacheCatalogRow(
-        metric_id=cast(str, row["metric_id"]),
-        metric_cache_key=cast(str, row["metric_cache_key"]),
-        season_ids=[cast(str, season_row["season_id"]) for season_row in season_rows],
         updated_at=cast(str, row["updated_at"]),
     )
