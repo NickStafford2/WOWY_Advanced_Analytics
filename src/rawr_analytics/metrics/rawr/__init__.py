@@ -6,7 +6,7 @@ builds metric-store rows for precomputed snapshots, and query resolves user
 filters into records, payloads, and exports.
 """
 
-from rawr_analytics.metrics.rawr.cache import RawrSeasonProgressFn, load_rawr_records
+from rawr_analytics.metrics.rawr.cache import load_rawr_records
 from rawr_analytics.metrics.rawr.cache_status import list_incomplete_rawr_season_warnings
 from rawr_analytics.metrics.rawr.calculate.inputs import validate_filters
 from rawr_analytics.metrics.rawr.calculate.records import (
@@ -32,7 +32,6 @@ __all__ = [
     "DEFAULT_RAWR_TOP_N",
     "RAWR_METRIC_SUMMARY",
     "RawrPlayerSeasonRecord",
-    "RawrSeasonProgressFn",
     "RawrShrinkageMode",
     "build_player_season_records",
     "build_rawr_refresh_records",
