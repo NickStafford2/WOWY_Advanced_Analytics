@@ -16,7 +16,7 @@ from rawr_analytics.data.game_cache._validation import (
     validate_normalized_games_table,
 )
 from rawr_analytics.data.game_cache.store import load_game_cache_snapshot
-from rawr_analytics.data.metric_store._catalog import MetricScopeCatalogRow
+from rawr_analytics.data.metric_store._catalog import MetricCacheCatalogRow
 from rawr_analytics.data.metric_store._tables import (
     RawrPlayerSeasonValueRow,
     WowyPlayerSeasonValueRow,
@@ -237,7 +237,7 @@ def _validate_metric_store_relations(
     rawr_row_groups: dict[tuple[str, str], list[RawrPlayerSeasonValueRow]],
     wowy_row_groups: dict[tuple[str, str], list[WowyPlayerSeasonValueRow]],
     metadata_rows: dict[tuple[str, str], MetricStoreAuditMetadata],
-    catalog_rows: dict[tuple[str, str], MetricScopeCatalogRow],
+    catalog_rows: dict[tuple[str, str], MetricCacheCatalogRow],
     scope_season_rows: dict[tuple[str, str], list[str]],
     scope_team_rows: dict[tuple[str, str], list[int]],
     issues: list[ValidationIssue],
@@ -251,18 +251,18 @@ def _validate_metric_store_relations(
     cache_load_counts, fingerprint_by_season_type = _load_normalized_cache_state()
 
     for key, rows in metric_row_groups.items():
-        metric, scope_key = key
+        metric, metric_cache_key = key
         seasons = sorted({row.season_id for row in rows})
         season_set = set(seasons)
         metadata_row = metadata_rows.get(key)
         metadata_table = (
-            metadata_row.source_table if metadata_row is not None else "metric_snapshot"
+            metadata_row.source_table if metadata_row is not None else "metric_cache_entry"
         )
         if metadata_row is None:
             issues.append(
                 ValidationIssue(
                     table=metadata_table,
-                    key=f"metric={metric!r},scope_key={scope_key!r}",
+                    key=f"metric={metric!r},metric_cache_key={metric_cache_key!r}",
                     message="missing snapshot row for metric scope",
                 )
             )
@@ -271,7 +271,7 @@ def _validate_metric_store_relations(
                 issues.append(
                     ValidationIssue(
                         table=metadata_table,
-                        key=f"metric={metric!r},scope_key={scope_key!r}",
+                        key=f"metric={metric!r},metric_cache_key={metric_cache_key!r}",
                         message=(
                             "row_count does not match metric value rows:"
                             f"{metadata_row.row_count} != {len(rows)}"
@@ -282,16 +282,16 @@ def _validate_metric_store_relations(
         if catalog_row is None:
             issues.append(
                 ValidationIssue(
-                    table="metric_scope_catalog",
-                    key=f"metric={metric!r},scope_key={scope_key!r}",
+                    table="metric_cache_catalog",
+                    key=f"metric={metric!r},metric_cache_key={metric_cache_key!r}",
                     message="missing catalog row for metric scope",
                 )
             )
         elif not season_set.issubset(set(catalog_row.available_season_ids)):
             issues.append(
                 ValidationIssue(
-                    table="metric_scope_catalog",
-                    key=f"metric={metric!r},scope_key={scope_key!r}",
+                    table="metric_cache_catalog",
+                    key=f"metric={metric!r},metric_cache_key={metric_cache_key!r}",
                     message=(
                         "available_seasons is missing seasons present in metric value rows: "
                         f"catalog={catalog_row.available_season_ids!r} "
@@ -305,8 +305,8 @@ def _validate_metric_store_relations(
         ):
             issues.append(
                 ValidationIssue(
-                    table="metric_scope_season",
-                    key=f"metric={metric!r},scope_key={scope_key!r}",
+                    table="metric_cache_season",
+                    key=f"metric={metric!r},metric_cache_key={metric_cache_key!r}",
                     message="scope-season rows do not match catalog available_season_ids",
                 )
             )
@@ -316,8 +316,8 @@ def _validate_metric_store_relations(
         ):
             issues.append(
                 ValidationIssue(
-                    table="metric_scope_team",
-                    key=f"metric={metric!r},scope_key={scope_key!r}",
+                    table="metric_cache_team",
+                    key=f"metric={metric!r},metric_cache_key={metric_cache_key!r}",
                     message="scope-team rows do not match catalog available_team_ids",
                 )
             )
@@ -326,10 +326,10 @@ def _validate_metric_store_relations(
         metric_scopes | metadata_scopes | catalog_scopes | scope_season_scopes | scope_team_scopes
     )
     for key in sorted(all_scopes):
-        metric, scope_key = key
+        metric, metric_cache_key = key
         metadata_row = metadata_rows.get(key)
         metadata_table = (
-            metadata_row.source_table if metadata_row is not None else "metric_snapshot"
+            metadata_row.source_table if metadata_row is not None else "metric_cache_entry"
         )
         catalog_row = catalog_rows.get(key)
         group_rows = metric_row_groups.get(key, [])
@@ -340,7 +340,7 @@ def _validate_metric_store_relations(
             issues.append(
                 ValidationIssue(
                     table=metadata_table,
-                    key=f"metric={metric!r},scope_key={scope_key!r}",
+                    key=f"metric={metric!r},metric_cache_key={metric_cache_key!r}",
                     message=(
                         "derived snapshot scope exists but normalized cache is empty for "
                         f"season_type {season_type!r}"
@@ -357,7 +357,7 @@ def _validate_metric_store_relations(
             issues.append(
                 ValidationIssue(
                     table=metadata_row.source_table,
-                    key=f"metric={metric!r},scope_key={scope_key!r}",
+                    key=f"metric={metric!r},metric_cache_key={metric_cache_key!r}",
                     message=(
                         "source_fingerprint does not match normalized cache for "
                         f"season_type {season_type!r}"
@@ -370,7 +370,7 @@ def _validate_metric_store_relations(
         issues.append(
             ValidationIssue(
                 table=metadata_table,
-                key=f"metric={key[0]!r},scope_key={key[1]!r}",
+                key=f"metric={key[0]!r},metric_cache_key={key[1]!r}",
                 message="snapshot row has no matching metric value rows",
             )
         )
@@ -378,8 +378,8 @@ def _validate_metric_store_relations(
     for key in sorted(catalog_scopes - metric_scopes):
         issues.append(
             ValidationIssue(
-                table="metric_scope_catalog",
-                key=f"metric={key[0]!r},scope_key={key[1]!r}",
+                table="metric_cache_catalog",
+                key=f"metric={key[0]!r},metric_cache_key={key[1]!r}",
                 message="catalog row has no matching metric value rows",
             )
         )
@@ -387,8 +387,8 @@ def _validate_metric_store_relations(
     for key in sorted(scope_team_scopes - catalog_scopes):
         issues.append(
             ValidationIssue(
-                table="metric_scope_team",
-                key=f"metric={key[0]!r},scope_key={key[1]!r}",
+                table="metric_cache_team",
+                key=f"metric={key[0]!r},metric_cache_key={key[1]!r}",
                 message="scope-team rows have no matching catalog row",
             )
         )
@@ -396,8 +396,8 @@ def _validate_metric_store_relations(
     for key in sorted(scope_season_scopes - catalog_scopes):
         issues.append(
             ValidationIssue(
-                table="metric_scope_season",
-                key=f"metric={key[0]!r},scope_key={key[1]!r}",
+                table="metric_cache_season",
+                key=f"metric={key[0]!r},metric_cache_key={key[1]!r}",
                 message="scope-season rows have no matching catalog row",
             )
         )

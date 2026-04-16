@@ -2,12 +2,12 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
-from rawr_analytics.shared.season import Season, require_normalized_seasons
+from rawr_analytics.shared.season import Season, SeasonType, require_normalized_seasons
 from rawr_analytics.shared.team import Team
 
 
 @dataclass(frozen=True)
-class MetricScopeAvailability:
+class MetricCacheAvailability:
     season_ids: list[str]
     team_ids: list[int]
 
@@ -19,16 +19,16 @@ class MetricSeasonSpanIds:
 
 
 @dataclass(frozen=True)
-class MetricScopeCatalog:
+class MetricCacheCatalog:
     label: str
     team_filter: str
     season_type: str
-    availability: MetricScopeAvailability
+    availability: MetricCacheAvailability
     full_span: MetricSeasonSpanIds | None
 
 
 @dataclass(frozen=True)
-class MetricScopeCatalogRow:
+class MetricCacheCatalogRow:
     metric_id: str
     metric_cache_key: str
     label: str
@@ -41,14 +41,14 @@ class MetricScopeCatalogRow:
     updated_at: str
 
 
-def build_metric_scope_catalog_row(
+def build_metric_cache_catalog_row(
     *,
     metric_id: str,
     metric_cache_key: str,
-    catalog: MetricScopeCatalog,
+    catalog: MetricCacheCatalog,
     updated_at: str,
-) -> MetricScopeCatalogRow:
-    return MetricScopeCatalogRow(
+) -> MetricCacheCatalogRow:
+    return MetricCacheCatalogRow(
         metric_id=metric_id,
         metric_cache_key=metric_cache_key,
         label=catalog.label,
@@ -66,21 +66,21 @@ def build_metric_scope_catalog_row(
     )
 
 
-def build_metric_scope_catalog(
+def build_metric_cache_catalog(
     *,
     label: str,
     team_filter: str,
     season_type: SeasonType,
     seasons: list[Season],
     available_teams: list[Team],
-) -> MetricScopeCatalog:
+) -> MetricCacheCatalog:
     normalized_seasons = require_normalized_seasons(seasons)
     season_ids = [season.id for season in normalized_seasons]
-    return MetricScopeCatalog(
+    return MetricCacheCatalog(
         label=label,
         team_filter=team_filter,
         season_type=season_type.value,
-        availability=MetricScopeAvailability(
+        availability=MetricCacheAvailability(
             season_ids=season_ids,
             team_ids=sorted({team.team_id for team in available_teams}),
         ),
@@ -91,10 +91,10 @@ def build_metric_scope_catalog(
     )
 
 
-def catalog_seasons(catalog: MetricScopeCatalog | MetricScopeCatalogRow) -> list[Season]:
+def catalog_seasons(catalog: MetricCacheCatalog | MetricCacheCatalogRow) -> list[Season]:
     season_ids = (
         catalog.availability.season_ids
-        if isinstance(catalog, MetricScopeCatalog)
+        if isinstance(catalog, MetricCacheCatalog)
         else catalog.available_season_ids
     )
     seasons = [Season.parse_id(season_id) for season_id in season_ids]

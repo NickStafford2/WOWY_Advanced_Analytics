@@ -15,19 +15,19 @@ def initialize_metric_store_db() -> None:
             DROP TABLE IF EXISTS metric_full_span_series;
             DROP TABLE IF EXISTS metric_full_span_points;
 
-            CREATE TABLE IF NOT EXISTS metric_snapshot (
-                snapshot_id INTEGER PRIMARY KEY,
+            CREATE TABLE IF NOT EXISTS metric_cache_entry (
+                metric_cache_entry_id INTEGER PRIMARY KEY,
                 metric_id TEXT NOT NULL,
-                scope_key TEXT NOT NULL,
+                metric_cache_key TEXT NOT NULL,
                 build_version TEXT NOT NULL,
                 source_fingerprint TEXT NOT NULL,
                 row_count INTEGER NOT NULL,
                 updated_at TEXT NOT NULL,
-                UNIQUE (metric_id, scope_key)
+                UNIQUE (metric_id, metric_cache_key)
             );
 
             CREATE TABLE IF NOT EXISTS rawr_player_season_values (
-                snapshot_id INTEGER NOT NULL,
+                metric_cache_entry_id INTEGER NOT NULL,
                 season_id TEXT NOT NULL,
                 player_id INTEGER NOT NULL,
                 player_name TEXT NOT NULL,
@@ -35,14 +35,14 @@ def initialize_metric_store_db() -> None:
                 games INTEGER NOT NULL,
                 average_minutes REAL,
                 total_minutes REAL,
-                PRIMARY KEY (snapshot_id, season_id, player_id)
+                PRIMARY KEY (metric_cache_entry_id, season_id, player_id)
             );
 
-            CREATE INDEX IF NOT EXISTS idx_rawr_player_season_values_snapshot
-            ON rawr_player_season_values (snapshot_id, season_id, player_id);
+            CREATE INDEX IF NOT EXISTS idx_rawr_player_season_values_cache_entry
+            ON rawr_player_season_values (metric_cache_entry_id, season_id, player_id);
 
             CREATE TABLE IF NOT EXISTS wowy_player_season_values (
-                snapshot_id INTEGER NOT NULL,
+                metric_cache_entry_id INTEGER NOT NULL,
                 season_id TEXT NOT NULL,
                 player_id INTEGER NOT NULL,
                 player_name TEXT NOT NULL,
@@ -54,43 +54,43 @@ def initialize_metric_store_db() -> None:
                 average_minutes REAL,
                 total_minutes REAL,
                 raw_wowy_score REAL,
-                PRIMARY KEY (snapshot_id, season_id, player_id)
+                PRIMARY KEY (metric_cache_entry_id, season_id, player_id)
             );
 
-            CREATE INDEX IF NOT EXISTS idx_wowy_player_season_values_snapshot
-            ON wowy_player_season_values (snapshot_id, season_id, player_id);
+            CREATE INDEX IF NOT EXISTS idx_wowy_player_season_values_cache_entry
+            ON wowy_player_season_values (metric_cache_entry_id, season_id, player_id);
 
-            CREATE TABLE IF NOT EXISTS metric_scope_catalog (
+            CREATE TABLE IF NOT EXISTS metric_cache_catalog (
                 metric_id TEXT NOT NULL,
-                scope_key TEXT NOT NULL,
+                metric_cache_key TEXT NOT NULL,
                 label TEXT NOT NULL,
                 team_filter TEXT NOT NULL DEFAULT '',
                 season_type TEXT NOT NULL DEFAULT 'Regular Season',
                 full_span_start_season_id TEXT,
                 full_span_end_season_id TEXT,
                 updated_at TEXT NOT NULL,
-                PRIMARY KEY (metric_id, scope_key)
+                PRIMARY KEY (metric_id, metric_cache_key)
             );
 
-            CREATE TABLE IF NOT EXISTS metric_scope_team (
+            CREATE TABLE IF NOT EXISTS metric_cache_team (
                 metric_id TEXT NOT NULL,
-                scope_key TEXT NOT NULL,
+                metric_cache_key TEXT NOT NULL,
                 team_id INTEGER NOT NULL,
-                PRIMARY KEY (metric_id, scope_key, team_id)
+                PRIMARY KEY (metric_id, metric_cache_key, team_id)
             );
 
-            CREATE INDEX IF NOT EXISTS idx_metric_scope_team_metric_scope
-            ON metric_scope_team (metric_id, scope_key);
+            CREATE INDEX IF NOT EXISTS idx_metric_cache_team_metric_cache
+            ON metric_cache_team (metric_id, metric_cache_key);
 
-            CREATE TABLE IF NOT EXISTS metric_scope_season (
+            CREATE TABLE IF NOT EXISTS metric_cache_season (
                 metric_id TEXT NOT NULL,
-                scope_key TEXT NOT NULL,
+                metric_cache_key TEXT NOT NULL,
                 season_id TEXT NOT NULL,
-                PRIMARY KEY (metric_id, scope_key, season_id)
+                PRIMARY KEY (metric_id, metric_cache_key, season_id)
             );
 
-            CREATE INDEX IF NOT EXISTS idx_metric_scope_season_metric_scope
-            ON metric_scope_season (metric_id, scope_key);
+            CREATE INDEX IF NOT EXISTS idx_metric_cache_season_metric_cache
+            ON metric_cache_season (metric_id, metric_cache_key);
             """
         )
 

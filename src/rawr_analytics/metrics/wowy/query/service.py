@@ -4,7 +4,7 @@ from dataclasses import dataclass
 from typing import Literal
 
 from rawr_analytics.data.game_cache.store import load_game_cache_snapshot
-from rawr_analytics.data.metric_store.store import load_metric_scope_store_state
+from rawr_analytics.data.metric_store.store import load_metric_cache_store_state
 from rawr_analytics.data.metric_store.wowy import (
     WowyPlayerSeasonValueRow,
     load_wowy_player_season_value_rows,
@@ -307,7 +307,7 @@ def _try_load_current_metric_availability(
     query: WowyQuery,
     metric_cache_key: str,
 ) -> _CachedWowyAvailability | None:
-    state = load_metric_scope_store_state(metric.value, metric_cache_key)
+    state = load_metric_cache_store_state(metric.value, metric_cache_key)
     if state is None:
         return None
 

@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import sqlite3
 
-from rawr_analytics.data.metric_store._catalog import MetricScopeCatalogRow
+from rawr_analytics.data.metric_store._catalog import MetricCacheCatalogRow
 from rawr_analytics.data.metric_store._tables import (
     RawrPlayerSeasonValueRow,
     WowyPlayerSeasonValueRow,
@@ -19,10 +19,10 @@ def delete_metric_value_rows(
     connection.execute(
         f"""
         DELETE FROM {table}
-        WHERE snapshot_id IN (
-            SELECT snapshot_id
-            FROM metric_snapshot
-            WHERE metric_id = ? AND scope_key = ?
+        WHERE metric_cache_entry_id IN (
+            SELECT metric_cache_entry_id
+            FROM metric_cache_entry
+            WHERE metric_id = ? AND metric_cache_key = ?
         )
         """,
         (metric_id, metric_cache_key),
@@ -42,32 +42,32 @@ def delete_metric_rows(
     )
 
 
-def delete_metric_scope_snapshot(
+def delete_metric_cache_rows(
     connection: sqlite3.Connection,
     *,
     metric_id: str,
     metric_cache_key: str,
 ) -> None:
     connection.execute(
-        "DELETE FROM metric_scope_catalog WHERE metric_id = ? AND scope_key = ?",
+        "DELETE FROM metric_cache_catalog WHERE metric_id = ? AND metric_cache_key = ?",
         (metric_id, metric_cache_key),
     )
     connection.execute(
-        "DELETE FROM metric_scope_season WHERE metric_id = ? AND scope_key = ?",
+        "DELETE FROM metric_cache_season WHERE metric_id = ? AND metric_cache_key = ?",
         (metric_id, metric_cache_key),
     )
     connection.execute(
-        "DELETE FROM metric_scope_team WHERE metric_id = ? AND scope_key = ?",
+        "DELETE FROM metric_cache_team WHERE metric_id = ? AND metric_cache_key = ?",
         (metric_id, metric_cache_key),
     )
     delete_metric_rows(connection, metric_id=metric_id, metric_cache_key=metric_cache_key)
     connection.execute(
-        "DELETE FROM metric_snapshot WHERE metric_id = ? AND scope_key = ?",
+        "DELETE FROM metric_cache_entry WHERE metric_id = ? AND metric_cache_key = ?",
         (metric_id, metric_cache_key),
     )
 
 
-def insert_metric_snapshot(
+def insert_metric_cache_entry(
     connection: sqlite3.Connection,
     *,
     metric_id: str,
@@ -79,7 +79,7 @@ def insert_metric_snapshot(
 ) -> int:
     cursor = connection.execute(
         """
-        INSERT INTO metric_snapshot (
+        INSERT INTO metric_cache_entry (
             metric_id,
             metric_cache_key,
             build_version,
@@ -90,29 +90,29 @@ def insert_metric_snapshot(
         """,
         (
             metric_id,
-            scope_key,
+            metric_cache_key,
             build_version,
             source_fingerprint,
             row_count,
             updated_at,
         ),
     )
-    assert cursor.lastrowid is not None, "metric_snapshot insert must produce snapshot_id"
+    assert cursor.lastrowid is not None, "metric_cache_entry insert must produce row id"
     return int(cursor.lastrowid)
 
 
 def insert_rawr_rows(
     connection,
     rows: list[RawrPlayerSeasonValueRow],
-    snapshot_id: int | None,
+    metric_cache_entry_id: int | None,
 ) -> None:
     if not rows:
         return
-    assert snapshot_id is not None, "rawr snapshot writes require snapshot_id"
+    assert metric_cache_entry_id is not None, "rawr cache writes require metric_cache_entry_id"
     connection.executemany(
         """
         INSERT INTO rawr_player_season_values (
-            snapshot_id,
+            metric_cache_entry_id,
             season_id,
             player_id,
             player_name,
@@ -124,7 +124,7 @@ def insert_rawr_rows(
         """,
         [
             (
-                snapshot_id,
+                metric_cache_entry_id,
                 row.season_id,
                 row.player_id,
                 row.player_name,
@@ -141,15 +141,15 @@ def insert_rawr_rows(
 def insert_wowy_rows(
     connection,
     rows: list[WowyPlayerSeasonValueRow],
-    snapshot_id: int | None,
+    metric_cache_entry_id: int | None,
 ) -> None:
     if not rows:
         return
-    assert snapshot_id is not None, "wowy snapshot writes require snapshot_id"
+    assert metric_cache_entry_id is not None, "wowy cache writes require metric_cache_entry_id"
     connection.executemany(
         """
         INSERT INTO wowy_player_season_values (
-            snapshot_id,
+            metric_cache_entry_id,
             season_id,
             player_id,
             player_name,
@@ -165,7 +165,7 @@ def insert_wowy_rows(
         """,
         [
             (
-                snapshot_id,
+                metric_cache_entry_id,
                 row.season_id,
                 row.player_id,
                 row.player_name,
@@ -183,14 +183,14 @@ def insert_wowy_rows(
     )
 
 
-def insert_metric_scope_teams(connection, row: MetricScopeCatalogRow) -> None:
+def insert_metric_cache_teams(connection, row: MetricCacheCatalogRow) -> None:
     if not row.available_team_ids:
         return
     connection.executemany(
         """
-        INSERT INTO metric_scope_team (
+        INSERT INTO metric_cache_team (
             metric_id,
-            scope_key,
+            metric_cache_key,
             team_id
         ) VALUES (?, ?, ?)
         """,
@@ -205,14 +205,14 @@ def insert_metric_scope_teams(connection, row: MetricScopeCatalogRow) -> None:
     )
 
 
-def insert_metric_scope_seasons(connection, row: MetricScopeCatalogRow) -> None:
+def insert_metric_cache_seasons(connection, row: MetricCacheCatalogRow) -> None:
     if not row.available_season_ids:
         return
     connection.executemany(
         """
-        INSERT INTO metric_scope_season (
+        INSERT INTO metric_cache_season (
             metric_id,
-            scope_key,
+            metric_cache_key,
             season_id
         ) VALUES (?, ?, ?)
         """,

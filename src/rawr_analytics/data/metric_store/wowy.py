@@ -36,9 +36,9 @@ def load_wowy_player_season_value_rows(
             wowy.total_minutes,
             wowy.raw_wowy_score
         FROM wowy_player_season_values AS wowy
-        INNER JOIN metric_snapshot AS snapshot
-            ON snapshot.snapshot_id = wowy.snapshot_id
-        WHERE snapshot.metric_id = ? AND snapshot.scope_key = ?
+        INNER JOIN metric_cache_entry AS cache_entry
+            ON cache_entry.metric_cache_entry_id = wowy.metric_cache_entry_id
+        WHERE cache_entry.metric_id = ? AND cache_entry.metric_cache_key = ?
     """
     params: list[object] = [metric_id, metric_cache_key]
     query += f" AND season_id IN ({','.join('?' for _ in seasons)})"
@@ -61,7 +61,7 @@ def load_wowy_player_season_value_rows(
     return [build_wowy_player_season_value_row(row) for row in rows]
 
 
-def replace_wowy_scope_snapshot(
+def replace_wowy_metric_cache(
     *,
     metric_id: str,
     metric_cache_key: str,
@@ -77,13 +77,13 @@ def replace_wowy_scope_snapshot(
     from datetime import UTC, datetime
 
     from rawr_analytics.data.metric_store._catalog import (
-        build_metric_scope_catalog,
-        build_metric_scope_catalog_row,
+        build_metric_cache_catalog,
+        build_metric_cache_catalog_row,
     )
-    from rawr_analytics.data.metric_store._mutations import replace_wowy_scope_snapshot
+    from rawr_analytics.data.metric_store._mutations import replace_wowy_metric_cache
     from rawr_analytics.data.metric_store._validation import validate_wowy_rows
 
-    catalog = build_metric_scope_catalog(
+    catalog = build_metric_cache_catalog(
         label=label,
         team_filter=team_filter,
         season_type=season_type,
@@ -100,13 +100,13 @@ def replace_wowy_scope_snapshot(
         source_fingerprint=source_fingerprint,
         rows=rows,
     )
-    replace_wowy_scope_snapshot(
+    replace_wowy_metric_cache(
         metric_id=metric_id,
         metric_cache_key=metric_cache_key,
         build_version=build_version,
         source_fingerprint=source_fingerprint,
         updated_at=updated_at,
-        catalog_row=build_metric_scope_catalog_row(
+        catalog_row=build_metric_cache_catalog_row(
             metric_id=metric_id,
             metric_cache_key=metric_cache_key,
             catalog=catalog,

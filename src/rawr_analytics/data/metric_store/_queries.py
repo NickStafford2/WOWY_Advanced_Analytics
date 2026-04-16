@@ -4,7 +4,7 @@ from dataclasses import dataclass
 from typing import cast
 
 from rawr_analytics.data._paths import METRIC_STORE_DB_PATH
-from rawr_analytics.data.metric_store._catalog import MetricScopeCatalogRow
+from rawr_analytics.data.metric_store._catalog import MetricCacheCatalogRow
 from rawr_analytics.data.metric_store.schema import connect, initialize_metric_store_db
 
 
@@ -19,7 +19,7 @@ class MetricSnapshotState:
     updated_at: str
 
 
-def load_metric_snapshot_state(
+def load_metric_cache_entry_state(
     metric: str,
     metric_cache_key: str,
 ) -> MetricSnapshotState | None:
@@ -28,24 +28,24 @@ def load_metric_snapshot_state(
         row = connection.execute(
             """
             SELECT
-                snapshot_id,
+                metric_cache_entry_id,
                 metric_id,
-                scope_key,
+                metric_cache_key,
                 build_version,
                 source_fingerprint,
                 row_count,
                 updated_at
-            FROM metric_snapshot
-            WHERE metric_id = ? AND scope_key = ?
+            FROM metric_cache_entry
+            WHERE metric_id = ? AND metric_cache_key = ?
             """,
             (metric, metric_cache_key),
         ).fetchone()
     if row is None:
         return None
     return MetricSnapshotState(
-        snapshot_id=cast(int | None, row["snapshot_id"]),
+        snapshot_id=cast(int | None, row["metric_cache_entry_id"]),
         metric_id=cast(str, row["metric_id"]),
-        metric_cache_key=cast(str, row["scope_key"]),
+        metric_cache_key=cast(str, row["metric_cache_key"]),
         build_version=cast(str, row["build_version"]),
         source_fingerprint=cast(str, row["source_fingerprint"]),
         row_count=cast(int, row["row_count"]),
@@ -53,25 +53,25 @@ def load_metric_snapshot_state(
     )
 
 
-def load_metric_scope_catalog_row(
+def load_metric_cache_catalog_row(
     metric: str,
     metric_cache_key: str,
-) -> MetricScopeCatalogRow | None:
+) -> MetricCacheCatalogRow | None:
     initialize_metric_store_db()
     with connect(METRIC_STORE_DB_PATH) as connection:
         row = connection.execute(
             """
             SELECT
                 metric_id,
-                scope_key,
+                metric_cache_key,
                 label,
                 team_filter,
                 season_type,
                 full_span_start_season_id,
                 full_span_end_season_id,
                 updated_at
-            FROM metric_scope_catalog
-            WHERE metric_id = ? AND scope_key = ?
+            FROM metric_cache_catalog
+            WHERE metric_id = ? AND metric_cache_key = ?
             """,
             (metric, metric_cache_key),
         ).fetchone()
@@ -80,8 +80,8 @@ def load_metric_scope_catalog_row(
         team_rows = connection.execute(
             """
             SELECT team_id
-            FROM metric_scope_team
-            WHERE metric_id = ? AND scope_key = ?
+            FROM metric_cache_team
+            WHERE metric_id = ? AND metric_cache_key = ?
             ORDER BY team_id
             """,
             (metric, metric_cache_key),
@@ -89,15 +89,15 @@ def load_metric_scope_catalog_row(
         season_rows = connection.execute(
             """
             SELECT season_id
-            FROM metric_scope_season
-            WHERE metric_id = ? AND scope_key = ?
+            FROM metric_cache_season
+            WHERE metric_id = ? AND metric_cache_key = ?
             ORDER BY season_id
             """,
             (metric, metric_cache_key),
         ).fetchall()
-    return MetricScopeCatalogRow(
+    return MetricCacheCatalogRow(
         metric_id=cast(str, row["metric_id"]),
-        metric_cache_key=cast(str, row["scope_key"]),
+        metric_cache_key=cast(str, row["metric_cache_key"]),
         label=cast(str, row["label"]),
         team_filter=cast(str, row["team_filter"]),
         season_type=cast(str, row["season_type"]),

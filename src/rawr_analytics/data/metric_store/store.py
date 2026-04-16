@@ -2,11 +2,11 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
-from rawr_analytics.data.metric_store._catalog import MetricScopeCatalogRow
+from rawr_analytics.data.metric_store._catalog import MetricCacheCatalogRow
 from rawr_analytics.data.metric_store._queries import (
     MetricSnapshotState,
-    load_metric_scope_catalog_row,
-    load_metric_snapshot_state,
+    load_metric_cache_catalog_row,
+    load_metric_cache_entry_state,
 )
 from rawr_analytics.data.metric_store.full_span import (
     MetricFullSpanSeries,
@@ -19,7 +19,7 @@ from rawr_analytics.data.metric_store.wowy import load_wowy_player_season_value_
 
 @dataclass(frozen=True)
 class MetricScopeStoreState:
-    catalog_row: MetricScopeCatalogRow
+    catalog_row: MetricCacheCatalogRow
     snapshot_state: MetricSnapshotState
 
 
@@ -28,26 +28,26 @@ class MetricSpanStoreRows:
     series: list[MetricFullSpanSeries]
 
 
-def load_metric_scope_store_state(
+def load_metric_cache_store_state(
     metric: str,
     metric_cache_key: str,
 ) -> MetricScopeStoreState | None:
-    catalog_row = load_metric_scope_catalog_row(metric, metric_cache_key)
+    catalog_row = load_metric_cache_catalog_row(metric, metric_cache_key)
     if catalog_row is None:
         return None
-    snapshot_state = load_metric_snapshot_state(metric, metric_cache_key)
+    snapshot_state = load_metric_cache_entry_state(metric, metric_cache_key)
     if snapshot_state is None:
         return None
     return MetricScopeStoreState(catalog_row=catalog_row, snapshot_state=snapshot_state)
 
 
-def load_metric_span_store_rows(
+def load_metric_cache_span_rows(
     *,
     metric: str,
     metric_cache_key: str,
     top_n: int | None = None,
 ) -> MetricSpanStoreRows:
-    catalog_row = load_metric_scope_catalog_row(metric, metric_cache_key)
+    catalog_row = load_metric_cache_catalog_row(metric, metric_cache_key)
     assert catalog_row is not None, "metric span reads require an existing catalog row"
     player_season_values = _load_metric_player_season_values(
         metric=metric,
@@ -103,6 +103,6 @@ def _load_metric_player_season_values(
 __all__ = [
     "MetricScopeStoreState",
     "MetricSpanStoreRows",
-    "load_metric_scope_store_state",
-    "load_metric_span_store_rows",
+    "load_metric_cache_span_rows",
+    "load_metric_cache_store_state",
 ]

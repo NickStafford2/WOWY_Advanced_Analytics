@@ -9,7 +9,7 @@ from rawr_analytics.data._validation import (
     validate_optional_non_negative_int,
     validate_required_text,
 )
-from rawr_analytics.data.metric_store._catalog import MetricScopeCatalogRow
+from rawr_analytics.data.metric_store._catalog import MetricCacheCatalogRow
 from rawr_analytics.data.metric_store._tables import (
     RawrPlayerSeasonValueRow,
     WowyPlayerSeasonValueRow,
@@ -179,7 +179,7 @@ def _validate_wowy_value_row(row: WowyPlayerSeasonValueRow) -> None:
         raise ValueError(f"Metric row for player {row.player_id!r} has non-finite raw_wowy_score")
 
 
-def validate_metric_scope_catalog_row(row: MetricScopeCatalogRow) -> None:
+def validate_metric_cache_catalog_row(row: MetricCacheCatalogRow) -> None:
     validate_required_text(row.metric_id, "metric_id")
     validate_required_text(row.metric_cache_key, "metric_cache_key")
     validate_required_text(row.label, "label")
@@ -256,7 +256,7 @@ def _season_sort_key(season: str, season_type: SeasonType) -> int:
     assert parsed_season.season_type == season_type
     return parsed_season.start_year
 __all__ = [
-    "validate_metric_scope_catalog_row",
+    "validate_metric_cache_catalog_row",
     "validate_rawr_rows",
     "validate_wowy_rows",
 ]

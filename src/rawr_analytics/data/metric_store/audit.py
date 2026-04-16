@@ -6,7 +6,7 @@ from dataclasses import dataclass
 from typing import cast
 
 from rawr_analytics.data._validation_issue import ValidationIssue
-from rawr_analytics.data.metric_store._catalog import MetricScopeCatalogRow, catalog_seasons
+from rawr_analytics.data.metric_store._catalog import MetricCacheCatalogRow, catalog_seasons
 from rawr_analytics.data.metric_store._tables import (
     RawrPlayerSeasonValueRow,
     WowyPlayerSeasonValueRow,
@@ -14,7 +14,7 @@ from rawr_analytics.data.metric_store._tables import (
     build_wowy_player_season_value_row,
 )
 from rawr_analytics.data.metric_store._validation import (
-    validate_metric_scope_catalog_row,
+    validate_metric_cache_catalog_row,
     validate_rawr_rows,
     validate_wowy_rows,
 )
@@ -23,7 +23,7 @@ from rawr_analytics.data.metric_store._validation import (
 @dataclass(frozen=True)
 class MetricStoreAuditMetadata:
     source_table: str
-    snapshot_id: int | None
+    metric_cache_entry_id: int | None
     build_version: str
     source_fingerprint: str
     row_count: int
@@ -34,16 +34,16 @@ class MetricStoreAuditState:
     rawr_row_groups: dict[tuple[str, str], list[RawrPlayerSeasonValueRow]]
     wowy_row_groups: dict[tuple[str, str], list[WowyPlayerSeasonValueRow]]
     metadata_rows: dict[tuple[str, str], MetricStoreAuditMetadata]
-    catalog_rows: dict[tuple[str, str], MetricScopeCatalogRow]
-    scope_season_rows: dict[tuple[str, str], list[str]]
-    scope_team_rows: dict[tuple[str, str], list[int]]
+    catalog_rows: dict[tuple[str, str], MetricCacheCatalogRow]
+    cache_season_rows: dict[tuple[str, str], list[str]]
+    cache_team_rows: dict[tuple[str, str], list[int]]
 
 
 def audit_metric_store_tables(
     connection: sqlite3.Connection,
     issues: list[ValidationIssue],
 ) -> MetricStoreAuditState:
-    catalog_rows, scope_season_rows, scope_team_rows = _audit_metric_scope_catalog_table(
+    catalog_rows, cache_season_rows, cache_team_rows = _audit_metric_cache_catalog_table(
         connection,
         issues,
     )
@@ -57,41 +57,41 @@ def audit_metric_store_tables(
         wowy_row_groups=wowy_row_groups,
         metadata_rows=metadata_rows,
         catalog_rows=catalog_rows,
-        scope_season_rows=scope_season_rows,
-        scope_team_rows=scope_team_rows,
+        cache_season_rows=cache_season_rows,
+        cache_team_rows=cache_team_rows,
     )
 
 
 def _audit_metric_player_season_values_table(
     connection: sqlite3.Connection,
     issues: list[ValidationIssue],
-    catalog_rows: dict[tuple[str, str], MetricScopeCatalogRow],
+    catalog_rows: dict[tuple[str, str], MetricCacheCatalogRow],
 ) -> tuple[
     dict[tuple[str, str], list[RawrPlayerSeasonValueRow]],
     dict[tuple[str, str], list[WowyPlayerSeasonValueRow]],
     dict[tuple[str, str], MetricStoreAuditMetadata],
 ]:
-    snapshot_rows = connection.execute(
+    cache_entry_rows = connection.execute(
         """
         SELECT
-            snapshot_id,
+            metric_cache_entry_id,
             metric_id,
-            scope_key,
+            metric_cache_key,
             build_version,
             source_fingerprint,
             row_count
-        FROM metric_snapshot
+        FROM metric_cache_entry
         """
     ).fetchall()
     metadata_by_key = {
-        (cast(str, row["metric_id"]), cast(str, row["scope_key"])): MetricStoreAuditMetadata(
-            source_table="metric_snapshot",
-            snapshot_id=cast(int | None, row["snapshot_id"]),
+        (cast(str, row["metric_id"]), cast(str, row["metric_cache_key"])): MetricStoreAuditMetadata(
+            source_table="metric_cache_entry",
+            metric_cache_entry_id=cast(int | None, row["metric_cache_entry_id"]),
             build_version=cast(str, row["build_version"]),
             source_fingerprint=cast(str, row["source_fingerprint"]),
             row_count=cast(int, row["row_count"]),
         )
-        for row in snapshot_rows
+        for row in cache_entry_rows
     }
 
     rawr_groups: dict[tuple[str, str], list[RawrPlayerSeasonValueRow]] = defaultdict(list)
@@ -103,8 +103,8 @@ def _audit_metric_player_season_values_table(
         metadata_row = metadata_by_key.get(
             key,
             MetricStoreAuditMetadata(
-                source_table="metric_snapshot",
-                snapshot_id=None,
+                source_table="metric_cache_entry",
+                metric_cache_entry_id=None,
                 build_version="missing-metadata",
                 source_fingerprint="missing-metadata",
                 row_count=-1,
@@ -116,7 +116,7 @@ def _audit_metric_player_season_values_table(
                 ValidationIssue(
                     "rawr_player_season_values",
                     f"metric={key[0]!r},metric_cache_key={key[1]!r}",
-                    "Metric rows are missing a matching metric_scope_catalog row",
+                    "Metric rows are missing a matching metric_cache_catalog row",
                 )
             )
             continue
@@ -142,8 +142,8 @@ def _audit_metric_player_season_values_table(
         metadata_row = metadata_by_key.get(
             key,
             MetricStoreAuditMetadata(
-                source_table="metric_snapshot",
-                snapshot_id=None,
+                source_table="metric_cache_entry",
+                metric_cache_entry_id=None,
                 build_version="missing-metadata",
                 source_fingerprint="missing-metadata",
                 row_count=-1,
@@ -155,7 +155,7 @@ def _audit_metric_player_season_values_table(
                 ValidationIssue(
                     "wowy_player_season_values",
                     f"metric={key[0]!r},metric_cache_key={key[1]!r}",
-                    "Metric rows are missing a matching metric_scope_catalog row",
+                    "Metric rows are missing a matching metric_cache_catalog row",
                 )
             )
             continue
@@ -188,8 +188,8 @@ def _load_rawr_metric_rows(
     rows = connection.execute(
         """
         SELECT
-            snapshot.metric_id,
-            snapshot.scope_key,
+            cache_entry.metric_id,
+            cache_entry.metric_cache_key,
             rawr.season_id,
             rawr.player_id,
             rawr.player_name,
@@ -198,9 +198,9 @@ def _load_rawr_metric_rows(
             rawr.average_minutes,
             rawr.total_minutes
         FROM rawr_player_season_values AS rawr
-        INNER JOIN metric_snapshot AS snapshot
-            ON snapshot.snapshot_id = rawr.snapshot_id
-        ORDER BY metric_id, scope_key, rawr.season_id, rawr.player_id
+        INNER JOIN metric_cache_entry AS cache_entry
+            ON cache_entry.metric_cache_entry_id = rawr.metric_cache_entry_id
+        ORDER BY metric_id, metric_cache_key, rawr.season_id, rawr.player_id
         """
     ).fetchall()
     for row in rows:
@@ -214,8 +214,8 @@ def _load_wowy_metric_rows(
     rows = connection.execute(
         """
         SELECT
-            snapshot.metric_id,
-            snapshot.scope_key,
+            cache_entry.metric_id,
+            cache_entry.metric_cache_key,
             wowy.season_id,
             wowy.player_id,
             wowy.player_name,
@@ -228,20 +228,20 @@ def _load_wowy_metric_rows(
             wowy.total_minutes,
             wowy.raw_wowy_score
         FROM wowy_player_season_values AS wowy
-        INNER JOIN metric_snapshot AS snapshot
-            ON snapshot.snapshot_id = wowy.snapshot_id
-        ORDER BY metric_id, scope_key, wowy.season_id, wowy.player_id
+        INNER JOIN metric_cache_entry AS cache_entry
+            ON cache_entry.metric_cache_entry_id = wowy.metric_cache_entry_id
+        ORDER BY metric_id, metric_cache_key, wowy.season_id, wowy.player_id
         """
     ).fetchall()
     for row in rows:
         groups[_metric_store_key(row)].append(build_wowy_player_season_value_row(row))
 
 
-def _audit_metric_scope_catalog_table(
+def _audit_metric_cache_catalog_table(
     connection: sqlite3.Connection,
     issues: list[ValidationIssue],
 ) -> tuple[
-    dict[tuple[str, str], MetricScopeCatalogRow],
+    dict[tuple[str, str], MetricCacheCatalogRow],
     dict[tuple[str, str], list[str]],
     dict[tuple[str, str], list[int]],
 ]:
@@ -249,69 +249,69 @@ def _audit_metric_scope_catalog_table(
         """
         SELECT
             metric_id,
-            scope_key,
+            metric_cache_key,
             label,
             team_filter,
             season_type,
             full_span_start_season_id,
             full_span_end_season_id,
             updated_at
-        FROM metric_scope_catalog
-        ORDER BY metric_id, scope_key
+        FROM metric_cache_catalog
+        ORDER BY metric_id, metric_cache_key
         """
     ).fetchall()
     season_rows = connection.execute(
         """
         SELECT
             metric_id,
-            scope_key,
+            metric_cache_key,
             season_id
-        FROM metric_scope_season
-        ORDER BY metric_id, scope_key, season_id
+        FROM metric_cache_season
+        ORDER BY metric_id, metric_cache_key, season_id
         """
     ).fetchall()
     team_rows = connection.execute(
         """
         SELECT
             metric_id,
-            scope_key,
+            metric_cache_key,
             team_id
-        FROM metric_scope_team
-        ORDER BY metric_id, scope_key, team_id
+        FROM metric_cache_team
+        ORDER BY metric_id, metric_cache_key, team_id
         """
     ).fetchall()
-    scope_season_rows: dict[tuple[str, str], list[str]] = defaultdict(list)
+    cache_season_rows: dict[tuple[str, str], list[str]] = defaultdict(list)
     for row in season_rows:
-        scope_season_rows[_metric_store_key(row)].append(cast(str, row["season_id"]))
-    scope_team_rows: dict[tuple[str, str], list[int]] = defaultdict(list)
+        cache_season_rows[_metric_store_key(row)].append(cast(str, row["season_id"]))
+    cache_team_rows: dict[tuple[str, str], list[int]] = defaultdict(list)
     for row in team_rows:
-        scope_team_rows[_metric_store_key(row)].append(cast(int, row["team_id"]))
-    catalog_rows: dict[tuple[str, str], MetricScopeCatalogRow] = {}
+        cache_team_rows[_metric_store_key(row)].append(cast(int, row["team_id"]))
+    catalog_rows: dict[tuple[str, str], MetricCacheCatalogRow] = {}
     for row in rows:
         key = _metric_store_key(row)
-        catalog_row = MetricScopeCatalogRow(
+        catalog_row = MetricCacheCatalogRow(
             metric_id=cast(str, row["metric_id"]),
-            metric_cache_key=cast(str, row["scope_key"]),
+            metric_cache_key=cast(str, row["metric_cache_key"]),
             label=cast(str, row["label"]),
             team_filter=cast(str, row["team_filter"]),
             season_type=cast(str, row["season_type"]),
-            available_season_ids=list(scope_season_rows.get(key, [])),
-            available_team_ids=list(scope_team_rows.get(key, [])),
+            available_season_ids=list(cache_season_rows.get(key, [])),
+            available_team_ids=list(cache_team_rows.get(key, [])),
             full_span_start_season_id=cast(str | None, row["full_span_start_season_id"]),
             full_span_end_season_id=cast(str | None, row["full_span_end_season_id"]),
             updated_at=cast(str, row["updated_at"]),
         )
         catalog_rows[key] = catalog_row
         try:
-            validate_metric_scope_catalog_row(catalog_row)
+            validate_metric_cache_catalog_row(catalog_row)
         except ValueError as exc:
             issues.append(
                 ValidationIssue(
-                    "metric_scope_catalog",
+                    "metric_cache_catalog",
                     f"metric={catalog_row.metric_id!r},metric_cache_key={catalog_row.metric_cache_key!r}",
                     str(exc),
                 )
             )
-    return catalog_rows, dict(scope_season_rows), dict(scope_team_rows)
+    return catalog_rows, dict(cache_season_rows), dict(cache_team_rows)
 def _metric_store_key(row: sqlite3.Row) -> tuple[str, str]:
-    return (cast(str, row["metric_id"]), cast(str, row["scope_key"]))
+    return (cast(str, row["metric_id"]), cast(str, row["metric_cache_key"]))

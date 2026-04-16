@@ -1,12 +1,12 @@
 from __future__ import annotations
 
 from rawr_analytics.data._paths import METRIC_STORE_DB_PATH
-from rawr_analytics.data.metric_store._catalog import MetricScopeCatalogRow
+from rawr_analytics.data.metric_store._catalog import MetricCacheCatalogRow
 from rawr_analytics.data.metric_store._sql_writes import (
-    delete_metric_scope_snapshot,
-    insert_metric_scope_seasons,
-    insert_metric_scope_teams,
-    insert_metric_snapshot,
+    delete_metric_cache_rows,
+    insert_metric_cache_seasons,
+    insert_metric_cache_teams,
+    insert_metric_cache_entry,
     insert_rawr_rows,
     insert_wowy_rows,
 )
@@ -15,28 +15,28 @@ from rawr_analytics.data.metric_store._tables import (
     WowyPlayerSeasonValueRow,
 )
 from rawr_analytics.data.metric_store._validation import (
-    validate_metric_scope_catalog_row,
+    validate_metric_cache_catalog_row,
 )
 from rawr_analytics.data.metric_store.schema import connect, initialize_metric_store_db
 
 
-def replace_rawr_scope_snapshot(
+def replace_rawr_metric_cache(
     *,
     metric_cache_key: str,
     build_version: str,
     source_fingerprint: str,
     updated_at: str,
-    catalog_row: MetricScopeCatalogRow,
+    catalog_row: MetricCacheCatalogRow,
     rows: list[RawrPlayerSeasonValueRow],
     row_count: int,
 ) -> None:
-    _validate_metric_scope_snapshot(
+    _validate_metric_cache_row_set(
         metric_cache_key=metric_cache_key,
         updated_at=updated_at,
         catalog_row=catalog_row,
     )
     with connect(METRIC_STORE_DB_PATH) as connection:
-        snapshot_id = _begin_metric_scope_replace(
+        metric_cache_entry_id = _begin_metric_cache_replace(
             connection=connection,
             metric_id="rawr",
             metric_cache_key=metric_cache_key,
@@ -45,31 +45,31 @@ def replace_rawr_scope_snapshot(
             updated_at=updated_at,
             row_count=row_count,
         )
-        insert_rawr_rows(connection, rows, snapshot_id)
-        _finish_metric_scope_replace(
+        insert_rawr_rows(connection, rows, metric_cache_entry_id)
+        _finish_metric_cache_replace(
             connection=connection,
             catalog_row=catalog_row,
         )
 
 
-def replace_wowy_scope_snapshot(
+def replace_wowy_metric_cache(
     *,
     metric_id: str,
     metric_cache_key: str,
     build_version: str,
     source_fingerprint: str,
     updated_at: str,
-    catalog_row: MetricScopeCatalogRow,
+    catalog_row: MetricCacheCatalogRow,
     rows: list[WowyPlayerSeasonValueRow],
     row_count: int,
 ) -> None:
-    _validate_metric_scope_snapshot(
+    _validate_metric_cache_row_set(
         metric_cache_key=metric_cache_key,
         updated_at=updated_at,
         catalog_row=catalog_row,
     )
     with connect(METRIC_STORE_DB_PATH) as connection:
-        snapshot_id = _begin_metric_scope_replace(
+        metric_cache_entry_id = _begin_metric_cache_replace(
             connection=connection,
             metric_id=metric_id,
             metric_cache_key=metric_cache_key,
@@ -78,26 +78,26 @@ def replace_wowy_scope_snapshot(
             updated_at=updated_at,
             row_count=row_count,
         )
-        insert_wowy_rows(connection, rows, snapshot_id)
-        _finish_metric_scope_replace(
+        insert_wowy_rows(connection, rows, metric_cache_entry_id)
+        _finish_metric_cache_replace(
             connection=connection,
             catalog_row=catalog_row,
         )
 
 
-def _validate_metric_scope_snapshot(
+def _validate_metric_cache_row_set(
     *,
     metric_cache_key: str,
     updated_at: str,
-    catalog_row: MetricScopeCatalogRow,
+    catalog_row: MetricCacheCatalogRow,
 ) -> None:
     initialize_metric_store_db()
-    validate_metric_scope_catalog_row(catalog_row)
+    validate_metric_cache_catalog_row(catalog_row)
     if catalog_row.updated_at != updated_at:
-        raise ValueError("Metric scope snapshot requires one shared updated_at timestamp")
+        raise ValueError("Metric cache writes require one shared updated_at timestamp")
 
 
-def _begin_metric_scope_replace(
+def _begin_metric_cache_replace(
     *,
     connection,
     metric_id: str,
@@ -108,12 +108,12 @@ def _begin_metric_scope_replace(
     row_count: int,
 ) -> int:
     connection.execute("BEGIN")
-    delete_metric_scope_snapshot(
+    delete_metric_cache_rows(
         connection,
         metric_id=metric_id,
         metric_cache_key=metric_cache_key,
     )
-    return insert_metric_snapshot(
+    return insert_metric_cache_entry(
         connection,
         metric_id=metric_id,
         metric_cache_key=metric_cache_key,
@@ -124,16 +124,16 @@ def _begin_metric_scope_replace(
     )
 
 
-def _finish_metric_scope_replace(
+def _finish_metric_cache_replace(
     *,
     connection,
-    catalog_row: MetricScopeCatalogRow,
+    catalog_row: MetricCacheCatalogRow,
 ) -> None:
     connection.execute(
         """
-        INSERT INTO metric_scope_catalog (
+        INSERT INTO metric_cache_catalog (
             metric_id,
-            scope_key,
+            metric_cache_key,
             label,
             team_filter,
             season_type,
@@ -153,6 +153,6 @@ def _finish_metric_scope_replace(
             catalog_row.updated_at,
         ),
     )
-    insert_metric_scope_seasons(connection, catalog_row)
-    insert_metric_scope_teams(connection, catalog_row)
+    insert_metric_cache_seasons(connection, catalog_row)
+    insert_metric_cache_teams(connection, catalog_row)
     connection.commit()

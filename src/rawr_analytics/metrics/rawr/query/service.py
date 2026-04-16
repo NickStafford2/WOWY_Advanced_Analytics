@@ -9,7 +9,7 @@ from rawr_analytics.data.metric_store.rawr import (
     RawrPlayerSeasonValueRow,
     load_rawr_player_season_value_rows,
 )
-from rawr_analytics.data.metric_store.store import load_metric_scope_store_state
+from rawr_analytics.data.metric_store.store import load_metric_cache_store_state
 from rawr_analytics.data.metric_store_scope import build_team_filter, season_ids
 from rawr_analytics.metrics._metric_cache_key import build_rawr_metric_cache_key
 from rawr_analytics.metrics.constants import Metric
@@ -296,7 +296,7 @@ def _try_load_current_metric_availability(
     metric_cache_key: str,
     query: RawrQuery,
 ) -> _CachedRawrAvailability | None:
-    state = load_metric_scope_store_state(metric.value, metric_cache_key)
+    state = load_metric_cache_store_state(metric.value, metric_cache_key)
     if state is None:
         return None
 

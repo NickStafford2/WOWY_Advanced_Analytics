@@ -4,9 +4,9 @@ from collections.abc import Callable
 from dataclasses import dataclass
 
 from rawr_analytics.data.game_cache.store import load_game_cache_snapshot
-from rawr_analytics.data.metric_store.rawr import replace_rawr_scope_snapshot
-from rawr_analytics.data.metric_store.store import load_metric_scope_store_state
-from rawr_analytics.data.metric_store.wowy import replace_wowy_scope_snapshot
+from rawr_analytics.data.metric_store.rawr import replace_rawr_metric_cache
+from rawr_analytics.data.metric_store.store import load_metric_cache_store_state
+from rawr_analytics.data.metric_store.wowy import replace_wowy_metric_cache
 from rawr_analytics.data.metric_store_scope import build_team_filter
 from rawr_analytics.metrics._metric_cache_key import (
     build_rawr_metric_cache_key,
@@ -235,7 +235,7 @@ def _refresh_scope(
     build_version: str,
     rawr_ridge_alpha: float,
 ) -> RefreshScopeResult:
-    state = load_metric_scope_store_state(metric.value, scope.metric_cache_key)
+    state = load_metric_cache_store_state(metric.value, scope.metric_cache_key)
     if (
         state is not None
         and state.snapshot_state.source_fingerprint == source_fingerprint
@@ -255,7 +255,7 @@ def _refresh_scope(
             teams=scope.teams,
             rawr_ridge_alpha=rawr_ridge_alpha,
         )
-        replace_rawr_scope_snapshot(
+        replace_rawr_metric_cache(
             metric_cache_key=scope.metric_cache_key,
             label=metric.value,
             team_filter=scope.team_filter,
@@ -272,7 +272,7 @@ def _refresh_scope(
             seasons=scope.seasons,
             teams=scope.teams,
         )
-        replace_wowy_scope_snapshot(
+        replace_wowy_metric_cache(
             metric_id=metric.value,
             metric_cache_key=scope.metric_cache_key,
             label=metric.value,
