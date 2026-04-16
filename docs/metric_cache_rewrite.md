@@ -15,13 +15,13 @@ Not done:
 
 - combined `REGULAR + PLAYOFFS` cache semantics are still incomplete
 - catalog is still overbuilt and may be mostly removable
-- `db_validation.py` still has a lot of old `scope_*` naming
+- `data/audit/*` still has a lot of old `scope_*` naming
 
 Recommended next steps:
 
 1. decide whether `metric_cache_catalog` should be reduced heavily or deleted
 2. if catalog stays, keep only runtime-needed metadata
-3. clean `db_validation.py` naming after the catalog decision
+3. clean `data/audit/*` naming after the catalog decision
 
 Important note:
 
@@ -307,7 +307,6 @@ Much of the rest looks redundant or mainly useful for audit/validation:
 Strong suspicion:
 
 - `metric_cache_catalog` should be replaced by a much smaller metadata record or removed
-- `metric_cache_team` is probably removable
 - `metric_cache_season` may also be removable if season ids can be derived from the key or rows
 
 ## Refresh Policy

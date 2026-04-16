@@ -25,7 +25,7 @@ download_kaggle = "rawr_analytics.cli.download_kaggle:main"
 ingest_kaggle = "rawr_analytics.cli.ingest_kaggle:main"
 web = "rawr_analytics.cli.run_web:main"
 refresh-web-store = "rawr_analytics.cli.refresh_metric_store:main"
-audit-db = "rawr_analytics.data.db_validation_cli:main"
+audit-db = "rawr_analytics.data.audit.cli:main"
 
 [dependency-groups]
 test = ["pytest>=8.0,<9.0"]

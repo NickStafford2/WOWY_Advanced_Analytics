@@ -7,9 +7,9 @@ from rawr_analytics.data._paths import (
     METRIC_STORE_DB_PATH,
     NORMALIZED_CACHE_DB_PATH,
 )
-from rawr_analytics.data.db_validation import (
+from rawr_analytics.data.audit.audit import audit_player_metrics_db
+from rawr_analytics.data.audit.reporting import (
     DatabaseValidationSummary,
-    audit_player_metrics_db,
     summarize_validation_report,
 )
 

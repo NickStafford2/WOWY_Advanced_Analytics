@@ -4,13 +4,13 @@ import argparse
 import json
 import sys
 
-from rawr_analytics.data.db_validation import (
-    audit_player_metrics_db,
+from rawr_analytics.data.audit.audit import audit_player_metrics_db
+from rawr_analytics.data.audit.reporting import (
     render_validation_summary,
     summarize_validation_report,
 )
 
-_LAST_PROGRESS_LINE_LENGTH = 0
+_last_progress_line_length = 0
 
 
 def _build_parser() -> argparse.ArgumentParser:
@@ -30,20 +30,20 @@ def _build_parser() -> argparse.ArgumentParser:
 
 
 def _write_progress_line(line: str) -> None:
-    global _LAST_PROGRESS_LINE_LENGTH
-    padding = max(0, _LAST_PROGRESS_LINE_LENGTH - len(line))
+    global _last_progress_line_length
+    padding = max(0, _last_progress_line_length - len(line))
     sys.stderr.write(f"\r{line}{' ' * padding}")
     sys.stderr.flush()
-    _LAST_PROGRESS_LINE_LENGTH = len(line)
+    _last_progress_line_length = len(line)
 
 
 def _clear_progress_line() -> None:
-    global _LAST_PROGRESS_LINE_LENGTH
-    if _LAST_PROGRESS_LINE_LENGTH == 0:
+    global _last_progress_line_length
+    if _last_progress_line_length == 0:
         return
-    sys.stderr.write(f"\r{' ' * _LAST_PROGRESS_LINE_LENGTH}\r")
+    sys.stderr.write(f"\r{' ' * _last_progress_line_length}\r")
     sys.stderr.flush()
-    _LAST_PROGRESS_LINE_LENGTH = 0
+    _last_progress_line_length = 0
 
 
 def _render_progress(current: int, total: int, label: str) -> None:
