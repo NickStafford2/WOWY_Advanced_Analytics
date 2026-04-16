@@ -4,7 +4,7 @@ from collections.abc import Callable
 from dataclasses import dataclass
 
 from rawr_analytics.data.db_validation import DatabaseValidationSummary
-from rawr_analytics.refresh_metrics.service import RefreshMetricStoreResult
+from rawr_analytics.refresh_metrics.refresh_metric_store import RefreshMetricStoreResult
 from rawr_analytics.shared.ingest import (
     FetchError,
     GameNormalizationFailure,

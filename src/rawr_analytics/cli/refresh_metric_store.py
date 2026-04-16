@@ -5,7 +5,7 @@ import argparse
 from rawr_analytics.cli._progress_bar import TerminalProgressBar, print_status_box
 from rawr_analytics.metrics.constants import Metric
 from rawr_analytics.metrics.rawr.defaults import DEFAULT_RAWR_RIDGE_ALPHA
-from rawr_analytics.refresh_metrics.service import (
+from rawr_analytics.refresh_metrics.refresh_metric_store import (
     MetricStoreRefreshProgressEvent,
     refresh_metric_store,
 )
