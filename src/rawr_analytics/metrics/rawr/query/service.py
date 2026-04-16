@@ -5,11 +5,11 @@ from dataclasses import dataclass
 from typing import Any, Literal
 
 from rawr_analytics.data.game_cache.store import load_game_cache_snapshot
-from rawr_analytics.data.metric_store._reads import load_metric_scope_store_state
 from rawr_analytics.data.metric_store.rawr import (
     RawrPlayerSeasonValueRow,
     load_rawr_player_season_value_rows,
 )
+from rawr_analytics.data.metric_store.store import load_metric_scope_store_state
 from rawr_analytics.data.metric_store_scope import build_scope_key, build_team_filter, season_ids
 from rawr_analytics.metrics.constants import Metric
 from rawr_analytics.metrics.rawr.cache import load_rawr_records
