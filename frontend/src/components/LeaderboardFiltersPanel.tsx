@@ -137,7 +137,7 @@ export function LeaderboardFiltersPanel({
           <legend className="mb-1 text-[0.9rem] text-[color:var(--text-secondary)]">
             Season types
           </legend>
-          <div className="flex flex-wrap gap-2">
+          <div className="flex flex-col flex-wrap gap-2">
             {SEASON_TYPE_BUTTONS.map((seasonType) => {
               const isSelected = filters.seasonTypes.includes(seasonType.key)
               const isOnlySelected = isSelected && filters.seasonTypes.length === 1
