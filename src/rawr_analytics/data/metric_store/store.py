@@ -55,11 +55,11 @@ def load_metric_cache_span_rows(
     player_season_values = _load_metric_player_season_values(
         metric=metric,
         metric_cache_key=metric_cache_key,
-        season_ids=catalog_row.available_season_ids,
+        season_ids=catalog_row.season_ids,
     )
     return MetricSpanStoreRows(
         series=build_metric_full_span_series(
-            season_ids=catalog_row.available_season_ids,
+            season_ids=catalog_row.season_ids,
             player_season_values=player_season_values,
             top_n=top_n,
         )

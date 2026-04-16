@@ -6,8 +6,7 @@ from rawr_analytics.data.metric_store._tables import (
     build_rawr_player_season_value_row,
 )
 from rawr_analytics.data.metric_store.schema import connect, initialize_metric_store_db
-from rawr_analytics.shared.season import Season, SeasonType
-from rawr_analytics.shared.team import Team
+from rawr_analytics.shared.season import Season
 
 
 def load_rawr_player_season_value_rows(
@@ -55,35 +54,20 @@ def load_rawr_player_season_value_rows(
 def replace_rawr_metric_cache(
     *,
     metric_cache_key: str,
-    label: str,
-    team_filter: str,
-    season_type: SeasonType,
     seasons: list[Season],
-    available_teams: list[Team],
     build_version: str,
     source_fingerprint: str,
     rows: list[RawrPlayerSeasonValueRow],
 ) -> None:
     from datetime import UTC, datetime
 
-    from rawr_analytics.data.metric_store._catalog import (
-        build_metric_cache_catalog,
-        build_metric_cache_catalog_row,
-    )
+    from rawr_analytics.data.metric_store._catalog import build_metric_cache_catalog_row
     from rawr_analytics.data.metric_store._mutations import replace_rawr_metric_cache
     from rawr_analytics.data.metric_store._validation import validate_rawr_rows
 
-    catalog = build_metric_cache_catalog(
-        label=label,
-        team_filter=team_filter,
-        season_type=season_type,
-        seasons=seasons,
-        available_teams=available_teams,
-    )
     updated_at = datetime.now(UTC).isoformat()
     validate_rawr_rows(
         metric_cache_key=metric_cache_key,
-        team_filter=team_filter,
         seasons=seasons,
         build_version=build_version,
         source_fingerprint=source_fingerprint,
@@ -97,7 +81,7 @@ def replace_rawr_metric_cache(
         catalog_row=build_metric_cache_catalog_row(
             metric_id="rawr",
             metric_cache_key=metric_cache_key,
-            catalog=catalog,
+            seasons=seasons,
             updated_at=updated_at,
         ),
         rows=rows,

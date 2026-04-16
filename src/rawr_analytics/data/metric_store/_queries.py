@@ -64,11 +64,6 @@ def load_metric_cache_catalog_row(
             SELECT
                 metric_id,
                 metric_cache_key,
-                label,
-                team_filter,
-                season_type,
-                full_span_start_season_id,
-                full_span_end_season_id,
                 updated_at
             FROM metric_cache_catalog
             WHERE metric_id = ? AND metric_cache_key = ?
@@ -77,15 +72,6 @@ def load_metric_cache_catalog_row(
         ).fetchone()
         if row is None:
             return None
-        team_rows = connection.execute(
-            """
-            SELECT team_id
-            FROM metric_cache_team
-            WHERE metric_id = ? AND metric_cache_key = ?
-            ORDER BY team_id
-            """,
-            (metric, metric_cache_key),
-        ).fetchall()
         season_rows = connection.execute(
             """
             SELECT season_id
@@ -98,12 +84,6 @@ def load_metric_cache_catalog_row(
     return MetricCacheCatalogRow(
         metric_id=cast(str, row["metric_id"]),
         metric_cache_key=cast(str, row["metric_cache_key"]),
-        label=cast(str, row["label"]),
-        team_filter=cast(str, row["team_filter"]),
-        season_type=cast(str, row["season_type"]),
-        available_season_ids=[cast(str, season_row["season_id"]) for season_row in season_rows],
-        available_team_ids=[cast(int, team_row["team_id"]) for team_row in team_rows],
-        full_span_start_season_id=cast(str | None, row["full_span_start_season_id"]),
-        full_span_end_season_id=cast(str | None, row["full_span_end_season_id"]),
+        season_ids=[cast(str, season_row["season_id"]) for season_row in season_rows],
         updated_at=cast(str, row["updated_at"]),
     )

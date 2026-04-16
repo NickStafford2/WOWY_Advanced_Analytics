@@ -63,24 +63,9 @@ def initialize_metric_store_db() -> None:
             CREATE TABLE IF NOT EXISTS metric_cache_catalog (
                 metric_id TEXT NOT NULL,
                 metric_cache_key TEXT NOT NULL,
-                label TEXT NOT NULL,
-                team_filter TEXT NOT NULL DEFAULT '',
-                season_type TEXT NOT NULL DEFAULT 'Regular Season',
-                full_span_start_season_id TEXT,
-                full_span_end_season_id TEXT,
                 updated_at TEXT NOT NULL,
                 PRIMARY KEY (metric_id, metric_cache_key)
             );
-
-            CREATE TABLE IF NOT EXISTS metric_cache_team (
-                metric_id TEXT NOT NULL,
-                metric_cache_key TEXT NOT NULL,
-                team_id INTEGER NOT NULL,
-                PRIMARY KEY (metric_id, metric_cache_key, team_id)
-            );
-
-            CREATE INDEX IF NOT EXISTS idx_metric_cache_team_metric_cache
-            ON metric_cache_team (metric_id, metric_cache_key);
 
             CREATE TABLE IF NOT EXISTS metric_cache_season (
                 metric_id TEXT NOT NULL,

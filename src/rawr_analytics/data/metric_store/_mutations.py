@@ -6,7 +6,6 @@ from rawr_analytics.data.metric_store._sql_writes import (
     delete_metric_cache_rows,
     insert_metric_cache_entry,
     insert_metric_cache_seasons,
-    insert_metric_cache_teams,
     insert_rawr_rows,
     insert_wowy_rows,
 )
@@ -134,25 +133,14 @@ def _finish_metric_cache_replace(
         INSERT INTO metric_cache_catalog (
             metric_id,
             metric_cache_key,
-            label,
-            team_filter,
-            season_type,
-            full_span_start_season_id,
-            full_span_end_season_id,
             updated_at
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+        ) VALUES (?, ?, ?)
         """,
         (
             catalog_row.metric_id,
             catalog_row.metric_cache_key,
-            catalog_row.label,
-            catalog_row.team_filter,
-            catalog_row.season_type,
-            catalog_row.full_span_start_season_id,
-            catalog_row.full_span_end_season_id,
             catalog_row.updated_at,
         ),
     )
     insert_metric_cache_seasons(connection, catalog_row)
-    insert_metric_cache_teams(connection, catalog_row)
     connection.commit()

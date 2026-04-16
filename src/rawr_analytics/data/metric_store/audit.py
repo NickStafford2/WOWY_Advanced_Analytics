@@ -35,15 +35,14 @@ class MetricStoreAuditState:
     wowy_row_groups: dict[tuple[str, str], list[WowyPlayerSeasonValueRow]]
     metadata_rows: dict[tuple[str, str], MetricStoreAuditMetadata]
     catalog_rows: dict[tuple[str, str], MetricCacheCatalogRow]
-    cache_season_rows: dict[tuple[str, str], list[str]]
-    cache_team_rows: dict[tuple[str, str], list[int]]
+    catalog_season_rows: dict[tuple[str, str], list[str]]
 
 
 def audit_metric_store_tables(
     connection: sqlite3.Connection,
     issues: list[ValidationIssue],
 ) -> MetricStoreAuditState:
-    catalog_rows, cache_season_rows, cache_team_rows = _audit_metric_cache_catalog_table(
+    catalog_rows, catalog_season_rows = _audit_metric_cache_catalog_table(
         connection,
         issues,
     )
@@ -57,8 +56,7 @@ def audit_metric_store_tables(
         wowy_row_groups=wowy_row_groups,
         metadata_rows=metadata_rows,
         catalog_rows=catalog_rows,
-        cache_season_rows=cache_season_rows,
-        cache_team_rows=cache_team_rows,
+        catalog_season_rows=catalog_season_rows,
     )
 
 
@@ -123,7 +121,6 @@ def _audit_metric_player_season_values_table(
         try:
             validate_rawr_rows(
                 metric_cache_key=key[1],
-                team_filter=catalog_row.team_filter,
                 seasons=catalog_seasons(catalog_row),
                 build_version=metadata_row.build_version,
                 source_fingerprint=metadata_row.source_fingerprint,
@@ -163,7 +160,6 @@ def _audit_metric_player_season_values_table(
             validate_wowy_rows(
                 metric_id=key[0],
                 metric_cache_key=key[1],
-                team_filter=catalog_row.team_filter,
                 seasons=catalog_seasons(catalog_row),
                 build_version=metadata_row.build_version,
                 source_fingerprint=metadata_row.source_fingerprint,
@@ -243,18 +239,12 @@ def _audit_metric_cache_catalog_table(
 ) -> tuple[
     dict[tuple[str, str], MetricCacheCatalogRow],
     dict[tuple[str, str], list[str]],
-    dict[tuple[str, str], list[int]],
 ]:
     rows = connection.execute(
         """
         SELECT
             metric_id,
             metric_cache_key,
-            label,
-            team_filter,
-            season_type,
-            full_span_start_season_id,
-            full_span_end_season_id,
             updated_at
         FROM metric_cache_catalog
         ORDER BY metric_id, metric_cache_key
@@ -270,35 +260,16 @@ def _audit_metric_cache_catalog_table(
         ORDER BY metric_id, metric_cache_key, season_id
         """
     ).fetchall()
-    team_rows = connection.execute(
-        """
-        SELECT
-            metric_id,
-            metric_cache_key,
-            team_id
-        FROM metric_cache_team
-        ORDER BY metric_id, metric_cache_key, team_id
-        """
-    ).fetchall()
     cache_season_rows: dict[tuple[str, str], list[str]] = defaultdict(list)
     for row in season_rows:
         cache_season_rows[_metric_store_key(row)].append(cast(str, row["season_id"]))
-    cache_team_rows: dict[tuple[str, str], list[int]] = defaultdict(list)
-    for row in team_rows:
-        cache_team_rows[_metric_store_key(row)].append(cast(int, row["team_id"]))
     catalog_rows: dict[tuple[str, str], MetricCacheCatalogRow] = {}
     for row in rows:
         key = _metric_store_key(row)
         catalog_row = MetricCacheCatalogRow(
             metric_id=cast(str, row["metric_id"]),
             metric_cache_key=cast(str, row["metric_cache_key"]),
-            label=cast(str, row["label"]),
-            team_filter=cast(str, row["team_filter"]),
-            season_type=cast(str, row["season_type"]),
-            available_season_ids=list(cache_season_rows.get(key, [])),
-            available_team_ids=list(cache_team_rows.get(key, [])),
-            full_span_start_season_id=cast(str | None, row["full_span_start_season_id"]),
-            full_span_end_season_id=cast(str | None, row["full_span_end_season_id"]),
+            season_ids=list(cache_season_rows.get(key, [])),
             updated_at=cast(str, row["updated_at"]),
         )
         catalog_rows[key] = catalog_row
@@ -312,6 +283,8 @@ def _audit_metric_cache_catalog_table(
                     str(exc),
                 )
             )
-    return catalog_rows, dict(cache_season_rows), dict(cache_team_rows)
+    return catalog_rows, dict(cache_season_rows)
+
+
 def _metric_store_key(row: sqlite3.Row) -> tuple[str, str]:
     return (cast(str, row["metric_id"]), cast(str, row["metric_cache_key"]))

@@ -28,7 +28,7 @@ from rawr_analytics.metrics.wowy.query.request import WowyCalcVars
 from rawr_analytics.metrics.wowy.refresh.store_rows import build_wowy_metric_store_rows
 from rawr_analytics.shared.scope import TeamSeasonScope
 from rawr_analytics.shared.season import Season, SeasonType, require_normalized_seasons
-from rawr_analytics.shared.team import Team, build_metric_team_filter, normalize_teams
+from rawr_analytics.shared.team import Team, normalize_teams
 
 MetricStoreRefreshEventFn = Callable[["MetricStoreRefreshProgressEvent"], None]
 
@@ -68,7 +68,6 @@ class RefreshMetricStoreResult:
 class _RefreshCache:
     metric_cache_key: str
     cache_label: str
-    team_filter: str
     seasons: list[Season]
     teams: list[Team]
 
@@ -107,7 +106,6 @@ def refresh_metric_store(
         cached_team_seasons=cached_team_seasons,
         rawr_ridge_alpha=rawr_ridge_alpha,
     )
-    available_teams = _available_cache_teams(cached_team_seasons)
     metric_info = _describe_metric(normalized_metric)
     build_version = _build_metric_store_version(
         metric_info=metric_info,
@@ -127,8 +125,6 @@ def refresh_metric_store(
     cache_result = _refresh_cache(
         metric=normalized_metric,
         cache=cache,
-        season_type=normalized_season_type,
-        available_teams=available_teams,
         source_fingerprint=game_cache_snapshot.fingerprint,
         build_version=build_version,
         rawr_ridge_alpha=rawr_ridge_alpha,
@@ -173,7 +169,6 @@ def _build_all_teams_refresh_cache(
     seasons = require_normalized_seasons([scope.season for scope in cached_team_seasons])
     teams = _available_cache_teams(cached_team_seasons)
     assert teams, "metric store refresh requires cached teams"
-    team_filter = build_metric_team_filter(None)
     metric_cache_key = _build_refresh_cache_key(
         metric=metric,
         seasons=seasons,
@@ -182,7 +177,6 @@ def _build_all_teams_refresh_cache(
     return _RefreshCache(
         metric_cache_key=metric_cache_key,
         cache_label="all-teams",
-        team_filter=team_filter,
         seasons=seasons,
         teams=teams,
     )
@@ -228,8 +222,6 @@ def _refresh_cache(
     *,
     metric: Metric,
     cache: _RefreshCache,
-    season_type: SeasonType,
-    available_teams: list[Team],
     source_fingerprint: str,
     build_version: str,
     rawr_ridge_alpha: float,
@@ -256,11 +248,7 @@ def _refresh_cache(
         )
         replace_rawr_metric_cache(
             metric_cache_key=cache.metric_cache_key,
-            label=metric.value,
-            team_filter=cache.team_filter,
-            season_type=season_type,
             seasons=cache.seasons,
-            available_teams=available_teams,
             build_version=build_version,
             source_fingerprint=source_fingerprint,
             rows=rows,
@@ -274,11 +262,7 @@ def _refresh_cache(
         replace_wowy_metric_cache(
             metric_id=metric.value,
             metric_cache_key=cache.metric_cache_key,
-            label=metric.value,
-            team_filter=cache.team_filter,
-            season_type=season_type,
             seasons=cache.seasons,
-            available_teams=available_teams,
             build_version=build_version,
             source_fingerprint=source_fingerprint,
             rows=rows,

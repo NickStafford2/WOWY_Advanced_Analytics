@@ -56,10 +56,6 @@ def delete_metric_cache_rows(
         "DELETE FROM metric_cache_season WHERE metric_id = ? AND metric_cache_key = ?",
         (metric_id, metric_cache_key),
     )
-    connection.execute(
-        "DELETE FROM metric_cache_team WHERE metric_id = ? AND metric_cache_key = ?",
-        (metric_id, metric_cache_key),
-    )
     delete_metric_rows(connection, metric_id=metric_id, metric_cache_key=metric_cache_key)
     connection.execute(
         "DELETE FROM metric_cache_entry WHERE metric_id = ? AND metric_cache_key = ?",
@@ -182,31 +178,8 @@ def insert_wowy_rows(
         ],
     )
 
-
-def insert_metric_cache_teams(connection, row: MetricCacheCatalogRow) -> None:
-    if not row.available_team_ids:
-        return
-    connection.executemany(
-        """
-        INSERT INTO metric_cache_team (
-            metric_id,
-            metric_cache_key,
-            team_id
-        ) VALUES (?, ?, ?)
-        """,
-        [
-            (
-                row.metric_id,
-                row.metric_cache_key,
-                team_id,
-            )
-            for team_id in row.available_team_ids
-        ],
-    )
-
-
 def insert_metric_cache_seasons(connection, row: MetricCacheCatalogRow) -> None:
-    if not row.available_season_ids:
+    if not row.season_ids:
         return
     connection.executemany(
         """
@@ -222,6 +195,6 @@ def insert_metric_cache_seasons(connection, row: MetricCacheCatalogRow) -> None:
                 row.metric_cache_key,
                 season_id,
             )
-            for season_id in row.available_season_ids
+            for season_id in row.season_ids
         ],
     )
