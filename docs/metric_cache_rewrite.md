@@ -7,27 +7,37 @@ Done:
 - metric queries now split into `calc_vars` and `post_calc_filters`
 - canonical `MetricCacheKey` exists and is used in refresh and query paths
 - exact `Season.id` values now flow through metric-store cache identity
-- RAWR `ridge_alpha` is part of cache identity, not `build_version`
+- combined `REGULAR + PLAYOFFS` cache fingerprinting now uses the exact season set
+- `metric_cache_catalog` was removed
+- audit now parses and validates `MetricCacheKey` directly
+- RAWR calc-affecting settings now live in `RawrCalcVars` and affect cache identity
+- WOWY and `wowy_shrunk` now use shared `WowyCalcVars`
+- `wowy_shrunk` prior-games is part of cache identity
 - most Python/store naming has been moved from `scope`/`snapshot` to `cache`
 - dead `data/metric_store_scope.py` was removed
 
 Not done:
 
-- combined `REGULAR + PLAYOFFS` cache semantics are still incomplete
-- catalog is still overbuilt and may be mostly removable
-- `data/audit/*` still has a lot of old `scope_*` naming
+- bounded retention policy does not exist yet
+- query-usage tracking keyed by `MetricCacheKey` does not exist yet
+- refresh still warms predefined caches, but does not choose retained keys dynamically
+- one-off queries can still grow the metric store without a retention rule
+- some naming cleanup remains in audit/CLI/docs
 
 Recommended next steps:
 
-1. decide whether `metric_cache_catalog` should be reduced heavily or deleted
-2. if catalog stays, keep only runtime-needed metadata
-3. clean `data/audit/*` naming after the catalog decision
+1. add query-usage tracking keyed by `MetricCacheKey`
+2. define retained keys per metric:
+   pinned defaults plus most-used unpinned keys up to a fixed limit
+3. make refresh warm only retained keys
+4. prune metric-store rows outside the retained set
+5. do leftover naming cleanup after retention is in place
 
 Important note:
 
 - clarity is more important than compatibility here
 - rebuilding `metric_store.sqlite3` is acceptable
-- do not preserve redundant metadata just because old audit code expects it
+- do not preserve redundant data now that `MetricCacheKey` is the semantic source of truth
 
 ## Goal
 

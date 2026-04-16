@@ -5,6 +5,7 @@ from typing import Literal
 
 from rawr_analytics.data.game_cache.store import load_game_cache_snapshot
 from rawr_analytics.data.metric_store.store import load_metric_cache_store_state
+from rawr_analytics.data.metric_store.usage import record_metric_cache_query
 from rawr_analytics.data.metric_store.wowy import (
     WowyPlayerSeasonValueRow,
     load_wowy_player_season_value_rows,
@@ -120,6 +121,13 @@ def resolve_wowy_result(
     recalculate: bool = False,
 ) -> ResolvedWowyResultDTO:
     _require_wowy_metric(metric)
+    record_metric_cache_query(
+        metric_id=metric.value,
+        metric_cache_key=build_wowy_metric_cache_key(
+            metric_id=metric.value,
+            calc_vars=query.calc_vars,
+        ),
+    )
 
     if not recalculate:
         cached_result = _try_load_wowy_store_result(metric=metric, query=query)

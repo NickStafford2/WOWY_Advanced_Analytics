@@ -62,6 +62,17 @@ def initialize_metric_store_db() -> None:
             CREATE INDEX IF NOT EXISTS idx_wowy_player_season_values_cache_entry
             ON wowy_player_season_values (metric_cache_entry_id, season_id, player_id);
 
+            CREATE TABLE IF NOT EXISTS metric_cache_query_usage (
+                metric_id TEXT NOT NULL,
+                metric_cache_key TEXT NOT NULL,
+                query_count INTEGER NOT NULL,
+                last_requested_at TEXT NOT NULL,
+                PRIMARY KEY (metric_id, metric_cache_key)
+            );
+
+            CREATE INDEX IF NOT EXISTS idx_metric_cache_query_usage_metric_popularity
+            ON metric_cache_query_usage (metric_id, query_count DESC, last_requested_at DESC);
+
             """
         )
 

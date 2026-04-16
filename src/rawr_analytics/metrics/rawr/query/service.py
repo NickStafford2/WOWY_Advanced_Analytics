@@ -10,6 +10,7 @@ from rawr_analytics.data.metric_store.rawr import (
     load_rawr_player_season_value_rows,
 )
 from rawr_analytics.data.metric_store.store import load_metric_cache_store_state
+from rawr_analytics.data.metric_store.usage import record_metric_cache_query
 from rawr_analytics.metrics._metric_cache_key import build_rawr_metric_cache_key
 from rawr_analytics.metrics.constants import Metric
 from rawr_analytics.metrics.rawr.cache import load_rawr_records
@@ -113,6 +114,10 @@ def resolve_rawr_result(
     recalculate: bool = False,
     progress_fn: RawrProgressFn | None = None,
 ) -> ResolvedRawrResultDTO:
+    record_metric_cache_query(
+        metric_id=Metric.RAWR.value,
+        metric_cache_key=build_rawr_metric_cache_key(query.calc_vars),
+    )
     if not recalculate:
         cached_result = _try_load_rawr_store_result(query)
         if cached_result is not None:
