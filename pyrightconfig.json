@@ -2,7 +2,7 @@
   "venvPath": ".",
   "venv": ".venv",
   "include": [
-    "src",
+    "src"
   ],
   "executionEnvironments": [
     {
@@ -13,7 +13,7 @@
     }
   ],
   "pythonVersion": "3.12",
-  "typeCheckingMode": "standard",
+  "typeCheckingMode": "strict",
   "useLibraryCodeForTypes": true,
   "reportImportCycles": "error",
   "reportMissingImports": "error",
@@ -21,5 +21,6 @@
   "reportUnusedImport": "error",
   "reportDuplicateImport": "error",
   "reportUnnecessaryTypeIgnoreComment": "warning",
-  "reportUnsupportedDunderAll": "error"
+  "reportUnsupportedDunderAll": "error",
+  "reportMissingTypeStubs": "none"
 }
