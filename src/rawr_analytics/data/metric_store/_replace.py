@@ -7,8 +7,7 @@ from typing import Any
 from rawr_analytics.data._paths import METRIC_STORE_DB_PATH
 from rawr_analytics.data.metric_store._catalog import MetricScopeCatalogRow
 from rawr_analytics.data.metric_store._sql_writes import (
-    delete_metric_full_span_rows,
-    delete_metric_rows,
+    delete_metric_scope_snapshot,
     insert_full_span_rows,
     insert_metric_scope_seasons,
     insert_metric_scope_teams,
@@ -49,24 +48,7 @@ def replace_metric_scope_snapshot(
 
     with connect(METRIC_STORE_DB_PATH) as connection:
         connection.execute("BEGIN")
-        delete_metric_full_span_rows(connection, metric_id=metric_id, scope_key=scope_key)
-        connection.execute(
-            "DELETE FROM metric_scope_catalog WHERE metric_id = ? AND scope_key = ?",
-            (metric_id, scope_key),
-        )
-        connection.execute(
-            "DELETE FROM metric_scope_season WHERE metric_id = ? AND scope_key = ?",
-            (metric_id, scope_key),
-        )
-        connection.execute(
-            "DELETE FROM metric_scope_team WHERE metric_id = ? AND scope_key = ?",
-            (metric_id, scope_key),
-        )
-        delete_metric_rows(connection, metric_id=metric_id, scope_key=scope_key)
-        connection.execute(
-            "DELETE FROM metric_snapshot WHERE metric_id = ? AND scope_key = ?",
-            (metric_id, scope_key),
-        )
+        delete_metric_scope_snapshot(connection, metric_id=metric_id, scope_key=scope_key)
         snapshot_id = insert_metric_snapshot(
             connection,
             metric_id=metric_id,

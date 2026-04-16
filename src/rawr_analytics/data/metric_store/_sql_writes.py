@@ -74,6 +74,32 @@ def delete_metric_rows(
     delete_metric_value_rows(connection, metric_id=metric_id, scope_key=scope_key)
 
 
+def delete_metric_scope_snapshot(
+    connection: sqlite3.Connection,
+    *,
+    metric_id: str,
+    scope_key: str,
+) -> None:
+    delete_metric_full_span_rows(connection, metric_id=metric_id, scope_key=scope_key)
+    connection.execute(
+        "DELETE FROM metric_scope_catalog WHERE metric_id = ? AND scope_key = ?",
+        (metric_id, scope_key),
+    )
+    connection.execute(
+        "DELETE FROM metric_scope_season WHERE metric_id = ? AND scope_key = ?",
+        (metric_id, scope_key),
+    )
+    connection.execute(
+        "DELETE FROM metric_scope_team WHERE metric_id = ? AND scope_key = ?",
+        (metric_id, scope_key),
+    )
+    delete_metric_rows(connection, metric_id=metric_id, scope_key=scope_key)
+    connection.execute(
+        "DELETE FROM metric_snapshot WHERE metric_id = ? AND scope_key = ?",
+        (metric_id, scope_key),
+    )
+
+
 def insert_metric_snapshot(
     connection: sqlite3.Connection,
     *,
