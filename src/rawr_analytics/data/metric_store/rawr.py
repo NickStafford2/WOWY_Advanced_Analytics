@@ -75,7 +75,7 @@ def replace_rawr_scope_snapshot(
         build_metric_scope_catalog,
         build_metric_scope_catalog_row,
     )
-    from rawr_analytics.data.metric_store._replace import replace_rawr_scope_snapshot
+    from rawr_analytics.data.metric_store._mutations import replace_rawr_scope_snapshot
     from rawr_analytics.data.metric_store._validation import validate_rawr_rows
     from rawr_analytics.data.metric_store.full_span import (
         MetricStorePlayerSeasonValue,

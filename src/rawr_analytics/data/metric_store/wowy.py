@@ -86,7 +86,7 @@ def replace_wowy_scope_snapshot(
         build_metric_scope_catalog,
         build_metric_scope_catalog_row,
     )
-    from rawr_analytics.data.metric_store._replace import replace_wowy_scope_snapshot
+    from rawr_analytics.data.metric_store._mutations import replace_wowy_scope_snapshot
     from rawr_analytics.data.metric_store._validation import validate_wowy_rows
     from rawr_analytics.data.metric_store.full_span import build_metric_full_span_rows
 
