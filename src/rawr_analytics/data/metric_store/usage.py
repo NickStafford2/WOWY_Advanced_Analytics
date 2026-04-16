@@ -6,8 +6,6 @@ from typing import cast
 from rawr_analytics.data._paths import METRIC_STORE_DB_PATH
 from rawr_analytics.data.metric_store.schema import connect, initialize_metric_store_db
 
-DEFAULT_RETAINED_METRIC_CACHE_KEY_LIMIT = 10
-
 
 def record_metric_cache_query(
     *,
@@ -35,75 +33,25 @@ def record_metric_cache_query(
         connection.commit()
 
 
-def list_retained_metric_cache_keys(
+def list_metric_cache_keys_by_usage(
     *,
     metric_id: str,
-    pinned_metric_cache_keys: list[str],
-    limit: int = DEFAULT_RETAINED_METRIC_CACHE_KEY_LIMIT,
 ) -> list[str]:
     initialize_metric_store_db()
-    if limit <= 0:
-        return []
-
-    retained_keys: list[str] = []
-    seen_keys: set[str] = set()
-    for metric_cache_key in pinned_metric_cache_keys:
-        if metric_cache_key in seen_keys:
-            continue
-        retained_keys.append(metric_cache_key)
-        seen_keys.add(metric_cache_key)
-        if len(retained_keys) >= limit:
-            return retained_keys
-
-    remaining_slots = limit - len(retained_keys)
-    if remaining_slots <= 0:
-        return retained_keys
-
-    for metric_cache_key in _list_most_used_metric_cache_keys(
-        metric_id=metric_id,
-        limit=remaining_slots,
-        excluded_metric_cache_keys=seen_keys,
-    ):
-        retained_keys.append(metric_cache_key)
-        seen_keys.add(metric_cache_key)
-
-    return retained_keys
-
-
-def _list_most_used_metric_cache_keys(
-    *,
-    metric_id: str,
-    limit: int,
-    excluded_metric_cache_keys: set[str],
-) -> list[str]:
-    if limit <= 0:
-        return []
-
-    query = """
+    with connect(METRIC_STORE_DB_PATH) as connection:
+        rows = connection.execute(
+            """
         SELECT metric_cache_key
         FROM metric_cache_query_usage
         WHERE metric_id = ?
-    """
-    params: list[object] = [metric_id]
-
-    excluded_keys = sorted(excluded_metric_cache_keys)
-    if excluded_keys:
-        query += f" AND metric_cache_key NOT IN ({','.join('?' for _ in excluded_keys)})"
-        params.extend(excluded_keys)
-
-    query += """
         ORDER BY query_count DESC, last_requested_at DESC, metric_cache_key ASC
-        LIMIT ?
-    """
-    params.append(limit)
-
-    with connect(METRIC_STORE_DB_PATH) as connection:
-        rows = connection.execute(query, params).fetchall()
+            """,
+            (metric_id,),
+        ).fetchall()
     return [cast(str, row["metric_cache_key"]) for row in rows]
 
 
 __all__ = [
-    "DEFAULT_RETAINED_METRIC_CACHE_KEY_LIMIT",
-    "list_retained_metric_cache_keys",
+    "list_metric_cache_keys_by_usage",
     "record_metric_cache_query",
 ]

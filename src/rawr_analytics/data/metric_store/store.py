@@ -2,7 +2,11 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
-from rawr_analytics.data.metric_store._queries import MetricCacheEntryState, load_metric_cache_entry_state
+from rawr_analytics.data.metric_store._queries import (
+    MetricCacheEntryState,
+    list_metric_cache_keys,
+    load_metric_cache_entry_state,
+)
 from rawr_analytics.data.metric_store.full_span import (
     MetricFullSpanSeries,
     MetricStorePlayerSeasonValue,
@@ -98,6 +102,7 @@ def _load_metric_player_season_values(
 __all__ = [
     "MetricCacheStoreState",
     "MetricSpanStoreRows",
+    "list_metric_cache_keys",
     "load_metric_cache_span_rows",
     "load_metric_cache_store_state",
 ]

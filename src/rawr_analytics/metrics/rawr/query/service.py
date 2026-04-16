@@ -38,7 +38,7 @@ from rawr_analytics.shared.season import (
     normalize_seasons,
     season_ids,
 )
-from rawr_analytics.shared.team import Team, build_metric_team_filter
+from rawr_analytics.shared.team import Team
 
 type RawrProgressFn = Callable[[int, int, Season], None]
 type MetricQueryExport = list[JSONDict]
@@ -267,10 +267,6 @@ def _build_rawr_record_from_store_row(row: RawrPlayerSeasonValueRow) -> RawrPlay
 
 
 def _resolve_cached_rawr_key(query: RawrQuery) -> str | None:
-    team_filter = build_metric_team_filter(query.calc_vars.teams)
-    if team_filter:
-        return None
-
     cache_snapshot = load_game_cache_snapshot(
         teams=query.calc_vars.teams,
         seasons=query.calc_vars.seasons,

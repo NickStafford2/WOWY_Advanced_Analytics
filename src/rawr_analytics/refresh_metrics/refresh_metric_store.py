@@ -4,15 +4,16 @@ from collections.abc import Callable
 from dataclasses import dataclass
 
 from rawr_analytics.data.game_cache.store import load_game_cache_snapshot
+from rawr_analytics.data.metric_store._mutations import prune_metric_caches
 from rawr_analytics.data.metric_store.rawr import replace_rawr_metric_cache
-from rawr_analytics.data.metric_store.store import load_metric_cache_store_state
+from rawr_analytics.data.metric_store.store import list_metric_cache_keys, load_metric_cache_store_state
+from rawr_analytics.data.metric_store.usage import list_metric_cache_keys_by_usage
 from rawr_analytics.data.metric_store.wowy import replace_wowy_metric_cache
-from rawr_analytics.metrics._metric_cache_key import (
-    build_rawr_metric_cache_key,
-    build_wowy_metric_cache_key,
-)
+from rawr_analytics.metrics._metric_cache_key import MetricCacheKey, build_rawr_metric_cache_key
+from rawr_analytics.metrics._metric_cache_key import build_wowy_metric_cache_key
 from rawr_analytics.metrics.constants import Metric, MetricSummary
 from rawr_analytics.metrics.rawr._calc_vars import RawrCalcVars, RawrEligibility
+from rawr_analytics.metrics.rawr.calculate.shrinkage import RawrShrinkageMode
 from rawr_analytics.metrics.rawr.cache_status import list_incomplete_rawr_season_warnings
 from rawr_analytics.metrics.rawr.defaults import (
     DEFAULT_RAWR_MIN_GAMES,
@@ -29,10 +30,11 @@ from rawr_analytics.metrics.wowy.defaults import default_filters as default_wowy
 from rawr_analytics.metrics.wowy.defaults import describe_metric as describe_wowy_metric
 from rawr_analytics.metrics.wowy.refresh.store_rows import build_wowy_metric_store_rows
 from rawr_analytics.shared.scope import TeamSeasonScope
-from rawr_analytics.shared.season import Season, SeasonType, require_normalized_seasons
+from rawr_analytics.shared.season import Season, SeasonType, normalize_seasons, require_normalized_seasons
 from rawr_analytics.shared.team import Team, normalize_teams
 
 MetricStoreRefreshEventFn = Callable[["MetricStoreRefreshProgressEvent"], None]
+DEFAULT_RETAINED_METRIC_CACHE_KEY_LIMIT = 10
 
 
 @dataclass(frozen=True)
@@ -105,7 +107,7 @@ def refresh_metric_store(
             ),
         )
 
-    cache = _build_all_teams_refresh_cache(
+    caches = _build_retained_refresh_caches(
         metric=normalized_metric,
         cached_team_seasons=cached_team_seasons,
         rawr_ridge_alpha=rawr_ridge_alpha,
@@ -115,37 +117,63 @@ def refresh_metric_store(
         metric_info=metric_info,
     )
     warnings = (
-        list_incomplete_rawr_season_warnings(seasons=cache.seasons)
+        list_incomplete_rawr_season_warnings(
+            seasons=_warning_seasons(caches),
+        )
         if normalized_metric == Metric.RAWR
         else []
     )
 
+    total_steps = len(caches) + 1
+    cache_results: list[RefreshCacheResult] = []
+    for index, cache in enumerate(caches, start=1):
+        _emit_progress(
+            event_fn,
+            current=index - 1,
+            total=total_steps,
+            detail=f"building {cache.cache_label}",
+        )
+        refresh_snapshot = load_game_cache_snapshot(
+            teams=cache.teams,
+            seasons=cache.seasons,
+        )
+        cache_result = _refresh_cache(
+            metric=normalized_metric,
+            cache=cache,
+            source_fingerprint=refresh_snapshot.fingerprint,
+            build_version=build_version,
+        )
+        cache_results.append(cache_result)
+        _emit_progress(
+            event_fn,
+            current=index,
+            total=total_steps,
+            detail=f"{cache_result.status} {cache.cache_label}",
+        )
+
     _emit_progress(
         event_fn,
-        current=0,
-        total=1,
-        detail=f"building {cache.cache_label}",
+        current=len(caches),
+        total=total_steps,
+        detail="pruning stale caches",
     )
-    refresh_snapshot = load_game_cache_snapshot(
-        teams=cache.teams,
-        seasons=cache.seasons,
-    )
-    cache_result = _refresh_cache(
-        metric=normalized_metric,
-        cache=cache,
-        source_fingerprint=refresh_snapshot.fingerprint,
-        build_version=build_version,
-        rawr_ridge_alpha=rawr_ridge_alpha,
+    prune_metric_caches(
+        metric_id=normalized_metric.value,
+        retained_metric_cache_keys=_retained_metric_cache_keys_for_prune(
+            metric=normalized_metric,
+            season_type=normalized_season_type,
+            retained_refresh_caches=caches,
+        ),
     )
     _emit_progress(
         event_fn,
-        current=1,
-        total=1,
-        detail=f"{cache_result.status} {cache.cache_label}",
+        current=total_steps,
+        total=total_steps,
+        detail="pruned stale caches",
     )
     return RefreshMetricStoreResult(
         metric=normalized_metric,
-        cache_results=[cache_result],
+        cache_results=cache_results,
         warnings=warnings,
     )
 
@@ -195,14 +223,109 @@ def _build_all_teams_refresh_cache(
     )
     metric_cache_key = _build_refresh_cache_key(
         metric=metric,
-        seasons=seasons,
-        rawr_ridge_alpha=rawr_ridge_alpha,
         rawr_calc_vars=rawr_calc_vars,
         wowy_calc_vars=wowy_calc_vars,
     )
     return _RefreshCache(
         metric_cache_key=metric_cache_key,
         cache_label="all-teams",
+        seasons=seasons,
+        teams=teams,
+        rawr_calc_vars=rawr_calc_vars,
+        wowy_calc_vars=wowy_calc_vars,
+    )
+
+
+def _build_retained_refresh_caches(
+    *,
+    metric: Metric,
+    cached_team_seasons: list[TeamSeasonScope],
+    rawr_ridge_alpha: float,
+) -> list[_RefreshCache]:
+    pinned_cache = _build_all_teams_refresh_cache(
+        metric=metric,
+        cached_team_seasons=cached_team_seasons,
+        rawr_ridge_alpha=rawr_ridge_alpha,
+    )
+    retained_caches = [pinned_cache]
+    retained_metric_cache_keys = {pinned_cache.metric_cache_key}
+    for metric_cache_key in list_metric_cache_keys_by_usage(metric_id=metric.value):
+        if len(retained_caches) >= DEFAULT_RETAINED_METRIC_CACHE_KEY_LIMIT:
+            break
+        if metric_cache_key in retained_metric_cache_keys:
+            continue
+        cache = _build_refresh_cache_from_usage_key(
+            metric=metric,
+            metric_cache_key=metric_cache_key,
+            cached_team_seasons=cached_team_seasons,
+        )
+        if cache is None:
+            continue
+        retained_caches.append(cache)
+        retained_metric_cache_keys.add(cache.metric_cache_key)
+    return retained_caches
+
+
+def _build_refresh_cache_from_usage_key(
+    *,
+    metric: Metric,
+    metric_cache_key: str,
+    cached_team_seasons: list[TeamSeasonScope],
+) -> _RefreshCache | None:
+    try:
+        cache_key = MetricCacheKey.parse(metric_cache_key)
+    except ValueError:
+        return None
+    if cache_key.metric_id != metric.value:
+        return None
+
+    seasons = _cache_seasons_for_refresh(
+        cache_key=cache_key,
+        cached_team_seasons=cached_team_seasons,
+    )
+    if seasons is None:
+        return None
+
+    teams = _cache_teams_for_refresh(
+        cache_key=cache_key,
+        cached_team_seasons=cached_team_seasons,
+    )
+    if teams is None:
+        return None
+
+    try:
+        rawr_calc_vars = (
+            _build_rawr_calc_vars_from_cache_key(
+                cache_key=cache_key,
+                seasons=seasons,
+                teams=teams,
+            )
+            if metric == Metric.RAWR
+            else None
+        )
+        wowy_calc_vars = (
+            _build_wowy_calc_vars_from_cache_key(
+                metric=metric,
+                cache_key=cache_key,
+                seasons=seasons,
+                teams=teams,
+            )
+            if metric in {Metric.WOWY, Metric.WOWY_SHRUNK}
+            else None
+        )
+    except (KeyError, ValueError):
+        return None
+    canonical_metric_cache_key = _build_refresh_cache_key(
+        metric=metric,
+        rawr_calc_vars=rawr_calc_vars,
+        wowy_calc_vars=wowy_calc_vars,
+    )
+    if canonical_metric_cache_key != metric_cache_key:
+        return None
+
+    return _RefreshCache(
+        metric_cache_key=metric_cache_key,
+        cache_label=metric_cache_key,
         seasons=seasons,
         teams=teams,
         rawr_calc_vars=rawr_calc_vars,
@@ -219,8 +342,6 @@ def _available_cache_teams(cached_team_seasons: list[TeamSeasonScope]) -> list[T
 def _build_refresh_cache_key(
     *,
     metric: Metric,
-    seasons: list[Season],
-    rawr_ridge_alpha: float,
     rawr_calc_vars: RawrCalcVars | None = None,
     wowy_calc_vars: WowyCalcVars | None = None,
 ) -> str:
@@ -240,7 +361,6 @@ def _refresh_cache(
     cache: _RefreshCache,
     source_fingerprint: str,
     build_version: str,
-    rawr_ridge_alpha: float,
 ) -> RefreshCacheResult:
     state = load_metric_cache_store_state(metric.value, cache.metric_cache_key)
     if (
@@ -337,4 +457,117 @@ def _build_refresh_wowy_calc_vars(
         shrinkage_prior_games=(
             DEFAULT_WOWY_SHRINKAGE_PRIOR_GAMES if metric == Metric.WOWY_SHRUNK else None
         ),
+    )
+
+
+def _warning_seasons(caches: list[_RefreshCache]) -> list[Season]:
+    seasons = normalize_seasons([season for cache in caches for season in cache.seasons])
+    assert seasons is not None, "refresh warnings require non-empty retained seasons"
+    return seasons
+
+
+def _retained_metric_cache_keys_for_prune(
+    *,
+    metric: Metric,
+    season_type: SeasonType,
+    retained_refresh_caches: list[_RefreshCache],
+) -> list[str]:
+    retained_metric_cache_keys = {
+        cache.metric_cache_key for cache in retained_refresh_caches
+    }
+    for metric_cache_key in list_metric_cache_keys(metric.value):
+        if metric_cache_key in retained_metric_cache_keys:
+            continue
+        if not _is_prunable_metric_cache_key(metric_cache_key, season_type=season_type):
+            retained_metric_cache_keys.add(metric_cache_key)
+    return sorted(retained_metric_cache_keys)
+
+
+def _is_prunable_metric_cache_key(
+    metric_cache_key: str,
+    *,
+    season_type: SeasonType,
+) -> bool:
+    try:
+        cache_key = MetricCacheKey.parse(metric_cache_key)
+    except ValueError:
+        return False
+    if not cache_key.season_ids:
+        return False
+    return all(
+        Season.parse_id(season_id).season_type == season_type for season_id in cache_key.season_ids
+    )
+
+
+def _cache_seasons_for_refresh(
+    *,
+    cache_key: MetricCacheKey,
+    cached_team_seasons: list[TeamSeasonScope],
+) -> list[Season] | None:
+    seasons_by_id = {scope.season.id: scope.season for scope in cached_team_seasons}
+    seasons: list[Season] = []
+    for season_id in cache_key.season_ids:
+        season = seasons_by_id.get(season_id)
+        if season is None:
+            return None
+        seasons.append(season)
+    return require_normalized_seasons(seasons)
+
+
+def _cache_teams_for_refresh(
+    *,
+    cache_key: MetricCacheKey,
+    cached_team_seasons: list[TeamSeasonScope],
+) -> list[Team] | None:
+    if not cache_key.team_ids:
+        return None
+    available_team_ids = {scope.team.team_id for scope in cached_team_seasons}
+    if any(team_id not in available_team_ids for team_id in cache_key.team_ids):
+        return None
+    return [Team.from_id(team_id) for team_id in cache_key.team_ids]
+
+
+def _build_rawr_calc_vars_from_cache_key(
+    *,
+    cache_key: MetricCacheKey,
+    seasons: list[Season],
+    teams: list[Team],
+) -> RawrCalcVars:
+    calc_settings = dict(cache_key.calc_settings)
+    return RawrCalcVars(
+        teams=teams,
+        seasons=seasons,
+        eligibility=RawrEligibility(min_games=DEFAULT_RAWR_MIN_GAMES),
+        ridge_alpha=float(calc_settings["ridge_alpha"]),
+        shrinkage_mode=RawrShrinkageMode.parse(calc_settings["shrinkage_mode"]),
+        shrinkage_strength=float(calc_settings["shrinkage_strength"]),
+        shrinkage_minute_scale=float(calc_settings["shrinkage_minute_scale"]),
+    )
+
+
+def _build_wowy_calc_vars_from_cache_key(
+    *,
+    metric: Metric,
+    cache_key: MetricCacheKey,
+    seasons: list[Season],
+    teams: list[Team],
+) -> WowyCalcVars:
+    defaults = default_wowy_filters()
+    calc_settings = dict(cache_key.calc_settings)
+    shrinkage_prior_games = None
+    if metric == Metric.WOWY_SHRUNK:
+        shrinkage_prior_games = float(
+            calc_settings.get(
+                "shrinkage_prior_games",
+                DEFAULT_WOWY_SHRINKAGE_PRIOR_GAMES,
+            )
+        )
+    return WowyCalcVars(
+        teams=teams,
+        seasons=seasons,
+        eligibility=WowyEligibility(
+            min_games_with=int(defaults["min_games_with"]),
+            min_games_without=int(defaults["min_games_without"]),
+        ),
+        shrinkage_prior_games=shrinkage_prior_games,
     )

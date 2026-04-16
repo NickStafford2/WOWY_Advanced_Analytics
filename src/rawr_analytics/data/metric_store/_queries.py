@@ -50,3 +50,20 @@ def load_metric_cache_entry_state(
         row_count=cast(int, row["row_count"]),
         updated_at=cast(str, row["updated_at"]),
     )
+
+
+def list_metric_cache_keys(
+    metric: str,
+) -> list[str]:
+    initialize_metric_store_db()
+    with connect(METRIC_STORE_DB_PATH) as connection:
+        rows = connection.execute(
+            """
+            SELECT metric_cache_key
+            FROM metric_cache_entry
+            WHERE metric_id = ?
+            ORDER BY metric_cache_key
+            """,
+            (metric,),
+        ).fetchall()
+    return [cast(str, row["metric_cache_key"]) for row in rows]

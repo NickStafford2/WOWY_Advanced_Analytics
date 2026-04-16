@@ -54,6 +54,27 @@ def delete_metric_cache_rows(
     )
 
 
+def delete_metric_cache_rows_except(
+    connection: sqlite3.Connection,
+    *,
+    metric_id: str,
+    retained_metric_cache_keys: list[str],
+) -> None:
+    retained_keys = sorted(set(retained_metric_cache_keys))
+    query = "SELECT metric_cache_key FROM metric_cache_entry WHERE metric_id = ?"
+    params: list[object] = [metric_id]
+    if retained_keys:
+        query += f" AND metric_cache_key NOT IN ({','.join('?' for _ in retained_keys)})"
+        params.extend(retained_keys)
+    rows = connection.execute(query, params).fetchall()
+    for row in rows:
+        delete_metric_cache_rows(
+            connection,
+            metric_id=metric_id,
+            metric_cache_key=row["metric_cache_key"],
+        )
+
+
 def insert_metric_cache_entry(
     connection: sqlite3.Connection,
     *,

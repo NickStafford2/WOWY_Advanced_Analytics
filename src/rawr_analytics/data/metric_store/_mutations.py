@@ -3,6 +3,7 @@ from __future__ import annotations
 from rawr_analytics.data._paths import METRIC_STORE_DB_PATH
 from rawr_analytics.data.metric_store._sql_writes import (
     delete_metric_cache_rows,
+    delete_metric_cache_rows_except,
     insert_metric_cache_entry,
     insert_rawr_rows,
     insert_wowy_rows,
@@ -104,3 +105,19 @@ def _begin_metric_cache_replace(
         row_count=row_count,
         updated_at=updated_at,
     )
+
+
+def prune_metric_caches(
+    *,
+    metric_id: str,
+    retained_metric_cache_keys: list[str],
+) -> None:
+    initialize_metric_store_db()
+    with connect(METRIC_STORE_DB_PATH) as connection:
+        connection.execute("BEGIN")
+        delete_metric_cache_rows_except(
+            connection,
+            metric_id=metric_id,
+            retained_metric_cache_keys=retained_metric_cache_keys,
+        )
+        connection.commit()
