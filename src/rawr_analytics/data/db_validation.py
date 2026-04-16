@@ -18,7 +18,7 @@ from rawr_analytics.data.game_cache._validation import (
 from rawr_analytics.data.game_cache.store import load_cache_snapshot
 from rawr_analytics.data.metric_store import (
     audit_metric_store_tables,
-    initialize_player_metrics_db,
+    initialize_metric_store_db,
 )
 from rawr_analytics.data.metric_store._catalog import MetricScopeCatalogRow
 from rawr_analytics.data.metric_store._tables import (
@@ -127,7 +127,7 @@ def audit_player_metrics_db(
         report_progress("Validating normalized cache relations")
         validate_normalized_cache_relations(cache_connection, issues)
 
-    initialize_player_metrics_db()
+    initialize_metric_store_db()
     with sqlite3.connect(METRIC_STORE_DB_PATH) as metric_connection:
         metric_connection.row_factory = sqlite3.Row
         current_step = 5

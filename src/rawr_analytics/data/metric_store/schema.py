@@ -6,7 +6,7 @@ from pathlib import Path
 from rawr_analytics.data._paths import METRIC_STORE_DB_PATH
 
 
-def initialize_player_metrics_db() -> None:
+def initialize_metric_store_db() -> None:
     with connect(METRIC_STORE_DB_PATH) as connection:
         connection.executescript(
             """

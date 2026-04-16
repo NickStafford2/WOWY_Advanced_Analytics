@@ -9,7 +9,7 @@ from rawr_analytics.data.metric_store.full_span import (
     MetricFullSpanSeriesRow,
     build_metric_full_span_series_row,
 )
-from rawr_analytics.data.metric_store.schema import connect, initialize_player_metrics_db
+from rawr_analytics.data.metric_store.schema import connect, initialize_metric_store_db
 
 
 @dataclass(frozen=True)
@@ -27,7 +27,7 @@ def load_metric_snapshot_state(
     metric: str,
     scope_key: str,
 ) -> MetricSnapshotState | None:
-    initialize_player_metrics_db()
+    initialize_metric_store_db()
     with connect(METRIC_STORE_DB_PATH) as connection:
         row = connection.execute(
             """
@@ -61,7 +61,7 @@ def load_metric_scope_catalog_row(
     metric: str,
     scope_key: str,
 ) -> MetricScopeCatalogRow | None:
-    initialize_player_metrics_db()
+    initialize_metric_store_db()
     with connect(METRIC_STORE_DB_PATH) as connection:
         row = connection.execute(
             """
@@ -119,7 +119,7 @@ def load_metric_full_span_series_rows(
     scope_key: str,
     top_n: int | None = None,
 ) -> list[MetricFullSpanSeriesRow]:
-    initialize_player_metrics_db()
+    initialize_metric_store_db()
     query = """
         SELECT
             series.snapshot_id,
@@ -151,7 +151,7 @@ def load_metric_full_span_points_map(
     scope_key: str,
     player_ids: list[int],
 ) -> dict[int, dict[str, float]]:
-    initialize_player_metrics_db()
+    initialize_metric_store_db()
     if not player_ids:
         return {}
     placeholders = ",".join("?" for _ in player_ids)

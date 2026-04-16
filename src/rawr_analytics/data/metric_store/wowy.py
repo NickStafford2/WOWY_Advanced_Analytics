@@ -6,7 +6,7 @@ from rawr_analytics.data.metric_store._tables import (
     build_wowy_player_season_value_row,
 )
 from rawr_analytics.data.metric_store.full_span import MetricStorePlayerSeasonValue
-from rawr_analytics.data.metric_store.schema import connect, initialize_player_metrics_db
+from rawr_analytics.data.metric_store.schema import connect, initialize_metric_store_db
 from rawr_analytics.shared.season import Season, SeasonType
 from rawr_analytics.shared.team import Team
 
@@ -22,7 +22,7 @@ def load_wowy_player_season_value_rows(
     min_games_without: int | None = None,
 ) -> list[WowyPlayerSeasonValueRow]:
     assert seasons, "WOWY metric store reads require explicit non-empty seasons"
-    initialize_player_metrics_db()
+    initialize_metric_store_db()
     query = """
         SELECT
             snapshot.snapshot_id,

@@ -20,7 +20,7 @@ from rawr_analytics.data.metric_store.full_span import (
     MetricFullSpanPointRow,
     MetricFullSpanSeriesRow,
 )
-from rawr_analytics.data.metric_store.schema import connect, initialize_player_metrics_db
+from rawr_analytics.data.metric_store.schema import connect, initialize_metric_store_db
 
 
 def replace_metric_scope_snapshot(
@@ -36,7 +36,7 @@ def replace_metric_scope_snapshot(
     insert_rows: Callable[[Any, int | None], None],
     row_count: int,
 ) -> None:
-    initialize_player_metrics_db()
+    initialize_metric_store_db()
     validate_metric_scope_catalog_row(catalog_row)
     validate_metric_full_span_rows(
         metric_id=metric_id,
