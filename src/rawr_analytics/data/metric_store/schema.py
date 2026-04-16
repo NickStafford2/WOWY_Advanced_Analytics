@@ -10,6 +10,11 @@ def initialize_metric_store_db() -> None:
     with connect(METRIC_STORE_DB_PATH) as connection:
         connection.executescript(
             """
+            DROP INDEX IF EXISTS idx_metric_full_span_series_snapshot_rank;
+            DROP INDEX IF EXISTS idx_metric_full_span_points_snapshot_player;
+            DROP TABLE IF EXISTS metric_full_span_series;
+            DROP TABLE IF EXISTS metric_full_span_points;
+
             CREATE TABLE IF NOT EXISTS metric_snapshot (
                 snapshot_id INTEGER PRIMARY KEY,
                 metric_id TEXT NOT NULL,
@@ -86,30 +91,6 @@ def initialize_metric_store_db() -> None:
 
             CREATE INDEX IF NOT EXISTS idx_metric_scope_season_metric_scope
             ON metric_scope_season (metric_id, scope_key);
-
-            CREATE TABLE IF NOT EXISTS metric_full_span_series (
-                snapshot_id INTEGER NOT NULL,
-                player_id INTEGER NOT NULL,
-                player_name TEXT NOT NULL,
-                span_average_value REAL NOT NULL,
-                season_count INTEGER NOT NULL,
-                rank_order INTEGER NOT NULL,
-                PRIMARY KEY (snapshot_id, player_id)
-            );
-
-            CREATE INDEX IF NOT EXISTS idx_metric_full_span_series_snapshot_rank
-            ON metric_full_span_series (snapshot_id, rank_order);
-
-            CREATE TABLE IF NOT EXISTS metric_full_span_points (
-                snapshot_id INTEGER NOT NULL,
-                player_id INTEGER NOT NULL,
-                season_id TEXT NOT NULL,
-                value REAL NOT NULL,
-                PRIMARY KEY (snapshot_id, player_id, season_id)
-            );
-
-            CREATE INDEX IF NOT EXISTS idx_metric_full_span_points_snapshot_player
-            ON metric_full_span_points (snapshot_id, player_id);
             """
         )
 

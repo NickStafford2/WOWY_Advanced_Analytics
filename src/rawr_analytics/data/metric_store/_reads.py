@@ -5,13 +5,16 @@ from dataclasses import dataclass
 from rawr_analytics.data.metric_store._catalog import MetricScopeCatalogRow
 from rawr_analytics.data.metric_store._queries import (
     MetricSnapshotState,
-    load_metric_full_span_points_map,
-    load_metric_full_span_series_rows,
     load_metric_scope_catalog_row,
     load_metric_snapshot_state,
 )
-from rawr_analytics.data.metric_store.full_span import MetricFullSpanSeries
-from rawr_analytics.shared.player import PlayerSummary
+from rawr_analytics.data.metric_store.full_span import (
+    MetricFullSpanSeries,
+    MetricStorePlayerSeasonValue,
+    build_metric_full_span_series,
+)
+from rawr_analytics.data.metric_store.rawr import load_rawr_player_season_value_rows
+from rawr_analytics.data.metric_store.wowy import load_wowy_player_season_value_rows
 
 
 @dataclass(frozen=True)
@@ -44,31 +47,57 @@ def load_metric_span_store_rows(
     scope_key: str,
     top_n: int | None = None,
 ) -> MetricSpanStoreRows:
-    series_rows = load_metric_full_span_series_rows(
+    catalog_row = load_metric_scope_catalog_row(metric, scope_key)
+    assert catalog_row is not None, "metric span reads require an existing catalog row"
+    player_season_values = _load_metric_player_season_values(
         metric=metric,
         scope_key=scope_key,
-        top_n=top_n,
-    )
-    points_map = load_metric_full_span_points_map(
-        metric=metric,
-        scope_key=scope_key,
-        player_ids=[row.player_id for row in series_rows],
+        season_ids=catalog_row.available_season_ids,
     )
     return MetricSpanStoreRows(
-        series=[
-            MetricFullSpanSeries(
-                player=PlayerSummary(
-                    player_id=row.player_id,
-                    player_name=row.player_name,
-                ),
-                span_average_value=row.span_average_value,
-                season_count=row.season_count,
-                rank_order=row.rank_order,
-                points_by_season=dict(points_map.get(row.player_id, {})),
-            )
-            for row in series_rows
-        ],
+        series=build_metric_full_span_series(
+            season_ids=catalog_row.available_season_ids,
+            player_season_values=player_season_values,
+            top_n=top_n,
+        )
     )
+
+
+def _load_metric_player_season_values(
+    *,
+    metric: str,
+    scope_key: str,
+    season_ids: list[str],
+) -> list[MetricStorePlayerSeasonValue]:
+    if metric == "rawr":
+        return [
+            MetricStorePlayerSeasonValue(
+                player_id=row.player_id,
+                player_name=row.player_name,
+                season_id=row.season_id,
+                value=row.coefficient,
+            )
+            for row in load_rawr_player_season_value_rows(
+                scope_key=scope_key,
+                seasons=season_ids,
+            )
+        ]
+    if metric in {"wowy", "wowy_shrunk"}:
+        return [
+            MetricStorePlayerSeasonValue(
+                player_id=row.player_id,
+                player_name=row.player_name,
+                season_id=row.season_id,
+                value=row.value,
+            )
+            for row in load_wowy_player_season_value_rows(
+                metric_id=metric,
+                scope_key=scope_key,
+                seasons=season_ids,
+            )
+            if row.value is not None
+        ]
+    raise ValueError(f"Unsupported metric span read for {metric!r}")
 
 
 __all__ = [

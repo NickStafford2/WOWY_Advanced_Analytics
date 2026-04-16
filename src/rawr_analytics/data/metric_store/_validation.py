@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import math
-from collections import defaultdict
 from dataclasses import dataclass
 
 from rawr_analytics.data._validation import (
@@ -14,10 +13,6 @@ from rawr_analytics.data.metric_store._catalog import MetricScopeCatalogRow
 from rawr_analytics.data.metric_store._tables import (
     RawrPlayerSeasonValueRow,
     WowyPlayerSeasonValueRow,
-)
-from rawr_analytics.data.metric_store.full_span import (
-    MetricFullSpanPointRow,
-    MetricFullSpanSeriesRow,
 )
 from rawr_analytics.data.metric_store_scope import validate_metric_scope
 from rawr_analytics.shared.season import Season, SeasonType, require_normalized_seasons
@@ -284,90 +279,7 @@ def _season_sort_key(season: str, season_type: SeasonType) -> int:
     parsed_season = Season.parse(season, season_type.value)
     assert parsed_season.season_type == season_type
     return parsed_season.start_year
-
-
-def validate_metric_full_span_rows(
-    *,
-    metric_id: str,
-    scope_key: str,
-    season_type: str,
-    series_rows: list[MetricFullSpanSeriesRow],
-    point_rows: list[MetricFullSpanPointRow],
-) -> None:
-    validate_required_text(metric_id, "metric_id")
-    validate_required_text(scope_key, "scope_key")
-    canonical_season_type = SeasonType.parse(season_type)
-    if not series_rows and point_rows:
-        raise ValueError("Full-span points require matching series rows")
-
-    ranks: list[int] = []
-    expected_point_counts: dict[int, int] = {}
-
-    for row in series_rows:
-        if row.metric_id != metric_id or row.scope_key != scope_key:
-            raise ValueError("Full-span series rows must match the requested metric scope")
-        if row.player_id <= 0:
-            raise ValueError(f"Full-span series row has invalid player_id {row.player_id!r}")
-        validate_required_text(
-            row.player_name,
-            f"full-span player_name for player {row.player_id}",
-        )
-        if not math.isfinite(row.span_average_value):
-            raise ValueError(
-                f"Full-span series row for player {row.player_id!r} has non-finite value"
-            )
-        if row.season_count <= 0:
-            raise ValueError(
-                f"Full-span series row for player {row.player_id!r} has invalid season_count"
-            )
-        if row.rank_order <= 0:
-            raise ValueError(
-                f"Full-span series row for player {row.player_id!r} has invalid rank_order"
-            )
-        if row.player_id in expected_point_counts:
-            raise ValueError(f"Duplicate full-span series row for player {row.player_id!r}")
-
-        expected_point_counts[row.player_id] = row.season_count
-        ranks.append(row.rank_order)
-    if sorted(ranks) != list(range(1, len(series_rows) + 1)):
-        raise ValueError("Full-span series rank_order values must be unique and contiguous")
-
-    points_by_player: dict[int, set[str]] = defaultdict(set)
-    for row in point_rows:
-        if row.metric_id != metric_id or row.scope_key != scope_key:
-            raise ValueError("Full-span point rows must match the requested metric scope")
-        if row.player_id not in expected_point_counts:
-            raise ValueError(f"Full-span point row for unknown player {row.player_id!r}")
-        canonical_season_id = Season.parse(
-            row.season_id,
-            canonical_season_type.value,
-        ).year_string_nba_api
-        if canonical_season_id != row.season_id:
-            raise ValueError(
-                f"Full-span point row for player {row.player_id!r} uses "
-                f"non-canonical season_id {row.season_id!r}"
-            )
-        if not math.isfinite(row.value):
-            raise ValueError(
-                f"Full-span point row for player {row.player_id!r} has non-finite value"
-            )
-        if row.season_id in points_by_player[row.player_id]:
-            raise ValueError(
-                f"Duplicate full-span point row for player {row.player_id!r} "
-                f"and season_id {row.season_id!r}"
-            )
-        points_by_player[row.player_id].add(row.season_id)
-
-    for player_id, season_count in expected_point_counts.items():
-        if len(points_by_player[player_id]) != season_count:
-            raise ValueError(
-                f"Full-span player {player_id!r} expected {season_count} "
-                f"season points but found {len(points_by_player[player_id])}"
-            )
-
-
 __all__ = [
-    "validate_metric_full_span_rows",
     "validate_metric_scope_catalog_row",
     "validate_rawr_rows",
     "validate_wowy_rows",

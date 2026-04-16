@@ -83,6 +83,7 @@ def _build_static_metric_options_payload(
     filters: dict[str, Any],
 ) -> JSONDict:
     ordered_teams = sorted(teams, key=lambda team: team.current.abbreviation)
+    season_ids = _unique_season_years(seasons)
 
     return {
         "metric": metric.value,
@@ -91,15 +92,13 @@ def _build_static_metric_options_payload(
             {
                 "team_id": team.team_id,
                 "label": team.current.abbreviation,
-                "available_seasons": [
-                    season.year_string_nba_api
-                    for season in seasons
-                    if team.is_active_during(season)
-                ],
+                "available_seasons": _unique_season_years(
+                    [season for season in seasons if team.is_active_during(season)]
+                ),
             }
             for team in ordered_teams
         ],
-        "available_seasons": [season.year_string_nba_api for season in seasons],
+        "available_seasons": season_ids,
         "available_teams_by_season": {
             season.year_string_nba_api: [
                 team.abbreviation(season=season)
@@ -250,6 +249,10 @@ def _selected_rawr_seasons(query: RawrQuery, rows: list[RawrPlayerSeasonRecord])
         return selected_seasons
     requested_seasons = query.seasons or build_all_nba_history_seasons()
     return normalize_seasons(requested_seasons) or []
+
+
+def _unique_season_years(seasons: list[Season]) -> list[str]:
+    return list(dict.fromkeys(season.year_string_nba_api for season in seasons))
 
 
 def _build_rawr_record_from_store_row(

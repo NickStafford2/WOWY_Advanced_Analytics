@@ -8,42 +8,6 @@ from rawr_analytics.data.metric_store._tables import (
     WowyPlayerSeasonValueRow,
     metric_values_table,
 )
-from rawr_analytics.data.metric_store.full_span import (
-    MetricFullSpanPointRow,
-    MetricFullSpanSeriesRow,
-)
-
-
-def delete_metric_full_span_rows(
-    connection: sqlite3.Connection,
-    *,
-    metric_id: str,
-    scope_key: str,
-) -> None:
-    params = (metric_id, scope_key)
-    connection.execute(
-        """
-        DELETE FROM metric_full_span_points
-        WHERE snapshot_id IN (
-            SELECT snapshot_id
-            FROM metric_snapshot
-            WHERE metric_id = ? AND scope_key = ?
-        )
-        """,
-        params,
-    )
-    connection.execute(
-        """
-        DELETE FROM metric_full_span_series
-        WHERE snapshot_id IN (
-            SELECT snapshot_id
-            FROM metric_snapshot
-            WHERE metric_id = ? AND scope_key = ?
-        )
-        """,
-        params,
-    )
-
 
 def delete_metric_value_rows(
     connection: sqlite3.Connection,
@@ -80,7 +44,6 @@ def delete_metric_scope_snapshot(
     metric_id: str,
     scope_key: str,
 ) -> None:
-    delete_metric_full_span_rows(connection, metric_id=metric_id, scope_key=scope_key)
     connection.execute(
         "DELETE FROM metric_scope_catalog WHERE metric_id = ? AND scope_key = ?",
         (metric_id, scope_key),
@@ -256,55 +219,5 @@ def insert_metric_scope_seasons(connection, row: MetricScopeCatalogRow) -> None:
                 season_id,
             )
             for season_id in row.available_season_ids
-        ],
-    )
-
-
-def insert_full_span_rows(
-    connection,
-    snapshot_id: int,
-    series_rows: list[MetricFullSpanSeriesRow],
-    point_rows: list[MetricFullSpanPointRow],
-) -> None:
-    connection.executemany(
-        """
-        INSERT INTO metric_full_span_series (
-            snapshot_id,
-            player_id,
-            player_name,
-            span_average_value,
-            season_count,
-            rank_order
-        ) VALUES (?, ?, ?, ?, ?, ?)
-        """,
-        [
-            (
-                snapshot_id,
-                row.player_id,
-                row.player_name,
-                row.span_average_value,
-                row.season_count,
-                row.rank_order,
-            )
-            for row in series_rows
-        ],
-    )
-    connection.executemany(
-        """
-        INSERT INTO metric_full_span_points (
-            snapshot_id,
-            player_id,
-            season_id,
-            value
-        ) VALUES (?, ?, ?, ?)
-        """,
-        [
-            (
-                snapshot_id,
-                row.player_id,
-                row.season_id,
-                row.value,
-            )
-            for row in point_rows
         ],
     )

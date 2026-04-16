@@ -16,20 +16,14 @@ from rawr_analytics.data.game_cache._validation import (
     validate_normalized_games_table,
 )
 from rawr_analytics.data.game_cache.store import load_cache_snapshot
-from rawr_analytics.data.metric_store import (
-    audit_metric_store_tables,
-    initialize_metric_store_db,
-)
 from rawr_analytics.data.metric_store._catalog import MetricScopeCatalogRow
 from rawr_analytics.data.metric_store._tables import (
     RawrPlayerSeasonValueRow,
     WowyPlayerSeasonValueRow,
 )
 from rawr_analytics.data.metric_store.audit import MetricStoreAuditMetadata
-from rawr_analytics.data.metric_store.full_span import (
-    MetricFullSpanPointRow,
-    MetricFullSpanSeriesRow,
-)
+from rawr_analytics.data.metric_store.audit import audit_metric_store_tables
+from rawr_analytics.data.metric_store.schema import initialize_metric_store_db
 from rawr_analytics.shared.season import SeasonType
 
 
@@ -102,7 +96,6 @@ def audit_player_metrics_db(
         "normalized cache relations",
         "metric player season values",
         "metric scope catalog",
-        "metric full span tables",
         "metric store relations",
     )
     total_steps = len(steps)
@@ -139,8 +132,6 @@ def audit_player_metrics_db(
         current_step = 6
         report_progress("Validating metric scope catalog")
         current_step = 7
-        report_progress("Validating metric full span tables")
-        current_step = 8
         report_progress("Validating metric store relations")
         _validate_metric_store_relations(
             rawr_row_groups=metric_audit_state.rawr_row_groups,
@@ -149,7 +140,6 @@ def audit_player_metrics_db(
             catalog_rows=metric_audit_state.catalog_rows,
             scope_season_rows=metric_audit_state.scope_season_rows,
             scope_team_rows=metric_audit_state.scope_team_rows,
-            full_span_groups=metric_audit_state.full_span_groups,
             issues=issues,
         )
 
@@ -248,9 +238,6 @@ def _validate_metric_store_relations(
     catalog_rows: dict[tuple[str, str], MetricScopeCatalogRow],
     scope_season_rows: dict[tuple[str, str], list[str]],
     scope_team_rows: dict[tuple[str, str], list[int]],
-    full_span_groups: dict[
-        tuple[str, str], tuple[list[MetricFullSpanSeriesRow], list[MetricFullSpanPointRow]]
-    ],
     issues: list[ValidationIssue],
 ) -> None:
     metric_row_groups = rawr_row_groups | wowy_row_groups
@@ -259,7 +246,6 @@ def _validate_metric_store_relations(
     catalog_scopes = set(catalog_rows)
     scope_season_scopes = set(scope_season_rows)
     scope_team_scopes = set(scope_team_rows)
-    full_span_scopes = set(full_span_groups)
     cache_load_counts, fingerprint_by_season_type = _load_normalized_cache_state()
 
     for key, rows in metric_row_groups.items():
@@ -340,7 +326,6 @@ def _validate_metric_store_relations(
         | catalog_scopes
         | scope_season_scopes
         | scope_team_scopes
-        | full_span_scopes
     )
     for key in sorted(all_scopes):
         metric, scope_key = key
@@ -418,71 +403,6 @@ def _validate_metric_store_relations(
                 message="scope-season rows have no matching catalog row",
             )
         )
-
-    for key, (series_rows, point_rows) in full_span_groups.items():
-        metric, scope_key = key
-        if key not in catalog_rows:
-            issues.append(
-                ValidationIssue(
-                    table="metric_full_span",
-                    key=f"metric={metric!r},scope_key={scope_key!r}",
-                    message="full-span rows have no matching catalog row",
-                )
-            )
-            continue
-        catalog_row = catalog_rows[key]
-        metadata_row = metadata_rows.get(key)
-        if metadata_row is not None:
-            full_span_snapshot_id = _full_span_group_snapshot_id(series_rows, point_rows)
-            if full_span_snapshot_id != metadata_row.snapshot_id:
-                issues.append(
-                    ValidationIssue(
-                        table="metric_full_span",
-                        key=f"metric={metric!r},scope_key={scope_key!r}",
-                        message=(
-                            "full-span rows point at a different snapshot_id than metric_snapshot"
-                        ),
-                    )
-                )
-        allowed_seasons = set(catalog_row.available_season_ids)
-        for point_row in point_rows:
-            if point_row.season_id not in allowed_seasons:
-                issues.append(
-                    ValidationIssue(
-                        table="metric_full_span_points",
-                        key=(
-                            f"metric={metric!r},scope_key={scope_key!r},"
-                            f"player_id={point_row.player_id!r},season={point_row.season_id!r}"
-                        ),
-                        message="point season is not present in catalog available_seasons",
-                    )
-                )
-        if key in metric_row_groups and not series_rows and metric_row_groups[key]:
-            issues.append(
-                ValidationIssue(
-                    table="metric_full_span_series",
-                    key=f"metric={metric!r},scope_key={scope_key!r}",
-                    message="metric value rows exist but no full-span series rows were stored",
-                )
-            )
-
-    for key in sorted(metric_scopes - full_span_scopes):
-        issues.append(
-            ValidationIssue(
-                table="metric_full_span",
-                key=f"metric={key[0]!r},scope_key={key[1]!r}",
-                message="metric scope has no matching full-span rows",
-            )
-        )
-def _full_span_group_snapshot_id(
-    series_rows: list[MetricFullSpanSeriesRow],
-    point_rows: list[MetricFullSpanPointRow],
-) -> int | None:
-    if series_rows:
-        return series_rows[0].snapshot_id
-    if point_rows:
-        return point_rows[0].snapshot_id
-    return None
 
 
 def _load_normalized_cache_state() -> tuple[dict[str, int], dict[str, str]]:

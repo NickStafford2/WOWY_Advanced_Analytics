@@ -1,14 +1,10 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Any, cast
+from typing import cast
 
 from rawr_analytics.data._paths import METRIC_STORE_DB_PATH
 from rawr_analytics.data.metric_store._catalog import MetricScopeCatalogRow
-from rawr_analytics.data.metric_store.full_span import (
-    MetricFullSpanSeriesRow,
-    build_metric_full_span_series_row,
-)
 from rawr_analytics.data.metric_store.schema import connect, initialize_metric_store_db
 
 
@@ -111,69 +107,3 @@ def load_metric_scope_catalog_row(
         full_span_end_season_id=cast(str | None, row["full_span_end_season_id"]),
         updated_at=cast(str, row["updated_at"]),
     )
-
-
-def load_metric_full_span_series_rows(
-    *,
-    metric: str,
-    scope_key: str,
-    top_n: int | None = None,
-) -> list[MetricFullSpanSeriesRow]:
-    initialize_metric_store_db()
-    query = """
-        SELECT
-            series.snapshot_id,
-            snapshot.metric_id,
-            snapshot.scope_key,
-            player_id,
-            player_name,
-            span_average_value,
-            season_count,
-            rank_order
-        FROM metric_full_span_series AS series
-        INNER JOIN metric_snapshot AS snapshot
-            ON snapshot.snapshot_id = series.snapshot_id
-        WHERE snapshot.metric_id = ? AND snapshot.scope_key = ?
-        ORDER BY rank_order
-    """
-    params: list[Any] = [metric, scope_key]
-    if top_n is not None:
-        query += " LIMIT ?"
-        params.append(top_n)
-    with connect(METRIC_STORE_DB_PATH) as connection:
-        rows = connection.execute(query, params).fetchall()
-    return [build_metric_full_span_series_row(row) for row in rows]
-
-
-def load_metric_full_span_points_map(
-    *,
-    metric: str,
-    scope_key: str,
-    player_ids: list[int],
-) -> dict[int, dict[str, float]]:
-    initialize_metric_store_db()
-    if not player_ids:
-        return {}
-    placeholders = ",".join("?" for _ in player_ids)
-    query = f"""
-        SELECT
-            points.player_id,
-            points.season_id,
-            points.value
-        FROM metric_full_span_points AS points
-        INNER JOIN metric_snapshot AS snapshot
-            ON snapshot.snapshot_id = points.snapshot_id
-        WHERE snapshot.metric_id = ?
-          AND snapshot.scope_key = ?
-          AND points.player_id IN ({placeholders})
-    """
-    params: list[Any] = [metric, scope_key, *player_ids]
-    with connect(METRIC_STORE_DB_PATH) as connection:
-        rows = connection.execute(query, params).fetchall()
-    points: dict[int, dict[str, float]] = {}
-    for row in rows:
-        player_id = cast(int, row["player_id"])
-        season_id = cast(str, row["season_id"])
-        value = cast(float, row["value"])
-        points.setdefault(player_id, {})[season_id] = value
-    return points

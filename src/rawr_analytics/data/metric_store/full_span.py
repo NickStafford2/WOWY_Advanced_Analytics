@@ -1,32 +1,8 @@
 from __future__ import annotations
 
-import sqlite3
 from dataclasses import dataclass
-from typing import cast
 
 from rawr_analytics.shared.player import PlayerSummary
-
-
-@dataclass(frozen=True)
-class MetricFullSpanSeriesRow:
-    snapshot_id: int | None
-    metric_id: str
-    scope_key: str
-    player_id: int
-    player_name: str
-    span_average_value: float
-    season_count: int
-    rank_order: int
-
-
-@dataclass(frozen=True)
-class MetricFullSpanPointRow:
-    snapshot_id: int | None
-    metric_id: str
-    scope_key: str
-    player_id: int
-    season_id: str
-    value: float
 
 
 @dataclass(frozen=True)
@@ -46,26 +22,12 @@ class MetricStorePlayerSeasonValue:
     value: float
 
 
-def build_metric_full_span_series_row(row: sqlite3.Row) -> MetricFullSpanSeriesRow:
-    return MetricFullSpanSeriesRow(
-        snapshot_id=cast(int | None, row["snapshot_id"]),
-        metric_id=cast(str, row["metric_id"]),
-        scope_key=cast(str, row["scope_key"]),
-        player_id=cast(int, row["player_id"]),
-        player_name=cast(str, row["player_name"]),
-        span_average_value=cast(float, row["span_average_value"]),
-        season_count=cast(int, row["season_count"]),
-        rank_order=cast(int, row["rank_order"]),
-    )
-
-
-def build_metric_full_span_rows(
+def build_metric_full_span_series(
     *,
-    metric_id: str,
-    scope_key: str,
     season_ids: list[str],
     player_season_values: list[MetricStorePlayerSeasonValue],
-) -> tuple[list[MetricFullSpanSeriesRow], list[MetricFullSpanPointRow]]:
+    top_n: int | None = None,
+) -> list[MetricFullSpanSeries]:
     totals: dict[int, float] = {}
     counts: dict[int, int] = {}
     names: dict[int, str] = {}
@@ -84,44 +46,32 @@ def build_metric_full_span_rows(
         key=lambda player_id: (totals[player_id], names[player_id]),
         reverse=True,
     )
+    if top_n is not None:
+        ranked_player_ids = ranked_player_ids[:top_n]
 
-    series_rows: list[MetricFullSpanSeriesRow] = []
-    point_rows: list[MetricFullSpanPointRow] = []
+    series: list[MetricFullSpanSeries] = []
     for rank_order, player_id in enumerate(ranked_player_ids, start=1):
-        series_rows.append(
-            MetricFullSpanSeriesRow(
-                snapshot_id=None,
-                metric_id=metric_id,
-                scope_key=scope_key,
-                player_id=player_id,
-                player_name=names[player_id],
+        series.append(
+            MetricFullSpanSeries(
+                player=PlayerSummary(
+                    player_id=player_id,
+                    player_name=names[player_id],
+                ),
                 span_average_value=totals[player_id] / span_length,
                 season_count=counts[player_id],
                 rank_order=rank_order,
+                points_by_season={
+                    season_id: season_values[player_id][season_id]
+                    for season_id in season_ids
+                    if season_id in season_values[player_id]
+                },
             )
         )
-        for season_id in season_ids:
-            value = season_values[player_id].get(season_id)
-            if value is None:
-                continue
-            point_rows.append(
-                MetricFullSpanPointRow(
-                    snapshot_id=None,
-                    metric_id=metric_id,
-                    scope_key=scope_key,
-                    player_id=player_id,
-                    season_id=season_id,
-                    value=value,
-                )
-            )
-    return series_rows, point_rows
+    return series
 
 
 __all__ = [
-    "MetricFullSpanPointRow",
     "MetricFullSpanSeries",
-    "MetricFullSpanSeriesRow",
     "MetricStorePlayerSeasonValue",
-    "build_metric_full_span_rows",
-    "build_metric_full_span_series_row",
+    "build_metric_full_span_series",
 ]
