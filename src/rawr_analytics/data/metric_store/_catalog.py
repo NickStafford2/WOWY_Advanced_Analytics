@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
-from rawr_analytics.shared.season import Season, SeasonType, require_normalized_seasons
+from rawr_analytics.shared.season import Season, require_normalized_seasons
 from rawr_analytics.shared.team import Team
 
 
@@ -75,7 +75,7 @@ def build_metric_scope_catalog(
     available_teams: list[Team],
 ) -> MetricScopeCatalog:
     normalized_seasons = require_normalized_seasons(seasons)
-    season_ids = [season.year_string_nba_api for season in normalized_seasons]
+    season_ids = [season.id for season in normalized_seasons]
     return MetricScopeCatalog(
         label=label,
         team_filter=team_filter,
@@ -92,12 +92,11 @@ def build_metric_scope_catalog(
 
 
 def catalog_seasons(catalog: MetricScopeCatalog | MetricScopeCatalogRow) -> list[Season]:
-    season_type = SeasonType.parse(catalog.season_type)
     season_ids = (
         catalog.availability.season_ids
         if isinstance(catalog, MetricScopeCatalog)
         else catalog.available_season_ids
     )
-    seasons = [Season.parse(season_id, season_type.value) for season_id in season_ids]
+    seasons = [Season.parse_id(season_id) for season_id in season_ids]
     assert seasons, "metric store catalog requires non-empty seasons"
     return seasons

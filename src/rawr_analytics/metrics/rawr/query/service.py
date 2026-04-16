@@ -10,7 +10,8 @@ from rawr_analytics.data.metric_store.rawr import (
     load_rawr_player_season_value_rows,
 )
 from rawr_analytics.data.metric_store.store import load_metric_scope_store_state
-from rawr_analytics.data.metric_store_scope import build_scope_key, build_team_filter, season_ids
+from rawr_analytics.data.metric_store_scope import build_team_filter, season_ids
+from rawr_analytics.metrics._metric_cache_key import build_rawr_metric_cache_key
 from rawr_analytics.metrics.constants import Metric
 from rawr_analytics.metrics.rawr.cache import load_rawr_records
 from rawr_analytics.metrics.rawr.calculate.inputs import build_rawr_request
@@ -60,8 +61,8 @@ class ResolvedRawrResultDTO:
 def build_rawr_options_payload(query: RawrQuery) -> JSONDict:
     filters = RawrQueryFiltersDTO.from_query(query).for_options()
 
-    seasons = list(dict.fromkeys(query.seasons))
-    teams_by_id = {team.team_id: team for team in query.teams}
+    seasons = list(dict.fromkeys(query.calc_vars.seasons))
+    teams_by_id = {team.team_id: team for team in query.calc_vars.teams}
     teams = list(teams_by_id.values())
 
     seasons = [season for season in seasons if any(team.is_active_during(season) for team in teams)]
@@ -142,7 +143,7 @@ def build_rawr_leaderboard_payload(
         metric=Metric.RAWR.value,
         rows=result.rows,
         seasons=result.seasons,
-        top_n=query.top_n,
+        top_n=query.post_calc_filters.top_n,
         mode=result.source,
         available_seasons=result.available_seasons,
         available_teams=result.available_teams,
@@ -178,7 +179,7 @@ def build_rawr_span_chart_payload(
         metric=Metric.RAWR.value,
         rows=result.rows,
         seasons=result.seasons,
-        top_n=query.top_n,
+        top_n=query.post_calc_filters.top_n,
     )
     payload["filters"] = RawrQueryFiltersDTO.from_query(
         query,
@@ -193,16 +194,16 @@ def _build_live_rawr_query_result(
     progress_fn: RawrProgressFn | None = None,
 ) -> list[RawrPlayerSeasonRecord]:
     season_games, season_game_players = load_rawr_records(
-        teams=query.teams,
-        seasons=query.seasons,
+        teams=query.calc_vars.teams,
+        seasons=query.calc_vars.seasons,
         progress_fn=progress_fn,
     )
     request = build_rawr_request(
         season_games=season_games,
         season_game_players=season_game_players,
-        eligibility=query.eligibility,
-        filters=query.filters,
-        ridge_alpha=query.ridge_alpha,
+        eligibility=query.calc_vars.eligibility,
+        filters=query.post_calc_filters.filters,
+        ridge_alpha=query.calc_vars.ridge_alpha,
         shrinkage_mode=DEFAULT_RAWR_SHRINKAGE_MODE,
         shrinkage_strength=DEFAULT_RAWR_SHRINKAGE_STRENGTH,
         shrinkage_minute_scale=DEFAULT_RAWR_SHRINKAGE_MINUTE_SCALE,
@@ -211,27 +212,26 @@ def _build_live_rawr_query_result(
 
 
 def _try_load_rawr_store_result(query: RawrQuery) -> ResolvedRawrResultDTO | None:
-    scope_key = _resolve_all_teams_snapshot_scope_key(query)
-    if scope_key is None:
+    cache_key = _resolve_cached_rawr_key(query)
+    if cache_key is None:
         return None
 
     available = _try_load_current_metric_availability(
         metric=Metric.RAWR,
-        scope_key=scope_key,
+        scope_key=cache_key,
         query=query,
     )
     if available is None:
         return None
 
-    season_type = query.seasons[0].season_type.value
     rows = [
-        _build_rawr_record_from_store_row(row, season_type)
+        _build_rawr_record_from_store_row(row)
         for row in load_rawr_player_season_value_rows(
-            scope_key=scope_key,
-            seasons=season_ids(query.seasons),
-            min_average_minutes=query.filters.min_average_minutes,
-            min_total_minutes=query.filters.min_total_minutes,
-            min_games=query.eligibility.min_games,
+            scope_key=cache_key,
+            seasons=season_ids(query.calc_vars.seasons),
+            min_average_minutes=query.post_calc_filters.filters.min_average_minutes,
+            min_total_minutes=query.post_calc_filters.filters.min_total_minutes,
+            min_games=query.calc_vars.eligibility.min_games,
         )
     ]
     return ResolvedRawrResultDTO(
@@ -248,7 +248,7 @@ def _selected_rawr_seasons(query: RawrQuery, rows: list[RawrPlayerSeasonRecord])
     selected_seasons = normalize_seasons([row.season for row in rows]) or []
     if selected_seasons:
         return selected_seasons
-    requested_seasons = query.seasons or build_all_nba_history_seasons()
+    requested_seasons = query.calc_vars.seasons or build_all_nba_history_seasons()
     return normalize_seasons(requested_seasons) or []
 
 
@@ -256,12 +256,9 @@ def _unique_season_years(seasons: list[Season]) -> list[str]:
     return list(dict.fromkeys(season.year_string_nba_api for season in seasons))
 
 
-def _build_rawr_record_from_store_row(
-    row: RawrPlayerSeasonValueRow,
-    season_type: str,
-) -> RawrPlayerSeasonRecord:
+def _build_rawr_record_from_store_row(row: RawrPlayerSeasonValueRow) -> RawrPlayerSeasonRecord:
     return RawrPlayerSeasonRecord(
-        season=Season.parse(row.season_id, season_type),
+        season=Season.parse_id(row.season_id),
         player=PlayerSummary(
             player_id=row.player_id,
             player_name=row.player_name,
@@ -275,8 +272,8 @@ def _build_rawr_record_from_store_row(
     )
 
 
-def _resolve_all_teams_snapshot_scope_key(query: RawrQuery) -> str | None:
-    team_filter = build_team_filter(query.teams)
+def _resolve_cached_rawr_key(query: RawrQuery) -> str | None:
+    team_filter = build_team_filter(query.calc_vars.teams)
     if team_filter:
         return None
 
@@ -284,11 +281,7 @@ def _resolve_all_teams_snapshot_scope_key(query: RawrQuery) -> str | None:
     if not cache_snapshot.entries:
         return None
 
-    seasons = query.seasons or build_all_nba_history_seasons()
-    return build_scope_key(
-        seasons=seasons,
-        team_filter=team_filter,
-    )
+    return build_rawr_metric_cache_key(query.calc_vars)
 
 
 @dataclass(frozen=True)
@@ -314,8 +307,8 @@ def _try_load_current_metric_availability(
     if state.snapshot_state.source_fingerprint != cache_snapshot.fingerprint:
         return None
 
-    seasons = list(dict.fromkeys(query.seasons or build_all_nba_history_seasons()))
-    teams_by_id = {team.team_id: team for team in query.teams}
+    seasons = list(dict.fromkeys(query.calc_vars.seasons or build_all_nba_history_seasons()))
+    teams_by_id = {team.team_id: team for team in query.calc_vars.teams}
     teams = list(teams_by_id.values())
 
     seasons = [season for season in seasons if any(team.is_active_during(season) for team in teams)]

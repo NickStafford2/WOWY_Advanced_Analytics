@@ -31,13 +31,13 @@ class RawrQueryFiltersDTO:
         recalculate: bool = False,
     ) -> RawrQueryFiltersDTO:
         return cls(
-            team_filter=query.teams,
-            season_filter=query.seasons,
-            top_n=query.top_n,
-            min_average_minutes=query.filters.min_average_minutes,
-            min_total_minutes=query.filters.min_total_minutes,
-            min_games=query.eligibility.min_games,
-            ridge_alpha=query.ridge_alpha,
+            team_filter=query.calc_vars.teams,
+            season_filter=query.calc_vars.seasons,
+            top_n=query.post_calc_filters.top_n,
+            min_average_minutes=query.post_calc_filters.filters.min_average_minutes,
+            min_total_minutes=query.post_calc_filters.filters.min_total_minutes,
+            min_games=query.calc_vars.eligibility.min_games,
+            ridge_alpha=query.calc_vars.ridge_alpha,
             recalculate=recalculate,
         )
 

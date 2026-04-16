@@ -9,8 +9,9 @@ from rawr_analytics.data.metric_store.wowy import (
     WowyPlayerSeasonValueRow,
     load_wowy_player_season_value_rows,
 )
-from rawr_analytics.data.metric_store_scope import build_scope_key, build_team_filter, season_ids
+from rawr_analytics.data.metric_store_scope import build_team_filter, season_ids
 from rawr_analytics.metrics.constants import Metric
+from rawr_analytics.metrics._metric_cache_key import build_wowy_metric_cache_key
 from rawr_analytics.metrics.wowy.cache import load_wowy_records
 from rawr_analytics.metrics.wowy.calculate.inputs import build_wowy_season_inputs
 from rawr_analytics.metrics.wowy.calculate.records import (
@@ -56,8 +57,8 @@ def build_wowy_options_payload(
     _require_wowy_metric(metric)
     filters = WowyQueryFiltersDTO.from_query(query).for_options()
 
-    seasons = list(dict.fromkeys(query.seasons or build_all_nba_history_seasons()))
-    teams_by_id = {team.team_id: team for team in query.teams}
+    seasons = list(dict.fromkeys(query.calc_vars.seasons or build_all_nba_history_seasons()))
+    teams_by_id = {team.team_id: team for team in query.calc_vars.teams}
     teams = list(teams_by_id.values())
 
     seasons = [season for season in seasons if any(team.is_active_during(season) for team in teams)]
@@ -140,7 +141,7 @@ def build_wowy_leaderboard_payload(
         metric=result.metric,
         rows=result.player_season_value,
         seasons=result.seasons,
-        top_n=query.top_n,
+        top_n=query.post_calc_filters.top_n,
         mode=result.source,
         available_seasons=result.available_seasons,
         available_teams=result.available_teams,
@@ -169,7 +170,7 @@ def build_wowy_span_chart_payload(
         metric=result.metric,
         rows=result.player_season_value,
         seasons=result.seasons,
-        top_n=query.top_n,
+        top_n=query.post_calc_filters.top_n,
     )
     payload["filters"] = WowyQueryFiltersDTO.from_query(query).to_payload()
     return payload
@@ -181,15 +182,15 @@ def _build_live_wowy_query_result(
     query: WowyQuery,
 ) -> list[WowyPlayerSeasonValue]:
     games, game_players = load_wowy_records(
-        teams=query.teams,
-        seasons=query.seasons,
+        teams=query.calc_vars.teams,
+        seasons=query.calc_vars.seasons,
     )
     season_inputs = build_wowy_season_inputs(games=games, game_players=game_players)
     return build_wowy_custom_query(
         metric,
         season_inputs=season_inputs,
-        eligibility=query.eligibility,
-        filters=query.filters,
+        eligibility=query.calc_vars.eligibility,
+        filters=query.post_calc_filters.filters,
     )
 
 
@@ -198,29 +199,28 @@ def _try_load_wowy_store_result(
     metric: Metric,
     query: WowyQuery,
 ) -> ResolvedWowyResultDTO | None:
-    scope_key = _resolve_all_teams_snapshot_scope_key(query)
-    if scope_key is None:
+    cache_key = _resolve_cached_wowy_key(metric=metric, query=query)
+    if cache_key is None:
         return None
 
     available = _try_load_current_metric_availability(
         metric=metric,
         query=query,
-        scope_key=scope_key,
+        scope_key=cache_key,
     )
     if available is None:
         return None
 
-    season_type = query.seasons[0].season_type.value
     rows = [
-        _build_wowy_value_from_store_row(row, season_type)
+        _build_wowy_value_from_store_row(row)
         for row in load_wowy_player_season_value_rows(
             metric_id=metric.value,
-            scope_key=scope_key,
-            seasons=season_ids(query.seasons),
-            min_average_minutes=query.filters.min_average_minutes,
-            min_total_minutes=query.filters.min_total_minutes,
-            min_games_with=query.eligibility.min_games_with,
-            min_games_without=query.eligibility.min_games_without,
+            scope_key=cache_key,
+            seasons=season_ids(query.calc_vars.seasons),
+            min_average_minutes=query.post_calc_filters.filters.min_average_minutes,
+            min_total_minutes=query.post_calc_filters.filters.min_total_minutes,
+            min_games_with=query.calc_vars.eligibility.min_games_with,
+            min_games_without=query.calc_vars.eligibility.min_games_without,
         )
     ]
 
@@ -243,7 +243,7 @@ def _selected_wowy_seasons(
     if selected_seasons:
         return selected_seasons
 
-    requested_seasons = query.seasons or build_all_nba_history_seasons()
+    requested_seasons = query.calc_vars.seasons or build_all_nba_history_seasons()
     return normalize_seasons(requested_seasons) or []
 
 
@@ -258,9 +258,8 @@ def _unique_season_years(seasons: list[Season]) -> list[str]:
 
 def _build_wowy_value_from_store_row(
     row: WowyPlayerSeasonValueRow,
-    season_type: str,
 ) -> WowyPlayerSeasonValue:
-    season = Season.parse(row.season_id, season_type)
+    season = Season.parse_id(row.season_id)
     return build_wowy_player_season_value(
         season=season,
         player=PlayerSummary(
@@ -280,8 +279,12 @@ def _build_wowy_value_from_store_row(
     )
 
 
-def _resolve_all_teams_snapshot_scope_key(query: WowyQuery) -> str | None:
-    team_filter = build_team_filter(query.teams)
+def _resolve_cached_wowy_key(
+    *,
+    metric: Metric,
+    query: WowyQuery,
+) -> str | None:
+    team_filter = build_team_filter(query.calc_vars.teams)
     if team_filter:
         return None
 
@@ -289,11 +292,7 @@ def _resolve_all_teams_snapshot_scope_key(query: WowyQuery) -> str | None:
     if not cache_snapshot.entries:
         return None
 
-    seasons = query.seasons or build_all_nba_history_seasons()
-    return build_scope_key(
-        seasons=seasons,
-        team_filter=team_filter,
-    )
+    return build_wowy_metric_cache_key(metric_id=metric.value, calc_vars=query.calc_vars)
 
 
 @dataclass(frozen=True)
@@ -319,8 +318,8 @@ def _try_load_current_metric_availability(
     if state.snapshot_state.source_fingerprint != cache_snapshot.fingerprint:
         return None
 
-    seasons = list(dict.fromkeys(query.seasons or build_all_nba_history_seasons()))
-    teams_by_id = {team.team_id: team for team in query.teams}
+    seasons = list(dict.fromkeys(query.calc_vars.seasons or build_all_nba_history_seasons()))
+    teams_by_id = {team.team_id: team for team in query.calc_vars.teams}
     teams = list(teams_by_id.values())
 
     seasons = [season for season in seasons if any(team.is_active_during(season) for team in teams)]

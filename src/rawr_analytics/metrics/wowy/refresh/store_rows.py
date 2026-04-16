@@ -47,7 +47,7 @@ def _build_wowy_store_row_from_record(
             prior_games=DEFAULT_WOWY_SHRINKAGE_PRIOR_GAMES,
         )
     return WowyPlayerSeasonValueRow(
-        season_id=record.season.year_string_nba_api,
+        season_id=record.season.id,
         player_id=record.player.player_id,
         player_name=record.player.player_name,
         value=value,

@@ -26,13 +26,13 @@ class WowyQueryFiltersDTO:
     @classmethod
     def from_query(cls, query: WowyQuery) -> WowyQueryFiltersDTO:
         return cls(
-            team_filter=query.teams,
-            season_filter=query.seasons,
-            min_average_minutes=query.filters.min_average_minutes,
-            min_total_minutes=query.filters.min_total_minutes,
-            top_n=query.top_n,
-            min_games_with=query.eligibility.min_games_with,
-            min_games_without=query.eligibility.min_games_without,
+            team_filter=query.calc_vars.teams,
+            season_filter=query.calc_vars.seasons,
+            min_average_minutes=query.post_calc_filters.filters.min_average_minutes,
+            min_total_minutes=query.post_calc_filters.filters.min_total_minutes,
+            top_n=query.post_calc_filters.top_n,
+            min_games_with=query.calc_vars.eligibility.min_games_with,
+            min_games_without=query.calc_vars.eligibility.min_games_without,
         )
 
     def for_options(self) -> WowyQueryFiltersDTO:

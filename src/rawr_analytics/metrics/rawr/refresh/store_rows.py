@@ -25,7 +25,7 @@ def _build_rawr_store_row_from_record(
     record: RawrPlayerSeasonRecord,
 ) -> RawrPlayerSeasonValueRow:
     return RawrPlayerSeasonValueRow(
-        season_id=record.season.year_string_nba_api,
+        season_id=record.season.id,
         player_id=record.player.player_id,
         player_name=record.player.player_name,
         games=record.games,
