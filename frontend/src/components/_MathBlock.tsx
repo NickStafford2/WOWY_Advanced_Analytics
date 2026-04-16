@@ -13,6 +13,7 @@ type MathBlockProps = {
 export function MathBlock({ equation, whereItems = [] }: MathBlockProps) {
   const renderedEquation = renderToString(equation, {
     displayMode: true,
+    output: 'html',
     throwOnError: false,
   })
 
@@ -33,6 +34,7 @@ export function MathBlock({ equation, whereItems = [] }: MathBlockProps) {
                   dangerouslySetInnerHTML={{
                     __html: renderToString(item.label, {
                       displayMode: false,
+                      output: 'html',
                       throwOnError: false,
                     }),
                   }}
