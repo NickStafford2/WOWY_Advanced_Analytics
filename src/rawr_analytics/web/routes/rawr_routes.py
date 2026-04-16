@@ -23,7 +23,9 @@ def register_rawr_routes(app: Flask) -> None:
     @app.get("/api/metrics/rawr/options")
     @web_route
     def get_rawr_options():
-        return jsonify(build_rawr_options_payload(build_rawr_options_query_from_request(request)))
+        query = build_rawr_options_query_from_request(request)
+        payload = build_rawr_options_payload(query)
+        return jsonify(payload)
 
     @app.get("/api/metrics/rawr/player-seasons")
     @web_route
