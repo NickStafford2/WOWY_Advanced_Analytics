@@ -12,14 +12,16 @@ from rawr_analytics.metrics._metric_cache_key import (
     build_wowy_metric_cache_key,
 )
 from rawr_analytics.metrics.constants import Metric, MetricSummary
+from rawr_analytics.metrics.rawr._calc_vars import RawrCalcVars, RawrEligibility
 from rawr_analytics.metrics.rawr.cache_status import list_incomplete_rawr_season_warnings
-from rawr_analytics.metrics.rawr.calculate.inputs import RawrEligibility
 from rawr_analytics.metrics.rawr.defaults import (
     DEFAULT_RAWR_MIN_GAMES,
     DEFAULT_RAWR_RIDGE_ALPHA,
+    DEFAULT_RAWR_SHRINKAGE_MINUTE_SCALE,
+    DEFAULT_RAWR_SHRINKAGE_MODE,
+    DEFAULT_RAWR_SHRINKAGE_STRENGTH,
     RAWR_METRIC_SUMMARY,
 )
-from rawr_analytics.metrics.rawr.query.request import RawrCalcVars
 from rawr_analytics.metrics.rawr.refresh.store_rows import build_rawr_metric_store_rows
 from rawr_analytics.metrics.wowy.calculate.inputs import WowyEligibility
 from rawr_analytics.metrics.wowy.defaults import default_filters as default_wowy_filters
@@ -70,6 +72,7 @@ class _RefreshCache:
     cache_label: str
     seasons: list[Season]
     teams: list[Team]
+    rawr_calc_vars: RawrCalcVars | None = None
 
 
 def refresh_metric_store(
@@ -173,16 +176,26 @@ def _build_all_teams_refresh_cache(
     seasons = require_normalized_seasons([scope.season for scope in cached_team_seasons])
     teams = _available_cache_teams(cached_team_seasons)
     assert teams, "metric store refresh requires cached teams"
+    rawr_calc_vars = (
+        _build_refresh_rawr_calc_vars(
+            seasons=seasons,
+            rawr_ridge_alpha=rawr_ridge_alpha,
+        )
+        if metric == Metric.RAWR
+        else None
+    )
     metric_cache_key = _build_refresh_cache_key(
         metric=metric,
         seasons=seasons,
         rawr_ridge_alpha=rawr_ridge_alpha,
+        rawr_calc_vars=rawr_calc_vars,
     )
     return _RefreshCache(
         metric_cache_key=metric_cache_key,
         cache_label="all-teams",
         seasons=seasons,
         teams=teams,
+        rawr_calc_vars=rawr_calc_vars,
     )
 
 
@@ -197,17 +210,12 @@ def _build_refresh_cache_key(
     metric: Metric,
     seasons: list[Season],
     rawr_ridge_alpha: float,
+    rawr_calc_vars: RawrCalcVars | None = None,
 ) -> str:
-    all_teams = Team.all()
     if metric == Metric.RAWR:
-        return build_rawr_metric_cache_key(
-            RawrCalcVars(
-                teams=all_teams,
-                seasons=seasons,
-                eligibility=RawrEligibility(min_games=DEFAULT_RAWR_MIN_GAMES),
-                ridge_alpha=rawr_ridge_alpha,
-            )
-        )
+        assert rawr_calc_vars is not None, "RAWR refresh requires calc vars"
+        return build_rawr_metric_cache_key(rawr_calc_vars)
+    all_teams = Team.all()
     defaults = default_wowy_filters()
     return build_wowy_metric_cache_key(
         metric_id=metric.value,
@@ -245,10 +253,10 @@ def _refresh_cache(
         )
 
     if metric == Metric.RAWR:
+        rawr_calc_vars = cache.rawr_calc_vars
+        assert rawr_calc_vars is not None, "RAWR refresh requires calc vars"
         rows = build_rawr_metric_store_rows(
-            seasons=cache.seasons,
-            teams=cache.teams,
-            rawr_ridge_alpha=rawr_ridge_alpha,
+            calc_vars=rawr_calc_vars,
         )
         replace_rawr_metric_cache(
             metric_cache_key=cache.metric_cache_key,
@@ -290,3 +298,19 @@ def _describe_metric(metric: Metric) -> MetricSummary:
     if metric == Metric.RAWR:
         return RAWR_METRIC_SUMMARY
     return describe_wowy_metric(metric)
+
+
+def _build_refresh_rawr_calc_vars(
+    *,
+    seasons: list[Season],
+    rawr_ridge_alpha: float,
+) -> RawrCalcVars:
+    return RawrCalcVars(
+        teams=Team.all(),
+        seasons=seasons,
+        eligibility=RawrEligibility(min_games=DEFAULT_RAWR_MIN_GAMES),
+        ridge_alpha=rawr_ridge_alpha,
+        shrinkage_mode=DEFAULT_RAWR_SHRINKAGE_MODE,
+        shrinkage_strength=DEFAULT_RAWR_SHRINKAGE_STRENGTH,
+        shrinkage_minute_scale=DEFAULT_RAWR_SHRINKAGE_MINUTE_SCALE,
+    )

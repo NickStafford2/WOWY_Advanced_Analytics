@@ -13,15 +13,10 @@ from rawr_analytics.data.metric_store.store import load_metric_cache_store_state
 from rawr_analytics.metrics._metric_cache_key import build_rawr_metric_cache_key
 from rawr_analytics.metrics.constants import Metric
 from rawr_analytics.metrics.rawr.cache import load_rawr_records
-from rawr_analytics.metrics.rawr.calculate.inputs import build_rawr_request
+from rawr_analytics.metrics.rawr.calculate.inputs import build_rawr_request_from_calc_vars
 from rawr_analytics.metrics.rawr.calculate.records import (
     RawrPlayerSeasonRecord,
     build_player_season_records,
-)
-from rawr_analytics.metrics.rawr.defaults import (
-    DEFAULT_RAWR_SHRINKAGE_MINUTE_SCALE,
-    DEFAULT_RAWR_SHRINKAGE_MODE,
-    DEFAULT_RAWR_SHRINKAGE_STRENGTH,
 )
 from rawr_analytics.metrics.rawr.query.presenters import RawrQueryFiltersDTO
 from rawr_analytics.metrics.rawr.query.presenters import (
@@ -198,15 +193,11 @@ def _build_live_rawr_query_result(
         seasons=query.calc_vars.seasons,
         progress_fn=progress_fn,
     )
-    request = build_rawr_request(
+    request = build_rawr_request_from_calc_vars(
+        calc_vars=query.calc_vars,
         season_games=season_games,
         season_game_players=season_game_players,
-        eligibility=query.calc_vars.eligibility,
         filters=query.post_calc_filters.filters,
-        ridge_alpha=query.calc_vars.ridge_alpha,
-        shrinkage_mode=DEFAULT_RAWR_SHRINKAGE_MODE,
-        shrinkage_strength=DEFAULT_RAWR_SHRINKAGE_STRENGTH,
-        shrinkage_minute_scale=DEFAULT_RAWR_SHRINKAGE_MINUTE_SCALE,
     )
     return build_player_season_records(request)
 

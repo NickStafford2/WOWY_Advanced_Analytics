@@ -5,6 +5,7 @@ from dataclasses import asdict, dataclass
 from typing import Any, cast
 
 from rawr_analytics.metrics._span import build_span_payload
+from rawr_analytics.metrics.rawr.calculate.shrinkage import RawrShrinkageMode
 from rawr_analytics.metrics.rawr.calculate.records import RawrPlayerSeasonRecord
 from rawr_analytics.metrics.rawr.query.request import RawrQuery
 from rawr_analytics.shared.common import JSONDict
@@ -21,6 +22,9 @@ class RawrQueryFiltersDTO:
     min_total_minutes: float | None
     min_games: int
     ridge_alpha: float
+    shrinkage_mode: RawrShrinkageMode
+    shrinkage_strength: float
+    shrinkage_minute_scale: float
     recalculate: bool
 
     @classmethod
@@ -38,6 +42,9 @@ class RawrQueryFiltersDTO:
             min_total_minutes=query.post_calc_filters.filters.min_total_minutes,
             min_games=query.calc_vars.eligibility.min_games,
             ridge_alpha=query.calc_vars.ridge_alpha,
+            shrinkage_mode=query.calc_vars.shrinkage_mode,
+            shrinkage_strength=query.calc_vars.shrinkage_strength,
+            shrinkage_minute_scale=query.calc_vars.shrinkage_minute_scale,
             recalculate=recalculate,
         )
 
@@ -50,6 +57,9 @@ class RawrQueryFiltersDTO:
             min_total_minutes=self.min_total_minutes,
             min_games=self.min_games,
             ridge_alpha=self.ridge_alpha,
+            shrinkage_mode=self.shrinkage_mode,
+            shrinkage_strength=self.shrinkage_strength,
+            shrinkage_minute_scale=self.shrinkage_minute_scale,
             recalculate=self.recalculate,
         )
 
@@ -69,6 +79,9 @@ class RawrQueryFiltersDTO:
             "top_n": self.top_n,
             "min_games": self.min_games,
             "ridge_alpha": self.ridge_alpha,
+            "shrinkage_mode": self.shrinkage_mode.value,
+            "shrinkage_strength": self.shrinkage_strength,
+            "shrinkage_minute_scale": self.shrinkage_minute_scale,
             "recalculate": self.recalculate,
         }
 

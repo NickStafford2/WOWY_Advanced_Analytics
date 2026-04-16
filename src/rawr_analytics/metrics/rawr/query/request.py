@@ -3,12 +3,17 @@ from __future__ import annotations
 from dataclasses import dataclass
 
 from rawr_analytics.metrics._player_context import PlayerSeasonFilters
-from rawr_analytics.metrics.rawr.calculate.inputs import RawrEligibility, validate_filters
+from rawr_analytics.metrics.rawr._calc_vars import RawrCalcVars, RawrEligibility
+from rawr_analytics.metrics.rawr.calculate.inputs import validate_filters
+from rawr_analytics.metrics.rawr.calculate.shrinkage import RawrShrinkageMode
 from rawr_analytics.metrics.rawr.defaults import (
     DEFAULT_RAWR_MIN_AVERAGE_MINUTES,
     DEFAULT_RAWR_MIN_GAMES,
     DEFAULT_RAWR_MIN_TOTAL_MINUTES,
     DEFAULT_RAWR_RIDGE_ALPHA,
+    DEFAULT_RAWR_SHRINKAGE_MINUTE_SCALE,
+    DEFAULT_RAWR_SHRINKAGE_MODE,
+    DEFAULT_RAWR_SHRINKAGE_STRENGTH,
     DEFAULT_RAWR_TOP_N,
 )
 from rawr_analytics.shared.season import (
@@ -17,15 +22,6 @@ from rawr_analytics.shared.season import (
     normalize_seasons,
 )
 from rawr_analytics.shared.team import Team, normalize_teams
-
-
-@dataclass(frozen=True)
-class RawrCalcVars:
-    teams: list[Team]
-    seasons: list[Season]
-    eligibility: RawrEligibility
-    ridge_alpha: float
-
 
 @dataclass(frozen=True)
 class RawrPostCalcFilters:
@@ -48,6 +44,9 @@ def build_rawr_query(
     min_total_minutes: float | None = None,
     min_games: int | None = None,
     ridge_alpha: float | None = None,
+    shrinkage_mode: RawrShrinkageMode | None = None,
+    shrinkage_strength: float | None = None,
+    shrinkage_minute_scale: float | None = None,
 ) -> RawrQuery:
     normalized_teams = normalize_teams(teams)
     if not normalized_teams:
@@ -64,6 +63,19 @@ def build_rawr_query(
             ),
             ridge_alpha=float(
                 ridge_alpha if ridge_alpha is not None else DEFAULT_RAWR_RIDGE_ALPHA
+            ),
+            shrinkage_mode=(
+                shrinkage_mode if shrinkage_mode is not None else DEFAULT_RAWR_SHRINKAGE_MODE
+            ),
+            shrinkage_strength=float(
+                shrinkage_strength
+                if shrinkage_strength is not None
+                else DEFAULT_RAWR_SHRINKAGE_STRENGTH
+            ),
+            shrinkage_minute_scale=float(
+                shrinkage_minute_scale
+                if shrinkage_minute_scale is not None
+                else DEFAULT_RAWR_SHRINKAGE_MINUTE_SCALE
             ),
         ),
         post_calc_filters=RawrPostCalcFilters(
@@ -86,6 +98,9 @@ def build_rawr_query(
     validate_filters(
         normalized_query.calc_vars.eligibility.min_games,
         normalized_query.calc_vars.ridge_alpha,
+        shrinkage_mode=normalized_query.calc_vars.shrinkage_mode,
+        shrinkage_strength=normalized_query.calc_vars.shrinkage_strength,
+        shrinkage_minute_scale=normalized_query.calc_vars.shrinkage_minute_scale,
         top_n=normalized_query.post_calc_filters.top_n,
         min_average_minutes=normalized_query.post_calc_filters.filters.min_average_minutes,
         min_total_minutes=normalized_query.post_calc_filters.filters.min_total_minutes,

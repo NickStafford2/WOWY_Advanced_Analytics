@@ -3,7 +3,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from decimal import Decimal, ROUND_HALF_UP
 
-from rawr_analytics.metrics.rawr.query.request import RawrCalcVars
+from rawr_analytics.metrics.rawr._calc_vars import RawrCalcVars
 from rawr_analytics.metrics.wowy.query.request import WowyCalcVars
 from rawr_analytics.shared.season import require_normalized_seasons
 from rawr_analytics.shared.team import Team, to_normalized_team_ids
@@ -79,7 +79,12 @@ def build_rawr_metric_cache_key(calc_vars: RawrCalcVars) -> str:
         metric_variant="default",
         season_ids=_season_ids(calc_vars.seasons),
         team_ids=_team_ids(calc_vars.teams),
-        calc_settings=(("ridge_alpha", _normalize_float(calc_vars.ridge_alpha)),),
+        calc_settings=(
+            ("ridge_alpha", _normalize_float(calc_vars.ridge_alpha)),
+            ("shrinkage_mode", calc_vars.shrinkage_mode.value),
+            ("shrinkage_strength", _normalize_float(calc_vars.shrinkage_strength)),
+            ("shrinkage_minute_scale", _normalize_float(calc_vars.shrinkage_minute_scale)),
+        ),
     ).serialize()
 
 

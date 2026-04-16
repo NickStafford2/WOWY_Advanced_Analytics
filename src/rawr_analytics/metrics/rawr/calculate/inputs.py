@@ -4,6 +4,7 @@ from collections import defaultdict
 from dataclasses import dataclass
 
 from rawr_analytics.metrics._player_context import PlayerSeasonContext, PlayerSeasonFilters
+from rawr_analytics.metrics.rawr._calc_vars import RawrCalcVars, RawrEligibility
 from rawr_analytics.metrics._validation import validate_top_n_and_minutes
 from rawr_analytics.metrics.rawr.calculate._observations import (
     RawrObservation,
@@ -20,12 +21,6 @@ class RawrSeasonInputDTO:
     season: Season
     observations: list[RawrObservation]
     players_by_id: dict[int, PlayerSeasonContext]
-
-
-@dataclass(frozen=True)
-class RawrEligibility:
-    min_games: int
-
 
 @dataclass(frozen=True)
 class RawrRequestDTO:
@@ -66,6 +61,25 @@ def build_rawr_request(
         shrinkage_mode=shrinkage_mode,
         shrinkage_strength=shrinkage_strength,
         shrinkage_minute_scale=shrinkage_minute_scale,
+    )
+
+
+def build_rawr_request_from_calc_vars(
+    *,
+    calc_vars: RawrCalcVars,
+    filters: PlayerSeasonFilters,
+    season_games: dict[Season, list[NormalizedGameRecord]],
+    season_game_players: dict[Season, list[NormalizedGamePlayerRecord]],
+) -> RawrRequestDTO:
+    return build_rawr_request(
+        season_games=season_games,
+        season_game_players=season_game_players,
+        eligibility=calc_vars.eligibility,
+        filters=filters,
+        ridge_alpha=calc_vars.ridge_alpha,
+        shrinkage_mode=calc_vars.shrinkage_mode,
+        shrinkage_strength=calc_vars.shrinkage_strength,
+        shrinkage_minute_scale=calc_vars.shrinkage_minute_scale,
     )
 
 

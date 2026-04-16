@@ -1,22 +1,17 @@
 from __future__ import annotations
 
 from rawr_analytics.data.metric_store.rawr import RawrPlayerSeasonValueRow
+from rawr_analytics.metrics.rawr._calc_vars import RawrCalcVars
 from rawr_analytics.metrics.rawr.calculate.records import RawrPlayerSeasonRecord
 from rawr_analytics.metrics.rawr.refresh.records import build_rawr_refresh_records
-from rawr_analytics.shared.season import Season
-from rawr_analytics.shared.team import Team
 
 
 def build_rawr_metric_store_rows(
     *,
-    seasons: list[Season],
-    teams: list[Team],
-    rawr_ridge_alpha: float,
+    calc_vars: RawrCalcVars,
 ) -> list[RawrPlayerSeasonValueRow]:
     records = build_rawr_refresh_records(
-        seasons=seasons,
-        teams=teams,
-        ridge_alpha=rawr_ridge_alpha,
+        calc_vars=calc_vars,
     )
     return [_build_rawr_store_row_from_record(record) for record in records]
 
