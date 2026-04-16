@@ -4,12 +4,8 @@ import argparse
 import sys
 
 from rawr_analytics.cli._failure_logging import append_failure_log_entry
-from rawr_analytics.cli._ingest_terminal import (
-    render_failure_summary,
-)
-from rawr_analytics.cli._rebuild_terminal import (
-    render_rebuild_event,
-)
+from rawr_analytics.cli._ingest_terminal import render_failure_summary
+from rawr_analytics.cli._rebuild_terminal import render_rebuild_event
 from rawr_analytics.refresh_metrics.rebuild import (
     format_rebuild_validation_summary,
     rebuild_player_metrics_db,
