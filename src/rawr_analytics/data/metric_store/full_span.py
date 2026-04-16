@@ -1,6 +1,8 @@
 from __future__ import annotations
 
+import sqlite3
 from dataclasses import dataclass
+from typing import cast
 
 from rawr_analytics.shared.player import PlayerSummary
 
@@ -42,6 +44,19 @@ class MetricStorePlayerSeasonValue:
     player_name: str
     season_id: str
     value: float
+
+
+def build_metric_full_span_series_row(row: sqlite3.Row) -> MetricFullSpanSeriesRow:
+    return MetricFullSpanSeriesRow(
+        snapshot_id=cast(int | None, row["snapshot_id"]),
+        metric_id=cast(str, row["metric_id"]),
+        scope_key=cast(str, row["scope_key"]),
+        player_id=cast(int, row["player_id"]),
+        player_name=cast(str, row["player_name"]),
+        span_average_value=cast(float, row["span_average_value"]),
+        season_count=cast(int, row["season_count"]),
+        rank_order=cast(int, row["rank_order"]),
+    )
 
 
 def build_metric_full_span_rows(
@@ -103,6 +118,7 @@ def build_metric_full_span_rows(
 
 
 __all__ = [
+    "build_metric_full_span_series_row",
     "MetricFullSpanPointRow",
     "MetricFullSpanSeries",
     "MetricFullSpanSeriesRow",
