@@ -9,10 +9,9 @@ export type TeamOption = {
 }
 
 export type BaseMetricFilters = {
-  team: string[] | null
-  team_id: number[] | null
-  season?: string[] | null
-  season_type: string
+  team_filter: string[] | null
+  team_id_filter: number[] | null
+  season_filter: string[] | null
   min_average_minutes: number
   min_total_minutes: number
   top_n: number
