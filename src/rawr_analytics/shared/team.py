@@ -275,6 +275,11 @@ def to_normalized_team_ids(teams: list[Team] | None) -> list[int] | None:
     return [team.team_id for team in normalized_teams]
 
 
+def build_metric_team_filter(teams: list[Team] | None) -> str:
+    team_ids = to_normalized_team_ids(teams) or []
+    return ",".join(str(team_id) for team_id in team_ids)
+
+
 def canonicalize_metric_team_filter(team_filter: str) -> str:
     if not team_filter:
         return ""

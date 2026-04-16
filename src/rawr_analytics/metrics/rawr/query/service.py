@@ -10,7 +10,6 @@ from rawr_analytics.data.metric_store.rawr import (
     load_rawr_player_season_value_rows,
 )
 from rawr_analytics.data.metric_store.store import load_metric_cache_store_state
-from rawr_analytics.data.metric_store_scope import build_team_filter, season_ids
 from rawr_analytics.metrics._metric_cache_key import build_rawr_metric_cache_key
 from rawr_analytics.metrics.constants import Metric
 from rawr_analytics.metrics.rawr.cache import load_rawr_records
@@ -41,8 +40,9 @@ from rawr_analytics.shared.season import (
     Season,
     build_all_nba_history_seasons,
     normalize_seasons,
+    season_ids,
 )
-from rawr_analytics.shared.team import Team
+from rawr_analytics.shared.team import Team, build_metric_team_filter
 
 type RawrProgressFn = Callable[[int, int, Season], None]
 type MetricQueryExport = list[JSONDict]
@@ -242,8 +242,6 @@ def _try_load_rawr_store_result(query: RawrQuery) -> ResolvedRawrResultDTO | Non
         available_seasons=available.available_seasons,
     )
 
-
-# do i need this at all? i think this should be removed. I don't know if this behavior is desirable
 def _selected_rawr_seasons(query: RawrQuery, rows: list[RawrPlayerSeasonRecord]) -> list[Season]:
     selected_seasons = normalize_seasons([row.season for row in rows]) or []
     if selected_seasons:
@@ -273,7 +271,7 @@ def _build_rawr_record_from_store_row(row: RawrPlayerSeasonValueRow) -> RawrPlay
 
 
 def _resolve_cached_rawr_key(query: RawrQuery) -> str | None:
-    team_filter = build_team_filter(query.calc_vars.teams)
+    team_filter = build_metric_team_filter(query.calc_vars.teams)
     if team_filter:
         return None
 

@@ -9,7 +9,6 @@ from rawr_analytics.data.metric_store.wowy import (
     WowyPlayerSeasonValueRow,
     load_wowy_player_season_value_rows,
 )
-from rawr_analytics.data.metric_store_scope import build_team_filter, season_ids
 from rawr_analytics.metrics.constants import Metric
 from rawr_analytics.metrics._metric_cache_key import build_wowy_metric_cache_key
 from rawr_analytics.metrics.wowy.cache import load_wowy_records
@@ -32,8 +31,13 @@ from rawr_analytics.metrics.wowy.query.presenters import (
 from rawr_analytics.metrics.wowy.query.request import WowyQuery
 from rawr_analytics.shared.common import JSONDict
 from rawr_analytics.shared.player import PlayerMinutes, PlayerSummary
-from rawr_analytics.shared.season import Season, build_all_nba_history_seasons, normalize_seasons
-from rawr_analytics.shared.team import Team
+from rawr_analytics.shared.season import (
+    Season,
+    build_all_nba_history_seasons,
+    normalize_seasons,
+    season_ids,
+)
+from rawr_analytics.shared.team import Team, build_metric_team_filter
 
 type WowyResultSource = Literal["cache", "live"]
 type MetricQueryExport = list[JSONDict]
@@ -233,8 +237,6 @@ def _try_load_wowy_store_result(
         metric=metric,
     )
 
-
-# do i need this at all? i think this should be removed. I don't know if this behavior is desirable
 def _selected_wowy_seasons(
     query: WowyQuery,
     rows: list[WowyPlayerSeasonValue],
@@ -284,7 +286,7 @@ def _resolve_cached_wowy_key(
     metric: Metric,
     query: WowyQuery,
 ) -> str | None:
-    team_filter = build_team_filter(query.calc_vars.teams)
+    team_filter = build_metric_team_filter(query.calc_vars.teams)
     if team_filter:
         return None
 

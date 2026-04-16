@@ -7,14 +7,13 @@ from rawr_analytics.data.game_cache.store import load_game_cache_snapshot
 from rawr_analytics.data.metric_store.rawr import replace_rawr_metric_cache
 from rawr_analytics.data.metric_store.store import load_metric_cache_store_state
 from rawr_analytics.data.metric_store.wowy import replace_wowy_metric_cache
-from rawr_analytics.data.metric_store_scope import build_team_filter
 from rawr_analytics.metrics._metric_cache_key import (
     build_rawr_metric_cache_key,
     build_wowy_metric_cache_key,
 )
 from rawr_analytics.metrics.constants import Metric, MetricSummary
-from rawr_analytics.metrics.rawr.calculate.inputs import RawrEligibility
 from rawr_analytics.metrics.rawr.cache_status import list_incomplete_rawr_season_warnings
+from rawr_analytics.metrics.rawr.calculate.inputs import RawrEligibility
 from rawr_analytics.metrics.rawr.defaults import (
     DEFAULT_RAWR_MIN_GAMES,
     DEFAULT_RAWR_RIDGE_ALPHA,
@@ -22,14 +21,14 @@ from rawr_analytics.metrics.rawr.defaults import (
 )
 from rawr_analytics.metrics.rawr.query.request import RawrCalcVars
 from rawr_analytics.metrics.rawr.refresh.store_rows import build_rawr_metric_store_rows
-from rawr_analytics.metrics.wowy.defaults import describe_metric as describe_wowy_metric
-from rawr_analytics.metrics.wowy.defaults import default_filters as default_wowy_filters
 from rawr_analytics.metrics.wowy.calculate.inputs import WowyEligibility
+from rawr_analytics.metrics.wowy.defaults import default_filters as default_wowy_filters
+from rawr_analytics.metrics.wowy.defaults import describe_metric as describe_wowy_metric
 from rawr_analytics.metrics.wowy.query.request import WowyCalcVars
 from rawr_analytics.metrics.wowy.refresh.store_rows import build_wowy_metric_store_rows
 from rawr_analytics.shared.scope import TeamSeasonScope
 from rawr_analytics.shared.season import Season, SeasonType, require_normalized_seasons
-from rawr_analytics.shared.team import Team, normalize_teams
+from rawr_analytics.shared.team import Team, build_metric_team_filter, normalize_teams
 
 MetricStoreRefreshEventFn = Callable[["MetricStoreRefreshProgressEvent"], None]
 
@@ -174,7 +173,7 @@ def _build_all_teams_refresh_scope(
     seasons = require_normalized_seasons([scope.season for scope in cached_team_seasons])
     teams = _available_cache_teams(cached_team_seasons)
     assert teams, "metric store refresh requires cached teams"
-    team_filter = build_team_filter(None)
+    team_filter = build_metric_team_filter(None)
     metric_cache_key = _build_refresh_cache_key(
         metric=metric,
         seasons=seasons,

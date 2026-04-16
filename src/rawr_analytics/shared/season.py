@@ -184,3 +184,7 @@ def require_normalized_seasons(seasons: list[Season]) -> list[Season]:
     normalized_seasons = normalize_seasons(seasons)
     assert normalized_seasons is not None, "season normalization produced no seasons"
     return normalized_seasons
+
+
+def season_ids(seasons: list[Season]) -> list[str]:
+    return [season.id for season in require_normalized_seasons(seasons)]

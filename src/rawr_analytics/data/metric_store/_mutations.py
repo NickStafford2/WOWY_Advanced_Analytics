@@ -4,9 +4,9 @@ from rawr_analytics.data._paths import METRIC_STORE_DB_PATH
 from rawr_analytics.data.metric_store._catalog import MetricCacheCatalogRow
 from rawr_analytics.data.metric_store._sql_writes import (
     delete_metric_cache_rows,
+    insert_metric_cache_entry,
     insert_metric_cache_seasons,
     insert_metric_cache_teams,
-    insert_metric_cache_entry,
     insert_rawr_rows,
     insert_wowy_rows,
 )
