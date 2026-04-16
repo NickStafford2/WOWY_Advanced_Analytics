@@ -22,7 +22,7 @@ from rawr_analytics.data.metric_store.schema import connect, initialize_metric_s
 
 def replace_rawr_scope_snapshot(
     *,
-    scope_key: str,
+    metric_cache_key: str,
     build_version: str,
     source_fingerprint: str,
     updated_at: str,
@@ -31,7 +31,7 @@ def replace_rawr_scope_snapshot(
     row_count: int,
 ) -> None:
     _validate_metric_scope_snapshot(
-        scope_key=scope_key,
+        metric_cache_key=metric_cache_key,
         updated_at=updated_at,
         catalog_row=catalog_row,
     )
@@ -39,7 +39,7 @@ def replace_rawr_scope_snapshot(
         snapshot_id = _begin_metric_scope_replace(
             connection=connection,
             metric_id="rawr",
-            scope_key=scope_key,
+            metric_cache_key=metric_cache_key,
             build_version=build_version,
             source_fingerprint=source_fingerprint,
             updated_at=updated_at,
@@ -55,7 +55,7 @@ def replace_rawr_scope_snapshot(
 def replace_wowy_scope_snapshot(
     *,
     metric_id: str,
-    scope_key: str,
+    metric_cache_key: str,
     build_version: str,
     source_fingerprint: str,
     updated_at: str,
@@ -64,7 +64,7 @@ def replace_wowy_scope_snapshot(
     row_count: int,
 ) -> None:
     _validate_metric_scope_snapshot(
-        scope_key=scope_key,
+        metric_cache_key=metric_cache_key,
         updated_at=updated_at,
         catalog_row=catalog_row,
     )
@@ -72,7 +72,7 @@ def replace_wowy_scope_snapshot(
         snapshot_id = _begin_metric_scope_replace(
             connection=connection,
             metric_id=metric_id,
-            scope_key=scope_key,
+            metric_cache_key=metric_cache_key,
             build_version=build_version,
             source_fingerprint=source_fingerprint,
             updated_at=updated_at,
@@ -87,7 +87,7 @@ def replace_wowy_scope_snapshot(
 
 def _validate_metric_scope_snapshot(
     *,
-    scope_key: str,
+    metric_cache_key: str,
     updated_at: str,
     catalog_row: MetricScopeCatalogRow,
 ) -> None:
@@ -101,18 +101,22 @@ def _begin_metric_scope_replace(
     *,
     connection,
     metric_id: str,
-    scope_key: str,
+    metric_cache_key: str,
     build_version: str,
     source_fingerprint: str,
     updated_at: str,
     row_count: int,
 ) -> int:
     connection.execute("BEGIN")
-    delete_metric_scope_snapshot(connection, metric_id=metric_id, scope_key=scope_key)
+    delete_metric_scope_snapshot(
+        connection,
+        metric_id=metric_id,
+        metric_cache_key=metric_cache_key,
+    )
     return insert_metric_snapshot(
         connection,
         metric_id=metric_id,
-        scope_key=scope_key,
+        metric_cache_key=metric_cache_key,
         build_version=build_version,
         source_fingerprint=source_fingerprint,
         row_count=row_count,
@@ -140,7 +144,7 @@ def _finish_metric_scope_replace(
         """,
         (
             catalog_row.metric_id,
-            catalog_row.scope_key,
+            catalog_row.metric_cache_key,
             catalog_row.label,
             catalog_row.team_filter,
             catalog_row.season_type,

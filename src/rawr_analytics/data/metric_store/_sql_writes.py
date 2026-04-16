@@ -13,7 +13,7 @@ def delete_metric_value_rows(
     connection: sqlite3.Connection,
     *,
     metric_id: str,
-    scope_key: str,
+    metric_cache_key: str,
 ) -> None:
     table = metric_values_table(metric_id)
     connection.execute(
@@ -25,7 +25,7 @@ def delete_metric_value_rows(
             WHERE metric_id = ? AND scope_key = ?
         )
         """,
-        (metric_id, scope_key),
+        (metric_id, metric_cache_key),
     )
 
 
@@ -33,33 +33,37 @@ def delete_metric_rows(
     connection: sqlite3.Connection,
     *,
     metric_id: str,
-    scope_key: str,
+    metric_cache_key: str,
 ) -> None:
-    delete_metric_value_rows(connection, metric_id=metric_id, scope_key=scope_key)
+    delete_metric_value_rows(
+        connection,
+        metric_id=metric_id,
+        metric_cache_key=metric_cache_key,
+    )
 
 
 def delete_metric_scope_snapshot(
     connection: sqlite3.Connection,
     *,
     metric_id: str,
-    scope_key: str,
+    metric_cache_key: str,
 ) -> None:
     connection.execute(
         "DELETE FROM metric_scope_catalog WHERE metric_id = ? AND scope_key = ?",
-        (metric_id, scope_key),
+        (metric_id, metric_cache_key),
     )
     connection.execute(
         "DELETE FROM metric_scope_season WHERE metric_id = ? AND scope_key = ?",
-        (metric_id, scope_key),
+        (metric_id, metric_cache_key),
     )
     connection.execute(
         "DELETE FROM metric_scope_team WHERE metric_id = ? AND scope_key = ?",
-        (metric_id, scope_key),
+        (metric_id, metric_cache_key),
     )
-    delete_metric_rows(connection, metric_id=metric_id, scope_key=scope_key)
+    delete_metric_rows(connection, metric_id=metric_id, metric_cache_key=metric_cache_key)
     connection.execute(
         "DELETE FROM metric_snapshot WHERE metric_id = ? AND scope_key = ?",
-        (metric_id, scope_key),
+        (metric_id, metric_cache_key),
     )
 
 
@@ -67,7 +71,7 @@ def insert_metric_snapshot(
     connection: sqlite3.Connection,
     *,
     metric_id: str,
-    scope_key: str,
+    metric_cache_key: str,
     build_version: str,
     source_fingerprint: str,
     row_count: int,
@@ -77,7 +81,7 @@ def insert_metric_snapshot(
         """
         INSERT INTO metric_snapshot (
             metric_id,
-            scope_key,
+            metric_cache_key,
             build_version,
             source_fingerprint,
             row_count,
@@ -193,7 +197,7 @@ def insert_metric_scope_teams(connection, row: MetricScopeCatalogRow) -> None:
         [
             (
                 row.metric_id,
-                row.scope_key,
+                row.metric_cache_key,
                 team_id,
             )
             for team_id in row.available_team_ids
@@ -215,7 +219,7 @@ def insert_metric_scope_seasons(connection, row: MetricScopeCatalogRow) -> None:
         [
             (
                 row.metric_id,
-                row.scope_key,
+                row.metric_cache_key,
                 season_id,
             )
             for season_id in row.available_season_ids

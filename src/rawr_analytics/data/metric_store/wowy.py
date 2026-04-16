@@ -13,7 +13,7 @@ from rawr_analytics.shared.team import Team
 def load_wowy_player_season_value_rows(
     *,
     metric_id: str,
-    scope_key: str,
+    metric_cache_key: str,
     seasons: list[str],
     min_average_minutes: float | None = None,
     min_total_minutes: float | None = None,
@@ -40,7 +40,7 @@ def load_wowy_player_season_value_rows(
             ON snapshot.snapshot_id = wowy.snapshot_id
         WHERE snapshot.metric_id = ? AND snapshot.scope_key = ?
     """
-    params: list[object] = [metric_id, scope_key]
+    params: list[object] = [metric_id, metric_cache_key]
     query += f" AND season_id IN ({','.join('?' for _ in seasons)})"
     params.extend(seasons)
     if min_average_minutes is not None:
@@ -64,7 +64,7 @@ def load_wowy_player_season_value_rows(
 def replace_wowy_scope_snapshot(
     *,
     metric_id: str,
-    scope_key: str,
+    metric_cache_key: str,
     label: str,
     team_filter: str,
     season_type: SeasonType,
@@ -93,7 +93,7 @@ def replace_wowy_scope_snapshot(
     updated_at = datetime.now(UTC).isoformat()
     validate_wowy_rows(
         metric_id=metric_id,
-        scope_key=scope_key,
+        metric_cache_key=metric_cache_key,
         team_filter=team_filter,
         seasons=seasons,
         build_version=build_version,
@@ -102,13 +102,13 @@ def replace_wowy_scope_snapshot(
     )
     replace_wowy_scope_snapshot(
         metric_id=metric_id,
-        scope_key=scope_key,
+        metric_cache_key=metric_cache_key,
         build_version=build_version,
         source_fingerprint=source_fingerprint,
         updated_at=updated_at,
         catalog_row=build_metric_scope_catalog_row(
             metric_id=metric_id,
-            scope_key=scope_key,
+            metric_cache_key=metric_cache_key,
             catalog=catalog,
             updated_at=updated_at,
         ),

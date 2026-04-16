@@ -30,12 +30,12 @@ class MetricSpanStoreRows:
 
 def load_metric_scope_store_state(
     metric: str,
-    scope_key: str,
+    metric_cache_key: str,
 ) -> MetricScopeStoreState | None:
-    catalog_row = load_metric_scope_catalog_row(metric, scope_key)
+    catalog_row = load_metric_scope_catalog_row(metric, metric_cache_key)
     if catalog_row is None:
         return None
-    snapshot_state = load_metric_snapshot_state(metric, scope_key)
+    snapshot_state = load_metric_snapshot_state(metric, metric_cache_key)
     if snapshot_state is None:
         return None
     return MetricScopeStoreState(catalog_row=catalog_row, snapshot_state=snapshot_state)
@@ -44,14 +44,14 @@ def load_metric_scope_store_state(
 def load_metric_span_store_rows(
     *,
     metric: str,
-    scope_key: str,
+    metric_cache_key: str,
     top_n: int | None = None,
 ) -> MetricSpanStoreRows:
-    catalog_row = load_metric_scope_catalog_row(metric, scope_key)
+    catalog_row = load_metric_scope_catalog_row(metric, metric_cache_key)
     assert catalog_row is not None, "metric span reads require an existing catalog row"
     player_season_values = _load_metric_player_season_values(
         metric=metric,
-        scope_key=scope_key,
+        metric_cache_key=metric_cache_key,
         season_ids=catalog_row.available_season_ids,
     )
     return MetricSpanStoreRows(
@@ -66,7 +66,7 @@ def load_metric_span_store_rows(
 def _load_metric_player_season_values(
     *,
     metric: str,
-    scope_key: str,
+    metric_cache_key: str,
     season_ids: list[str],
 ) -> list[MetricStorePlayerSeasonValue]:
     if metric == "rawr":
@@ -78,7 +78,7 @@ def _load_metric_player_season_values(
                 value=row.coefficient,
             )
             for row in load_rawr_player_season_value_rows(
-                scope_key=scope_key,
+                metric_cache_key=metric_cache_key,
                 seasons=season_ids,
             )
         ]
@@ -92,7 +92,7 @@ def _load_metric_player_season_values(
             )
             for row in load_wowy_player_season_value_rows(
                 metric_id=metric,
-                scope_key=scope_key,
+                metric_cache_key=metric_cache_key,
                 seasons=season_ids,
             )
             if row.value is not None

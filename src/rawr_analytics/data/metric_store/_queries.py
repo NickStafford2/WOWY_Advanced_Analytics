@@ -12,7 +12,7 @@ from rawr_analytics.data.metric_store.schema import connect, initialize_metric_s
 class MetricSnapshotState:
     snapshot_id: int | None
     metric_id: str
-    scope_key: str
+    metric_cache_key: str
     build_version: str
     source_fingerprint: str
     row_count: int
@@ -21,7 +21,7 @@ class MetricSnapshotState:
 
 def load_metric_snapshot_state(
     metric: str,
-    scope_key: str,
+    metric_cache_key: str,
 ) -> MetricSnapshotState | None:
     initialize_metric_store_db()
     with connect(METRIC_STORE_DB_PATH) as connection:
@@ -38,14 +38,14 @@ def load_metric_snapshot_state(
             FROM metric_snapshot
             WHERE metric_id = ? AND scope_key = ?
             """,
-            (metric, scope_key),
+            (metric, metric_cache_key),
         ).fetchone()
     if row is None:
         return None
     return MetricSnapshotState(
         snapshot_id=cast(int | None, row["snapshot_id"]),
         metric_id=cast(str, row["metric_id"]),
-        scope_key=cast(str, row["scope_key"]),
+        metric_cache_key=cast(str, row["scope_key"]),
         build_version=cast(str, row["build_version"]),
         source_fingerprint=cast(str, row["source_fingerprint"]),
         row_count=cast(int, row["row_count"]),
@@ -55,7 +55,7 @@ def load_metric_snapshot_state(
 
 def load_metric_scope_catalog_row(
     metric: str,
-    scope_key: str,
+    metric_cache_key: str,
 ) -> MetricScopeCatalogRow | None:
     initialize_metric_store_db()
     with connect(METRIC_STORE_DB_PATH) as connection:
@@ -73,7 +73,7 @@ def load_metric_scope_catalog_row(
             FROM metric_scope_catalog
             WHERE metric_id = ? AND scope_key = ?
             """,
-            (metric, scope_key),
+            (metric, metric_cache_key),
         ).fetchone()
         if row is None:
             return None
@@ -84,7 +84,7 @@ def load_metric_scope_catalog_row(
             WHERE metric_id = ? AND scope_key = ?
             ORDER BY team_id
             """,
-            (metric, scope_key),
+            (metric, metric_cache_key),
         ).fetchall()
         season_rows = connection.execute(
             """
@@ -93,11 +93,11 @@ def load_metric_scope_catalog_row(
             WHERE metric_id = ? AND scope_key = ?
             ORDER BY season_id
             """,
-            (metric, scope_key),
+            (metric, metric_cache_key),
         ).fetchall()
     return MetricScopeCatalogRow(
         metric_id=cast(str, row["metric_id"]),
-        scope_key=cast(str, row["scope_key"]),
+        metric_cache_key=cast(str, row["scope_key"]),
         label=cast(str, row["label"]),
         team_filter=cast(str, row["team_filter"]),
         season_type=cast(str, row["season_type"]),

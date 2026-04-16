@@ -30,7 +30,7 @@ class MetricScopeCatalog:
 @dataclass(frozen=True)
 class MetricScopeCatalogRow:
     metric_id: str
-    scope_key: str
+    metric_cache_key: str
     label: str
     team_filter: str
     season_type: str
@@ -44,13 +44,13 @@ class MetricScopeCatalogRow:
 def build_metric_scope_catalog_row(
     *,
     metric_id: str,
-    scope_key: str,
+    metric_cache_key: str,
     catalog: MetricScopeCatalog,
     updated_at: str,
 ) -> MetricScopeCatalogRow:
     return MetricScopeCatalogRow(
         metric_id=metric_id,
-        scope_key=scope_key,
+        metric_cache_key=metric_cache_key,
         label=catalog.label,
         team_filter=catalog.team_filter,
         season_type=catalog.season_type,

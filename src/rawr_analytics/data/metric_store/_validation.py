@@ -26,7 +26,7 @@ class _MetricRowBatchState:
 
 def validate_rawr_rows(
     *,
-    scope_key: str,
+    metric_cache_key: str,
     team_filter: str,
     seasons: list[Season],
     build_version: str,
@@ -34,11 +34,11 @@ def validate_rawr_rows(
     rows: list[RawrPlayerSeasonValueRow],
 ) -> None:
     validate_required_text("rawr", "metric_id")
-    validate_required_text(scope_key, "scope_key")
+    validate_required_text(metric_cache_key, "metric_cache_key")
     validate_required_text(build_version, "build_version")
     validate_required_text(source_fingerprint, "source_fingerprint")
     _validate_metric_row_batch_scope(
-        scope_key=scope_key,
+        metric_cache_key=metric_cache_key,
         team_filter=team_filter,
         seasons=seasons,
     )
@@ -59,7 +59,7 @@ def validate_rawr_rows(
 def validate_wowy_rows(
     *,
     metric_id: str,
-    scope_key: str,
+    metric_cache_key: str,
     team_filter: str,
     seasons: list[Season],
     build_version: str,
@@ -67,11 +67,11 @@ def validate_wowy_rows(
     rows: list[WowyPlayerSeasonValueRow],
 ) -> None:
     validate_required_text(metric_id, "metric_id")
-    validate_required_text(scope_key, "scope_key")
+    validate_required_text(metric_cache_key, "metric_cache_key")
     validate_required_text(build_version, "build_version")
     validate_required_text(source_fingerprint, "source_fingerprint")
     _validate_metric_row_batch_scope(
-        scope_key=scope_key,
+        metric_cache_key=metric_cache_key,
         team_filter=team_filter,
         seasons=seasons,
     )
@@ -136,11 +136,11 @@ def _validate_common_metric_row(
 
 def _validate_metric_row_batch_scope(
     *,
-    scope_key: str,
+    metric_cache_key: str,
     team_filter: str,
     seasons: list[Season],
 ) -> None:
-    validate_required_text(scope_key, "scope_key")
+    validate_required_text(metric_cache_key, "metric_cache_key")
     normalized_seasons = require_normalized_seasons(seasons)
     canonical_team_filter = canonicalize_metric_team_filter(team_filter)
     if team_filter != canonical_team_filter:
@@ -181,10 +181,10 @@ def _validate_wowy_value_row(row: WowyPlayerSeasonValueRow) -> None:
 
 def validate_metric_scope_catalog_row(row: MetricScopeCatalogRow) -> None:
     validate_required_text(row.metric_id, "metric_id")
-    validate_required_text(row.scope_key, "scope_key")
+    validate_required_text(row.metric_cache_key, "metric_cache_key")
     validate_required_text(row.label, "label")
     _validate_metric_catalog(
-        scope_key=row.scope_key,
+        metric_cache_key=row.metric_cache_key,
         team_filter=row.team_filter,
         season_type=row.season_type,
         available_seasons=row.available_season_ids,
@@ -197,7 +197,7 @@ def validate_metric_scope_catalog_row(row: MetricScopeCatalogRow) -> None:
 
 def _validate_metric_catalog(
     *,
-    scope_key: str,
+    metric_cache_key: str,
     team_filter: str,
     season_type: str,
     available_seasons: list[str],

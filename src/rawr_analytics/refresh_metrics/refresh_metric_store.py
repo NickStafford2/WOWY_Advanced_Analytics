@@ -36,7 +36,7 @@ MetricStoreRefreshEventFn = Callable[["MetricStoreRefreshProgressEvent"], None]
 
 @dataclass(frozen=True)
 class RefreshScopeResult:
-    scope_key: str
+    metric_cache_key: str
     scope_label: str
     row_count: int
     status: str
@@ -67,7 +67,7 @@ class RefreshMetricStoreResult:
 
 @dataclass(frozen=True)
 class _RefreshScope:
-    scope_key: str
+    metric_cache_key: str
     scope_label: str
     team_filter: str
     seasons: list[Season]
@@ -175,13 +175,13 @@ def _build_all_teams_refresh_scope(
     teams = _available_cache_teams(cached_team_seasons)
     assert teams, "metric store refresh requires cached teams"
     team_filter = build_team_filter(None)
-    scope_key = _build_refresh_cache_key(
+    metric_cache_key = _build_refresh_cache_key(
         metric=metric,
         seasons=seasons,
         rawr_ridge_alpha=rawr_ridge_alpha,
     )
     return _RefreshScope(
-        scope_key=scope_key,
+        metric_cache_key=metric_cache_key,
         scope_label="all-teams",
         team_filter=team_filter,
         seasons=seasons,
@@ -235,7 +235,7 @@ def _refresh_scope(
     build_version: str,
     rawr_ridge_alpha: float,
 ) -> RefreshScopeResult:
-    state = load_metric_scope_store_state(metric.value, scope.scope_key)
+    state = load_metric_scope_store_state(metric.value, scope.metric_cache_key)
     if (
         state is not None
         and state.snapshot_state.source_fingerprint == source_fingerprint
@@ -243,7 +243,7 @@ def _refresh_scope(
         and state.snapshot_state.row_count > 0
     ):
         return RefreshScopeResult(
-            scope_key=scope.scope_key,
+            metric_cache_key=scope.metric_cache_key,
             scope_label=scope.scope_label,
             row_count=state.snapshot_state.row_count,
             status="cached",
@@ -256,7 +256,7 @@ def _refresh_scope(
             rawr_ridge_alpha=rawr_ridge_alpha,
         )
         replace_rawr_scope_snapshot(
-            scope_key=scope.scope_key,
+            metric_cache_key=scope.metric_cache_key,
             label=metric.value,
             team_filter=scope.team_filter,
             season_type=season_type,
@@ -274,7 +274,7 @@ def _refresh_scope(
         )
         replace_wowy_scope_snapshot(
             metric_id=metric.value,
-            scope_key=scope.scope_key,
+            metric_cache_key=scope.metric_cache_key,
             label=metric.value,
             team_filter=scope.team_filter,
             season_type=season_type,
@@ -285,7 +285,7 @@ def _refresh_scope(
             rows=rows,
         )
     return RefreshScopeResult(
-        scope_key=scope.scope_key,
+        metric_cache_key=scope.metric_cache_key,
         scope_label=scope.scope_label,
         row_count=len(rows),
         status="built",

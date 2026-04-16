@@ -115,14 +115,14 @@ def _audit_metric_player_season_values_table(
             issues.append(
                 ValidationIssue(
                     "rawr_player_season_values",
-                    f"metric={key[0]!r},scope_key={key[1]!r}",
+                    f"metric={key[0]!r},metric_cache_key={key[1]!r}",
                     "Metric rows are missing a matching metric_scope_catalog row",
                 )
             )
             continue
         try:
             validate_rawr_rows(
-                scope_key=key[1],
+                metric_cache_key=key[1],
                 team_filter=catalog_row.team_filter,
                 seasons=catalog_seasons(catalog_row),
                 build_version=metadata_row.build_version,
@@ -133,7 +133,7 @@ def _audit_metric_player_season_values_table(
             issues.append(
                 ValidationIssue(
                     "rawr_player_season_values",
-                    f"metric={key[0]!r},scope_key={key[1]!r}",
+                    f"metric={key[0]!r},metric_cache_key={key[1]!r}",
                     str(exc),
                 )
             )
@@ -154,7 +154,7 @@ def _audit_metric_player_season_values_table(
             issues.append(
                 ValidationIssue(
                     "wowy_player_season_values",
-                    f"metric={key[0]!r},scope_key={key[1]!r}",
+                    f"metric={key[0]!r},metric_cache_key={key[1]!r}",
                     "Metric rows are missing a matching metric_scope_catalog row",
                 )
             )
@@ -162,7 +162,7 @@ def _audit_metric_player_season_values_table(
         try:
             validate_wowy_rows(
                 metric_id=key[0],
-                scope_key=key[1],
+                metric_cache_key=key[1],
                 team_filter=catalog_row.team_filter,
                 seasons=catalog_seasons(catalog_row),
                 build_version=metadata_row.build_version,
@@ -173,7 +173,7 @@ def _audit_metric_player_season_values_table(
             issues.append(
                 ValidationIssue(
                     "wowy_player_season_values",
-                    f"metric={key[0]!r},scope_key={key[1]!r}",
+                    f"metric={key[0]!r},metric_cache_key={key[1]!r}",
                     str(exc),
                 )
             )
@@ -204,7 +204,7 @@ def _load_rawr_metric_rows(
         """
     ).fetchall()
     for row in rows:
-        groups[_metric_scope_key(row)].append(build_rawr_player_season_value_row(row))
+        groups[_metric_store_key(row)].append(build_rawr_player_season_value_row(row))
 
 
 def _load_wowy_metric_rows(
@@ -234,7 +234,7 @@ def _load_wowy_metric_rows(
         """
     ).fetchall()
     for row in rows:
-        groups[_metric_scope_key(row)].append(build_wowy_player_season_value_row(row))
+        groups[_metric_store_key(row)].append(build_wowy_player_season_value_row(row))
 
 
 def _audit_metric_scope_catalog_table(
@@ -282,16 +282,16 @@ def _audit_metric_scope_catalog_table(
     ).fetchall()
     scope_season_rows: dict[tuple[str, str], list[str]] = defaultdict(list)
     for row in season_rows:
-        scope_season_rows[_metric_scope_key(row)].append(cast(str, row["season_id"]))
+        scope_season_rows[_metric_store_key(row)].append(cast(str, row["season_id"]))
     scope_team_rows: dict[tuple[str, str], list[int]] = defaultdict(list)
     for row in team_rows:
-        scope_team_rows[_metric_scope_key(row)].append(cast(int, row["team_id"]))
+        scope_team_rows[_metric_store_key(row)].append(cast(int, row["team_id"]))
     catalog_rows: dict[tuple[str, str], MetricScopeCatalogRow] = {}
     for row in rows:
-        key = _metric_scope_key(row)
+        key = _metric_store_key(row)
         catalog_row = MetricScopeCatalogRow(
             metric_id=cast(str, row["metric_id"]),
-            scope_key=cast(str, row["scope_key"]),
+            metric_cache_key=cast(str, row["scope_key"]),
             label=cast(str, row["label"]),
             team_filter=cast(str, row["team_filter"]),
             season_type=cast(str, row["season_type"]),
@@ -308,10 +308,10 @@ def _audit_metric_scope_catalog_table(
             issues.append(
                 ValidationIssue(
                     "metric_scope_catalog",
-                    f"metric={catalog_row.metric_id!r},scope_key={catalog_row.scope_key!r}",
+                    f"metric={catalog_row.metric_id!r},metric_cache_key={catalog_row.metric_cache_key!r}",
                     str(exc),
                 )
             )
     return catalog_rows, dict(scope_season_rows), dict(scope_team_rows)
-def _metric_scope_key(row: sqlite3.Row) -> tuple[str, str]:
+def _metric_store_key(row: sqlite3.Row) -> tuple[str, str]:
     return (cast(str, row["metric_id"]), cast(str, row["scope_key"]))

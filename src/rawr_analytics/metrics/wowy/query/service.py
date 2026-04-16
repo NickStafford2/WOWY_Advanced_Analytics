@@ -206,7 +206,7 @@ def _try_load_wowy_store_result(
     available = _try_load_current_metric_availability(
         metric=metric,
         query=query,
-        scope_key=cache_key,
+        metric_cache_key=cache_key,
     )
     if available is None:
         return None
@@ -215,7 +215,7 @@ def _try_load_wowy_store_result(
         _build_wowy_value_from_store_row(row)
         for row in load_wowy_player_season_value_rows(
             metric_id=metric.value,
-            scope_key=cache_key,
+            metric_cache_key=cache_key,
             seasons=season_ids(query.calc_vars.seasons),
             min_average_minutes=query.post_calc_filters.filters.min_average_minutes,
             min_total_minutes=query.post_calc_filters.filters.min_total_minutes,
@@ -305,9 +305,9 @@ def _try_load_current_metric_availability(
     *,
     metric: Metric,
     query: WowyQuery,
-    scope_key: str,
+    metric_cache_key: str,
 ) -> _CachedWowyAvailability | None:
-    state = load_metric_scope_store_state(metric.value, scope_key)
+    state = load_metric_scope_store_state(metric.value, metric_cache_key)
     if state is None:
         return None
 

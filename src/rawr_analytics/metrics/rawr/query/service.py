@@ -218,7 +218,7 @@ def _try_load_rawr_store_result(query: RawrQuery) -> ResolvedRawrResultDTO | Non
 
     available = _try_load_current_metric_availability(
         metric=Metric.RAWR,
-        scope_key=cache_key,
+        metric_cache_key=cache_key,
         query=query,
     )
     if available is None:
@@ -227,7 +227,7 @@ def _try_load_rawr_store_result(query: RawrQuery) -> ResolvedRawrResultDTO | Non
     rows = [
         _build_rawr_record_from_store_row(row)
         for row in load_rawr_player_season_value_rows(
-            scope_key=cache_key,
+            metric_cache_key=cache_key,
             seasons=season_ids(query.calc_vars.seasons),
             min_average_minutes=query.post_calc_filters.filters.min_average_minutes,
             min_total_minutes=query.post_calc_filters.filters.min_total_minutes,
@@ -293,10 +293,10 @@ class _CachedRawrAvailability:
 def _try_load_current_metric_availability(
     *,
     metric: Metric,
-    scope_key: str,
+    metric_cache_key: str,
     query: RawrQuery,
 ) -> _CachedRawrAvailability | None:
-    state = load_metric_scope_store_state(metric.value, scope_key)
+    state = load_metric_scope_store_state(metric.value, metric_cache_key)
     if state is None:
         return None
 
