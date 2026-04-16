@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from rawr_analytics.data import prepare_rebuild_storage
+from rawr_analytics.data.prepare_rebuild import prepare_rebuild_storage
 from rawr_analytics.metrics.constants import Metric
 from rawr_analytics.refresh_metrics.rebuild._events import (
     RebuildEventFn,
