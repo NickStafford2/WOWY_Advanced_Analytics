@@ -64,6 +64,7 @@ export function useLeaderboardPage(): UseLeaderboardPageValue {
   const bootstrapAbortRef = useRef<AbortController | null>(null)
   const scopedOptionsAbortRef = useRef<AbortController | null>(null)
   const leaderboardAbortRef = useRef<AbortController | null>(null)
+  const lastScopedOptionsKeyRef = useRef('')
   const [metric, setMetricState] = useState<MetricId>('wowy')
   const [filters, setFilters] = useState<LeaderboardFilters>(defaultLeaderboardFilters)
   const [teamOptions, setTeamOptions] = useState<TeamOption[]>([])
@@ -114,6 +115,7 @@ export function useLeaderboardPage(): UseLeaderboardPageValue {
       request: (signal) => fetchMetricOptions(nextMetric, undefined, signal),
       onSuccess: (payload) => {
         const nextFilters = initializeLeaderboardFiltersWithOptions(defaultLeaderboardFilters(), payload)
+        lastScopedOptionsKeyRef.current = _buildScopedOptionsKey(nextMetric, nextFilters)
         setFilters(nextFilters)
         setTeamOptions(payload.team_options)
         setAvailableSeasons(payload.available_seasons)
@@ -162,6 +164,7 @@ export function useLeaderboardPage(): UseLeaderboardPageValue {
         }
       },
       onSuccess: (payload) => {
+        lastScopedOptionsKeyRef.current = _buildScopedOptionsKey(nextMetric, payload.filters)
         setError('')
         setAvailableSeasons(payload.seasons)
         setTeamOptions(payload.teams)
@@ -241,6 +244,10 @@ export function useLeaderboardPage(): UseLeaderboardPageValue {
     if (isBootstrapping) {
       return
     }
+    const scopeKey = _buildScopedOptionsKey(metric, filters)
+    if (scopeKey === lastScopedOptionsKeyRef.current) {
+      return
+    }
     void _refreshScopedOptions(metric, filters)
   }, [
     filters.endSeason,
@@ -317,6 +324,11 @@ export function useLeaderboardPage(): UseLeaderboardPageValue {
     setNumberFilter,
     refresh,
   }
+}
+
+function _buildScopedOptionsKey(metric: MetricId, filters: LeaderboardFilters): string {
+  const teamIds = filters.teamIds === null ? 'all' : filters.teamIds.join(',')
+  return [metric, filters.startSeason, filters.endSeason, teamIds].join('|')
 }
 
 function _hasSelectedTeams(
