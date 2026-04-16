@@ -237,14 +237,14 @@ def _refresh_scope(
     state = load_metric_cache_store_state(metric.value, scope.metric_cache_key)
     if (
         state is not None
-        and state.snapshot_state.source_fingerprint == source_fingerprint
-        and state.snapshot_state.build_version == build_version
-        and state.snapshot_state.row_count > 0
+        and state.cache_entry_state.source_fingerprint == source_fingerprint
+        and state.cache_entry_state.build_version == build_version
+        and state.cache_entry_state.row_count > 0
     ):
         return RefreshScopeResult(
             metric_cache_key=scope.metric_cache_key,
             scope_label=scope.scope_label,
-            row_count=state.snapshot_state.row_count,
+            row_count=state.cache_entry_state.row_count,
             status="cached",
         )
 

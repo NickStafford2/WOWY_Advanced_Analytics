@@ -9,8 +9,8 @@ from rawr_analytics.data.metric_store.schema import connect, initialize_metric_s
 
 
 @dataclass(frozen=True)
-class MetricSnapshotState:
-    snapshot_id: int | None
+class MetricCacheEntryState:
+    metric_cache_entry_id: int | None
     metric_id: str
     metric_cache_key: str
     build_version: str
@@ -22,7 +22,7 @@ class MetricSnapshotState:
 def load_metric_cache_entry_state(
     metric: str,
     metric_cache_key: str,
-) -> MetricSnapshotState | None:
+) -> MetricCacheEntryState | None:
     initialize_metric_store_db()
     with connect(METRIC_STORE_DB_PATH) as connection:
         row = connection.execute(
@@ -42,8 +42,8 @@ def load_metric_cache_entry_state(
         ).fetchone()
     if row is None:
         return None
-    return MetricSnapshotState(
-        snapshot_id=cast(int | None, row["metric_cache_entry_id"]),
+    return MetricCacheEntryState(
+        metric_cache_entry_id=cast(int | None, row["metric_cache_entry_id"]),
         metric_id=cast(str, row["metric_id"]),
         metric_cache_key=cast(str, row["metric_cache_key"]),
         build_version=cast(str, row["build_version"]),

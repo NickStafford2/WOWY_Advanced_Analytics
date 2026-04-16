@@ -317,7 +317,7 @@ def _try_load_current_metric_availability(
     if not cache_snapshot.entries:
         return None
 
-    if state.snapshot_state.source_fingerprint != cache_snapshot.fingerprint:
+    if state.cache_entry_state.source_fingerprint != cache_snapshot.fingerprint:
         return None
 
     seasons = list(dict.fromkeys(query.calc_vars.seasons or build_all_nba_history_seasons()))

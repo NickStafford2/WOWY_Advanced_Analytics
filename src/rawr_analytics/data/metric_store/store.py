@@ -4,7 +4,7 @@ from dataclasses import dataclass
 
 from rawr_analytics.data.metric_store._catalog import MetricCacheCatalogRow
 from rawr_analytics.data.metric_store._queries import (
-    MetricSnapshotState,
+    MetricCacheEntryState,
     load_metric_cache_catalog_row,
     load_metric_cache_entry_state,
 )
@@ -18,9 +18,9 @@ from rawr_analytics.data.metric_store.wowy import load_wowy_player_season_value_
 
 
 @dataclass(frozen=True)
-class MetricScopeStoreState:
+class MetricCacheStoreState:
     catalog_row: MetricCacheCatalogRow
-    snapshot_state: MetricSnapshotState
+    cache_entry_state: MetricCacheEntryState
 
 
 @dataclass(frozen=True)
@@ -31,14 +31,17 @@ class MetricSpanStoreRows:
 def load_metric_cache_store_state(
     metric: str,
     metric_cache_key: str,
-) -> MetricScopeStoreState | None:
+) -> MetricCacheStoreState | None:
     catalog_row = load_metric_cache_catalog_row(metric, metric_cache_key)
     if catalog_row is None:
         return None
-    snapshot_state = load_metric_cache_entry_state(metric, metric_cache_key)
-    if snapshot_state is None:
+    cache_entry_state = load_metric_cache_entry_state(metric, metric_cache_key)
+    if cache_entry_state is None:
         return None
-    return MetricScopeStoreState(catalog_row=catalog_row, snapshot_state=snapshot_state)
+    return MetricCacheStoreState(
+        catalog_row=catalog_row,
+        cache_entry_state=cache_entry_state,
+    )
 
 
 def load_metric_cache_span_rows(
@@ -101,7 +104,7 @@ def _load_metric_player_season_values(
 
 
 __all__ = [
-    "MetricScopeStoreState",
+    "MetricCacheStoreState",
     "MetricSpanStoreRows",
     "load_metric_cache_span_rows",
     "load_metric_cache_store_state",
