@@ -10,6 +10,8 @@ from rawr_analytics.data.metric_store._catalog import MetricScopeCatalogRow, cat
 from rawr_analytics.data.metric_store._tables import (
     RawrPlayerSeasonValueRow,
     WowyPlayerSeasonValueRow,
+    build_rawr_player_season_value_row,
+    build_wowy_player_season_value_row,
 )
 from rawr_analytics.data.metric_store._validation import (
     validate_metric_full_span_rows,
@@ -216,7 +218,7 @@ def _load_rawr_metric_rows(
         """
     ).fetchall()
     for row in rows:
-        groups[_metric_scope_key(row)].append(_build_rawr_metric_row(row))
+        groups[_metric_scope_key(row)].append(build_rawr_player_season_value_row(row))
 
 
 def _load_wowy_metric_rows(
@@ -249,7 +251,7 @@ def _load_wowy_metric_rows(
         """
     ).fetchall()
     for row in rows:
-        groups[_metric_scope_key(row)].append(_build_wowy_metric_row(row))
+        groups[_metric_scope_key(row)].append(build_wowy_player_season_value_row(row))
 
 
 def _audit_metric_scope_catalog_table(
@@ -401,54 +403,8 @@ def _audit_metric_full_span_tables(
     return groups
 
 
-def _load_json_list(value: str) -> list[str]:
-    import json
-
-    loaded = json.loads(value)
-    assert isinstance(loaded, list), "metric store JSON column must decode to a list"
-    return loaded
-
-
 def _metric_scope_key(row: sqlite3.Row) -> tuple[str, str]:
     return (cast(str, row["metric_id"]), cast(str, row["scope_key"]))
-
-
-def _build_rawr_metric_row(row: sqlite3.Row) -> RawrPlayerSeasonValueRow:
-    return RawrPlayerSeasonValueRow(
-        snapshot_id=cast(int | None, row["snapshot_id"]),
-        metric_id=cast(str, row["metric_id"]),
-        scope_key=cast(str, row["scope_key"]),
-        team_filter=cast(str, row["team_filter"]),
-        season_type=cast(str, row["season_type"]),
-        season_id=cast(str, row["season_id"]),
-        player_id=cast(int, row["player_id"]),
-        player_name=cast(str, row["player_name"]),
-        games=cast(int, row["games"]),
-        coefficient=cast(float, row["coefficient"]),
-        average_minutes=cast(float | None, row["average_minutes"]),
-        total_minutes=cast(float | None, row["total_minutes"]),
-    )
-
-
-def _build_wowy_metric_row(row: sqlite3.Row) -> WowyPlayerSeasonValueRow:
-    return WowyPlayerSeasonValueRow(
-        snapshot_id=cast(int | None, row["snapshot_id"]),
-        metric_id=cast(str, row["metric_id"]),
-        scope_key=cast(str, row["scope_key"]),
-        team_filter=cast(str, row["team_filter"]),
-        season_type=cast(str, row["season_type"]),
-        season_id=cast(str, row["season_id"]),
-        player_id=cast(int, row["player_id"]),
-        player_name=cast(str, row["player_name"]),
-        value=cast(float | None, row["value"]),
-        games_with=cast(int, row["games_with"]),
-        games_without=cast(int, row["games_without"]),
-        avg_margin_with=cast(float | None, row["avg_margin_with"]),
-        avg_margin_without=cast(float | None, row["avg_margin_without"]),
-        average_minutes=cast(float | None, row["average_minutes"]),
-        total_minutes=cast(float | None, row["total_minutes"]),
-        raw_wowy_score=cast(float | None, row["raw_wowy_score"]),
-    )
 
 
 def _build_full_span_series_row(row: sqlite3.Row) -> MetricFullSpanSeriesRow:

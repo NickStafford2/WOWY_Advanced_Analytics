@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 from collections.abc import Callable
-from datetime import UTC, datetime
 from typing import Any
 
 from rawr_analytics.data._paths import METRIC_STORE_DB_PATH
@@ -30,6 +29,7 @@ def replace_metric_scope_snapshot(
     scope_key: str,
     build_version: str,
     source_fingerprint: str,
+    updated_at: str,
     catalog_row: MetricScopeCatalogRow,
     series_rows: list[MetricFullSpanSeriesRow],
     point_rows: list[MetricFullSpanPointRow],
@@ -44,7 +44,8 @@ def replace_metric_scope_snapshot(
         series_rows=series_rows,
         point_rows=point_rows,
     )
-    updated_at = datetime.now(UTC).isoformat()
+    if catalog_row.updated_at != updated_at:
+        raise ValueError("Metric scope snapshot requires one shared updated_at timestamp")
 
     with connect(METRIC_STORE_DB_PATH) as connection:
         connection.execute("BEGIN")
