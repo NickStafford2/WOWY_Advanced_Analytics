@@ -1,6 +1,7 @@
 import { useEffect, useEffectEvent, useMemo, useRef, useState, type MutableRefObject } from 'react'
 import { fetchLeaderboard, fetchMetricOptions } from './api'
 import {
+  buildAvailableSeasonsForSelectedTeams,
   buildAvailableTeamsForSeasonSpan,
   buildExportUrl,
   defaultLeaderboardFilters,
@@ -9,6 +10,7 @@ import {
   selectAllTeams,
   syncLeaderboardFiltersWithOptions,
   syncSelectedTeamIds,
+  syncSelectedSeasonSpan,
   toggleLeaderboardSeasonType,
   toggleSelectedTeam,
   updateLeaderboardFilterValue,
@@ -70,6 +72,15 @@ export function useLeaderboardPage(): UseLeaderboardPageValue {
   const metricLabel = metricLabelFor(metric)
   const metricDescription = metricDescriptionFor(metric)
   const metricStandFor = metricStandsFor(metric)
+  const scopedAvailableSeasons = useMemo(
+    () =>
+      buildAvailableSeasonsForSelectedTeams({
+        selectedTeamIds: filters.teamIds,
+        availableSeasons,
+        teamOptions,
+      }),
+    [availableSeasons, filters.teamIds, teamOptions],
+  )
   const availableTeams = useMemo(
     () =>
       buildAvailableTeamsForSeasonSpan({
@@ -203,6 +214,10 @@ export function useLeaderboardPage(): UseLeaderboardPageValue {
   }, [metric])
 
   useEffect(() => {
+    setFilters((current) => syncSelectedSeasonSpan(current, scopedAvailableSeasons))
+  }, [scopedAvailableSeasons])
+
+  useEffect(() => {
     setFilters((current) => {
       const nextTeamIds = syncSelectedTeamIds(current.teamIds, availableTeams)
       if (nextTeamIds === current.teamIds) {
@@ -261,7 +276,7 @@ export function useLeaderboardPage(): UseLeaderboardPageValue {
     metricLabel,
     metricStandsFor: metricStandFor,
     filters,
-    availableSeasons,
+    availableSeasons: scopedAvailableSeasons,
     availableTeams,
     leaderboard,
     exportUrl,

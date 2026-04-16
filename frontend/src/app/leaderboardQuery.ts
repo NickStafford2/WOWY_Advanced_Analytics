@@ -95,6 +95,32 @@ export function buildAvailableTeamsForSeasonSpan({
   )
 }
 
+export function buildAvailableSeasonsForSelectedTeams({
+  selectedTeamIds,
+  availableSeasons,
+  teamOptions,
+}: {
+  selectedTeamIds: number[] | null
+  availableSeasons: string[]
+  teamOptions: TeamOption[]
+}): string[] {
+  if (selectedTeamIds === null || selectedTeamIds.length === 0) {
+    return availableSeasons
+  }
+
+  const selectedTeamIdsSet = new Set(selectedTeamIds)
+  const seasonsByTeam = new Set(
+    teamOptions
+      .filter((teamOption) => selectedTeamIdsSet.has(teamOption.team_id))
+      .flatMap((teamOption) => teamOption.available_seasons),
+  )
+  if (seasonsByTeam.size === 0) {
+    return availableSeasons
+  }
+
+  return availableSeasons.filter((season) => seasonsByTeam.has(season))
+}
+
 export function filterSelectedTeamIdsForAvailableTeams(
   selectedTeamIds: number[] | null,
   availableTeams: TeamOption[],
@@ -257,6 +283,30 @@ export function sanitizeNumber(value: number): number {
 
 export function readNumberValue(rawValue: string): number {
   return sanitizeNumber(Number(rawValue))
+}
+
+export function syncSelectedSeasonSpan(
+  filters: LeaderboardFilters,
+  availableSeasons: string[],
+): LeaderboardFilters {
+  const defaultStartSeason = availableSeasons[0] || ''
+  const defaultEndSeason = availableSeasons[availableSeasons.length - 1] || ''
+  const nextStartSeason = availableSeasons.includes(filters.startSeason)
+    ? filters.startSeason
+    : defaultStartSeason
+  const nextEndSeason = availableSeasons.includes(filters.endSeason)
+    ? filters.endSeason
+    : defaultEndSeason
+
+  if (nextStartSeason === filters.startSeason && nextEndSeason === filters.endSeason) {
+    return filters
+  }
+
+  return {
+    ...filters,
+    startSeason: nextStartSeason,
+    endSeason: nextEndSeason,
+  }
 }
 
 function _normalizeSelectedTeamIds(
