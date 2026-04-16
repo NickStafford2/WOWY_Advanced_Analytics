@@ -15,8 +15,6 @@ from rawr_analytics.shared.team import Team
 def build_wowy_metric_store_rows(
     *,
     metric: Metric,
-    scope_key: str,
-    team_filter: str,
     seasons: list[Season],
     teams: list[Team],
 ) -> list[WowyPlayerSeasonValueRow]:
@@ -28,8 +26,6 @@ def build_wowy_metric_store_rows(
         _build_wowy_store_row_from_record(
             metric=metric,
             record=record,
-            scope_key=scope_key,
-            team_filter=team_filter,
         )
         for record in records
     ]
@@ -39,8 +35,6 @@ def _build_wowy_store_row_from_record(
     *,
     metric: Metric,
     record: WowyPlayerSeasonRecord,
-    scope_key: str,
-    team_filter: str,
 ) -> WowyPlayerSeasonValueRow:
     value = record.result.value
     include_raw_wowy_score = False
@@ -53,11 +47,6 @@ def _build_wowy_store_row_from_record(
             prior_games=DEFAULT_WOWY_SHRINKAGE_PRIOR_GAMES,
         )
     return WowyPlayerSeasonValueRow(
-        snapshot_id=None,
-        metric_id=metric.value,
-        scope_key=scope_key,
-        team_filter=team_filter,
-        season_type=record.season.season_type.value,
         season_id=record.season.year_string_nba_api,
         player_id=record.player.player_id,
         player_name=record.player.player_name,

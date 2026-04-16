@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 from rawr_analytics.data.metric_store.rawr import RawrPlayerSeasonValueRow
-from rawr_analytics.metrics.constants import Metric
 from rawr_analytics.metrics.rawr.calculate.records import RawrPlayerSeasonRecord
 from rawr_analytics.metrics.rawr.refresh.records import build_rawr_refresh_records
 from rawr_analytics.shared.season import Season
@@ -10,8 +9,6 @@ from rawr_analytics.shared.team import Team
 
 def build_rawr_metric_store_rows(
     *,
-    scope_key: str,
-    team_filter: str,
     seasons: list[Season],
     teams: list[Team],
     rawr_ridge_alpha: float,
@@ -21,28 +18,13 @@ def build_rawr_metric_store_rows(
         teams=teams,
         ridge_alpha=rawr_ridge_alpha,
     )
-    return [
-        _build_rawr_store_row_from_record(
-            record,
-            scope_key=scope_key,
-            team_filter=team_filter,
-        )
-        for record in records
-    ]
+    return [_build_rawr_store_row_from_record(record) for record in records]
 
 
 def _build_rawr_store_row_from_record(
     record: RawrPlayerSeasonRecord,
-    *,
-    scope_key: str,
-    team_filter: str,
 ) -> RawrPlayerSeasonValueRow:
     return RawrPlayerSeasonValueRow(
-        snapshot_id=None,
-        metric_id=Metric.RAWR.value,
-        scope_key=scope_key,
-        team_filter=team_filter,
-        season_type=record.season.season_type.value,
         season_id=record.season.year_string_nba_api,
         player_id=record.player.player_id,
         player_name=record.player.player_name,

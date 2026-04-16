@@ -279,18 +279,6 @@ def _validate_metric_store_relations(
                 )
             )
         else:
-            row_snapshot_id = _metric_group_snapshot_id(rows)
-            if row_snapshot_id != metadata_row.snapshot_id:
-                issues.append(
-                    ValidationIssue(
-                        table=metadata_table,
-                        key=f"metric={metric!r},scope_key={scope_key!r}",
-                        message=(
-                            "metric value rows point at a different snapshot_id than "
-                            "metric_snapshot"
-                        ),
-                    )
-                )
             if metadata_row.row_count != len(rows):
                 issues.append(
                     ValidationIssue(
@@ -362,13 +350,7 @@ def _validate_metric_store_relations(
         )
         catalog_row = catalog_rows.get(key)
         group_rows = metric_row_groups.get(key, [])
-        season_type = (
-            catalog_row.season_type
-            if catalog_row is not None
-            else _metric_group_season_type(group_rows)
-            if group_rows
-            else None
-        )
+        season_type = catalog_row.season_type if catalog_row is not None else None
         if season_type is None:
             continue
         if cache_load_counts.get(season_type, 0) == 0:
@@ -492,15 +474,6 @@ def _validate_metric_store_relations(
                 message="metric scope has no matching full-span rows",
             )
         )
-
-
-def _metric_group_snapshot_id(
-    rows: list[RawrPlayerSeasonValueRow] | list[WowyPlayerSeasonValueRow],
-) -> int | None:
-    assert rows, "metric group rows must not be empty"
-    return rows[0].snapshot_id
-
-
 def _full_span_group_snapshot_id(
     series_rows: list[MetricFullSpanSeriesRow],
     point_rows: list[MetricFullSpanPointRow],
@@ -510,13 +483,6 @@ def _full_span_group_snapshot_id(
     if point_rows:
         return point_rows[0].snapshot_id
     return None
-
-
-def _metric_group_season_type(
-    rows: list[RawrPlayerSeasonValueRow] | list[WowyPlayerSeasonValueRow],
-) -> str:
-    assert rows, "metric group rows must not be empty"
-    return rows[0].season_type
 
 
 def _load_normalized_cache_state() -> tuple[dict[str, int], dict[str, str]]:

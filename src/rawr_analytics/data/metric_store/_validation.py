@@ -20,22 +20,21 @@ from rawr_analytics.data.metric_store.full_span import (
     MetricFullSpanSeriesRow,
 )
 from rawr_analytics.data.metric_store_scope import validate_metric_scope
-from rawr_analytics.shared.season import Season, SeasonType
+from rawr_analytics.shared.season import Season, SeasonType, require_normalized_seasons
 from rawr_analytics.shared.team import canonicalize_metric_team_filter
 
 
 @dataclass
 class _MetricRowBatchState:
     row_keys: set[tuple[str, int]]
-    expected_team_filter: str | None = None
-    expected_season_type: str | None = None
-    expected_snapshot_id: int | None = None
-    snapshot_id_seen: bool = False
+    scope_season_ids: set[str]
+    scope_season_type: SeasonType
 
 
 def validate_rawr_rows(
     *,
     scope_key: str,
+    team_filter: str,
     seasons: list[Season],
     build_version: str,
     source_fingerprint: str,
@@ -45,13 +44,20 @@ def validate_rawr_rows(
     validate_required_text(scope_key, "scope_key")
     validate_required_text(build_version, "build_version")
     validate_required_text(source_fingerprint, "source_fingerprint")
+    _validate_metric_row_batch_scope(
+        scope_key=scope_key,
+        team_filter=team_filter,
+        seasons=seasons,
+    )
 
-    state = _MetricRowBatchState(row_keys=set())
+    normalized_seasons = require_normalized_seasons(seasons)
+    state = _MetricRowBatchState(
+        row_keys=set(),
+        scope_season_ids={season.year_string_nba_api for season in normalized_seasons},
+        scope_season_type=normalized_seasons[0].season_type,
+    )
     for row in rows:
         _validate_common_metric_row(
-            metric_id="rawr",
-            scope_key=scope_key,
-            seasons=seasons,
             row=row,
             state=state,
         )
@@ -62,6 +68,7 @@ def validate_wowy_rows(
     *,
     metric_id: str,
     scope_key: str,
+    team_filter: str,
     seasons: list[Season],
     build_version: str,
     source_fingerprint: str,
@@ -71,13 +78,20 @@ def validate_wowy_rows(
     validate_required_text(scope_key, "scope_key")
     validate_required_text(build_version, "build_version")
     validate_required_text(source_fingerprint, "source_fingerprint")
+    _validate_metric_row_batch_scope(
+        scope_key=scope_key,
+        team_filter=team_filter,
+        seasons=seasons,
+    )
 
-    state = _MetricRowBatchState(row_keys=set())
+    normalized_seasons = require_normalized_seasons(seasons)
+    state = _MetricRowBatchState(
+        row_keys=set(),
+        scope_season_ids={season.year_string_nba_api for season in normalized_seasons},
+        scope_season_type=normalized_seasons[0].season_type,
+    )
     for row in rows:
         _validate_common_metric_row(
-            metric_id=metric_id,
-            scope_key=scope_key,
-            seasons=seasons,
             row=row,
             state=state,
         )
@@ -86,75 +100,23 @@ def validate_wowy_rows(
 
 def _validate_common_metric_row(
     *,
-    metric_id: str,
-    scope_key: str,
-    seasons: list[Season],
     row: RawrPlayerSeasonValueRow | WowyPlayerSeasonValueRow,
     state: _MetricRowBatchState,
 ) -> None:
     player_id = row.player_id
-    if row.metric_id != metric_id:
-        raise ValueError(
-            f"Metric row for player {player_id!r} has metric_id {row.metric_id!r}; "
-            f"expected {metric_id!r}"
-        )
-    if row.scope_key != scope_key:
-        raise ValueError(
-            f"Metric row for player {player_id!r} has scope_key "
-            f"{row.scope_key!r}; expected {scope_key!r}"
-        )
-
-    canonical_season_type = SeasonType.parse(row.season_type).value
-    if row.season_type != canonical_season_type:
-        raise ValueError(
-            f"Metric row for player {player_id!r} uses non-canonical "
-            f"season_type {row.season_type!r}"
-        )
-    canonical_team_filter = canonicalize_metric_team_filter(row.team_filter)
-    if row.team_filter != canonical_team_filter:
-        raise ValueError(
-            f"Metric row for player {player_id!r} uses non-canonical "
-            f"team_filter {row.team_filter!r}"
-        )
-    validate_metric_scope(
-        scope_key=row.scope_key,
-        team_filter=canonical_team_filter,
-        seasons=seasons,
-    )
-    row_season = Season.parse(row.season_id, canonical_season_type)
-    assert row_season.season_type == SeasonType.parse(canonical_season_type), (
-        "metric row season parsing must preserve row season_type"
+    row_season = Season.parse(row.season_id, state.scope_season_type.value)
+    assert row_season.season_type == state.scope_season_type, (
+        "metric row season parsing must preserve scope season_type"
     )
     canonical_season_id = row_season.year_string_nba_api
     if canonical_season_id != row.season_id:
         raise ValueError(
             f"Metric row for player {player_id!r} uses non-canonical season_id {row.season_id!r}"
         )
-    scope_season_ids = {season.year_string_nba_api for season in seasons}
-    if canonical_season_id not in scope_season_ids:
+    if canonical_season_id not in state.scope_season_ids:
         raise ValueError(
             f"Metric row for player {player_id!r} is outside scope seasons: {row.season_id!r}"
         )
-
-    if state.expected_team_filter is None:
-        state.expected_team_filter = canonical_team_filter
-    elif canonical_team_filter != state.expected_team_filter:
-        raise ValueError("Metric rows in the same batch must use one canonical team_filter")
-
-    if state.expected_season_type is None:
-        state.expected_season_type = canonical_season_type
-    elif canonical_season_type != state.expected_season_type:
-        raise ValueError("Metric rows in the same batch must use one canonical season_type")
-
-    if row.snapshot_id is not None and row.snapshot_id <= 0:
-        raise ValueError(
-            f"Metric row for player {player_id!r} has invalid snapshot_id {row.snapshot_id!r}"
-        )
-    if not state.snapshot_id_seen:
-        state.expected_snapshot_id = row.snapshot_id
-        state.snapshot_id_seen = True
-    elif row.snapshot_id != state.expected_snapshot_id:
-        raise ValueError("Metric rows in the same batch must use one snapshot_id")
 
     if row.player_id <= 0:
         raise ValueError(f"Metric row has invalid player_id {row.player_id!r}")
@@ -183,6 +145,24 @@ def _validate_common_metric_row(
     if row_key in state.row_keys:
         raise ValueError(f"Duplicate metric row for {row_key!r}")
     state.row_keys.add(row_key)
+
+
+def _validate_metric_row_batch_scope(
+    *,
+    scope_key: str,
+    team_filter: str,
+    seasons: list[Season],
+) -> None:
+    validate_required_text(scope_key, "scope_key")
+    normalized_seasons = require_normalized_seasons(seasons)
+    canonical_team_filter = canonicalize_metric_team_filter(team_filter)
+    if team_filter != canonical_team_filter:
+        raise ValueError(f"Metric row batch uses non-canonical team_filter {team_filter!r}")
+    validate_metric_scope(
+        scope_key=scope_key,
+        team_filter=canonical_team_filter,
+        seasons=normalized_seasons,
+    )
 
 
 def _validate_rawr_value_row(row: RawrPlayerSeasonValueRow) -> None:

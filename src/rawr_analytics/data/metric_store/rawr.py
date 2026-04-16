@@ -22,11 +22,6 @@ def load_rawr_player_season_value_rows(
     initialize_metric_store_db()
     query = """
         SELECT
-            snapshot.snapshot_id,
-            snapshot.metric_id,
-            snapshot.scope_key,
-            rawr.team_filter,
-            rawr.season_type,
             rawr.season_id,
             rawr.player_id,
             rawr.player_name,
@@ -92,6 +87,7 @@ def replace_rawr_scope_snapshot(
     updated_at = datetime.now(UTC).isoformat()
     validate_rawr_rows(
         scope_key=scope_key,
+        team_filter=team_filter,
         seasons=seasons,
         build_version=build_version,
         source_fingerprint=source_fingerprint,

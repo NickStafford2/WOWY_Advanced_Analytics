@@ -25,11 +25,6 @@ def load_wowy_player_season_value_rows(
     initialize_metric_store_db()
     query = """
         SELECT
-            snapshot.snapshot_id,
-            snapshot.metric_id,
-            snapshot.scope_key,
-            wowy.team_filter,
-            wowy.season_type,
             wowy.season_id,
             wowy.player_id,
             wowy.player_name,
@@ -101,6 +96,7 @@ def replace_wowy_scope_snapshot(
     validate_wowy_rows(
         metric_id=metric_id,
         scope_key=scope_key,
+        team_filter=team_filter,
         seasons=seasons,
         build_version=build_version,
         source_fingerprint=source_fingerprint,

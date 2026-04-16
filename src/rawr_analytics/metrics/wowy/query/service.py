@@ -211,8 +211,9 @@ def _try_load_wowy_store_result(
     if available is None:
         return None
 
+    season_type = query.seasons[0].season_type.value
     rows = [
-        _build_wowy_value_from_store_row(row)
+        _build_wowy_value_from_store_row(row, season_type)
         for row in load_wowy_player_season_value_rows(
             metric_id=metric.value,
             scope_key=scope_key,
@@ -251,8 +252,11 @@ def _require_wowy_metric(metric: Metric) -> None:
         raise ValueError(f"Unknown WOWY metric: {metric}")
 
 
-def _build_wowy_value_from_store_row(row: WowyPlayerSeasonValueRow) -> WowyPlayerSeasonValue:
-    season = Season.parse(row.season_id, row.season_type)
+def _build_wowy_value_from_store_row(
+    row: WowyPlayerSeasonValueRow,
+    season_type: str,
+) -> WowyPlayerSeasonValue:
+    season = Season.parse(row.season_id, season_type)
     return build_wowy_player_season_value(
         season=season,
         player=PlayerSummary(

@@ -146,8 +146,6 @@ def insert_rawr_rows(
         """
         INSERT INTO rawr_player_season_values (
             snapshot_id,
-            team_filter,
-            season_type,
             season_id,
             player_id,
             player_name,
@@ -155,13 +153,11 @@ def insert_rawr_rows(
             games,
             average_minutes,
             total_minutes
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
         """,
         [
             (
                 snapshot_id,
-                row.team_filter,
-                row.season_type,
                 row.season_id,
                 row.player_id,
                 row.player_name,
@@ -187,8 +183,6 @@ def insert_wowy_rows(
         """
         INSERT INTO wowy_player_season_values (
             snapshot_id,
-            team_filter,
-            season_type,
             season_id,
             player_id,
             player_name,
@@ -200,13 +194,11 @@ def insert_wowy_rows(
             average_minutes,
             total_minutes,
             raw_wowy_score
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         """,
         [
             (
                 snapshot_id,
-                row.team_filter,
-                row.season_type,
                 row.season_id,
                 row.player_id,
                 row.player_name,

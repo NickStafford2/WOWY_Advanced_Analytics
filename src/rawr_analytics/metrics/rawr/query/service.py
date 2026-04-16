@@ -224,8 +224,9 @@ def _try_load_rawr_store_result(query: RawrQuery) -> ResolvedRawrResultDTO | Non
     if available is None:
         return None
 
+    season_type = query.seasons[0].season_type.value
     rows = [
-        _build_rawr_record_from_store_row(row)
+        _build_rawr_record_from_store_row(row, season_type)
         for row in load_rawr_player_season_value_rows(
             scope_key=scope_key,
             seasons=season_ids(query.seasons),
@@ -253,9 +254,10 @@ def _selected_rawr_seasons(query: RawrQuery, rows: list[RawrPlayerSeasonRecord])
 
 def _build_rawr_record_from_store_row(
     row: RawrPlayerSeasonValueRow,
+    season_type: str,
 ) -> RawrPlayerSeasonRecord:
     return RawrPlayerSeasonRecord(
-        season=Season.parse(row.season_id, row.season_type),
+        season=Season.parse(row.season_id, season_type),
         player=PlayerSummary(
             player_id=row.player_id,
             player_name=row.player_name,

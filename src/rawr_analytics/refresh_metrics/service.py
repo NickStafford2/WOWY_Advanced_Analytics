@@ -198,8 +198,6 @@ def _refresh_scope(
 
     if metric == Metric.RAWR:
         rows = build_rawr_metric_store_rows(
-            scope_key=scope.scope_key,
-            team_filter=scope.team_filter,
             seasons=scope.seasons,
             teams=scope.teams,
             rawr_ridge_alpha=rawr_ridge_alpha,
@@ -218,8 +216,6 @@ def _refresh_scope(
     else:
         rows = build_wowy_metric_store_rows(
             metric=metric,
-            scope_key=scope.scope_key,
-            team_filter=scope.team_filter,
             seasons=scope.seasons,
             teams=scope.teams,
         )

@@ -118,10 +118,10 @@ def build_metric_full_span_rows(
 
 
 __all__ = [
-    "build_metric_full_span_series_row",
     "MetricFullSpanPointRow",
     "MetricFullSpanSeries",
     "MetricFullSpanSeriesRow",
     "MetricStorePlayerSeasonValue",
     "build_metric_full_span_rows",
+    "build_metric_full_span_series_row",
 ]

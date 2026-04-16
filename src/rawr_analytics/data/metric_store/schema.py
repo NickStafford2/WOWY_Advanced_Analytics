@@ -23,8 +23,6 @@ def initialize_metric_store_db() -> None:
 
             CREATE TABLE IF NOT EXISTS rawr_player_season_values (
                 snapshot_id INTEGER NOT NULL,
-                team_filter TEXT NOT NULL DEFAULT '',
-                season_type TEXT NOT NULL DEFAULT 'Regular Season',
                 season_id TEXT NOT NULL,
                 player_id INTEGER NOT NULL,
                 player_name TEXT NOT NULL,
@@ -40,8 +38,6 @@ def initialize_metric_store_db() -> None:
 
             CREATE TABLE IF NOT EXISTS wowy_player_season_values (
                 snapshot_id INTEGER NOT NULL,
-                team_filter TEXT NOT NULL DEFAULT '',
-                season_type TEXT NOT NULL DEFAULT 'Regular Season',
                 season_id TEXT NOT NULL,
                 player_id INTEGER NOT NULL,
                 player_name TEXT NOT NULL,

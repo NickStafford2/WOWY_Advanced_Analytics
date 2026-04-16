@@ -137,6 +137,7 @@ def _audit_metric_player_season_values_table(
         try:
             validate_rawr_rows(
                 scope_key=key[1],
+                team_filter=catalog_row.team_filter,
                 seasons=catalog_seasons(catalog_row),
                 build_version=metadata_row.build_version,
                 source_fingerprint=metadata_row.source_fingerprint,
@@ -176,6 +177,7 @@ def _audit_metric_player_season_values_table(
             validate_wowy_rows(
                 metric_id=key[0],
                 scope_key=key[1],
+                team_filter=catalog_row.team_filter,
                 seasons=catalog_seasons(catalog_row),
                 build_version=metadata_row.build_version,
                 source_fingerprint=metadata_row.source_fingerprint,
@@ -200,11 +202,8 @@ def _load_rawr_metric_rows(
     rows = connection.execute(
         """
         SELECT
-            snapshot.snapshot_id,
             snapshot.metric_id,
             snapshot.scope_key,
-            rawr.team_filter,
-            rawr.season_type,
             rawr.season_id,
             rawr.player_id,
             rawr.player_name,
@@ -229,11 +228,8 @@ def _load_wowy_metric_rows(
     rows = connection.execute(
         """
         SELECT
-            wowy.snapshot_id,
             snapshot.metric_id,
             snapshot.scope_key,
-            wowy.team_filter,
-            wowy.season_type,
             wowy.season_id,
             wowy.player_id,
             wowy.player_name,

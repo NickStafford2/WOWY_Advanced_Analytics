@@ -7,11 +7,6 @@ from typing import cast
 
 @dataclass(frozen=True)
 class RawrPlayerSeasonValueRow:
-    snapshot_id: int | None
-    metric_id: str
-    scope_key: str
-    team_filter: str
-    season_type: str
     season_id: str
     player_id: int
     player_name: str
@@ -23,11 +18,6 @@ class RawrPlayerSeasonValueRow:
 
 @dataclass(frozen=True)
 class WowyPlayerSeasonValueRow:
-    snapshot_id: int | None
-    metric_id: str
-    scope_key: str
-    team_filter: str
-    season_type: str
     season_id: str
     player_id: int
     player_name: str
@@ -43,11 +33,6 @@ class WowyPlayerSeasonValueRow:
 
 def build_rawr_player_season_value_row(row: sqlite3.Row) -> RawrPlayerSeasonValueRow:
     return RawrPlayerSeasonValueRow(
-        snapshot_id=cast(int | None, row["snapshot_id"]),
-        metric_id=cast(str, row["metric_id"]),
-        scope_key=cast(str, row["scope_key"]),
-        team_filter=cast(str, row["team_filter"]),
-        season_type=cast(str, row["season_type"]),
         season_id=cast(str, row["season_id"]),
         player_id=cast(int, row["player_id"]),
         player_name=cast(str, row["player_name"]),
@@ -60,11 +45,6 @@ def build_rawr_player_season_value_row(row: sqlite3.Row) -> RawrPlayerSeasonValu
 
 def build_wowy_player_season_value_row(row: sqlite3.Row) -> WowyPlayerSeasonValueRow:
     return WowyPlayerSeasonValueRow(
-        snapshot_id=cast(int | None, row["snapshot_id"]),
-        metric_id=cast(str, row["metric_id"]),
-        scope_key=cast(str, row["scope_key"]),
-        team_filter=cast(str, row["team_filter"]),
-        season_type=cast(str, row["season_type"]),
         season_id=cast(str, row["season_id"]),
         player_id=cast(int, row["player_id"]),
         player_name=cast(str, row["player_name"]),
