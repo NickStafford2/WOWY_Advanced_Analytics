@@ -1,4 +1,4 @@
-import { useEffect, useEffectEvent, useMemo, useRef, useState, type MutableRefObject } from 'react'
+import { useEffect, useEffectEvent, useRef, useState, type MutableRefObject } from 'react'
 import { fetchLeaderboard, fetchMetricOptions } from './api'
 import {
   defaultLeaderboardFilters,
@@ -76,13 +76,12 @@ export function useLeaderboardPage(): UseLeaderboardPageValue {
   const metricLabel = metricLabelFor(metric)
   const metricDescription = metricDescriptionFor(metric)
   const metricStandsForLabel = metricStandsFor(metric)
-  const availableTeams = useMemo(() => teamOptions, [teamOptions])
   const isRawrMetric = metric === 'rawr'
   const exportUrl = buildExportUrl({
     metric,
     filters,
     availableSeasons,
-    availableTeams,
+    availableTeams: teamOptions,
   })
   const { loadingPanel, restartLoadingClock } = useLoadingPanel({
     metric,
@@ -274,14 +273,14 @@ export function useLeaderboardPage(): UseLeaderboardPageValue {
   function handleSelectAllTeams(): void {
     setFilters((current) => ({
       ...current,
-      teamIds: isAllTeamsSelection(current.teamIds, availableTeams) ? [] : selectAllTeams(),
+      teamIds: isAllTeamsSelection(current.teamIds, teamOptions) ? [] : selectAllTeams(),
     }))
   }
 
   function handleToggleTeam(teamId: number): void {
     setFilters((current) => ({
       ...current,
-      teamIds: toggleSelectedTeam(current.teamIds, teamId, availableTeams),
+      teamIds: toggleSelectedTeam(current.teamIds, teamId, teamOptions),
     }))
   }
 
@@ -301,7 +300,7 @@ export function useLeaderboardPage(): UseLeaderboardPageValue {
     metricStandsFor: metricStandsForLabel,
     filters,
     availableSeasons,
-    availableTeams,
+    availableTeams: teamOptions,
     leaderboard,
     exportUrl,
     error,
