@@ -18,9 +18,11 @@ export async function fetchLeaderboard(
 
 export async function fetchMetricOptions(
   metric: MetricId,
+  params?: URLSearchParams,
   signal?: AbortSignal,
 ): Promise<MetricOptionsPayload> {
-  return (await _fetchJson(`/api/metrics/${metric}/options`, signal)) as MetricOptionsPayload
+  const queryString = params && params.size > 0 ? `?${params.toString()}` : ''
+  return (await _fetchJson(`/api/metrics/${metric}/options${queryString}`, signal)) as MetricOptionsPayload
 }
 
 async function _fetchJson(url: string, signal?: AbortSignal): Promise<unknown> {

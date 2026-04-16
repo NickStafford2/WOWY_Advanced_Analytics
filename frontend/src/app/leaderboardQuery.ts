@@ -25,35 +25,6 @@ export function defaultLeaderboardFilters(): LeaderboardFilters {
   }
 }
 
-export function syncLeaderboardFiltersWithOptions(
-  current: LeaderboardFilters,
-  payload: MetricOptionsPayload,
-): LeaderboardFilters {
-  const defaultStartSeason = payload.available_seasons[0] || ''
-  const defaultEndSeason = payload.available_seasons[payload.available_seasons.length - 1] || ''
-  const selectedTeamIds = _normalizeSelectedTeamIds(current.teamIds, payload.team_options)
-
-  return {
-    ...current,
-    startSeason: payload.available_seasons.includes(current.startSeason)
-      ? current.startSeason
-      : defaultStartSeason,
-    endSeason: payload.available_seasons.includes(current.endSeason)
-      ? current.endSeason
-      : defaultEndSeason,
-    seasonTypes: current.seasonTypes.length > 0 ? current.seasonTypes : [...DEFAULT_SEASON_TYPES],
-    teamIds: selectedTeamIds,
-    topN: current.topN || payload.filters.top_n,
-    minGames: payload.metric === 'rawr' ? payload.filters.min_games : current.minGames,
-    ridgeAlpha: payload.metric === 'rawr' ? payload.filters.ridge_alpha : current.ridgeAlpha,
-    minGamesWith: payload.metric === 'rawr' ? current.minGamesWith : payload.filters.min_games_with,
-    minGamesWithout:
-      payload.metric === 'rawr' ? current.minGamesWithout : payload.filters.min_games_without,
-    minAverageMinutes: payload.filters.min_average_minutes,
-    minTotalMinutes: payload.filters.min_total_minutes,
-  }
-}
-
 export function seasonSpan(
   startSeason: string,
   endSeason: string,
@@ -74,51 +45,30 @@ export function seasonSpan(
   return seasons.slice(lowIndex, highIndex + 1)
 }
 
-export function buildAvailableTeamsForSeasonSpan({
-  startSeason,
-  endSeason,
-  availableSeasons,
-  teamOptions,
-}: {
-  startSeason: string
-  endSeason: string
-  availableSeasons: string[]
-  teamOptions: TeamOption[]
-}): TeamOption[] {
-  const seasonsInScope = seasonSpan(startSeason, endSeason, availableSeasons)
-  if (seasonsInScope.length === 0) {
-    return []
+export function buildMetricOptionsParamsForTeams(selectedTeamIds: number[] | null): URLSearchParams {
+  const params = new URLSearchParams()
+  if (selectedTeamIds === null) {
+    return params
   }
 
-  return teamOptions.filter((teamOption) =>
-    seasonsInScope.some((season) => teamOption.available_seasons.includes(season)),
-  )
+  for (const teamId of selectedTeamIds) {
+    params.append('team_id', String(teamId))
+  }
+
+  return params
 }
 
-export function buildAvailableSeasonsForSelectedTeams({
-  selectedTeamIds,
-  availableSeasons,
-  teamOptions,
-}: {
-  selectedTeamIds: number[] | null
-  availableSeasons: string[]
-  teamOptions: TeamOption[]
-}): string[] {
-  if (selectedTeamIds === null || selectedTeamIds.length === 0) {
-    return availableSeasons
+export function buildMetricOptionsParamsForSeasonSpan(
+  filters: LeaderboardFilters,
+  availableSeasons: string[],
+): URLSearchParams {
+  const params = new URLSearchParams()
+  const selectedSeasons = seasonSpan(filters.startSeason, filters.endSeason, availableSeasons)
+  for (const season of selectedSeasons) {
+    params.append('season', `${season}:REGULAR`)
   }
 
-  const selectedTeamIdsSet = new Set(selectedTeamIds)
-  const seasonsByTeam = new Set(
-    teamOptions
-      .filter((teamOption) => selectedTeamIdsSet.has(teamOption.team_id))
-      .flatMap((teamOption) => teamOption.available_seasons),
-  )
-  if (seasonsByTeam.size === 0) {
-    return availableSeasons
-  }
-
-  return availableSeasons.filter((season) => seasonsByTeam.has(season))
+  return params
 }
 
 export function filterSelectedTeamIdsForAvailableTeams(
@@ -131,13 +81,6 @@ export function filterSelectedTeamIdsForAvailableTeams(
 
   const availableTeamIds = new Set(availableTeams.map((team) => team.team_id))
   return selectedTeamIds.filter((teamId) => availableTeamIds.has(teamId))
-}
-
-export function syncSelectedTeamIds(
-  selectedTeamIds: number[] | null,
-  availableTeams: TeamOption[],
-): number[] | null {
-  return _normalizeSelectedTeamIds(selectedTeamIds, availableTeams)
 }
 
 export function isAllTeamsSelection(
@@ -285,20 +228,43 @@ export function readNumberValue(rawValue: string): number {
   return sanitizeNumber(Number(rawValue))
 }
 
-export function syncSelectedSeasonSpan(
-  filters: LeaderboardFilters,
-  availableSeasons: string[],
+export function initializeLeaderboardFiltersWithOptions(
+  current: LeaderboardFilters,
+  payload: MetricOptionsPayload,
 ): LeaderboardFilters {
-  const defaultStartSeason = availableSeasons[0] || ''
-  const defaultEndSeason = availableSeasons[availableSeasons.length - 1] || ''
-  const nextStartSeason = availableSeasons.includes(filters.startSeason)
+  const scopeFilters = syncScopedLeaderboardFiltersWithOptions(current, payload)
+  return {
+    ...scopeFilters,
+    topN: payload.filters.top_n,
+    minGames: payload.metric === 'rawr' ? payload.filters.min_games : current.minGames,
+    ridgeAlpha: payload.metric === 'rawr' ? payload.filters.ridge_alpha : current.ridgeAlpha,
+    minGamesWith: payload.metric === 'rawr' ? current.minGamesWith : payload.filters.min_games_with,
+    minGamesWithout:
+      payload.metric === 'rawr' ? current.minGamesWithout : payload.filters.min_games_without,
+    minAverageMinutes: payload.filters.min_average_minutes,
+    minTotalMinutes: payload.filters.min_total_minutes,
+  }
+}
+
+export function syncScopedLeaderboardFiltersWithOptions(
+  filters: LeaderboardFilters,
+  payload: MetricOptionsPayload,
+): LeaderboardFilters {
+  const defaultStartSeason = payload.available_seasons[0] || ''
+  const defaultEndSeason = payload.available_seasons[payload.available_seasons.length - 1] || ''
+  const nextStartSeason = payload.available_seasons.includes(filters.startSeason)
     ? filters.startSeason
     : defaultStartSeason
-  const nextEndSeason = availableSeasons.includes(filters.endSeason)
+  const nextEndSeason = payload.available_seasons.includes(filters.endSeason)
     ? filters.endSeason
     : defaultEndSeason
+  const nextTeamIds = _normalizeSelectedTeamIds(filters.teamIds, payload.team_options)
 
-  if (nextStartSeason === filters.startSeason && nextEndSeason === filters.endSeason) {
+  if (
+    nextStartSeason === filters.startSeason &&
+    nextEndSeason === filters.endSeason &&
+    _teamIdsEqual(nextTeamIds, filters.teamIds)
+  ) {
     return filters
   }
 
@@ -306,6 +272,7 @@ export function syncSelectedSeasonSpan(
     ...filters,
     startSeason: nextStartSeason,
     endSeason: nextEndSeason,
+    teamIds: nextTeamIds,
   }
 }
 
@@ -327,4 +294,18 @@ function _normalizeSelectedTeamIds(
   }
 
   return nextTeamIds
+}
+
+function _teamIdsEqual(left: number[] | null, right: number[] | null): boolean {
+  if (left === right) {
+    return true
+  }
+  if (left === null || right === null) {
+    return false
+  }
+  if (left.length !== right.length) {
+    return false
+  }
+
+  return left.every((teamId, index) => teamId === right[index])
 }
