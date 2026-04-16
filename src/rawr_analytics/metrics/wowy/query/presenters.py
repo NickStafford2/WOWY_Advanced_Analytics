@@ -22,6 +22,7 @@ class WowyQueryFiltersDTO:
     top_n: int
     min_games_with: int
     min_games_without: int
+    shrinkage_prior_games: float | None
 
     @classmethod
     def from_query(cls, query: WowyQuery) -> WowyQueryFiltersDTO:
@@ -33,6 +34,7 @@ class WowyQueryFiltersDTO:
             top_n=query.post_calc_filters.top_n,
             min_games_with=query.calc_vars.eligibility.min_games_with,
             min_games_without=query.calc_vars.eligibility.min_games_without,
+            shrinkage_prior_games=query.calc_vars.shrinkage_prior_games,
         )
 
     def for_options(self) -> WowyQueryFiltersDTO:
@@ -44,6 +46,7 @@ class WowyQueryFiltersDTO:
             top_n=self.top_n,
             min_games_with=self.min_games_with,
             min_games_without=self.min_games_without,
+            shrinkage_prior_games=self.shrinkage_prior_games,
         )
 
     def to_payload(self) -> JSONDict:
@@ -62,6 +65,7 @@ class WowyQueryFiltersDTO:
             "top_n": self.top_n,
             "min_games_with": self.min_games_with,
             "min_games_without": self.min_games_without,
+            "shrinkage_prior_games": self.shrinkage_prior_games,
         }
 
 

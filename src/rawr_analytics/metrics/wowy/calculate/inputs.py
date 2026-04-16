@@ -5,6 +5,7 @@ from dataclasses import dataclass
 
 from rawr_analytics.metrics._player_context import PlayerSeasonContext, PlayerSeasonFilters
 from rawr_analytics.metrics._validation import validate_top_n_and_minutes
+from rawr_analytics.metrics.wowy._calc_vars import WowyCalcVars, WowyEligibility
 from rawr_analytics.metrics.wowy.calculate._analysis import WowyGame
 from rawr_analytics.shared.game import NormalizedGamePlayerRecord, NormalizedGameRecord
 from rawr_analytics.shared.player import PlayerMinutes, PlayerSummary
@@ -16,13 +17,6 @@ class WowySeasonInputDTO:
     season: Season
     games: list[WowyGame]
     players_by_id: dict[int, PlayerSeasonContext]
-
-
-@dataclass(frozen=True)
-class WowyEligibility:
-    min_games_with: int
-    min_games_without: int
-
 
 @dataclass(frozen=True)
 class WowyRequestDTO:
@@ -40,6 +34,19 @@ def build_wowy_request(
     return WowyRequestDTO(
         season_inputs=season_inputs,
         eligibility=eligibility,
+        filters=filters,
+    )
+
+
+def build_wowy_request_from_calc_vars(
+    *,
+    calc_vars: WowyCalcVars,
+    season_inputs: list[WowySeasonInputDTO],
+    filters: PlayerSeasonFilters,
+) -> WowyRequestDTO:
+    return build_wowy_request(
+        season_inputs=season_inputs,
+        eligibility=calc_vars.eligibility,
         filters=filters,
     )
 

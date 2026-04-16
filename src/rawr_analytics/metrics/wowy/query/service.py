@@ -11,6 +11,7 @@ from rawr_analytics.data.metric_store.wowy import (
 )
 from rawr_analytics.metrics.constants import Metric
 from rawr_analytics.metrics._metric_cache_key import build_wowy_metric_cache_key
+from rawr_analytics.metrics.wowy._calc_vars import WowyCalcVars
 from rawr_analytics.metrics.wowy.cache import load_wowy_records
 from rawr_analytics.metrics.wowy.calculate.inputs import build_wowy_season_inputs
 from rawr_analytics.metrics.wowy.calculate.records import (
@@ -185,15 +186,16 @@ def _build_live_wowy_query_result(
     metric: Metric,
     query: WowyQuery,
 ) -> list[WowyPlayerSeasonValue]:
+    calc_vars = query.calc_vars
     games, game_players = load_wowy_records(
-        teams=query.calc_vars.teams,
-        seasons=query.calc_vars.seasons,
+        teams=calc_vars.teams,
+        seasons=calc_vars.seasons,
     )
     season_inputs = build_wowy_season_inputs(games=games, game_players=game_players)
     return build_wowy_custom_query(
         metric,
+        calc_vars=calc_vars,
         season_inputs=season_inputs,
-        eligibility=query.calc_vars.eligibility,
         filters=query.post_calc_filters.filters,
     )
 
@@ -203,13 +205,15 @@ def _try_load_wowy_store_result(
     metric: Metric,
     query: WowyQuery,
 ) -> ResolvedWowyResultDTO | None:
-    cache_key = _resolve_cached_wowy_key(metric=metric, query=query)
+    calc_vars = query.calc_vars
+    cache_key = _resolve_cached_wowy_key(metric=metric, calc_vars=calc_vars)
     if cache_key is None:
         return None
 
     available = _try_load_current_metric_availability(
         metric=metric,
         query=query,
+        calc_vars=calc_vars,
         metric_cache_key=cache_key,
     )
     if available is None:
@@ -220,11 +224,11 @@ def _try_load_wowy_store_result(
         for row in load_wowy_player_season_value_rows(
             metric_id=metric.value,
             metric_cache_key=cache_key,
-            seasons=season_ids(query.calc_vars.seasons),
+            seasons=season_ids(calc_vars.seasons),
             min_average_minutes=query.post_calc_filters.filters.min_average_minutes,
             min_total_minutes=query.post_calc_filters.filters.min_total_minutes,
-            min_games_with=query.calc_vars.eligibility.min_games_with,
-            min_games_without=query.calc_vars.eligibility.min_games_without,
+            min_games_with=calc_vars.eligibility.min_games_with,
+            min_games_without=calc_vars.eligibility.min_games_without,
         )
     ]
 
@@ -284,20 +288,20 @@ def _build_wowy_value_from_store_row(
 def _resolve_cached_wowy_key(
     *,
     metric: Metric,
-    query: WowyQuery,
+    calc_vars: WowyCalcVars,
 ) -> str | None:
-    team_filter = build_metric_team_filter(query.calc_vars.teams)
+    team_filter = build_metric_team_filter(calc_vars.teams)
     if team_filter:
         return None
 
     cache_snapshot = load_game_cache_snapshot(
-        teams=query.calc_vars.teams,
-        seasons=query.calc_vars.seasons,
+        teams=calc_vars.teams,
+        seasons=calc_vars.seasons,
     )
     if not cache_snapshot.entries:
         return None
 
-    return build_wowy_metric_cache_key(metric_id=metric.value, calc_vars=query.calc_vars)
+    return build_wowy_metric_cache_key(metric_id=metric.value, calc_vars=calc_vars)
 
 
 @dataclass(frozen=True)
@@ -310,6 +314,7 @@ def _try_load_current_metric_availability(
     *,
     metric: Metric,
     query: WowyQuery,
+    calc_vars: WowyCalcVars,
     metric_cache_key: str,
 ) -> _CachedWowyAvailability | None:
     state = load_metric_cache_store_state(metric.value, metric_cache_key)
@@ -317,8 +322,8 @@ def _try_load_current_metric_availability(
         return None
 
     cache_snapshot = load_game_cache_snapshot(
-        teams=query.calc_vars.teams,
-        seasons=query.calc_vars.seasons,
+        teams=calc_vars.teams,
+        seasons=calc_vars.seasons,
     )
     if not cache_snapshot.entries:
         return None

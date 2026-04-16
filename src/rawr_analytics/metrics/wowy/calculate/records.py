@@ -4,16 +4,17 @@ from dataclasses import dataclass
 
 from rawr_analytics.metrics._player_context import PlayerSeasonFilters
 from rawr_analytics.metrics.constants import Metric
+from rawr_analytics.metrics.wowy._calc_vars import WowyCalcVars, WowyEligibility
 from rawr_analytics.metrics.wowy.calculate._analysis import (
     WowyPlayerValue,
     compute_wowy,
     filter_results,
 )
 from rawr_analytics.metrics.wowy.calculate.inputs import (
-    WowyEligibility,
     WowyRequestDTO,
     WowySeasonInputDTO,
     build_wowy_request,
+    build_wowy_request_from_calc_vars,
     validate_request,
 )
 from rawr_analytics.metrics.wowy.calculate.shrinkage import (
@@ -109,19 +110,34 @@ def prepare_wowy_player_season_records(
     )
 
 
+def prepare_wowy_player_season_records_from_calc_vars(
+    *,
+    calc_vars: WowyCalcVars,
+    season_inputs: list[WowySeasonInputDTO],
+    filters: PlayerSeasonFilters,
+) -> list[WowyPlayerSeasonRecord]:
+    return build_player_season_records(
+        build_wowy_request_from_calc_vars(
+            calc_vars=calc_vars,
+            season_inputs=season_inputs,
+            filters=filters,
+        )
+    )
+
+
 def build_wowy_custom_query(
     metric: Metric,
     *,
+    calc_vars: WowyCalcVars,
     season_inputs: list[WowySeasonInputDTO],
-    eligibility: WowyEligibility,
     filters: PlayerSeasonFilters,
 ) -> list[WowyPlayerSeasonValue]:
-    records = prepare_wowy_player_season_records(
+    records = prepare_wowy_player_season_records_from_calc_vars(
+        calc_vars=calc_vars,
         season_inputs=season_inputs,
-        eligibility=eligibility,
         filters=filters,
     )
-    return [_build_wowy_query_row(metric, record) for record in records]
+    return [_build_wowy_query_row(metric, calc_vars=calc_vars, record=record) for record in records]
 
 
 def build_wowy_player_season_value(
@@ -153,6 +169,7 @@ def build_wowy_player_season_value(
 
 def _build_wowy_query_row(
     metric: Metric,
+    calc_vars: WowyCalcVars,
     record: WowyPlayerSeasonRecord,
 ) -> WowyPlayerSeasonValue:
     if metric == Metric.WOWY:
@@ -183,7 +200,11 @@ def _build_wowy_query_row(
                     games_with=record.result.games_with,
                     games_without=record.result.games_without,
                     wowy_score=record.result.value,
-                    prior_games=DEFAULT_WOWY_SHRINKAGE_PRIOR_GAMES,
+                    prior_games=(
+                        calc_vars.shrinkage_prior_games
+                        if calc_vars.shrinkage_prior_games is not None
+                        else DEFAULT_WOWY_SHRINKAGE_PRIOR_GAMES
+                    ),
                 ),
                 raw_value=record.result.raw_value,
             ),

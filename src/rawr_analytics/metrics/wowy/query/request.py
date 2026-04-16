@@ -3,7 +3,9 @@ from __future__ import annotations
 from dataclasses import dataclass
 
 from rawr_analytics.metrics._player_context import PlayerSeasonFilters
-from rawr_analytics.metrics.wowy.calculate.inputs import WowyEligibility, validate_filters
+from rawr_analytics.metrics.wowy._calc_vars import WowyCalcVars, WowyEligibility
+from rawr_analytics.metrics.wowy.calculate.inputs import validate_filters
+from rawr_analytics.metrics.wowy.calculate.shrinkage import DEFAULT_WOWY_SHRINKAGE_PRIOR_GAMES
 from rawr_analytics.metrics.wowy.defaults import default_filters
 from rawr_analytics.shared.season import (
     Season,
@@ -11,13 +13,6 @@ from rawr_analytics.shared.season import (
     normalize_seasons,
 )
 from rawr_analytics.shared.team import Team, normalize_teams
-
-
-@dataclass(frozen=True)
-class WowyCalcVars:
-    teams: list[Team]
-    seasons: list[Season]
-    eligibility: WowyEligibility
 
 
 @dataclass(frozen=True)
@@ -41,6 +36,7 @@ def build_wowy_query(
     min_total_minutes: float | None = None,
     min_games_with: int | None = None,
     min_games_without: int | None = None,
+    shrinkage_prior_games: float | None = None,
 ) -> WowyQuery:
     defaults = default_filters()
     normalized_teams = normalize_teams(teams)
@@ -62,6 +58,11 @@ def build_wowy_query(
                     if min_games_without is not None
                     else defaults["min_games_without"]
                 ),
+            ),
+            shrinkage_prior_games=float(
+                shrinkage_prior_games
+                if shrinkage_prior_games is not None
+                else DEFAULT_WOWY_SHRINKAGE_PRIOR_GAMES
             ),
         ),
         post_calc_filters=WowyPostCalcFilters(

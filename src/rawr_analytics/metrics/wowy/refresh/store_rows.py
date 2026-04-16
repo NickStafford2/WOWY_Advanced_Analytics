@@ -2,29 +2,27 @@ from __future__ import annotations
 
 from rawr_analytics.data.metric_store.wowy import WowyPlayerSeasonValueRow
 from rawr_analytics.metrics.constants import Metric
+from rawr_analytics.metrics.wowy._calc_vars import WowyCalcVars
 from rawr_analytics.metrics.wowy.calculate.records import WowyPlayerSeasonRecord
 from rawr_analytics.metrics.wowy.calculate.shrinkage import (
     DEFAULT_WOWY_SHRINKAGE_PRIOR_GAMES,
     compute_wowy_shrinkage_score,
 )
 from rawr_analytics.metrics.wowy.refresh.records import build_wowy_refresh_records
-from rawr_analytics.shared.season import Season
-from rawr_analytics.shared.team import Team
 
 
 def build_wowy_metric_store_rows(
     *,
     metric: Metric,
-    seasons: list[Season],
-    teams: list[Team],
+    calc_vars: WowyCalcVars,
 ) -> list[WowyPlayerSeasonValueRow]:
     records = build_wowy_refresh_records(
-        seasons=seasons,
-        teams=teams,
+        calc_vars=calc_vars,
     )
     return [
         _build_wowy_store_row_from_record(
             metric=metric,
+            calc_vars=calc_vars,
             record=record,
         )
         for record in records
@@ -34,6 +32,7 @@ def build_wowy_metric_store_rows(
 def _build_wowy_store_row_from_record(
     *,
     metric: Metric,
+    calc_vars: WowyCalcVars,
     record: WowyPlayerSeasonRecord,
 ) -> WowyPlayerSeasonValueRow:
     value = record.result.value
@@ -44,7 +43,11 @@ def _build_wowy_store_row_from_record(
             games_with=record.result.games_with,
             games_without=record.result.games_without,
             wowy_score=record.result.value,
-            prior_games=DEFAULT_WOWY_SHRINKAGE_PRIOR_GAMES,
+            prior_games=(
+                calc_vars.shrinkage_prior_games
+                if calc_vars.shrinkage_prior_games is not None
+                else DEFAULT_WOWY_SHRINKAGE_PRIOR_GAMES
+            ),
         )
     return WowyPlayerSeasonValueRow(
         season_id=record.season.id,

@@ -23,10 +23,10 @@ from rawr_analytics.metrics.rawr.defaults import (
     RAWR_METRIC_SUMMARY,
 )
 from rawr_analytics.metrics.rawr.refresh.store_rows import build_rawr_metric_store_rows
-from rawr_analytics.metrics.wowy.calculate.inputs import WowyEligibility
+from rawr_analytics.metrics.wowy._calc_vars import WowyCalcVars, WowyEligibility
+from rawr_analytics.metrics.wowy.calculate.shrinkage import DEFAULT_WOWY_SHRINKAGE_PRIOR_GAMES
 from rawr_analytics.metrics.wowy.defaults import default_filters as default_wowy_filters
 from rawr_analytics.metrics.wowy.defaults import describe_metric as describe_wowy_metric
-from rawr_analytics.metrics.wowy.query.request import WowyCalcVars
 from rawr_analytics.metrics.wowy.refresh.store_rows import build_wowy_metric_store_rows
 from rawr_analytics.shared.scope import TeamSeasonScope
 from rawr_analytics.shared.season import Season, SeasonType, require_normalized_seasons
@@ -73,6 +73,7 @@ class _RefreshCache:
     seasons: list[Season]
     teams: list[Team]
     rawr_calc_vars: RawrCalcVars | None = None
+    wowy_calc_vars: WowyCalcVars | None = None
 
 
 def refresh_metric_store(
@@ -184,11 +185,20 @@ def _build_all_teams_refresh_cache(
         if metric == Metric.RAWR
         else None
     )
+    wowy_calc_vars = (
+        _build_refresh_wowy_calc_vars(
+            metric=metric,
+            seasons=seasons,
+        )
+        if metric in {Metric.WOWY, Metric.WOWY_SHRUNK}
+        else None
+    )
     metric_cache_key = _build_refresh_cache_key(
         metric=metric,
         seasons=seasons,
         rawr_ridge_alpha=rawr_ridge_alpha,
         rawr_calc_vars=rawr_calc_vars,
+        wowy_calc_vars=wowy_calc_vars,
     )
     return _RefreshCache(
         metric_cache_key=metric_cache_key,
@@ -196,6 +206,7 @@ def _build_all_teams_refresh_cache(
         seasons=seasons,
         teams=teams,
         rawr_calc_vars=rawr_calc_vars,
+        wowy_calc_vars=wowy_calc_vars,
     )
 
 
@@ -211,22 +222,15 @@ def _build_refresh_cache_key(
     seasons: list[Season],
     rawr_ridge_alpha: float,
     rawr_calc_vars: RawrCalcVars | None = None,
+    wowy_calc_vars: WowyCalcVars | None = None,
 ) -> str:
     if metric == Metric.RAWR:
         assert rawr_calc_vars is not None, "RAWR refresh requires calc vars"
         return build_rawr_metric_cache_key(rawr_calc_vars)
-    all_teams = Team.all()
-    defaults = default_wowy_filters()
+    assert wowy_calc_vars is not None, "WOWY refresh requires calc vars"
     return build_wowy_metric_cache_key(
         metric_id=metric.value,
-        calc_vars=WowyCalcVars(
-            teams=all_teams,
-            seasons=seasons,
-            eligibility=WowyEligibility(
-                min_games_with=int(defaults["min_games_with"]),
-                min_games_without=int(defaults["min_games_without"]),
-            ),
-        ),
+        calc_vars=wowy_calc_vars,
     )
 
 
@@ -266,10 +270,11 @@ def _refresh_cache(
             rows=rows,
         )
     else:
+        wowy_calc_vars = cache.wowy_calc_vars
+        assert wowy_calc_vars is not None, "WOWY refresh requires calc vars"
         rows = build_wowy_metric_store_rows(
             metric=metric,
-            seasons=cache.seasons,
-            teams=cache.teams,
+            calc_vars=wowy_calc_vars,
         )
         replace_wowy_metric_cache(
             metric_id=metric.value,
@@ -313,4 +318,23 @@ def _build_refresh_rawr_calc_vars(
         shrinkage_mode=DEFAULT_RAWR_SHRINKAGE_MODE,
         shrinkage_strength=DEFAULT_RAWR_SHRINKAGE_STRENGTH,
         shrinkage_minute_scale=DEFAULT_RAWR_SHRINKAGE_MINUTE_SCALE,
+    )
+
+
+def _build_refresh_wowy_calc_vars(
+    *,
+    metric: Metric,
+    seasons: list[Season],
+) -> WowyCalcVars:
+    defaults = default_wowy_filters()
+    return WowyCalcVars(
+        teams=Team.all(),
+        seasons=seasons,
+        eligibility=WowyEligibility(
+            min_games_with=int(defaults["min_games_with"]),
+            min_games_without=int(defaults["min_games_without"]),
+        ),
+        shrinkage_prior_games=(
+            DEFAULT_WOWY_SHRINKAGE_PRIOR_GAMES if metric == Metric.WOWY_SHRUNK else None
+        ),
     )
