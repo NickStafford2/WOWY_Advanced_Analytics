@@ -59,12 +59,8 @@ def register_wowy_routes(app: Flask) -> None:
 
 
 def json_options_response(metric: Metric) -> Response:
-    return jsonify(
-        build_wowy_options_payload(
-            build_wowy_options_query_from_request(request),
-            metric=metric,
-        )
-    )
+    query = build_wowy_options_query_from_request(request)
+    return jsonify(build_wowy_options_payload(query=query, metric=metric))
 
 
 def json_player_seasons_response(metric: Metric) -> Response:
