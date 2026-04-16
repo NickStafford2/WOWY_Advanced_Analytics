@@ -1,4 +1,4 @@
-import { readNumberValue } from '../app/leaderboardQuery'
+import { readNumberValue } from '../app/leaderboardFilters'
 
 type NumericFieldProps = {
   label: string

@@ -1,4 +1,4 @@
-import { isAllTeamsSelection } from '../app/leaderboardQuery'
+import { isAllTeamsSelection } from '../app/leaderboardTeams'
 import type { TeamOption } from '../app/leaderboardApiTypes'
 
 const SELECTED_CLASS_NAME =

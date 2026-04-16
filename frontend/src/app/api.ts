@@ -1,4 +1,4 @@
-import { buildLeaderboardParams } from './leaderboardQuery'
+import { buildLeaderboardParams } from './leaderboardParams'
 import type { ErrorPayload, LeaderboardPayload, MetricOptionsPayload, TeamOption } from './leaderboardApiTypes'
 import type { LeaderboardFilters } from './leaderboardTypes'
 import type { MetricId } from './metricTypes'
