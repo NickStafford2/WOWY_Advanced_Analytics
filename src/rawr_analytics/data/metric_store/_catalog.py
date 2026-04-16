@@ -7,24 +7,24 @@ from rawr_analytics.shared.team import Team
 
 
 @dataclass(frozen=True)
-class MetricCacheAvailability:
+class _MetricCacheAvailability:
     season_ids: list[str]
     team_ids: list[int]
 
 
 @dataclass(frozen=True)
-class MetricSeasonSpanIds:
+class _MetricSeasonSpanIds:
     start_season_id: str
     end_season_id: str
 
 
 @dataclass(frozen=True)
-class MetricCacheCatalog:
+class _MetricCacheCatalog:
     label: str
     team_filter: str
     season_type: str
-    availability: MetricCacheAvailability
-    full_span: MetricSeasonSpanIds | None
+    availability: _MetricCacheAvailability
+    full_span: _MetricSeasonSpanIds | None
 
 
 @dataclass(frozen=True)
@@ -45,7 +45,7 @@ def build_metric_cache_catalog_row(
     *,
     metric_id: str,
     metric_cache_key: str,
-    catalog: MetricCacheCatalog,
+    catalog: _MetricCacheCatalog,
     updated_at: str,
 ) -> MetricCacheCatalogRow:
     return MetricCacheCatalogRow(
@@ -73,28 +73,28 @@ def build_metric_cache_catalog(
     season_type: SeasonType,
     seasons: list[Season],
     available_teams: list[Team],
-) -> MetricCacheCatalog:
+) -> _MetricCacheCatalog:
     normalized_seasons = require_normalized_seasons(seasons)
     season_ids = [season.id for season in normalized_seasons]
-    return MetricCacheCatalog(
+    return _MetricCacheCatalog(
         label=label,
         team_filter=team_filter,
         season_type=season_type.value,
-        availability=MetricCacheAvailability(
+        availability=_MetricCacheAvailability(
             season_ids=season_ids,
             team_ids=sorted({team.team_id for team in available_teams}),
         ),
-        full_span=MetricSeasonSpanIds(
+        full_span=_MetricSeasonSpanIds(
             start_season_id=season_ids[0],
             end_season_id=season_ids[-1],
         ),
     )
 
 
-def catalog_seasons(catalog: MetricCacheCatalog | MetricCacheCatalogRow) -> list[Season]:
+def catalog_seasons(catalog: _MetricCacheCatalog | MetricCacheCatalogRow) -> list[Season]:
     season_ids = (
         catalog.availability.season_ids
-        if isinstance(catalog, MetricCacheCatalog)
+        if isinstance(catalog, _MetricCacheCatalog)
         else catalog.available_season_ids
     )
     seasons = [Season.parse_id(season_id) for season_id in season_ids]
