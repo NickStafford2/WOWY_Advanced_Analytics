@@ -23,7 +23,7 @@ from rawr_analytics.sources.nba_api.download._rules import (
 )
 
 _AuditProgressFn = Callable[[int, int, str], None]
-_LAST_PROGRESS_LINE_LENGTH = 0
+_last_progress_line_length = 0
 
 
 @dataclass(frozen=True)
@@ -182,20 +182,20 @@ def _build_parser() -> argparse.ArgumentParser:
 
 
 def _write_progress_line(line: str) -> None:
-    global _LAST_PROGRESS_LINE_LENGTH
-    padding = max(0, _LAST_PROGRESS_LINE_LENGTH - len(line))
+    global _last_progress_line_length
+    padding = max(0, _last_progress_line_length - len(line))
     sys.stderr.write(f"\r{line}{' ' * padding}")
     sys.stderr.flush()
-    _LAST_PROGRESS_LINE_LENGTH = len(line)
+    _last_progress_line_length = len(line)
 
 
 def _clear_progress_line() -> None:
-    global _LAST_PROGRESS_LINE_LENGTH
-    if _LAST_PROGRESS_LINE_LENGTH == 0:
+    global _last_progress_line_length
+    if _last_progress_line_length == 0:
         return
-    sys.stderr.write(f"\r{' ' * _LAST_PROGRESS_LINE_LENGTH}\r")
+    sys.stderr.write(f"\r{' ' * _last_progress_line_length}\r")
     sys.stderr.flush()
-    _LAST_PROGRESS_LINE_LENGTH = 0
+    _last_progress_line_length = 0
 
 
 def _render_progress(current: int, total: int, label: str) -> None:
