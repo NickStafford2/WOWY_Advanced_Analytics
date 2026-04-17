@@ -14,21 +14,8 @@ from rawr_analytics.metrics.rawr.calculate.records import (
     build_player_season_records,
 )
 from rawr_analytics.metrics.rawr.calculate.shrinkage import RawrShrinkageMode
-from rawr_analytics.metrics.rawr.defaults import (
-    DEFAULT_RAWR_RIDGE_ALPHA,
-    DEFAULT_RAWR_SHRINKAGE_MINUTE_SCALE,
-    DEFAULT_RAWR_SHRINKAGE_MODE,
-    DEFAULT_RAWR_SHRINKAGE_STRENGTH,
-    DEFAULT_RAWR_TOP_N,
-    RAWR_METRIC_SUMMARY,
-)
+
 __all__ = [
-    "DEFAULT_RAWR_RIDGE_ALPHA",
-    "DEFAULT_RAWR_SHRINKAGE_MINUTE_SCALE",
-    "DEFAULT_RAWR_SHRINKAGE_MODE",
-    "DEFAULT_RAWR_SHRINKAGE_STRENGTH",
-    "DEFAULT_RAWR_TOP_N",
-    "RAWR_METRIC_SUMMARY",
     "RawrPlayerSeasonRecord",
     "RawrShrinkageMode",
     "build_player_season_records",

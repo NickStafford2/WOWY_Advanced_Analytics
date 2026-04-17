@@ -23,6 +23,7 @@ from rawr_analytics.shared.season import (
 )
 from rawr_analytics.shared.team import Team, normalize_teams
 
+
 @dataclass(frozen=True)
 class RawrPostCalcFilters:
     top_n: int
@@ -61,9 +62,7 @@ def build_rawr_query(
             eligibility=RawrEligibility(
                 min_games=int(min_games if min_games is not None else DEFAULT_RAWR_MIN_GAMES),
             ),
-            ridge_alpha=float(
-                ridge_alpha if ridge_alpha is not None else DEFAULT_RAWR_RIDGE_ALPHA
-            ),
+            ridge_alpha=float(ridge_alpha if ridge_alpha is not None else DEFAULT_RAWR_RIDGE_ALPHA),
             shrinkage_mode=(
                 shrinkage_mode if shrinkage_mode is not None else DEFAULT_RAWR_SHRINKAGE_MODE
             ),
@@ -94,7 +93,9 @@ def build_rawr_query(
             ),
         ),
     )
-    assert normalized_query.calc_vars.seasons, "RawrQuery must have a concrete non-empty season list"
+    assert normalized_query.calc_vars.seasons, (
+        "RawrQuery must have a concrete non-empty season list"
+    )
     validate_filters(
         normalized_query.calc_vars.eligibility.min_games,
         normalized_query.calc_vars.ridge_alpha,

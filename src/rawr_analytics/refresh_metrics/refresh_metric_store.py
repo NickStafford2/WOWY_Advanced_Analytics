@@ -15,14 +15,7 @@ from rawr_analytics.metrics.constants import Metric, MetricSummary
 from rawr_analytics.metrics.rawr._calc_vars import RawrCalcVars, RawrEligibility
 from rawr_analytics.metrics.rawr.cache_status import list_incomplete_rawr_season_warnings
 from rawr_analytics.metrics.rawr.calculate.shrinkage import RawrShrinkageMode
-from rawr_analytics.metrics.rawr.defaults import (
-    DEFAULT_RAWR_MIN_GAMES,
-    DEFAULT_RAWR_RIDGE_ALPHA,
-    DEFAULT_RAWR_SHRINKAGE_MINUTE_SCALE,
-    DEFAULT_RAWR_SHRINKAGE_MODE,
-    DEFAULT_RAWR_SHRINKAGE_STRENGTH,
-    RAWR_METRIC_SUMMARY,
-)
+from rawr_analytics.metrics.rawr.defaults import DEFAULT_RAWR_RIDGE_ALPHA, RAWR_METRIC_SUMMARY
 from rawr_analytics.metrics.rawr.query.service import ensure_rawr_metric_cache
 from rawr_analytics.metrics.wowy._calc_vars import WowyCalcVars, WowyEligibility
 from rawr_analytics.metrics.wowy.calculate.shrinkage import DEFAULT_WOWY_SHRINKAGE_PRIOR_GAMES
@@ -439,11 +432,8 @@ def _build_refresh_rawr_calc_vars(
     return RawrCalcVars(
         teams=Team.all(),
         seasons=seasons,
-        eligibility=RawrEligibility(min_games=DEFAULT_RAWR_MIN_GAMES),
+        eligibility=RawrEligibility(),
         ridge_alpha=rawr_ridge_alpha,
-        shrinkage_mode=DEFAULT_RAWR_SHRINKAGE_MODE,
-        shrinkage_strength=DEFAULT_RAWR_SHRINKAGE_STRENGTH,
-        shrinkage_minute_scale=DEFAULT_RAWR_SHRINKAGE_MINUTE_SCALE,
     )
 
 
@@ -542,7 +532,7 @@ def _build_rawr_calc_vars_from_cache_key(
     return RawrCalcVars(
         teams=teams,
         seasons=seasons,
-        eligibility=RawrEligibility(min_games=DEFAULT_RAWR_MIN_GAMES),
+        eligibility=RawrEligibility(),
         ridge_alpha=float(calc_settings["ridge_alpha"]),
         shrinkage_mode=RawrShrinkageMode.parse(calc_settings["shrinkage_mode"]),
         shrinkage_strength=float(calc_settings["shrinkage_strength"]),
