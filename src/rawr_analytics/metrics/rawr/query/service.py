@@ -124,16 +124,19 @@ def resolve_rawr_result(
     recalculate: bool = False,
     progress_fn: RawrProgressFn | None = None,
 ) -> ResolvedRawrResultDTO:
+    print("resolve_rawr_result()")
     record_metric_cache_query(
         metric_id=Metric.RAWR.value,
         metric_cache_key=build_rawr_metric_cache_key(query.calc_vars),
     )
     if not recalculate:
+        print("resolve_rawr_result() not recalculate")
         cached_result = _try_load_rawr_store_result(query)
         if cached_result is not None:
             return cached_result
 
     live_rows = _build_live_rawr_query_result(query, progress_fn=progress_fn)
+    print("resolve_rawr_result() after _build_live_rawr_query_result()")
     return ResolvedRawrResultDTO(
         rows=live_rows,
         seasons=_selected_rawr_seasons(query, live_rows),
@@ -203,6 +206,7 @@ def _build_live_rawr_query_result(
     *,
     progress_fn: RawrProgressFn | None = None,
 ) -> list[RawrPlayerSeasonRecord]:
+    print("_build_live_rawr_query_result()")
     season_games, season_game_players = load_rawr_input_records(
         teams=query.calc_vars.teams,
         seasons=query.calc_vars.seasons,
