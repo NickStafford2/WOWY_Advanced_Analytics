@@ -5,16 +5,16 @@ from dataclasses import dataclass
 
 from rawr_analytics.data.game_cache.store import load_game_cache_snapshot
 from rawr_analytics.data.metric_store._mutations import prune_metric_caches
-from rawr_analytics.data.metric_store.rawr import replace_rawr_metric_cache
-from rawr_analytics.data.metric_store.store import load_metric_cache_store_state
 from rawr_analytics.data.metric_store.usage import list_metric_cache_keys_by_usage
-from rawr_analytics.data.metric_store.wowy import replace_wowy_metric_cache
-from rawr_analytics.metrics._metric_cache_key import MetricCacheKey, build_rawr_metric_cache_key
-from rawr_analytics.metrics._metric_cache_key import build_wowy_metric_cache_key
+from rawr_analytics.metrics._metric_cache_key import (
+    MetricCacheKey,
+    build_rawr_metric_cache_key,
+    build_wowy_metric_cache_key,
+)
 from rawr_analytics.metrics.constants import Metric, MetricSummary
 from rawr_analytics.metrics.rawr._calc_vars import RawrCalcVars, RawrEligibility
-from rawr_analytics.metrics.rawr.calculate.shrinkage import RawrShrinkageMode
 from rawr_analytics.metrics.rawr.cache_status import list_incomplete_rawr_season_warnings
+from rawr_analytics.metrics.rawr.calculate.shrinkage import RawrShrinkageMode
 from rawr_analytics.metrics.rawr.defaults import (
     DEFAULT_RAWR_MIN_GAMES,
     DEFAULT_RAWR_RIDGE_ALPHA,
@@ -23,14 +23,19 @@ from rawr_analytics.metrics.rawr.defaults import (
     DEFAULT_RAWR_SHRINKAGE_STRENGTH,
     RAWR_METRIC_SUMMARY,
 )
-from rawr_analytics.metrics.rawr.refresh.store_rows import build_rawr_metric_store_rows
+from rawr_analytics.metrics.rawr.query.service import ensure_rawr_metric_cache
 from rawr_analytics.metrics.wowy._calc_vars import WowyCalcVars, WowyEligibility
 from rawr_analytics.metrics.wowy.calculate.shrinkage import DEFAULT_WOWY_SHRINKAGE_PRIOR_GAMES
 from rawr_analytics.metrics.wowy.defaults import default_filters as default_wowy_filters
 from rawr_analytics.metrics.wowy.defaults import describe_metric as describe_wowy_metric
-from rawr_analytics.metrics.wowy.refresh.store_rows import build_wowy_metric_store_rows
+from rawr_analytics.metrics.wowy.query.service import ensure_wowy_metric_cache
 from rawr_analytics.shared.scope import TeamSeasonScope
-from rawr_analytics.shared.season import Season, SeasonType, normalize_seasons, require_normalized_seasons
+from rawr_analytics.shared.season import (
+    Season,
+    SeasonType,
+    normalize_seasons,
+    require_normalized_seasons,
+)
 from rawr_analytics.shared.team import Team, normalize_teams
 
 MetricStoreRefreshEventFn = Callable[["MetricStoreRefreshProgressEvent"], None]
@@ -93,9 +98,7 @@ def refresh_metric_store(
     game_cache_snapshot = load_game_cache_snapshot()
     cached_team_seasons = game_cache_snapshot.scopes
     requested_team_seasons = [
-        scope
-        for scope in cached_team_seasons
-        if scope.season.season_type == normalized_season_type
+        scope for scope in cached_team_seasons if scope.season.season_type == normalized_season_type
     ]
     if not requested_team_seasons:
         return RefreshMetricStoreResult(
@@ -134,14 +137,9 @@ def refresh_metric_store(
             total=total_steps,
             detail=f"building {cache.cache_label}",
         )
-        refresh_snapshot = load_game_cache_snapshot(
-            teams=cache.teams,
-            seasons=cache.seasons,
-        )
         cache_result = _refresh_cache(
             metric=normalized_metric,
             cache=cache,
-            source_fingerprint=refresh_snapshot.fingerprint,
             build_version=build_version,
         )
         cache_results.append(cache_result)
@@ -391,56 +389,32 @@ def _refresh_cache(
     *,
     metric: Metric,
     cache: _RefreshCache,
-    source_fingerprint: str,
     build_version: str,
 ) -> RefreshCacheResult:
-    state = load_metric_cache_store_state(metric.value, cache.metric_cache_key)
-    if (
-        state is not None
-        and state.cache_entry_state.source_fingerprint == source_fingerprint
-        and state.cache_entry_state.build_version == build_version
-        and state.cache_entry_state.row_count > 0
-    ):
-        return RefreshCacheResult(
-            metric_cache_key=cache.metric_cache_key,
-            cache_label=cache.cache_label,
-            row_count=state.cache_entry_state.row_count,
-            status="cached",
-        )
-
     if metric == Metric.RAWR:
         rawr_calc_vars = cache.rawr_calc_vars
         assert rawr_calc_vars is not None, "RAWR refresh requires calc vars"
-        rows = build_rawr_metric_store_rows(
+        result = ensure_rawr_metric_cache(
             calc_vars=rawr_calc_vars,
-        )
-        replace_rawr_metric_cache(
-            metric_cache_key=cache.metric_cache_key,
-            seasons=cache.seasons,
             build_version=build_version,
-            source_fingerprint=source_fingerprint,
-            rows=rows,
         )
+        row_count = result.row_count
+        status = result.status
     else:
         wowy_calc_vars = cache.wowy_calc_vars
         assert wowy_calc_vars is not None, "WOWY refresh requires calc vars"
-        rows = build_wowy_metric_store_rows(
+        result = ensure_wowy_metric_cache(
             metric=metric,
             calc_vars=wowy_calc_vars,
-        )
-        replace_wowy_metric_cache(
-            metric_id=metric.value,
-            metric_cache_key=cache.metric_cache_key,
-            seasons=cache.seasons,
             build_version=build_version,
-            source_fingerprint=source_fingerprint,
-            rows=rows,
         )
+        row_count = result.row_count
+        status = result.status
     return RefreshCacheResult(
         metric_cache_key=cache.metric_cache_key,
         cache_label=cache.cache_label,
-        row_count=len(rows),
-        status="built",
+        row_count=row_count,
+        status=status,
     )
 
 
@@ -503,9 +477,7 @@ def _filter_team_seasons_by_type(
     cached_team_seasons: list[TeamSeasonScope],
     season_type: SeasonType,
 ) -> list[TeamSeasonScope]:
-    return [
-        scope for scope in cached_team_seasons if scope.season.season_type == season_type
-    ]
+    return [scope for scope in cached_team_seasons if scope.season.season_type == season_type]
 
 
 def _build_combined_team_seasons(

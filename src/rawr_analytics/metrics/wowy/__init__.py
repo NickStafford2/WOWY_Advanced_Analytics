@@ -1,9 +1,9 @@
 """WOWY metric package.
 
 The public workflow interfaces live in subpackages:
-calculate turns normalized game records into WOWY player-season records, refresh
-builds metric-store rows for precomputed snapshots, and query resolves user
-filters into records, payloads, and exports.
+calculate turns normalized game records into WOWY player-season records, and
+query resolves user filters into records, payloads, exports, and retained cache
+writes.
 """
 
 from rawr_analytics.metrics.wowy.cache import load_wowy_records

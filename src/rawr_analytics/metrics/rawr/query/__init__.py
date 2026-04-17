@@ -10,6 +10,7 @@ from rawr_analytics.metrics.rawr.query.service import (
     build_rawr_options_payload,
     build_rawr_player_seasons_payload,
     build_rawr_span_chart_payload,
+    ensure_rawr_metric_cache,
     resolve_rawr_result,
 )
 
@@ -19,5 +20,6 @@ __all__ = [
     "build_rawr_player_seasons_payload",
     "build_rawr_query",
     "build_rawr_span_chart_payload",
+    "ensure_rawr_metric_cache",
     "resolve_rawr_result",
 ]

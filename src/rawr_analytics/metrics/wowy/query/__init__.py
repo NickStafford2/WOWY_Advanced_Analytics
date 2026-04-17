@@ -10,6 +10,7 @@ from rawr_analytics.metrics.wowy.query.service import (
     build_wowy_options_payload,
     build_wowy_player_seasons_payload,
     build_wowy_span_chart_payload,
+    ensure_wowy_metric_cache,
     resolve_wowy_result,
 )
 
@@ -19,5 +20,6 @@ __all__ = [
     "build_wowy_player_seasons_payload",
     "build_wowy_query",
     "build_wowy_span_chart_payload",
+    "ensure_wowy_metric_cache",
     "resolve_wowy_result",
 ]

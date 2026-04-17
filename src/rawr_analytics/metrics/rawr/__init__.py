@@ -1,9 +1,9 @@
 """RAWR metric package.
 
 The public workflow interfaces live in subpackages:
-calculate turns normalized game records into RAWR player-season records, refresh
-builds metric-store rows for precomputed snapshots, and query resolves user
-filters into records, payloads, and exports.
+calculate turns normalized game records into RAWR player-season records, and
+query resolves user filters into records, payloads, exports, and retained cache
+writes.
 """
 
 from rawr_analytics.metrics.rawr.cache import load_rawr_records
@@ -22,8 +22,6 @@ from rawr_analytics.metrics.rawr.defaults import (
     DEFAULT_RAWR_TOP_N,
     RAWR_METRIC_SUMMARY,
 )
-from rawr_analytics.metrics.rawr.refresh.records import build_rawr_refresh_records
-
 __all__ = [
     "DEFAULT_RAWR_RIDGE_ALPHA",
     "DEFAULT_RAWR_SHRINKAGE_MINUTE_SCALE",
@@ -34,7 +32,6 @@ __all__ = [
     "RawrPlayerSeasonRecord",
     "RawrShrinkageMode",
     "build_player_season_records",
-    "build_rawr_refresh_records",
     "list_incomplete_rawr_season_warnings",
     "load_rawr_records",
     "validate_filters",

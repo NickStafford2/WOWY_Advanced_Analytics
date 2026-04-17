@@ -9,7 +9,9 @@ from rawr_analytics.data.metric_store.usage import record_metric_cache_query
 from rawr_analytics.data.metric_store.wowy import (
     WowyPlayerSeasonValueRow,
     load_wowy_player_season_value_rows,
+    replace_wowy_metric_cache,
 )
+from rawr_analytics.metrics._player_context import PlayerSeasonFilters
 from rawr_analytics.metrics.constants import Metric
 from rawr_analytics.metrics._metric_cache_key import build_wowy_metric_cache_key
 from rawr_analytics.metrics.wowy._calc_vars import WowyCalcVars
@@ -30,7 +32,7 @@ from rawr_analytics.metrics.wowy.query.presenters import (
 from rawr_analytics.metrics.wowy.query.presenters import (
     build_wowy_span_chart_payload as build_wowy_span_chart_payload_from_values,
 )
-from rawr_analytics.metrics.wowy.query.request import WowyQuery
+from rawr_analytics.metrics.wowy.query.request import WowyPostCalcFilters, WowyQuery
 from rawr_analytics.shared.common import JSONDict
 from rawr_analytics.shared.player import PlayerMinutes, PlayerSummary
 from rawr_analytics.shared.season import (
@@ -53,6 +55,13 @@ class ResolvedWowyResultDTO:
     available_teams: list[Team] | None
     available_seasons: list[Season] | None
     metric: Metric
+
+
+@dataclass(frozen=True)
+class EnsureWowyMetricCacheResult:
+    metric_cache_key: str
+    row_count: int
+    status: str
 
 
 def build_wowy_options_payload(
@@ -208,6 +217,66 @@ def _build_live_wowy_query_result(
     )
 
 
+def ensure_wowy_metric_cache(
+    *,
+    metric: Metric,
+    calc_vars: WowyCalcVars,
+    build_version: str,
+) -> EnsureWowyMetricCacheResult:
+    _require_wowy_metric(metric)
+    query = WowyQuery(
+        calc_vars=calc_vars,
+        post_calc_filters=WowyPostCalcFilters(
+            top_n=0,
+            filters=PlayerSeasonFilters(
+                min_average_minutes=None,
+                min_total_minutes=None,
+            ),
+        ),
+    )
+    cache_key = build_wowy_metric_cache_key(
+        metric_id=metric.value,
+        calc_vars=query.calc_vars,
+    )
+    cache_snapshot = load_game_cache_snapshot(
+        teams=query.calc_vars.teams,
+        seasons=query.calc_vars.seasons,
+    )
+    if not cache_snapshot.entries:
+        raise ValueError("Cannot build WOWY metric cache without cached source games")
+
+    state = load_metric_cache_store_state(metric.value, cache_key)
+    if (
+        state is not None
+        and state.cache_entry_state.source_fingerprint == cache_snapshot.fingerprint
+        and state.cache_entry_state.build_version == build_version
+        and state.cache_entry_state.row_count > 0
+    ):
+        return EnsureWowyMetricCacheResult(
+            metric_cache_key=cache_key,
+            row_count=state.cache_entry_state.row_count,
+            status="cached",
+        )
+
+    live_rows = _build_live_wowy_query_result(metric=metric, query=query)
+    store_rows = [
+        _build_wowy_store_row_from_value(metric=metric, row=row) for row in live_rows
+    ]
+    replace_wowy_metric_cache(
+        metric_id=metric.value,
+        metric_cache_key=cache_key,
+        seasons=query.calc_vars.seasons,
+        build_version=build_version,
+        source_fingerprint=cache_snapshot.fingerprint,
+        rows=store_rows,
+    )
+    return EnsureWowyMetricCacheResult(
+        metric_cache_key=cache_key,
+        row_count=len(store_rows),
+        status="built",
+    )
+
+
 def _try_load_wowy_store_result(
     *,
     metric: Metric,
@@ -290,6 +359,26 @@ def _build_wowy_value_from_store_row(
         avg_margin_without=row.avg_margin_without,
         value=row.value,
         raw_value=row.raw_wowy_score,
+    )
+
+
+def _build_wowy_store_row_from_value(
+    *,
+    metric: Metric,
+    row: WowyPlayerSeasonValue,
+) -> WowyPlayerSeasonValueRow:
+    return WowyPlayerSeasonValueRow(
+        season_id=row.season.id,
+        player_id=row.player.player_id,
+        player_name=row.player.player_name,
+        value=row.result.value,
+        games_with=row.result.games_with,
+        games_without=row.result.games_without,
+        avg_margin_with=row.result.avg_margin_with,
+        avg_margin_without=row.result.avg_margin_without,
+        average_minutes=row.minutes.average_minutes,
+        total_minutes=row.minutes.total_minutes,
+        raw_wowy_score=row.result.raw_value if metric == Metric.WOWY_SHRUNK else None,
     )
 
 
