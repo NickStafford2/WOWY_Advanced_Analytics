@@ -105,50 +105,37 @@ def _load_rawr_season_records(
 
     games, game_players = load_games_for_team_seasons_with_opponents(requested_team_seasons)
 
-    games, game_players = _filter_rawr_scope(
+    games, game_players = _filter_rawr_loaded_records(
         games,
         game_players,
         teams=[scope.team for scope in requested_team_seasons],
     )
-    games, game_players = _exclude_rawr_games_without_positive_minutes(games, game_players)
 
-    if not games:
+    if not games or not game_players:
         return None
     return games, game_players
 
 
-def _filter_rawr_scope(
+def _filter_rawr_loaded_records(
     games: list[NormalizedGameRecord],
     game_players: list[NormalizedGamePlayerRecord],
     *,
     teams: list[Team],
 ) -> tuple[list[NormalizedGameRecord], list[NormalizedGamePlayerRecord]]:
-    team_ids = {team.team_id for team in teams}
-    selected_game_ids = {game.game_id for game in games if game.team.team_id in team_ids}
-    if not selected_game_ids:
-        raise ValueError("No games matched the requested RAWR scope")
-    filtered_games = [game for game in games if game.game_id in selected_game_ids]
-    filtered_game_players = [
-        player for player in game_players if player.game_id in selected_game_ids
-    ]
-    return filtered_games, filtered_game_players
+    requested_team_ids = {team.team_id for team in teams}
 
-
-def _exclude_rawr_games_without_positive_minutes(
-    games: list[NormalizedGameRecord],
-    game_players: list[NormalizedGamePlayerRecord],
-) -> tuple[list[NormalizedGameRecord], list[NormalizedGamePlayerRecord]]:
-    positive_minutes_by_game_team: dict[tuple[str, int], bool] = {}
+    positive_minutes_by_game_team: set[tuple[str, int]] = set()
     for player in game_players:
-        if not player.has_positive_minutes():
-            continue
-        positive_minutes_by_game_team[(player.game_id, player.team.team_id)] = True
+        if player.has_positive_minutes():
+            positive_minutes_by_game_team.add((player.game_id, player.team.team_id))
 
     valid_game_ids: set[str] = set()
     for game in games:
-        if not positive_minutes_by_game_team.get((game.game_id, game.team.team_id), False):
+        if game.team.team_id not in requested_team_ids:
             continue
-        if not positive_minutes_by_game_team.get((game.game_id, game.opponent_team.team_id), False):
+        if (game.game_id, game.team.team_id) not in positive_minutes_by_game_team:
+            continue
+        if (game.game_id, game.opponent_team.team_id) not in positive_minutes_by_game_team:
             continue
         valid_game_ids.add(game.game_id)
 

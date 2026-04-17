@@ -36,7 +36,7 @@ def fit_player_rawr(
     shrinkage_minute_scale: float = 48.0,
     progress: _ProgressFn | None = None,
 ) -> dict[int, float]:
-    print("fit_player_rawr()")
+    print(f"fit_player_rawr() {season.id}")
     assert ridge_alpha >= 0, f"Ridge alpha must be non-negative: {ridge_alpha}"
     assert observations, "At least one RAWR observation is required"
     assert player_ids, "At least one RAWR player is required"
