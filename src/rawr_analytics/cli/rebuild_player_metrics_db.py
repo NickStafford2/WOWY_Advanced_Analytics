@@ -82,10 +82,11 @@ def main(argv: list[str] | None = None) -> int:
         f"{result.ingest_result.completed_team_seasons}/"
         f"{result.ingest_result.attempted_team_seasons} team-seasons"
     )
-    _render_failure_summary(
-        failure_counts=result.ingest_result.failure_counts,
-        failed_scopes=result.ingest_result.failed_scopes,
-    )
+    if result.ingest_result.failed_scopes:
+        render_failure_summary(
+            failure_counts=result.ingest_result.failure_counts,
+            failed_scopes=result.ingest_result.failed_scopes,
+        )
 
     print("\n== Metric-store refresh ==")
     for metric_result in result.metric_results:
@@ -104,19 +105,6 @@ def main(argv: list[str] | None = None) -> int:
 
     print("\nRebuild complete.")
     return 0
-
-
-def _render_failure_summary(
-    *,
-    failure_counts: dict[str, int],
-    failed_scopes: list[str],
-) -> None:
-    if not failed_scopes:
-        return
-    render_failure_summary(
-        failure_counts=failure_counts,
-        failed_scopes=failed_scopes,
-    )
 
 
 def _run(argv: list[str] | None = None) -> int:
