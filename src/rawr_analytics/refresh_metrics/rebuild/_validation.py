@@ -38,12 +38,5 @@ def validate_rebuild_result(
             )
         )
 
-    return _validate_rebuild_storage(
-        progress=None if event_fn is None else _emit_validation_progress
-    )
-
-
-def _validate_rebuild_storage(
-    progress: ValidationProgressFn | None = None,
-) -> DatabaseValidationSummary:
+    progress = None if event_fn is None else _emit_validation_progress
     return summarize_validation_report(audit_player_metrics_db(progress=progress))
