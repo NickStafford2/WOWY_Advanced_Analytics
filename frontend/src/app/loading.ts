@@ -69,8 +69,8 @@ function buildLoadingPhases(metric: MetricId, isBootstrapping: boolean): Loading
       label: 'Building result',
       detail:
         metric === 'rawr'
-          ? 'Computing the live RAWR leaderboard only when cached rows are unavailable.'
-          : 'Computing the live WOWY leaderboard only when cached rows are unavailable.',
+          ? 'Computing the live RAWR leaderboard.'
+          : 'Computing the live WOWY leaderboard.',
     },
   ]
 }
