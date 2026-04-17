@@ -99,11 +99,11 @@ export function LeaderboardFiltersPanel({
       </div>
 
       <div className="flex flex-row flex-wrap items-start gap-4 max-sm:flex-col">
-        <div className="flex w-[11rem] flex-col gap-3">
+        <div className="flex w-30 flex-col gap-3">
           <label className="flex flex-col gap-1.5 text-[0.9rem] text-[color:var(--text-secondary)]">
             <span>Start season</span>
             <select
-              className="min-h-[42px] w-full rounded-xl border border-[color:var(--control-border)] bg-[var(--input-background)] px-[14px] text-[color:var(--text-primary)]"
+              className="min-h-10.5 w-full rounded-xl border border-[color:var(--control-border)] bg-(--input-background) px-[14px] text-(--text-primary)"
               value={filters.startSeason}
               onChange={(event) => onStartSeasonChange(event.target.value)}
               disabled={isDisabled}
@@ -116,10 +116,10 @@ export function LeaderboardFiltersPanel({
             </select>
           </label>
 
-          <label className="flex flex-col gap-1.5 text-[0.9rem] text-[color:var(--text-secondary)]">
+          <label className="flex flex-col gap-1.5 text-[0.9rem] text-(--text-secondary)">
             <span>End season</span>
             <select
-              className="min-h-[42px] w-full rounded-xl border border-[color:var(--control-border)] bg-[var(--input-background)] px-[14px] text-[color:var(--text-primary)]"
+              className="min-h-10.5 w-full rounded-xl border border-(--control-border) bg-(--input-background) px-3.5 text-(--text-primary)"
               value={filters.endSeason}
               onChange={(event) => onEndSeasonChange(event.target.value)}
               disabled={isDisabled}
@@ -133,8 +133,8 @@ export function LeaderboardFiltersPanel({
           </label>
         </div>
 
-        <fieldset className="m-0 flex w-[18rem] flex-col gap-2 border-0 p-0 max-sm:w-full">
-          <legend className="mb-1 text-[0.9rem] text-[color:var(--text-secondary)]">
+        <fieldset className="m-0 flex w-fit flex-col gap-2 border-0 p-0 max-sm:w-full">
+          <legend className="mb-1 text-[0.9rem] text-(--text-secondary)">
             Season types
           </legend>
           <div className="flex flex-col flex-wrap gap-2">
@@ -147,8 +147,8 @@ export function LeaderboardFiltersPanel({
                   type="button"
                   className={
                     isSelected
-                      ? 'min-h-[38px] cursor-pointer rounded-lg border border-[color:var(--accent-border)] [background:var(--accent-gradient)] px-3 text-sm font-bold text-[color:var(--text-inverse)] disabled:cursor-not-allowed disabled:opacity-70'
-                      : 'min-h-[38px] cursor-pointer rounded-lg border border-[color:var(--control-border)] bg-[var(--input-background)] px-3 text-sm font-bold text-[color:var(--text-secondary)] transition-colors disabled:cursor-not-allowed disabled:opacity-60'
+                      ? 'min-h-9.5 w-36 cursor-pointer rounded-lg border border-(--accent-border) [background:var(--accent-gradient)] px-3 text-sm font-bold text-(--text-inverse) disabled:cursor-not-allowed disabled:opacity-70'
+                      : 'min-h-9.5 w-36 cursor-pointer rounded-lg border border-(--control-border) bg-(--input-background) px-3 text-sm font-bold text-(--text-secondary) transition-colors disabled:cursor-not-allowed disabled:opacity-60'
                   }
                   aria-pressed={isSelected}
                   disabled={isDisabled || isOnlySelected}
@@ -159,14 +159,14 @@ export function LeaderboardFiltersPanel({
               )
             })}
           </div>
-          <p className="m-0 text-xs leading-[1.45] text-[color:var(--text-muted)]">
-            One game type is required.
+          <p className="m-0 text-xs w-fit leading-[1.45] text-(--text-muted)">
+            One season type is required.
           </p>
         </fieldset>
 
-        <div className="w-36">
+        <div className="w-26">
           <NumericField
-            label="Query top players"
+            label="Top N players"
             min="1"
             value={filters.topN}
             disabled={isDisabled}
@@ -174,7 +174,7 @@ export function LeaderboardFiltersPanel({
           />
         </div>
 
-        <div className="flex w-44 flex-col gap-3">
+        <div className="flex w-38 flex-col gap-3">
           <NumericField
             label="Min average minutes"
             min="0"
@@ -195,7 +195,7 @@ export function LeaderboardFiltersPanel({
         </div>
         <div>
           {metricFields.map((field) => (
-            <div key={field.key} className="w-44">
+            <div key={field.key} className="w-34">
               <NumericField
                 label={field.label}
                 min="0"
