@@ -14,6 +14,9 @@ from rawr_analytics.shared.team import Team
 type RawrSeasonProgressFn = Callable[[int, int, Season], None]
 
 
+from collections import defaultdict
+
+
 def load_rawr_input_records(
     *,
     teams: list[Team],
@@ -33,18 +36,17 @@ def load_rawr_input_records(
     if not requested_team_seasons:
         raise ValueError("No cached data matched the requested RAWR scope")
 
-    teams_by_season = _build_teams_by_season(requested_team_seasons)
-    complete_seasons = list_complete_rawr_seasons(seasons=list(teams_by_season))
+    requested_team_seasons_by_season = _group_team_seasons_by_season(requested_team_seasons)
+    complete_seasons = list_complete_rawr_seasons(seasons=list(requested_team_seasons_by_season))
     if not complete_seasons:
         raise ValueError("No complete cached seasons matched the requested RAWR scope")
 
-    print("load_rawr_input_records() 2")
     season_games: dict[Season, list[NormalizedGameRecord]] = {}
     season_game_players: dict[Season, list[NormalizedGamePlayerRecord]] = {}
-    sorted_seasons = normalize_seasons(list(teams_by_season))
+    sorted_seasons = normalize_seasons(list(requested_team_seasons_by_season))
     assert sorted_seasons is not None, "RAWR team grouping produced no seasons"
     total_seasons = len(sorted_seasons)
-    print("load_rawr_input_records() 3")
+    print("load_rawr_input_records() 2")
     for season_index, season in enumerate(sorted_seasons, start=1):
         print(f"load_rawr_input_records() loop {season.id}")
         if progress_fn is not None:
@@ -54,8 +56,7 @@ def load_rawr_input_records(
             print(f"load_rawr_input_records() loop {season.id} is incomplete")
             continue
         season_records = _load_rawr_season_records(
-            teams=teams_by_season[season],
-            season=season,
+            requested_team_seasons=requested_team_seasons_by_season[season],
         )
         if season_records is None:
             print(f"load_rawr_input_records() loop {season.id} season_records is None")
@@ -97,89 +98,45 @@ def _build_requested_rawr_team_seasons(
     return team_seasons
 
 
+def _group_team_seasons_by_season(
+    team_seasons: list[TeamSeasonScope],
+) -> dict[Season, list[TeamSeasonScope]]:
+    grouped: dict[Season, list[TeamSeasonScope]] = defaultdict(list)
+    for scope in team_seasons:
+        grouped[scope.season].append(scope)
+    return dict(grouped)
+
+
 def _load_rawr_season_records(
-    *,
-    teams: list[Team],
-    season: Season,
+    requested_team_seasons: list[TeamSeasonScope],
 ) -> tuple[list[NormalizedGameRecord], list[NormalizedGamePlayerRecord]] | None:
-    total_start = perf_counter()
-    print(f"\n_load_rawr_season_records season={season.id} teams={len(teams)}")
-
-    step_start = perf_counter()
-    requested_team_seasons = _build_requested_rawr_team_seasons(
-        teams=teams,
-        seasons=[season],
-    )
-    print(
-        f"  _build_requested_rawr_team_seasons: "
-        f"{perf_counter() - step_start:.4f}s "
-        f"(requested_team_seasons={len(requested_team_seasons)})"
-    )
-
     if not requested_team_seasons:
-        print("  requested_team_seasons is empty")
-        print(f"  total: {perf_counter() - total_start:.4f}s")
         return None
 
-    step_start = perf_counter()
-    requested_games, _ = load_team_season_cache(requested_team_seasons)
-    print(
-        f"  load_team_season_cache(requested_team_seasons): "
-        f"{perf_counter() - step_start:.4f}s "
-        f"(requested_games={len(requested_games)})"
-    )
+    requested_games, requested_game_players = load_team_season_cache(requested_team_seasons)
 
-    step_start = perf_counter()
     season_scopes = _expand_rawr_season_scopes(
         requested_team_seasons=requested_team_seasons,
         games=requested_games,
     )
-    print(
-        f"  _expand_rawr_season_scopes: "
-        f"{perf_counter() - step_start:.4f}s "
-        f"(season_scopes={len(season_scopes)})"
-    )
 
-    assert {(s.team.team_id, s.season.id) for s in requested_team_seasons}
-        == {(s.team.team_id, s.season.id) for s in season_scopes}, "Scopes are not the same:",
-    step_start = perf_counter()
-    games, game_players = load_team_season_cache(season_scopes)
-    print(
-        f"  load_team_season_cache(season_scopes): "
-        f"{perf_counter() - step_start:.4f}s "
-        f"(games={len(games)}, game_players={len(game_players)})"
-    )
+    requested_keys = {(s.team.team_id, s.season.id) for s in requested_team_seasons}
+    expanded_keys = {(s.team.team_id, s.season.id) for s in season_scopes}
 
-    step_start = perf_counter()
-    requested_teams = [scope.team for scope in requested_team_seasons]
+    if expanded_keys == requested_keys:
+        games, game_players = requested_games, requested_game_players
+    else:
+        games, game_players = load_team_season_cache(season_scopes)
+
     games, game_players = _filter_rawr_scope(
         games,
         game_players,
-        teams=requested_teams,
+        teams=[scope.team for scope in requested_team_seasons],
     )
-    print(
-        f"  _filter_rawr_scope: "
-        f"{perf_counter() - step_start:.4f}s "
-        f"(games={len(games)}, game_players={len(game_players)})"
-    )
-
-    step_start = perf_counter()
-    games, game_players = _exclude_rawr_games_without_positive_minutes(
-        games,
-        game_players,
-    )
-    print(
-        f"  _exclude_rawr_games_without_positive_minutes: "
-        f"{perf_counter() - step_start:.4f}s "
-        f"(games={len(games)}, game_players={len(game_players)})"
-    )
-
-    print(f"  total: {perf_counter() - total_start:.4f}s")
+    games, game_players = _exclude_rawr_games_without_positive_minutes(games, game_players)
 
     if not games:
-        print("  no games after filtering")
         return None
-
     return games, game_players
 
 
