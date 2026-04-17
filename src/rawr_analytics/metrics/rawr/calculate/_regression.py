@@ -37,7 +37,7 @@ def fit_player_rawr(
     progress: _ProgressFn | None = None,
 ) -> dict[int, float]:
     print("fit_player_rawr()")
-    assert ridge_alpha < 0, f"Ridge alpha must be non-negative: {ridge_alpha}"
+    assert ridge_alpha >= 0, f"Ridge alpha must be non-negative: {ridge_alpha}"
     assert observations, "At least one RAWR observation is required"
     assert player_ids, "At least one RAWR player is required"
     assert len(player_ids) == len(set(player_ids)), "RAWR player ids must be unique"
