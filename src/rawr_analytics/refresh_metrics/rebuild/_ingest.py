@@ -44,7 +44,11 @@ def run_ingest(
         event_fn=None if event_fn is None else _emit_ingest_event,
         failure_log_fn=_build_failure_log_fn(failure_log_fn),
     )
-    return _build_rebuild_ingest_result(source_result)
+    return RebuildIngestResult(
+        attempted_team_seasons=source_result.attempted_team_seasons,
+        completed_team_seasons=source_result.completed_team_seasons,
+        failures=[_build_rebuild_ingest_failure(failure) for failure in source_result.failures],
+    )
 
 
 def _forward_emit_ingest_event(
@@ -180,14 +184,6 @@ def _build_failure_log_fn(
         failure_log_fn(_build_rebuild_ingest_failure(failure))
 
     return _append_failure_log
-
-
-def _build_rebuild_ingest_result(result: SeasonRangeResult) -> RebuildIngestResult:
-    return RebuildIngestResult(
-        attempted_team_seasons=result.attempted_team_seasons,
-        completed_team_seasons=result.completed_team_seasons,
-        failures=[_build_rebuild_ingest_failure(failure) for failure in result.failures],
-    )
 
 
 def _build_rebuild_ingest_failure(failure: SeasonRangeFailure) -> RebuildIngestFailure:
