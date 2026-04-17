@@ -7,8 +7,8 @@ from rawr_analytics.refresh_metrics.rebuild._events import (
     RebuildIngestResult,
     RebuildSeasonStartedEvent,
     RebuildTeamCompletedEvent,
-    RebuildTeamProgressEvent,
     RebuildTeamFailureEvent,
+    RebuildTeamProgressEvent,
 )
 from rawr_analytics.shared.ingest import FetchError, PartialTeamSeasonError
 from rawr_analytics.sources.nba_api.ingest._models import (

@@ -9,6 +9,6 @@ Examples:
 - writing derived metric results to the database
 """
 
-from rawr_analytics.data.rebuild import prepare_rebuild_storage
+from rawr_analytics.data.prepare_rebuild import prepare_rebuild_storage
 
 __all__ = ["prepare_rebuild_storage"]
