@@ -52,6 +52,15 @@ export function LoadingStatus({ model }: LoadingStatusProps) {
           </article>
         ))}
       </div>
+      {model.debug != null && (
+        <div className="mt-4 rounded-xl border border-[color:var(--panel-border-soft)] bg-black/20 p-3 text-[0.75rem] font-mono text-[color:var(--text-muted)]">
+          <div>phase: {model.debug.phase}</div>
+          <div>
+            step: {model.debug.current} / {model.debug.total}
+          </div>
+          <div>detail: {model.summary}</div>
+        </div>
+      )}
     </section>
   )
 }

@@ -164,7 +164,7 @@ def _rawr_sse_leaderboard_response(*, recalculate: bool = False) -> Response:
             event_name, payload = event_queue.get()
             if event_name == "done":
                 break
-            yield format_sse_event(event_name, payload)
+            yield format_sse_event(event=event_name, data=payload)
             if event_name in {"result", "error"}:
                 break
 

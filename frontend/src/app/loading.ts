@@ -18,6 +18,8 @@ export function buildLoadingPanelModel({
   elapsedMs: number
   serverProgress?: LeaderboardProgressEvent | null
 }): LoadingPanelModel {
+  const phases = buildLoadingPhases(metric, isBootstrapping)
+
   if (serverProgress != null) {
     return buildServerLoadingPanelModel({
       metricLabel,
@@ -25,26 +27,17 @@ export function buildLoadingPanelModel({
     })
   }
 
-  const phases = buildLoadingPhases(metric, isBootstrapping)
-  const cappedProgress = isBootstrapping
-    ? Math.min(72, 14 + Math.floor(elapsedMs / 180))
-    : Math.min(92, 22 + Math.floor(elapsedMs / 220))
-  const activePhaseIndex = Math.min(
-    phases.length - 1,
-    Math.floor((cappedProgress / 100) * phases.length),
-  )
-
   return {
     title: isBootstrapping
       ? `Opening ${metricLabel} leaderboard`
-      : `Loading ${metricLabel} leaderboard`,
-    summary:
-      phases[activePhaseIndex]?.detail ??
-      `Loading ${metricLabel} data from the backend and rebuilding the leaderboard view.`,
-    progressLabel: `${cappedProgress}% complete`,
-    progressPercent: cappedProgress,
+      : `Connecting to ${metricLabel} stream`,
+    summary: isBootstrapping
+      ? `Loading the initial ${metricLabel} view.`
+      : `Waiting for the server to send progress events.`,
+    progressLabel: 'Waiting for server progress',
+    progressPercent: 0,
     phases,
-    activePhaseIndex,
+    activePhaseIndex: 0,
   }
 }
 
@@ -82,6 +75,11 @@ function buildServerLoadingPanelModel({
     progressPercent: progress.percent,
     phases,
     activePhaseIndex,
+    debug: {
+      phase: progress.phase,
+      current: progress.current,
+      total: progress.total,
+    },
   }
 }
 

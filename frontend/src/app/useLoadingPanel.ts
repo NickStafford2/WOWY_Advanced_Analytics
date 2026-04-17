@@ -1,19 +1,18 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { buildLoadingPanelModel } from './loading'
-import type { LoadingPanelModel } from './loadingTypes'
+import type { LeaderboardProgressEvent } from './loadingTypes'
 import type { MetricId } from './metricTypes'
 
-const LOADING_PANEL_DELAY_MS = 250
-
-type UseLoadingPanelOptions = {
+type UseLoadingPanelArgs = {
   metric: MetricId
   metricLabel: string
   isBootstrapping: boolean
   isLoading: boolean
+  serverProgress: LeaderboardProgressEvent | null
 }
 
 type UseLoadingPanelValue = {
-  loadingPanel: LoadingPanelModel | null
+  loadingPanel: ReturnType<typeof buildLoadingPanelModel>
   restartLoadingClock: () => void
 }
 
@@ -22,52 +21,45 @@ export function useLoadingPanel({
   metricLabel,
   isBootstrapping,
   isLoading,
-}: UseLoadingPanelOptions): UseLoadingPanelValue {
-  const [startedAt, setStartedAt] = useState<number | null>(null)
+  serverProgress,
+}: UseLoadingPanelArgs): UseLoadingPanelValue {
+  const [loadingStartedAt, setLoadingStartedAt] = useState<number>(() => Date.now())
   const [elapsedMs, setElapsedMs] = useState(0)
-  const [isDelayComplete, setIsDelayComplete] = useState(false)
-  const isActive = isBootstrapping || isLoading
+
+  function restartLoadingClock(): void {
+    const now = Date.now()
+    setLoadingStartedAt(now)
+    setElapsedMs(0)
+  }
 
   useEffect(() => {
-    if (!isActive || startedAt === null) {
-      return
-    }
-
-    const timeoutId = window.setTimeout(() => {
-      setIsDelayComplete(true)
-    }, LOADING_PANEL_DELAY_MS)
-
-    return () => window.clearTimeout(timeoutId)
-  }, [isActive, startedAt])
-
-  useEffect(() => {
-    if (!isActive || !isDelayComplete || startedAt === null) {
+    if (!isLoading && !isBootstrapping) {
       return
     }
 
     const intervalId = window.setInterval(() => {
-      setElapsedMs(Math.max(Date.now() - startedAt, 0))
-    }, 180)
+      setElapsedMs(Date.now() - loadingStartedAt)
+    }, 100)
 
-    return () => window.clearInterval(intervalId)
-  }, [isActive, isDelayComplete, startedAt])
+    return () => {
+      window.clearInterval(intervalId)
+    }
+  }, [isBootstrapping, isLoading, loadingStartedAt])
 
-  const loadingPanel =
-    !isActive || !isDelayComplete
-      ? null
-      : buildLoadingPanelModel({
-          metric,
-          metricLabel,
-          isBootstrapping,
-          elapsedMs,
-        })
+  const loadingPanel = useMemo(
+    () =>
+      buildLoadingPanelModel({
+        metric,
+        metricLabel,
+        isBootstrapping,
+        elapsedMs,
+        serverProgress,
+      }),
+    [metric, metricLabel, isBootstrapping, elapsedMs, serverProgress],
+  )
 
-  function restartLoadingClock(): void {
-    const now = Date.now()
-    setStartedAt(now)
-    setElapsedMs(0)
-    setIsDelayComplete(false)
+  return {
+    loadingPanel,
+    restartLoadingClock,
   }
-
-  return { loadingPanel, restartLoadingClock }
 }

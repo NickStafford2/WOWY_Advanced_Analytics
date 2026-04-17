@@ -10,6 +10,11 @@ export type LoadingPanelModel = {
   progressPercent: number
   phases: LoadingPhase[]
   activePhaseIndex: number
+  debug?: {
+    phase: string
+    current: number
+    total: number
+  }
 }
 
 export type LeaderboardProgressEvent = {
