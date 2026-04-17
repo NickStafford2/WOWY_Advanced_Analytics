@@ -5,7 +5,7 @@ import { isAllTeamsSelection, filterSelectedTeamIdsForAvailableTeams } from './l
 import type { LeaderboardFilters } from './leaderboardTypes'
 import type { LeaderboardProgressEvent } from './loadingTypes'
 import type { MetricId } from './metricTypes'
-import { streamRawrLeaderboard } from './rawrStream'
+import { streamLeaderboard } from './leaderboardStream'
 
 type StreamHandle = {
   close: () => void
@@ -115,7 +115,7 @@ export function useLeaderboardRequest({
         resolve(value)
       }
 
-      streamRef.current = streamRawrLeaderboard<LeaderboardPayload>({
+      streamRef.current = streamLeaderboard<LeaderboardPayload>({
         url: streamUrl,
         onStarted: (payload) => {
           console.log('[Leaderboard] stream started', payload)

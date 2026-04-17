@@ -8,7 +8,7 @@ type StreamHandle = {
   close: () => void
 }
 
-export function streamRawrLeaderboard<TPayload>({
+export function streamLeaderboard<TPayload>({
   url,
   onStarted,
   onProgress,
