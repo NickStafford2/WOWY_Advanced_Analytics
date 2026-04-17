@@ -72,7 +72,6 @@ def build_rawr_request_from_calc_vars(
     season_games: dict[Season, list[NormalizedGameRecord]],
     season_game_players: dict[Season, list[NormalizedGamePlayerRecord]],
 ) -> RawrRequestDTO:
-    print("build_rawr_request_from_calc_vars()")
     return build_rawr_request(
         season_games=season_games,
         season_game_players=season_game_players,

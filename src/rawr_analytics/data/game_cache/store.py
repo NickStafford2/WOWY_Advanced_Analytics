@@ -64,7 +64,6 @@ def load_games_for_team_season_scopes_with_opponents(
     *,
     validate_cached_scopes: bool = True,
 ) -> tuple[list[NormalizedGameRecord], list[NormalizedGamePlayerRecord]]:
-    print(f"load_games_for_team_season_scopes_with_opponents() {len(team_seasons)} team_seasons")
     if not team_seasons:
         raise ValueError("No team-season scopes were requested")
 
@@ -76,9 +75,6 @@ def load_games_for_team_season_scopes_with_opponents(
         game_ids = select_game_ids_for_team_seasons(
             connection,
             team_seasons=team_seasons,
-        )
-        print(
-            f"load_games_for_team_season_scopes_with_opponents() selected {len(game_ids)} game_ids"
         )
         if not game_ids:
             return [], []
@@ -98,10 +94,6 @@ def load_games_for_team_season_scopes_with_opponents(
             )
         ]
 
-    print(
-        "load_games_for_team_season_scopes_with_opponents() "
-        f"loaded {len(games)} games and {len(game_players)} game_players"
-    )
     return games, game_players
 
 
@@ -110,7 +102,6 @@ def load_games_for_team_seasons_with_opponents(
     *,
     validate_cached_scopes: bool = True,
 ) -> tuple[list[NormalizedGameRecord], list[NormalizedGamePlayerRecord]]:
-    print(f"load_games_for_team_seasons_with_opponents() {len(team_seasons)} team_seasons")
     return load_games_for_team_season_scopes_with_opponents(
         team_seasons,
         validate_cached_scopes=validate_cached_scopes,

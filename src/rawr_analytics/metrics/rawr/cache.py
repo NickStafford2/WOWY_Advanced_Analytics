@@ -29,7 +29,6 @@ def load_rawr_input_records(
     dict[Season, list[NormalizedGameRecord]],
     dict[Season, list[NormalizedGamePlayerRecord]],
 ]:
-    print("load_rawr_input_records()")
     assert seasons, "RAWR record loading requires a non-empty season list"
     assert teams, "RAWR record loading requires a non-empty team list"
 
@@ -66,10 +65,6 @@ def load_rawr_input_records(
     if not complete_team_seasons:
         raise ValueError("No complete cached team-seasons matched the requested RAWR scope")
 
-    print(
-        "load_rawr_input_records() bulk loading "
-        f"{len(complete_team_seasons)} team-seasons across {len(complete_seasons)} seasons"
-    )
     emit_rawr_progress(
         progress_sink,
         phase="db-load",
@@ -117,7 +112,6 @@ def load_rawr_input_records(
 
     total_seasons = len(sorted_seasons)
     for season_index, season in enumerate(sorted_seasons, start=1):
-        print(f"load_rawr_input_records() loop {season.id}")
         emit_rawr_season_progress(
             progress_sink,
             phase="season-filter",
@@ -127,7 +121,6 @@ def load_rawr_input_records(
         )
 
         if season not in complete_seasons:
-            print(f"load_rawr_input_records() loop {season.id} is incomplete")
             emit_rawr_season_progress(
                 progress_sink,
                 phase="season-filter",
@@ -138,7 +131,6 @@ def load_rawr_input_records(
             continue
 
         season_records = _filter_grouped_rawr_season_records(
-            season=season,
             requested_team_ids={
                 scope.team.team_id for scope in requested_team_seasons_by_season[season]
             },
@@ -146,7 +138,6 @@ def load_rawr_input_records(
             game_players=game_players_by_season.get(season, []),
         )
         if season_records is None:
-            print(f"load_rawr_input_records() loop {season.id} season_records is None")
             emit_rawr_season_progress(
                 progress_sink,
                 phase="season-filter",
@@ -167,7 +158,6 @@ def load_rawr_input_records(
             season=season,
         )
 
-    print("load_rawr_input_records() end")
     return season_games, season_game_players
 
 
@@ -222,10 +212,6 @@ def _load_rawr_records_for_complete_seasons(
     *,
     requested_team_seasons: list[TeamSeasonScope],
 ) -> tuple[list[NormalizedGameRecord], list[NormalizedGamePlayerRecord]]:
-    print(
-        "_load_rawr_records_for_complete_seasons() "
-        f"{len(requested_team_seasons)} requested_team_seasons"
-    )
     assert requested_team_seasons, "RAWR bulk season loading requires team-season scopes"
 
     games, game_players = load_games_for_team_seasons_with_opponents(
@@ -233,10 +219,6 @@ def _load_rawr_records_for_complete_seasons(
         validate_cached_scopes=False,
     )
 
-    print(
-        "_load_rawr_records_for_complete_seasons() "
-        f"loaded {len(games)} games and {len(game_players)} game_players"
-    )
     return games, game_players
 
 
@@ -247,11 +229,6 @@ def _group_loaded_rawr_records_by_season(
     dict[Season, list[NormalizedGameRecord]],
     dict[Season, list[NormalizedGamePlayerRecord]],
 ]:
-    print(
-        "_group_loaded_rawr_records_by_season() "
-        f"{len(games)} games {len(game_players)} game_players"
-    )
-
     games_by_season: dict[Season, list[NormalizedGameRecord]] = defaultdict(list)
     season_by_game_id: dict[str, Season] = {}
 
@@ -266,24 +243,15 @@ def _group_loaded_rawr_records_by_season(
             continue
         game_players_by_season[season].append(player)
 
-    print(
-        "_group_loaded_rawr_records_by_season() grouped into "
-        f"{len(games_by_season)} game seasons and {len(game_players_by_season)} player seasons"
-    )
     return dict(games_by_season), dict(game_players_by_season)
 
 
 def _filter_grouped_rawr_season_records(
     *,
-    season: Season,
     requested_team_ids: set[int],
     games: list[NormalizedGameRecord],
     game_players: list[NormalizedGamePlayerRecord],
 ) -> tuple[list[NormalizedGameRecord], list[NormalizedGamePlayerRecord]] | None:
-    print(
-        "_filter_grouped_rawr_season_records() "
-        f"{season.id} {len(games)} games {len(game_players)} game_players"
-    )
     if not requested_team_ids:
         return None
     if not games or not game_players:
@@ -295,10 +263,6 @@ def _filter_grouped_rawr_season_records(
         requested_team_ids=requested_team_ids,
     )
 
-    print(
-        "_filter_grouped_rawr_season_records() "
-        f"{season.id} filtered to {len(games)} games {len(game_players)} game_players"
-    )
     if not games or not game_players:
         return None
     return games, game_players
