@@ -4,7 +4,7 @@ from dataclasses import dataclass
 
 from rawr_analytics.metrics._player_context import PlayerSeasonFilters
 from rawr_analytics.metrics.constants import Metric
-from rawr_analytics.metrics.wowy._calc_vars import WowyParams, WowyEligibility
+from rawr_analytics.metrics.wowy._calc_vars import WowyEligibility, WowyParams
 from rawr_analytics.metrics.wowy.calculate._analysis import (
     WowyPlayerValue,
     compute_wowy,
@@ -44,13 +44,11 @@ class WowyPlayerSeasonRecord:
 def build_player_season_records(request: WowyRequestDTO) -> list[WowyPlayerSeasonRecord]:
     validate_request(request)
     records: list[WowyPlayerSeasonRecord] = []
-    for season_input in sorted(
-        request.season_inputs, key=lambda item: item.season.year_string_nba_api
-    ):
+    for season_input in sorted(request.season_inputs, key=lambda item: item.season.id):
         records.extend(_build_season_records(season_input, request=request))
     records.sort(
         key=lambda record: (
-            record.season.year_string_nba_api,
+            record.season.id,
             record.result.value if record.result.value is not None else float("-inf"),
             record.player.player_name,
         ),
