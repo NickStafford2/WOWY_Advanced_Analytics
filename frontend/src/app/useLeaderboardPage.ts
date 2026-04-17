@@ -1,16 +1,6 @@
-import { useEffect, useEffectEvent, useRef, useState, type MutableRefObject } from 'react'
-import { fetchMetricOptions } from './api'
-import {
-  defaultLeaderboardFilters,
-  initializeLeaderboardFiltersWithOptions,
-  syncScopedLeaderboardFiltersWithOptions,
-  updateLeaderboardFilterValue,
-} from './leaderboardFilters'
-import {
-  buildMetricOptionsParamsForSeasonSpan,
-  buildMetricOptionsParamsForTeams,
-  buildExportUrl,
-} from './leaderboardParams'
+import { useEffect, useEffectEvent, useRef, useState } from 'react'
+import { updateLeaderboardFilterValue } from './leaderboardFilters'
+import { buildExportUrl } from './leaderboardParams'
 import { toggleLeaderboardSeasonType } from './leaderboardSeason'
 import {
   isAllTeamsSelection,
@@ -27,6 +17,7 @@ import type {
 import type { MetricId } from './metricTypes'
 import { useLoadingPanel } from './useLoadingPanel'
 import { useLeaderboardRequest } from './useLeaderboardRequest'
+import { useMetricOptions } from './useMetricOptions'
 
 type UseLeaderboardPageValue = {
   metric: MetricId
@@ -53,22 +44,10 @@ type UseLeaderboardPageValue = {
   refresh: () => Promise<void>
 }
 
-type MetricOptionsState = {
-  filters: LeaderboardFilters
-  seasons: string[]
-  teams: TeamOption[]
-}
-
 export function useLeaderboardPage(): UseLeaderboardPageValue {
   const metricRef = useRef<MetricId>('wowy')
-  const bootstrapAbortRef = useRef<AbortController | null>(null)
-  const scopedOptionsAbortRef = useRef<AbortController | null>(null)
 
   const [metric, setMetricState] = useState<MetricId>('wowy')
-  const [filters, setFilters] = useState<LeaderboardFilters>(defaultLeaderboardFilters)
-  const [teamOptions, setTeamOptions] = useState<TeamOption[]>([])
-  const [availableSeasons, setAvailableSeasons] = useState<string[]>([])
-  const [isBootstrapping, setIsBootstrapping] = useState(true)
   const {
     leaderboard,
     error,
@@ -78,6 +57,27 @@ export function useLeaderboardPage(): UseLeaderboardPageValue {
     setRequestError,
     runRequest,
   } = useLeaderboardRequest({ metricRef })
+  const {
+    filters,
+    availableSeasons,
+    availableTeams: teamOptions,
+    isBootstrapping,
+    loadBootstrapOptions,
+    refreshScopedOptions,
+    setFilters,
+  } = useMetricOptions({
+    metricRef,
+    onStartBootstrap: () => {
+      setRequestError('')
+      clearRequestState()
+      restartLoadingClock()
+    },
+    onFinishBootstrap: () => {},
+    onError: setRequestError,
+    onSuccess: () => {
+      setRequestError('')
+    },
+  })
 
   const metricLabel = metricLabelFor(metric)
   const metricDescription = metricDescriptionFor(metric)
@@ -98,99 +98,10 @@ export function useLeaderboardPage(): UseLeaderboardPageValue {
     serverProgress,
   })
 
-  useEffect(() => {
-    return () => {
-      bootstrapAbortRef.current?.abort()
-      scopedOptionsAbortRef.current?.abort()
-    }
-  }, [])
-
-  const _loadBootstrapOptions = useEffectEvent(
-    async (nextMetric: MetricId): Promise<MetricOptionsState | null> =>
-      _runAbortableRequest({
-        abortRef: bootstrapAbortRef,
-        metricRef,
-        expectedMetric: nextMetric,
-        onStart: () => {
-          setIsBootstrapping(true)
-          setRequestError('')
-          clearRequestState()
-          restartLoadingClock()
-        },
-        onFinish: () => {
-          setIsBootstrapping(false)
-        },
-        request: (signal) => fetchMetricOptions(nextMetric, undefined, signal),
-        onSuccess: (payload) => {
-          const nextFilters = initializeLeaderboardFiltersWithOptions(
-            defaultLeaderboardFilters(),
-            payload,
-          )
-          setFilters(nextFilters)
-          setTeamOptions(payload.team_options)
-          setAvailableSeasons(payload.available_seasons)
-          return {
-            filters: nextFilters,
-            seasons: payload.available_seasons,
-            teams: payload.team_options,
-          }
-        },
-        onError: (message) => {
-          setRequestError(message)
-          return null
-        },
-      }),
-  )
-
-  const _refreshScopedOptions = useEffectEvent(
-    async (nextMetric: MetricId, nextFilters: LeaderboardFilters) =>
-      _runAbortableRequest({
-        abortRef: scopedOptionsAbortRef,
-        metricRef,
-        expectedMetric: nextMetric,
-        onStart: () => { },
-        onFinish: () => { },
-        request: async (signal) => {
-          const seasonsPayload = await fetchMetricOptions(
-            nextMetric,
-            buildMetricOptionsParamsForTeams(nextFilters.teamIds),
-            signal,
-          )
-          const seasons = seasonsPayload.available_seasons
-          const filtersAfterSeasonScope = syncScopedLeaderboardFiltersWithOptions(
-            nextFilters,
-            seasonsPayload,
-          )
-          const teamsPayload = await fetchMetricOptions(
-            nextMetric,
-            buildMetricOptionsParamsForSeasonSpan(filtersAfterSeasonScope, seasons),
-            signal,
-          )
-
-          return {
-            filters: syncScopedLeaderboardFiltersWithOptions(filtersAfterSeasonScope, teamsPayload),
-            seasons,
-            teams: teamsPayload.team_options,
-          }
-        },
-        onSuccess: (payload) => {
-          setRequestError('')
-          setAvailableSeasons(payload.seasons)
-          setTeamOptions(payload.teams)
-          setFilters(payload.filters)
-          return payload
-        },
-        onError: (message) => {
-          setRequestError(message)
-          return null
-        },
-      }),
-  )
-
   const _loadMetric = useEffectEvent(async (nextMetric: MetricId) => {
     clearRequestState()
 
-    const options = await _loadBootstrapOptions(nextMetric)
+    const options = await loadBootstrapOptions(nextMetric)
     if (options === null) {
       return
     }
@@ -208,7 +119,7 @@ export function useLeaderboardPage(): UseLeaderboardPageValue {
     async (buildNextFilters: (current: LeaderboardFilters) => LeaderboardFilters) => {
       const nextFilters = buildNextFilters(filters)
       setFilters(nextFilters)
-      const scopedOptions = await _refreshScopedOptions(metric, nextFilters)
+      const scopedOptions = await refreshScopedOptions(metric, nextFilters)
       if (scopedOptions === null) {
         return
       }
@@ -298,65 +209,5 @@ export function useLeaderboardPage(): UseLeaderboardPageValue {
     toggleTeam: handleToggleTeam,
     setNumberFilter,
     refresh,
-  }
-}
-
-function _isAborted(
-  currentMetric: MetricId,
-  expectedMetric: MetricId,
-  controller: AbortController,
-): boolean {
-  return currentMetric !== expectedMetric || controller.signal.aborted
-}
-
-function _isExpectedAbort(caughtError: unknown): boolean {
-  return caughtError instanceof DOMException && caughtError.name === 'AbortError'
-}
-
-type _AbortableRequestOptions<TRequest, TResult> = {
-  abortRef: MutableRefObject<AbortController | null>
-  metricRef: MutableRefObject<MetricId>
-  expectedMetric: MetricId
-  onStart: () => void
-  onFinish: () => void
-  request: (signal: AbortSignal) => Promise<TRequest>
-  onSuccess: (payload: TRequest) => TResult
-  onError: (message: string) => TResult | null
-}
-
-async function _runAbortableRequest<TRequest, TResult>({
-  abortRef,
-  metricRef,
-  expectedMetric,
-  onStart,
-  onFinish,
-  request,
-  onSuccess,
-  onError,
-}: _AbortableRequestOptions<TRequest, TResult>): Promise<TResult | null> {
-  abortRef.current?.abort()
-  const controller = new AbortController()
-  abortRef.current = controller
-  onStart()
-
-  try {
-    const payload = await request(controller.signal)
-    if (_isAborted(metricRef.current, expectedMetric, controller)) {
-      return null
-    }
-
-    return onSuccess(payload)
-  } catch (caughtError) {
-    if (_isExpectedAbort(caughtError) || _isAborted(metricRef.current, expectedMetric, controller)) {
-      return null
-    }
-
-    const message = caughtError instanceof Error ? caughtError.message : 'Request failed'
-    return onError(message)
-  } finally {
-    if (abortRef.current === controller) {
-      abortRef.current = null
-      onFinish()
-    }
   }
 }
