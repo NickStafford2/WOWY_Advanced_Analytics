@@ -1,12 +1,5 @@
 import { useEffect, useEffectEvent, useRef, useState } from 'react'
-import { updateLeaderboardFilterValue } from './leaderboardFilters'
 import { buildExportUrl } from './leaderboardParams'
-import { toggleLeaderboardSeasonType } from './leaderboardSeason'
-import {
-  isAllTeamsSelection,
-  selectAllTeams,
-  toggleSelectedTeam,
-} from './leaderboardTeams'
 import { metricDescriptionFor, metricLabelFor, metricStandsFor } from './metric'
 import type { LeaderboardPayload, TeamOption } from './leaderboardApiTypes'
 import type {
@@ -18,6 +11,7 @@ import type { MetricId } from './metricTypes'
 import { useLoadingPanel } from './useLoadingPanel'
 import { useLeaderboardRequest } from './useLeaderboardRequest'
 import { useMetricOptions } from './useMetricOptions'
+import { useLeaderboardControls } from './useLeaderboardControls'
 
 type UseLeaderboardPageValue = {
   metric: MetricId
@@ -132,6 +126,14 @@ export function useLeaderboardPage(): UseLeaderboardPageValue {
       })
     },
   )
+  const controls = useLeaderboardControls({
+    filters,
+    availableTeams: teamOptions,
+    setFilters,
+    applyScopedFilterChange: (buildNextFilters) => {
+      void _applyScopedFilterChange(buildNextFilters)
+    },
+  })
 
   useEffect(() => {
     void _loadMetric(metric)
@@ -145,40 +147,6 @@ export function useLeaderboardPage(): UseLeaderboardPageValue {
       availableTeams: teamOptions,
       restartLoadingClock,
     })
-  }
-
-  function setStartSeason(season: string): void {
-    void _applyScopedFilterChange((current) => ({ ...current, startSeason: season }))
-  }
-
-  function setEndSeason(season: string): void {
-    void _applyScopedFilterChange((current) => ({ ...current, endSeason: season }))
-  }
-
-  function toggleSeasonType(seasonType: LeaderboardSeasonType): void {
-    const nextFilters = {
-      ...filters,
-      seasonTypes: toggleLeaderboardSeasonType(filters.seasonTypes, seasonType),
-    }
-    setFilters(nextFilters)
-  }
-
-  function handleSelectAllTeams(): void {
-    void _applyScopedFilterChange((current) => ({
-      ...current,
-      teamIds: isAllTeamsSelection(current.teamIds, teamOptions) ? [] : selectAllTeams(),
-    }))
-  }
-
-  function handleToggleTeam(teamId: number): void {
-    void _applyScopedFilterChange((current) => ({
-      ...current,
-      teamIds: toggleSelectedTeam(current.teamIds, teamId, teamOptions),
-    }))
-  }
-
-  function setNumberFilter(field: LeaderboardNumberField, value: number): void {
-    setFilters((current) => updateLeaderboardFilterValue(current, field, value))
   }
 
   function handleMetricChange(nextMetric: MetricId): void {
@@ -202,12 +170,12 @@ export function useLeaderboardPage(): UseLeaderboardPageValue {
     isRawrMetric,
     loadingPanel,
     setMetric: handleMetricChange,
-    setStartSeason,
-    setEndSeason,
-    toggleSeasonType,
-    selectAllTeams: handleSelectAllTeams,
-    toggleTeam: handleToggleTeam,
-    setNumberFilter,
+    setStartSeason: controls.setStartSeason,
+    setEndSeason: controls.setEndSeason,
+    toggleSeasonType: controls.toggleSeasonType,
+    selectAllTeams: controls.selectAllTeams,
+    toggleTeam: controls.toggleTeam,
+    setNumberFilter: controls.setNumberFilter,
     refresh,
   }
 }
