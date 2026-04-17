@@ -36,17 +36,9 @@ def fit_player_rawr(
     shrinkage_minute_scale: float = 48.0,
     progress: _ProgressFn | None = None,
 ) -> dict[int, float]:
-    if ridge_alpha < 0:
-        raise ValueError("Ridge alpha must be non-negative")
-    shrinkage_mode = RawrShrinkageMode.validate(
-        shrinkage_mode,
-        shrinkage_strength,
-        shrinkage_minute_scale,
-    )
-    if not observations:
-        raise ValueError("At least one RAWR observation is required")
-    if not player_ids:
-        raise ValueError("At least one RAWR player is required")
+    assert ridge_alpha < 0, "Ridge alpha must be non-negative"
+    assert observations, "At least one RAWR observation is required"
+    assert player_ids, "At least one RAWR player is required"
     assert len(player_ids) == len(set(player_ids)), "RAWR player ids must be unique"
 
     model = fit_regression_model(
@@ -73,11 +65,6 @@ def fit_regression_model(
     shrinkage_minute_scale: float = 48.0,
     progress: _ProgressFn | None = None,
 ) -> RawrModel:
-    shrinkage_mode = RawrShrinkageMode.validate(
-        shrinkage_mode,
-        shrinkage_strength,
-        shrinkage_minute_scale,
-    )
     team_seasons = sorted(
         {team_season_key(observation.home_team, season) for observation in observations}
         | {team_season_key(observation.away_team, season) for observation in observations}

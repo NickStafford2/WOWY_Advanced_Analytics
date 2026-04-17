@@ -7,7 +7,6 @@ from rawr_analytics.metrics.rawr.calculate._regression import fit_player_rawr
 from rawr_analytics.metrics.rawr.calculate.inputs import (
     RawrRequestDTO,
     RawrSeasonInputDTO,
-    validate_request,
 )
 from rawr_analytics.shared.player import PlayerMinutes, PlayerSummary
 from rawr_analytics.shared.season import Season
@@ -23,7 +22,6 @@ class RawrPlayerSeasonRecord:
 
 
 def build_player_season_records(request: RawrRequestDTO) -> list[RawrPlayerSeasonRecord]:
-    validate_request(request)
     records: list[RawrPlayerSeasonRecord] = []
     for season_input in sorted(request.season_inputs, key=lambda item: item.season.id):
         records.extend(_build_season_records(season_input, request=request))
