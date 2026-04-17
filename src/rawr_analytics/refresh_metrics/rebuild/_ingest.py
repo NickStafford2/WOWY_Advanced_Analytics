@@ -50,10 +50,7 @@ def run_ingest(
     )
 
 
-def _forward_emit_ingest_event(
-    event_fn: RebuildEventFn,
-    event: IngestEvent,
-) -> None:
+def _forward_emit_ingest_event(event_fn: RebuildEventFn, event: IngestEvent) -> None:
     if isinstance(event, IngestSeasonStartedEvent):
         event_fn(
             RebuildSeasonStartedEvent(
