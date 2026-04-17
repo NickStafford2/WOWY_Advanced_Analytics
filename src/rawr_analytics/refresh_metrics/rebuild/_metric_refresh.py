@@ -14,7 +14,7 @@ from rawr_analytics.refresh_metrics.refresh_metric_store import (
 from rawr_analytics.shared.season import SeasonType
 
 
-def refresh_rebuild_metrics(
+def run_metric_refresh(
     *,
     metrics: list[Metric],
     season_type: SeasonType,
@@ -27,7 +27,7 @@ def refresh_rebuild_metrics(
                 metric=metric,
                 season_type=season_type,
                 rawr_ridge_alpha=DEFAULT_RAWR_RIDGE_ALPHA,
-                event_fn=_build_metric_refresh_event_fn(event_fn=event_fn, metric=metric),
+                event_fn=_build_metric_event_fn(event_fn=event_fn, metric=metric),
             )
         )
         if not results[-1].ok:
@@ -35,13 +35,13 @@ def refresh_rebuild_metrics(
     return results
 
 
-def default_rebuild_metrics(metrics: list[Metric] | None) -> list[Metric]:
+def resolve_metrics(metrics: list[Metric] | None) -> list[Metric]:
     if metrics is not None:
         return metrics
     return [Metric.WOWY, Metric.WOWY_SHRUNK, Metric.RAWR]
 
 
-def _build_metric_refresh_event_fn(
+def _build_metric_event_fn(
     *,
     event_fn: RebuildEventFn | None,
     metric: Metric,

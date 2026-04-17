@@ -23,7 +23,7 @@ from rawr_analytics.sources.nba_api.ingest._models import (
 from rawr_analytics.sources.nba_api.ingest.api import refresh_season_range
 
 
-def refresh_rebuild_ingest(
+def run_ingest(
     *,
     start_year: int,
     end_year: int,
@@ -34,7 +34,7 @@ def refresh_rebuild_ingest(
 ) -> RebuildIngestResult:
     def _emit_ingest_event(event: IngestEvent) -> None:
         assert event_fn is not None
-        forward_rebuild_ingest_event(event_fn, event)
+        _forward_emit_ingest_event(event_fn, event)
 
     source_result = refresh_season_range(
         start_year=start_year,
@@ -47,7 +47,7 @@ def refresh_rebuild_ingest(
     return _build_rebuild_ingest_result(source_result)
 
 
-def forward_rebuild_ingest_event(
+def _forward_emit_ingest_event(
     event_fn: RebuildEventFn,
     event: IngestEvent,
 ) -> None:
@@ -89,7 +89,7 @@ def forward_rebuild_ingest_event(
         return
     if isinstance(event, IngestTeamFailedEvent):
         event_fn(
-            build_rebuild_team_failure_event(
+            _build_team_failure_event(
                 team_index=event.team_index,
                 team_total=event.team_total,
                 failure=event.failure,
@@ -98,7 +98,7 @@ def forward_rebuild_ingest_event(
         return
 
 
-def build_rebuild_team_failure_event(
+def _build_team_failure_event(
     *,
     team_index: int,
     team_total: int,

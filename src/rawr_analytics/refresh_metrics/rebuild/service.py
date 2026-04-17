@@ -7,10 +7,10 @@ from rawr_analytics.refresh_metrics.rebuild._events import (
     RebuildFailureLogFn,
     RebuildResult,
 )
-from rawr_analytics.refresh_metrics.rebuild._ingest import refresh_rebuild_ingest
+from rawr_analytics.refresh_metrics.rebuild._ingest import run_ingest
 from rawr_analytics.refresh_metrics.rebuild._metric_refresh import (
-    default_rebuild_metrics,
-    refresh_rebuild_metrics,
+    resolve_metrics,
+    run_metric_refresh,
 )
 from rawr_analytics.refresh_metrics.rebuild._validation import validate_rebuild_result
 from rawr_analytics.shared.season import SeasonType
@@ -34,7 +34,7 @@ def rebuild_player_metrics_db(
     normalized_metrics = [Metric.parse(metric) for metric in metrics] if metrics else None
     deleted_existing_db = prepare_rebuild_storage(keep_existing_db=keep_existing_db)
 
-    ingest_result = refresh_rebuild_ingest(
+    ingest_result = run_ingest(
         start_year=start_year,
         end_year=end_year,
         season_type=normalized_season_type.value,
@@ -51,8 +51,8 @@ def rebuild_player_metrics_db(
             failure_message="Ingest refresh failed during rebuild.",
         )
 
-    metric_results = refresh_rebuild_metrics(
-        metrics=default_rebuild_metrics(normalized_metrics),
+    metric_results = run_metric_refresh(
+        metrics=resolve_metrics(normalized_metrics),
         season_type=normalized_season_type,
         event_fn=event_fn,
     )
