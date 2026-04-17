@@ -2,7 +2,6 @@ from __future__ import annotations
 
 from collections import defaultdict
 from collections.abc import Callable
-from time import perf_counter
 
 from rawr_analytics.data.game_cache.store import list_cached_scopes, load_team_season_cache
 from rawr_analytics.metrics.rawr.cache_status import list_complete_rawr_seasons
@@ -12,9 +11,6 @@ from rawr_analytics.shared.season import Season, normalize_seasons
 from rawr_analytics.shared.team import Team
 
 type RawrSeasonProgressFn = Callable[[int, int, Season], None]
-
-
-from collections import defaultdict
 
 
 def load_rawr_input_records(
