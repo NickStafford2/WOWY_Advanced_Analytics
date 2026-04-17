@@ -32,9 +32,7 @@ def load_rawr_records(
         raise ValueError("No cached data matched the requested RAWR scope")
 
     teams_by_season = _build_teams_by_season(requested_team_seasons)
-    complete_seasons = list_complete_rawr_seasons(
-        seasons=list(teams_by_season),
-    )
+    complete_seasons = list_complete_rawr_seasons(seasons=list(teams_by_season))
     if not complete_seasons:
         raise ValueError("No complete cached seasons matched the requested RAWR scope")
 
