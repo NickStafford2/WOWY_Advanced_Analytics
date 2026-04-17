@@ -4,8 +4,8 @@ from collections import defaultdict
 from dataclasses import dataclass
 
 from rawr_analytics.metrics._player_context import PlayerSeasonContext, PlayerSeasonFilters
-from rawr_analytics.metrics.rawr._calc_vars import RawrCalcVars, RawrEligibility
 from rawr_analytics.metrics._validation import validate_top_n_and_minutes
+from rawr_analytics.metrics.rawr._calc_vars import RawrEligibility, RawrParams
 from rawr_analytics.metrics.rawr.calculate._observations import (
     RawrObservation,
     build_rawr_observations,
@@ -21,6 +21,7 @@ class RawrSeasonInputDTO:
     season: Season
     observations: list[RawrObservation]
     players_by_id: dict[int, PlayerSeasonContext]
+
 
 @dataclass(frozen=True)
 class RawrRequestDTO:
@@ -66,7 +67,7 @@ def build_rawr_request(
 
 def build_rawr_request_from_calc_vars(
     *,
-    calc_vars: RawrCalcVars,
+    calc_vars: RawrParams,
     filters: PlayerSeasonFilters,
     season_games: dict[Season, list[NormalizedGameRecord]],
     season_game_players: dict[Season, list[NormalizedGamePlayerRecord]],

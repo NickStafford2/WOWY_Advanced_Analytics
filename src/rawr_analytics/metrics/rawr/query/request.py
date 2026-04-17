@@ -3,7 +3,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 
 from rawr_analytics.metrics._player_context import PlayerSeasonFilters
-from rawr_analytics.metrics.rawr._calc_vars import RawrCalcVars, RawrEligibility
+from rawr_analytics.metrics.rawr._calc_vars import RawrParams, RawrEligibility
 from rawr_analytics.metrics.rawr.calculate.inputs import validate_filters
 from rawr_analytics.metrics.rawr.calculate.shrinkage import RawrShrinkageMode
 from rawr_analytics.metrics.rawr.defaults import (
@@ -32,7 +32,7 @@ class RawrPostCalcFilters:
 
 @dataclass(frozen=True)
 class RawrQuery:
-    calc_vars: RawrCalcVars
+    calc_vars: RawrParams
     post_calc_filters: RawrPostCalcFilters
 
 
@@ -56,7 +56,7 @@ def build_rawr_query(
     if not normalized_seasons:
         normalized_seasons = build_all_nba_history_seasons()
     normalized_query = RawrQuery(
-        calc_vars=RawrCalcVars(
+        calc_vars=RawrParams(
             teams=normalized_teams,
             seasons=normalized_seasons,
             eligibility=RawrEligibility(

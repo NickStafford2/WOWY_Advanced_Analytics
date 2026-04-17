@@ -4,7 +4,7 @@ from collections.abc import Callable
 from dataclasses import dataclass
 
 from rawr_analytics.metrics.constants import Metric
-from rawr_analytics.metrics.rawr._calc_vars import RawrCalcVars
+from rawr_analytics.metrics.rawr._calc_vars import RawrParams
 from rawr_analytics.metrics.wowy._calc_vars import WowyCalcVars
 from rawr_analytics.shared.season import Season
 from rawr_analytics.shared.team import Team
@@ -49,5 +49,5 @@ class RefreshCache:
     cache_label: str
     seasons: list[Season]
     teams: list[Team]
-    rawr_calc_vars: RawrCalcVars | None = None
+    rawr_calc_vars: RawrParams | None = None
     wowy_calc_vars: WowyCalcVars | None = None

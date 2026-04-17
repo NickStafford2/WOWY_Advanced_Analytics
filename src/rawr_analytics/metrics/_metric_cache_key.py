@@ -1,9 +1,9 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from decimal import Decimal, ROUND_HALF_UP
+from decimal import ROUND_HALF_UP, Decimal
 
-from rawr_analytics.metrics.rawr._calc_vars import RawrCalcVars
+from rawr_analytics.metrics.rawr._calc_vars import RawrParams
 from rawr_analytics.metrics.wowy._calc_vars import WowyCalcVars
 from rawr_analytics.shared.season import require_normalized_seasons
 from rawr_analytics.shared.team import Team, to_normalized_team_ids
@@ -73,7 +73,7 @@ class MetricCacheKey:
         )
 
 
-def build_rawr_metric_cache_key(calc_vars: RawrCalcVars) -> str:
+def build_rawr_metric_cache_key(calc_vars: RawrParams) -> str:
     return MetricCacheKey(
         metric_id="rawr",
         metric_variant="default",

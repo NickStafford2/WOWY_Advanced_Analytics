@@ -6,7 +6,7 @@ from rawr_analytics.metrics._metric_cache_key import (
     build_wowy_metric_cache_key,
 )
 from rawr_analytics.metrics.constants import Metric
-from rawr_analytics.metrics.rawr._calc_vars import RawrCalcVars, RawrEligibility
+from rawr_analytics.metrics.rawr._calc_vars import RawrParams, RawrEligibility
 from rawr_analytics.metrics.rawr.calculate.shrinkage import RawrShrinkageMode
 from rawr_analytics.metrics.rawr.defaults import DEFAULT_RAWR_RIDGE_ALPHA
 from rawr_analytics.metrics.wowy._calc_vars import WowyCalcVars, WowyEligibility
@@ -24,7 +24,7 @@ WOWY_REFRESH_METRICS = {Metric.WOWY, Metric.WOWY_SHRUNK}
 def build_refresh_cache_key(
     *,
     metric: Metric,
-    rawr_calc_vars: RawrCalcVars | None = None,
+    rawr_calc_vars: RawrParams | None = None,
     wowy_calc_vars: WowyCalcVars | None = None,
 ) -> str:
     if metric == Metric.RAWR:
@@ -42,8 +42,8 @@ def build_refresh_rawr_calc_vars(
     *,
     seasons: list[Season],
     rawr_ridge_alpha: float = DEFAULT_RAWR_RIDGE_ALPHA,
-) -> RawrCalcVars:
-    return RawrCalcVars(
+) -> RawrParams:
+    return RawrParams(
         teams=Team.all(),
         seasons=seasons,
         eligibility=RawrEligibility(),
@@ -174,9 +174,9 @@ def _build_rawr_calc_vars_from_cache_key(
     cache_key: MetricCacheKey,
     seasons: list[Season],
     teams: list[Team],
-) -> RawrCalcVars:
+) -> RawrParams:
     calc_settings = dict(cache_key.calc_settings)
-    return RawrCalcVars(
+    return RawrParams(
         teams=teams,
         seasons=seasons,
         eligibility=RawrEligibility(),

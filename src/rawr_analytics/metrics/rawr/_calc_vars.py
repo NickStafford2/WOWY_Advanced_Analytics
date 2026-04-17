@@ -20,7 +20,7 @@ class RawrEligibility:
 
 
 @dataclass(frozen=True)
-class RawrCalcVars:
+class RawrParams:
     teams: list[Team]
     seasons: list[Season]
     eligibility: RawrEligibility

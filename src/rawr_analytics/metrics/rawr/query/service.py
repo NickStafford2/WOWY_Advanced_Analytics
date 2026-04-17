@@ -15,7 +15,7 @@ from rawr_analytics.data.metric_store.usage import record_metric_cache_query
 from rawr_analytics.metrics._metric_cache_key import build_rawr_metric_cache_key
 from rawr_analytics.metrics._player_context import PlayerSeasonFilters
 from rawr_analytics.metrics.constants import Metric
-from rawr_analytics.metrics.rawr._calc_vars import RawrCalcVars
+from rawr_analytics.metrics.rawr._calc_vars import RawrParams
 from rawr_analytics.metrics.rawr.cache import load_rawr_input_records
 from rawr_analytics.metrics.rawr.calculate.inputs import build_rawr_request_from_calc_vars
 from rawr_analytics.metrics.rawr.calculate.records import (
@@ -219,7 +219,7 @@ def _build_live_rawr_query_result(
 
 def ensure_rawr_metric_cache(
     *,
-    calc_vars: RawrCalcVars,
+    calc_vars: RawrParams,
     build_version: str,
     progress_fn: RawrProgressFn | None = None,
 ) -> EnsureRawrMetricCacheResult:
