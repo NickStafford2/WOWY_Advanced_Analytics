@@ -2,8 +2,8 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
-from rawr_analytics.metrics.rawr.calculate._analysis import fit_player_rawr
 from rawr_analytics.metrics.rawr.calculate._observations import count_player_season_games
+from rawr_analytics.metrics.rawr.calculate._regression import fit_player_rawr
 from rawr_analytics.metrics.rawr.calculate.inputs import (
     RawrRequestDTO,
     RawrSeasonInputDTO,

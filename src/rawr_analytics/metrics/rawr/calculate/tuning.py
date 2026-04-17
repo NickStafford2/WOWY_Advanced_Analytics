@@ -3,15 +3,15 @@ from __future__ import annotations
 from dataclasses import dataclass
 from statistics import mean
 
-from rawr_analytics.metrics.rawr.calculate._analysis import (
+from rawr_analytics.metrics.rawr.calculate._observations import (
+    RawrObservation,
+    count_player_season_games,
+)
+from rawr_analytics.metrics.rawr.calculate._regression import (
     RawrModel,
     build_feature_row,
     fit_regression_model,
     team_season_key,
-)
-from rawr_analytics.metrics.rawr.calculate._observations import (
-    RawrObservation,
-    count_player_season_games,
 )
 from rawr_analytics.metrics.rawr.calculate.shrinkage import RawrShrinkageMode
 from rawr_analytics.shared.season import Season
