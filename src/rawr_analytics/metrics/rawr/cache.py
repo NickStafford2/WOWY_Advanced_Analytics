@@ -13,7 +13,7 @@ from rawr_analytics.shared.team import Team
 type RawrSeasonProgressFn = Callable[[int, int, Season], None]
 
 
-def load_rawr_records(
+def load_rawr_input_records(
     *,
     teams: list[Team],
     seasons: list[Season],

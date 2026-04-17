@@ -5,7 +5,7 @@ from dataclasses import dataclass
 from itertools import product
 
 from rawr_analytics.metrics._player_context import PlayerSeasonFilters
-from rawr_analytics.metrics.rawr.cache import load_rawr_records
+from rawr_analytics.metrics.rawr.cache import load_rawr_input_records
 from rawr_analytics.metrics.rawr.calculate.inputs import RawrEligibility, build_rawr_request
 from rawr_analytics.metrics.rawr.calculate.records import build_player_season_records
 from rawr_analytics.metrics.rawr.calculate.shrinkage import RawrShrinkageMode
@@ -175,7 +175,7 @@ def compare_rawr_configs(
             if shrinkage_mode == RawrShrinkageMode.MINUTES:
                 detail += f" min_scale={minute_scale:.1f}"
 
-            season_games, season_game_players = load_rawr_records(
+            season_games, season_game_players = load_rawr_input_records(
                 teams=teams or Team.all(),
                 seasons=train_seasons,
             )

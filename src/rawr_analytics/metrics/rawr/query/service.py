@@ -12,11 +12,11 @@ from rawr_analytics.data.metric_store.rawr import (
 )
 from rawr_analytics.data.metric_store.store import load_metric_cache_store_state
 from rawr_analytics.data.metric_store.usage import record_metric_cache_query
-from rawr_analytics.metrics._player_context import PlayerSeasonFilters
 from rawr_analytics.metrics._metric_cache_key import build_rawr_metric_cache_key
+from rawr_analytics.metrics._player_context import PlayerSeasonFilters
 from rawr_analytics.metrics.constants import Metric
 from rawr_analytics.metrics.rawr._calc_vars import RawrCalcVars
-from rawr_analytics.metrics.rawr.cache import load_rawr_records
+from rawr_analytics.metrics.rawr.cache import load_rawr_input_records
 from rawr_analytics.metrics.rawr.calculate.inputs import build_rawr_request_from_calc_vars
 from rawr_analytics.metrics.rawr.calculate.records import (
     RawrPlayerSeasonRecord,
@@ -203,7 +203,7 @@ def _build_live_rawr_query_result(
     *,
     progress_fn: RawrProgressFn | None = None,
 ) -> list[RawrPlayerSeasonRecord]:
-    season_games, season_game_players = load_rawr_records(
+    season_games, season_game_players = load_rawr_input_records(
         teams=query.calc_vars.teams,
         seasons=query.calc_vars.seasons,
         progress_fn=progress_fn,
@@ -300,6 +300,7 @@ def _try_load_rawr_store_result(query: RawrQuery) -> ResolvedRawrResultDTO | Non
         available_teams=available.available_teams,
         available_seasons=available.available_seasons,
     )
+
 
 def _selected_rawr_seasons(query: RawrQuery, rows: list[RawrPlayerSeasonRecord]) -> list[Season]:
     selected_seasons = normalize_seasons([row.season for row in rows]) or []
