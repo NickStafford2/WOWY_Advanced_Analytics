@@ -235,26 +235,30 @@ def _filter_rawr_loaded_records(
     requested_team_ids: set[int],
 ) -> tuple[list[NormalizedGameRecord], list[NormalizedGamePlayerRecord]]:
     positive_minute_team_ids_by_game_id: dict[str, set[int]] = defaultdict(set)
+
     for player in game_players:
         if not player.has_positive_minutes():
             continue
         positive_minute_team_ids_by_game_id[player.game_id].add(player.team.team_id)
 
     valid_game_ids: set[str] = set()
+
     for game in games:
         if game.team.team_id not in requested_team_ids:
             continue
 
-        team_ids_with_positive_minutes = positive_minute_team_ids_by_game_id.get(game.game_id)
-        if team_ids_with_positive_minutes is None:
+        team_ids_with_minutes = positive_minute_team_ids_by_game_id.get(game.game_id)
+        if team_ids_with_minutes is None:
             continue
-        if game.team.team_id not in team_ids_with_positive_minutes:
+
+        if game.team.team_id not in team_ids_with_minutes:
             continue
-        if game.opponent_team.team_id not in team_ids_with_positive_minutes:
+        if game.opponent_team.team_id not in team_ids_with_minutes:
             continue
 
         valid_game_ids.add(game.game_id)
 
     filtered_games = [game for game in games if game.game_id in valid_game_ids]
     filtered_game_players = [player for player in game_players if player.game_id in valid_game_ids]
+
     return filtered_games, filtered_game_players
