@@ -6,6 +6,7 @@ from rawr_analytics.data._paths import NORMALIZED_CACHE_DB_PATH
 from rawr_analytics.data.game_cache._queries import (
     replace_team_season_cache_rows,
     select_cache_load_rows,
+    select_game_ids_for_team_seasons,
     select_normalized_game_player_rows,
     select_normalized_game_rows,
 )
@@ -56,6 +57,36 @@ def store_team_season_cache(
             skipped_games_count=skipped_games_count,
         )
         connection.commit()
+
+
+def load_games_for_team_seasons_with_opponents(
+    team_seasons: list[TeamSeasonScope],
+) -> tuple[list[NormalizedGameRecord], list[NormalizedGamePlayerRecord]]:
+    if not team_seasons:
+        raise ValueError("No team-season scopes were requested")
+    _require_cached_team_season_scopes(team_seasons)
+
+    initialize_game_cache_db()
+    with connect(NORMALIZED_CACHE_DB_PATH) as connection:
+        game_ids = select_game_ids_for_team_seasons(
+            connection,
+            team_seasons=team_seasons,
+        )
+        if not game_ids:
+            raise ValueError("No database cache matched the requested scope")
+
+        games = [
+            build_normalized_game_record(row)
+            for row in select_normalized_game_rows(connection, game_ids=game_ids)
+        ]
+        game_players = [
+            build_normalized_game_player_record(row)
+            for row in select_normalized_game_player_rows(connection, game_ids=game_ids)
+        ]
+
+    if not games or not game_players:
+        raise ValueError("No database cache matched the requested scope")
+    return games, game_players
 
 
 def load_team_season_cache(
@@ -167,6 +198,7 @@ def _team_season_keys(team_seasons: list[TeamSeasonScope]) -> set[tuple[int, str
 __all__ = [
     "list_cached_scopes",
     "load_game_cache_snapshot",
+    "load_games_for_team_seasons_with_opponents",
     "load_team_season_cache",
     "store_team_season_cache",
 ]

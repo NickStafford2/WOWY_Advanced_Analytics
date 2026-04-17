@@ -324,3 +324,24 @@ def _append_in_filter(
     query += f" AND {column} IN ({','.join('?' for _ in values)})"
     params.extend(values)
     return query, params
+
+
+def select_game_ids_for_team_seasons(
+    connection: sqlite3.Connection,
+    *,
+    team_seasons: Sequence[TeamSeasonScope],
+) -> list[str]:
+    query = """
+        SELECT DISTINCT game_id
+        FROM normalized_games
+        WHERE 1 = 1
+    """
+    params: list[object] = []
+    query, params = _append_team_season_filter(
+        query,
+        params,
+        team_seasons=team_seasons,
+    )
+    query += " ORDER BY game_id"
+    rows = connection.execute(query, params).fetchall()
+    return [str(row["game_id"]) for row in rows]

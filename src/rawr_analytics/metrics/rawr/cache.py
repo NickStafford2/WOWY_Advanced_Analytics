@@ -3,7 +3,10 @@ from __future__ import annotations
 from collections import defaultdict
 from collections.abc import Callable
 
-from rawr_analytics.data.game_cache.store import list_cached_scopes, load_team_season_cache
+from rawr_analytics.data.game_cache.store import (
+    list_cached_scopes,
+    load_games_for_team_seasons_with_opponents,
+)
 from rawr_analytics.metrics.rawr.cache_status import list_complete_rawr_seasons
 from rawr_analytics.shared.game import NormalizedGamePlayerRecord, NormalizedGameRecord
 from rawr_analytics.shared.scope import TeamSeasonScope
@@ -64,15 +67,6 @@ def load_rawr_input_records(
     return season_games, season_game_players
 
 
-def _build_teams_by_season(
-    team_seasons: list[TeamSeasonScope],
-) -> dict[Season, list[Team]]:
-    teams_by_season: dict[Season, list[Team]] = defaultdict(list)
-    for scope in team_seasons:
-        teams_by_season[scope.season].append(scope.team)
-    return teams_by_season
-
-
 def _build_requested_rawr_team_seasons(
     *,
     teams: list[Team],
@@ -109,20 +103,7 @@ def _load_rawr_season_records(
     if not requested_team_seasons:
         return None
 
-    requested_games, requested_game_players = load_team_season_cache(requested_team_seasons)
-
-    season_scopes = _expand_rawr_season_scopes(
-        requested_team_seasons=requested_team_seasons,
-        games=requested_games,
-    )
-
-    requested_keys = {(s.team.team_id, s.season.id) for s in requested_team_seasons}
-    expanded_keys = {(s.team.team_id, s.season.id) for s in season_scopes}
-
-    if expanded_keys == requested_keys:
-        games, game_players = requested_games, requested_game_players
-    else:
-        games, game_players = load_team_season_cache(season_scopes)
+    games, game_players = load_games_for_team_seasons_with_opponents(requested_team_seasons)
 
     games, game_players = _filter_rawr_scope(
         games,
@@ -134,23 +115,6 @@ def _load_rawr_season_records(
     if not games:
         return None
     return games, game_players
-
-
-def _expand_rawr_season_scopes(
-    *,
-    requested_team_seasons: list[TeamSeasonScope],
-    games: list[NormalizedGameRecord],
-) -> list[TeamSeasonScope]:
-    team_scopes = list(requested_team_seasons)
-    seen_scope_keys = {(scope.team.team_id, scope.season.id) for scope in team_scopes}
-    for game in games:
-        scope = TeamSeasonScope(team=game.opponent_team, season=game.season)
-        scope_key = (scope.team.team_id, scope.season.id)
-        if scope_key in seen_scope_keys:
-            continue
-        team_scopes.append(scope)
-        seen_scope_keys.add(scope_key)
-    return team_scopes
 
 
 def _filter_rawr_scope(
