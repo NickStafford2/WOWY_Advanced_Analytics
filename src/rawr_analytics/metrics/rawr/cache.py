@@ -77,7 +77,9 @@ def load_rawr_input_records(
             continue
         season_records = _filter_grouped_rawr_season_records(
             season=season,
-            requested_team_seasons=requested_team_seasons_by_season[season],
+            requested_team_ids={
+                scope.team.team_id for scope in requested_team_seasons_by_season[season]
+            },
             games=games_by_season.get(season, []),
             game_players=game_players_by_season.get(season, []),
         )
@@ -198,7 +200,7 @@ def _group_loaded_rawr_records_by_season(
 def _filter_grouped_rawr_season_records(
     *,
     season: Season,
-    requested_team_seasons: list[TeamSeasonScope],
+    requested_team_ids: set[int],
     games: list[NormalizedGameRecord],
     game_players: list[NormalizedGamePlayerRecord],
 ) -> tuple[list[NormalizedGameRecord], list[NormalizedGamePlayerRecord]] | None:
@@ -206,7 +208,7 @@ def _filter_grouped_rawr_season_records(
         "_filter_grouped_rawr_season_records() "
         f"{season.id} {len(games)} games {len(game_players)} game_players"
     )
-    if not requested_team_seasons:
+    if not requested_team_ids:
         return None
     if not games or not game_players:
         return None
@@ -214,7 +216,7 @@ def _filter_grouped_rawr_season_records(
     games, game_players = _filter_rawr_loaded_records(
         games,
         game_players,
-        teams=[scope.team for scope in requested_team_seasons],
+        requested_team_ids=requested_team_ids,
     )
 
     print(
@@ -230,23 +232,27 @@ def _filter_rawr_loaded_records(
     games: list[NormalizedGameRecord],
     game_players: list[NormalizedGamePlayerRecord],
     *,
-    teams: list[Team],
+    requested_team_ids: set[int],
 ) -> tuple[list[NormalizedGameRecord], list[NormalizedGamePlayerRecord]]:
-    requested_team_ids = {team.team_id for team in teams}
-
-    positive_minutes_by_game_team: set[tuple[str, int]] = set()
+    positive_minute_team_ids_by_game_id: dict[str, set[int]] = defaultdict(set)
     for player in game_players:
-        if player.has_positive_minutes():
-            positive_minutes_by_game_team.add((player.game_id, player.team.team_id))
+        if not player.has_positive_minutes():
+            continue
+        positive_minute_team_ids_by_game_id[player.game_id].add(player.team.team_id)
 
     valid_game_ids: set[str] = set()
     for game in games:
         if game.team.team_id not in requested_team_ids:
             continue
-        if (game.game_id, game.team.team_id) not in positive_minutes_by_game_team:
+
+        team_ids_with_positive_minutes = positive_minute_team_ids_by_game_id.get(game.game_id)
+        if team_ids_with_positive_minutes is None:
             continue
-        if (game.game_id, game.opponent_team.team_id) not in positive_minutes_by_game_team:
+        if game.team.team_id not in team_ids_with_positive_minutes:
             continue
+        if game.opponent_team.team_id not in team_ids_with_positive_minutes:
+            continue
+
         valid_game_ids.add(game.game_id)
 
     filtered_games = [game for game in games if game.game_id in valid_game_ids]
