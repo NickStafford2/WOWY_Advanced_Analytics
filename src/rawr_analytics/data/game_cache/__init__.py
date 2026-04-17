@@ -8,13 +8,13 @@ from __future__ import annotations
 from rawr_analytics.data.game_cache.store import (
     list_cached_scopes,
     load_game_cache_snapshot,
-    load_team_season_cache,
+    load_games_for_team_season_scopes,
     store_team_season_cache,
 )
 
 __all__ = [
     "list_cached_scopes",
     "load_game_cache_snapshot",
-    "load_team_season_cache",
+    "load_games_for_team_season_scopes",
     "store_team_season_cache",
 ]

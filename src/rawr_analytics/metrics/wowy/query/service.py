@@ -22,6 +22,7 @@ from rawr_analytics.metrics.wowy.calculate.records import (
     build_wowy_custom_query,
     build_wowy_player_season_value,
 )
+from rawr_analytics.metrics.wowy.progress import WowyProgressSink, emit_wowy_progress
 from rawr_analytics.metrics.wowy.query.presenters import WowyQueryFiltersDTO
 from rawr_analytics.metrics.wowy.query.presenters import (
     build_wowy_leaderboard_payload as build_wowy_leaderboard_payload_from_values,
@@ -128,6 +129,7 @@ def resolve_wowy_result(
     *,
     metric: Metric = Metric.WOWY,
     recalculate: bool = False,
+    progress_sink: WowyProgressSink | None = None,
 ) -> ResolvedWowyResultDTO:
     _require_wowy_metric(metric)
     record_metric_cache_query(
@@ -139,11 +141,44 @@ def resolve_wowy_result(
     )
 
     if not recalculate:
+        emit_wowy_progress(
+            progress_sink,
+            phase="scope",
+            current=0,
+            total=1,
+            detail=f"Checking the retained {metric.value.upper()} metric store for a cached result.",
+        )
         cached_result = _try_load_wowy_store_result(metric=metric, query=query)
         if cached_result is not None:
+            emit_wowy_progress(
+                progress_sink,
+                phase="scope",
+                current=1,
+                total=1,
+                detail=f"Loaded leaderboard rows directly from the {metric.value.upper()} metric store.",
+            )
             return cached_result
+        emit_wowy_progress(
+            progress_sink,
+            phase="scope",
+            current=1,
+            total=1,
+            detail=f"No retained {metric.value.upper()} result matched the current filters. Building live result.",
+        )
+    else:
+        emit_wowy_progress(
+            progress_sink,
+            phase="scope",
+            current=1,
+            total=1,
+            detail=f"Skipping retained {metric.value.upper()} result lookup and forcing a live rebuild.",
+        )
 
-    live_rows = _build_live_wowy_query_result(metric=metric, query=query)
+    live_rows = _build_live_wowy_query_result(
+        metric=metric,
+        query=query,
+        progress_sink=progress_sink,
+    )
     seasons = _selected_wowy_seasons(query, live_rows)
     return ResolvedWowyResultDTO(
         player_season_value=live_rows,
@@ -202,19 +237,50 @@ def _build_live_wowy_query_result(
     *,
     metric: Metric,
     query: WowyQuery,
+    progress_sink: WowyProgressSink | None = None,
 ) -> list[WowyPlayerSeasonValue]:
     calc_vars = query.calc_vars
     games, game_players = load_wowy_records(
         teams=calc_vars.teams,
         seasons=calc_vars.seasons,
+        progress_sink=progress_sink,
+    )
+    emit_wowy_progress(
+        progress_sink,
+        phase="inputs",
+        current=0,
+        total=1,
+        detail="Building WOWY season inputs from the cached game rows.",
     )
     season_inputs = build_wowy_season_inputs(games=games, game_players=game_players)
-    return build_wowy_custom_query(
+    emit_wowy_progress(
+        progress_sink,
+        phase="inputs",
+        current=1,
+        total=1,
+        detail=f"Prepared {len(season_inputs)} season inputs for computation.",
+    )
+    emit_wowy_progress(
+        progress_sink,
+        phase="model",
+        current=0,
+        total=1,
+        detail=f"Computing the live {metric.value.upper()} leaderboard.",
+    )
+    rows = build_wowy_custom_query(
         metric,
         calc_vars=calc_vars,
         season_inputs=season_inputs,
         filters=query.post_calc_filters.filters,
     )
+    emit_wowy_progress(
+        progress_sink,
+        phase="model",
+        current=1,
+        total=1,
+        detail=f"Built {len(rows)} player-season rows for the {metric.value.upper()} leaderboard.",
+    )
+    return rows
 
 
 def ensure_wowy_metric_cache(

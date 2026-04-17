@@ -10,6 +10,7 @@ from rawr_analytics.web.routes.wowy_routes import (
     json_options_response,
     json_player_seasons_response,
     json_span_chart_response,
+    sse_leaderboard_response,
 )
 
 
@@ -35,6 +36,11 @@ def register_wowy_shrunk_routes(app: Flask) -> None:
     def get_wowy_shrunk_cached_leaderboard():
         return json_leaderboard_response(Metric.WOWY_SHRUNK, recalculate=False)
 
+    @app.get("/api/metrics/wowy_shrunk/leaderboard/stream")
+    @app.get("/api/metrics/wowy_shrunk/cached-leaderboard/stream")
+    def get_wowy_shrunk_cached_leaderboard_stream():
+        return sse_leaderboard_response(Metric.WOWY_SHRUNK, recalculate=False)
+
     @app.get("/api/metrics/wowy_shrunk/leaderboard.csv")
     @app.get("/api/metrics/wowy_shrunk/cached-leaderboard.csv")
     @web_route
@@ -45,6 +51,10 @@ def register_wowy_shrunk_routes(app: Flask) -> None:
     @web_route
     def get_wowy_shrunk_custom_query():
         return json_leaderboard_response(Metric.WOWY_SHRUNK, recalculate=True)
+
+    @app.get("/api/metrics/wowy_shrunk/custom-query/stream")
+    def get_wowy_shrunk_custom_query_stream():
+        return sse_leaderboard_response(Metric.WOWY_SHRUNK, recalculate=True)
 
     @app.get("/api/metrics/wowy_shrunk/custom-query.csv")
     @web_route

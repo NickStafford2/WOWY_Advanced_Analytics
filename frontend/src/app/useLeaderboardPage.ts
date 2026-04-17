@@ -1,5 +1,5 @@
 import { useEffect, useEffectEvent, useRef, useState, type MutableRefObject } from 'react'
-import { fetchLeaderboard, fetchMetricOptions } from './api'
+import { fetchMetricOptions } from './api'
 import {
   defaultLeaderboardFilters,
   initializeLeaderboardFiltersWithOptions,
@@ -71,7 +71,7 @@ export function useLeaderboardPage(): UseLeaderboardPageValue {
   const bootstrapAbortRef = useRef<AbortController | null>(null)
   const scopedOptionsAbortRef = useRef<AbortController | null>(null)
   const leaderboardAbortRef = useRef<AbortController | null>(null)
-  const rawrStreamRef = useRef<StreamHandle | null>(null)
+  const leaderboardStreamRef = useRef<StreamHandle | null>(null)
 
   const [metric, setMetricState] = useState<MetricId>('wowy')
   const [filters, setFilters] = useState<LeaderboardFilters>(defaultLeaderboardFilters)
@@ -107,7 +107,7 @@ export function useLeaderboardPage(): UseLeaderboardPageValue {
       bootstrapAbortRef.current?.abort()
       scopedOptionsAbortRef.current?.abort()
       leaderboardAbortRef.current?.abort()
-      rawrStreamRef.current?.close()
+      leaderboardStreamRef.current?.close()
     }
   }, [])
 
@@ -201,8 +201,8 @@ export function useLeaderboardPage(): UseLeaderboardPageValue {
     teams: TeamOption[],
   ): Promise<LeaderboardPayload | null> {
     leaderboardAbortRef.current?.abort()
-    rawrStreamRef.current?.close()
-    rawrStreamRef.current = null
+    leaderboardStreamRef.current?.close()
+    leaderboardStreamRef.current = null
 
     const selectedTeamIds = filterSelectedTeamIdsForAvailableTeams(nextFilters.teamIds, teams)
     const hasSelectedTeams = _hasSelectedTeams(nextFilters.teamIds, selectedTeamIds, teams)
@@ -228,87 +228,61 @@ export function useLeaderboardPage(): UseLeaderboardPageValue {
     setServerProgress(null)
     restartLoadingClock()
 
-    if (nextMetric === 'rawr') {
-      const streamUrl = buildLeaderboardStreamUrl({
-        metric: nextMetric,
-        filters: nextFilters,
-        availableSeasons: seasons,
-        availableTeams: teams,
-      })
+    const streamUrl = buildLeaderboardStreamUrl({
+      metric: nextMetric,
+      filters: nextFilters,
+      availableSeasons: seasons,
+      availableTeams: teams,
+    })
 
-      console.log('[Leaderboard] USING SSE STREAM', { streamUrl })
+    console.log('[Leaderboard] USING SSE STREAM', { streamUrl })
 
-      return await new Promise<LeaderboardPayload | null>((resolve) => {
-        let finished = false
+    return await new Promise<LeaderboardPayload | null>((resolve) => {
+      let finished = false
 
-        const finish = (value: LeaderboardPayload | null) => {
-          if (finished) {
+      const finish = (value: LeaderboardPayload | null) => {
+        if (finished) {
+          return
+        }
+        finished = true
+        leaderboardStreamRef.current = null
+        setIsLoading(false)
+        console.log('[Leaderboard] stream finished', { hasPayload: value != null })
+        resolve(value)
+      }
+
+      leaderboardStreamRef.current = streamRawrLeaderboard<LeaderboardPayload>({
+        url: streamUrl,
+        onStarted: (payload) => {
+          console.log('[Leaderboard] stream started', payload)
+        },
+        onProgress: (progress) => {
+          console.log('[Leaderboard] stream progress', progress)
+          if (metricRef.current !== nextMetric) {
             return
           }
-          finished = true
-          rawrStreamRef.current = null
-          setIsLoading(false)
-          console.log('[Leaderboard] stream finished', { hasPayload: value != null })
-          resolve(value)
-        }
-
-        rawrStreamRef.current = streamRawrLeaderboard<LeaderboardPayload>({
-          url: streamUrl,
-          onStarted: (payload) => {
-            console.log('[Leaderboard] stream started', payload)
-          },
-          onProgress: (progress) => {
-            console.log('[Leaderboard] stream progress', progress)
-            if (metricRef.current !== nextMetric) {
-              return
-            }
-            setServerProgress(progress)
-          },
-          onResult: (payload) => {
-            console.log('[Leaderboard] stream result', payload)
-            if (metricRef.current !== nextMetric) {
-              finish(null)
-              return
-            }
-            setLeaderboard(payload)
-            finish(payload)
-          },
-          onError: (message) => {
-            console.error('[Leaderboard] stream error', message)
-            if (metricRef.current !== nextMetric) {
-              finish(null)
-              return
-            }
-            setError(message)
-            setLeaderboard(null)
+          setServerProgress(progress)
+        },
+        onResult: (payload) => {
+          console.log('[Leaderboard] stream result', payload)
+          if (metricRef.current !== nextMetric) {
             finish(null)
-          },
-        })
+            return
+          }
+          setLeaderboard(payload)
+          finish(payload)
+        },
+        onError: (message) => {
+          console.error('[Leaderboard] stream error', message)
+          if (metricRef.current !== nextMetric) {
+            finish(null)
+            return
+          }
+          setError(message)
+          setLeaderboard(null)
+          finish(null)
+        },
       })
-    }
-
-    console.log('[Leaderboard] USING JSON FETCH', { metric: nextMetric })
-
-    return _runAbortableRequest({
-      abortRef: leaderboardAbortRef,
-      metricRef,
-      expectedMetric: nextMetric,
-      onStart: () => { },
-      onFinish: () => {
-        setIsLoading(false)
-      },
-      request: (signal) => fetchLeaderboard(nextMetric, nextFilters, seasons, teams, signal),
-      onSuccess: (payload) => {
-        console.log('[Leaderboard] fetch success')
-        setLeaderboard(payload)
-        return payload
-      },
-      onError: (message) => {
-        console.error('[Leaderboard] fetch error', message)
-        setError(message)
-        setLeaderboard(null)
-        return null
-      },
     })
   }
 
@@ -316,8 +290,8 @@ export function useLeaderboardPage(): UseLeaderboardPageValue {
     setLeaderboard(null)
     setServerProgress(null)
     leaderboardAbortRef.current?.abort()
-    rawrStreamRef.current?.close()
-    rawrStreamRef.current = null
+    leaderboardStreamRef.current?.close()
+    leaderboardStreamRef.current = null
 
     const options = await _loadBootstrapOptions(nextMetric)
     if (options === null) {

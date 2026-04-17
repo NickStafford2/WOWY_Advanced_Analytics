@@ -34,24 +34,24 @@ export function streamRawrLeaderboard<TPayload>({
   }
 
   source.addEventListener('open', () => {
-    console.log('[RAWR SSE] open', { url })
+    console.log('[Leaderboard SSE] open', { url })
   })
 
   source.addEventListener('started', (event) => {
     const payload = JSON.parse((event as MessageEvent).data)
-    console.log('[RAWR SSE] started', payload)
+    console.log('[Leaderboard SSE] started', payload)
     onStarted?.(payload)
   })
 
   source.addEventListener('progress', (event) => {
     const payload = JSON.parse((event as MessageEvent).data) as LeaderboardProgressEvent
-    console.log('[RAWR SSE] progress', payload)
+    console.log('[Leaderboard SSE] progress', payload)
     onProgress(payload)
   })
 
   source.addEventListener('result', (event) => {
     const payload = JSON.parse((event as MessageEvent).data) as LeaderboardResultEvent<TPayload>
-    console.log('[RAWR SSE] result', payload)
+    console.log('[Leaderboard SSE] result', payload)
     hasReceivedResult = true
     onResult(payload.payload)
     close()
@@ -63,22 +63,22 @@ export function streamRawrLeaderboard<TPayload>({
     if (typeof messageEvent.data === 'string' && messageEvent.data.length > 0) {
       try {
         const payload = JSON.parse(messageEvent.data) as LeaderboardErrorEvent
-        console.error('[RAWR SSE] server error', payload)
+        console.error('[Leaderboard SSE] server error', payload)
         onError(payload.message)
         close()
         return
       } catch {
-        console.error('[RAWR SSE] malformed server error payload', messageEvent.data)
+        console.error('[Leaderboard SSE] malformed server error payload', messageEvent.data)
       }
     }
 
     if (hasReceivedResult || source.readyState === EventSource.CLOSED) {
-      console.log('[RAWR SSE] stream closed')
+      console.log('[Leaderboard SSE] stream closed')
       close()
       return
     }
 
-    console.warn('[RAWR SSE] transport error', {
+    console.warn('[Leaderboard SSE] transport error', {
       readyState: source.readyState,
       event,
     })

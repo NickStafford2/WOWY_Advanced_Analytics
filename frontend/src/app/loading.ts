@@ -22,6 +22,7 @@ export function buildLoadingPanelModel({
 
   if (serverProgress != null) {
     return buildServerLoadingPanelModel({
+      metric,
       metricLabel,
       progress: serverProgress,
     })
@@ -42,29 +43,34 @@ export function buildLoadingPanelModel({
 }
 
 function buildServerLoadingPanelModel({
+  metric,
   metricLabel,
   progress,
 }: {
+  metric: MetricId
   metricLabel: string
   progress: LeaderboardProgressEvent
 }): LoadingPanelModel {
-  const phases: LoadingPhase[] = [
-    { label: 'Resolving scope', detail: 'Matching query filters to cached scope.' },
-    { label: 'Loading cache', detail: 'Loading normalized game and player rows.' },
-    { label: 'Grouping rows', detail: 'Partitioning rows by season.' },
-    { label: 'Filtering seasons', detail: 'Checking complete seasons and filtering valid games.' },
-    { label: 'Building result', detail: 'Computing the live RAWR leaderboard.' },
-  ]
-
-  const phaseIndexByKey: Record<string, number> = {
-    resolve: 0,
-    scope: 0,
-    'db-load': 1,
-    grouping: 2,
-    'season-filter': 3,
-    inputs: 3,
-    model: 4,
-  }
+  const phases = metric === 'rawr'
+    ? buildRawrServerLoadingPhases()
+    : buildWowyServerLoadingPhases(metric)
+  const phaseIndexByKey = metric === 'rawr'
+    ? {
+      resolve: 0,
+      scope: 0,
+      'db-load': 1,
+      grouping: 2,
+      'season-filter': 3,
+      inputs: 3,
+      model: 4,
+    }
+    : {
+      resolve: 0,
+      scope: 0,
+      'db-load': 1,
+      inputs: 2,
+      model: 3,
+    }
 
   const activePhaseIndex = phaseIndexByKey[progress.phase] ?? 0
 
@@ -81,6 +87,27 @@ function buildServerLoadingPanelModel({
       total: progress.total,
     },
   }
+}
+
+function buildRawrServerLoadingPhases(): LoadingPhase[] {
+  return [
+    { label: 'Resolving scope', detail: 'Matching query filters to cached scope.' },
+    { label: 'Loading cache', detail: 'Loading normalized game and player rows.' },
+    { label: 'Grouping rows', detail: 'Partitioning rows by season.' },
+    { label: 'Filtering seasons', detail: 'Checking complete seasons and filtering valid games.' },
+    { label: 'Building result', detail: 'Computing the live RAWR leaderboard.' },
+  ]
+}
+
+function buildWowyServerLoadingPhases(metric: MetricId): LoadingPhase[] {
+  const metricLabel = metric === 'wowy_shrunk' ? 'WOWY Shrinkage' : 'WOWY'
+
+  return [
+    { label: 'Resolving scope', detail: 'Matching query filters to cached scope.' },
+    { label: 'Loading cache', detail: 'Loading normalized game and player rows.' },
+    { label: 'Preparing inputs', detail: 'Deriving season inputs from the cached rows.' },
+    { label: 'Building result', detail: `Computing the live ${metricLabel} leaderboard.` },
+  ]
 }
 
 function buildLoadingPhases(metric: MetricId, isBootstrapping: boolean): LoadingPhase[] {
