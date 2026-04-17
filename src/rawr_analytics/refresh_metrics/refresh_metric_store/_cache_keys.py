@@ -9,7 +9,7 @@ from rawr_analytics.metrics.constants import Metric
 from rawr_analytics.metrics.rawr._calc_vars import RawrParams, RawrEligibility
 from rawr_analytics.metrics.rawr.calculate.shrinkage import RawrShrinkageMode
 from rawr_analytics.metrics.rawr.defaults import DEFAULT_RAWR_RIDGE_ALPHA
-from rawr_analytics.metrics.wowy._calc_vars import WowyCalcVars, WowyEligibility
+from rawr_analytics.metrics.wowy._calc_vars import WowyParams, WowyEligibility
 from rawr_analytics.metrics.wowy.calculate.shrinkage import DEFAULT_WOWY_SHRINKAGE_PRIOR_GAMES
 from rawr_analytics.metrics.wowy.defaults import default_filters as default_wowy_filters
 from rawr_analytics.refresh_metrics.refresh_metric_store.models import RefreshCache
@@ -25,7 +25,7 @@ def build_refresh_cache_key(
     *,
     metric: Metric,
     rawr_calc_vars: RawrParams | None = None,
-    wowy_calc_vars: WowyCalcVars | None = None,
+    wowy_calc_vars: WowyParams | None = None,
 ) -> str:
     if metric == Metric.RAWR:
         assert rawr_calc_vars is not None, "RAWR refresh requires calc vars"
@@ -55,9 +55,9 @@ def build_refresh_wowy_calc_vars(
     *,
     metric: Metric,
     seasons: list[Season],
-) -> WowyCalcVars:
+) -> WowyParams:
     defaults = default_wowy_filters()
-    return WowyCalcVars(
+    return WowyParams(
         teams=Team.all(),
         seasons=seasons,
         eligibility=WowyEligibility(
@@ -193,7 +193,7 @@ def _build_wowy_calc_vars_from_cache_key(
     cache_key: MetricCacheKey,
     seasons: list[Season],
     teams: list[Team],
-) -> WowyCalcVars:
+) -> WowyParams:
     defaults = default_wowy_filters()
     calc_settings = dict(cache_key.calc_settings)
     shrinkage_prior_games = None
@@ -205,7 +205,7 @@ def _build_wowy_calc_vars_from_cache_key(
             )
         )
 
-    return WowyCalcVars(
+    return WowyParams(
         teams=teams,
         seasons=seasons,
         eligibility=WowyEligibility(

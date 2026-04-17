@@ -11,10 +11,10 @@ from rawr_analytics.data.metric_store.wowy import (
     load_wowy_player_season_value_rows,
     replace_wowy_metric_cache,
 )
+from rawr_analytics.metrics._metric_cache_key import build_wowy_metric_cache_key
 from rawr_analytics.metrics._player_context import PlayerSeasonFilters
 from rawr_analytics.metrics.constants import Metric
-from rawr_analytics.metrics._metric_cache_key import build_wowy_metric_cache_key
-from rawr_analytics.metrics.wowy._calc_vars import WowyCalcVars
+from rawr_analytics.metrics.wowy._calc_vars import WowyParams
 from rawr_analytics.metrics.wowy.cache import load_wowy_records
 from rawr_analytics.metrics.wowy.calculate.inputs import build_wowy_season_inputs
 from rawr_analytics.metrics.wowy.calculate.records import (
@@ -220,7 +220,7 @@ def _build_live_wowy_query_result(
 def ensure_wowy_metric_cache(
     *,
     metric: Metric,
-    calc_vars: WowyCalcVars,
+    calc_vars: WowyParams,
     build_version: str,
 ) -> EnsureWowyMetricCacheResult:
     _require_wowy_metric(metric)
@@ -259,9 +259,7 @@ def ensure_wowy_metric_cache(
         )
 
     live_rows = _build_live_wowy_query_result(metric=metric, query=query)
-    store_rows = [
-        _build_wowy_store_row_from_value(metric=metric, row=row) for row in live_rows
-    ]
+    store_rows = [_build_wowy_store_row_from_value(metric=metric, row=row) for row in live_rows]
     replace_wowy_metric_cache(
         metric_id=metric.value,
         metric_cache_key=cache_key,
@@ -317,6 +315,7 @@ def _try_load_wowy_store_result(
         available_seasons=available.available_seasons,
         metric=metric,
     )
+
 
 def _selected_wowy_seasons(
     query: WowyQuery,
@@ -385,7 +384,7 @@ def _build_wowy_store_row_from_value(
 def _resolve_cached_wowy_key(
     *,
     metric: Metric,
-    calc_vars: WowyCalcVars,
+    calc_vars: WowyParams,
 ) -> str | None:
     cache_snapshot = load_game_cache_snapshot(
         teams=calc_vars.teams,
@@ -407,7 +406,7 @@ def _try_load_current_metric_availability(
     *,
     metric: Metric,
     query: WowyQuery,
-    calc_vars: WowyCalcVars,
+    calc_vars: WowyParams,
     metric_cache_key: str,
 ) -> _CachedWowyAvailability | None:
     state = load_metric_cache_store_state(metric.value, metric_cache_key)

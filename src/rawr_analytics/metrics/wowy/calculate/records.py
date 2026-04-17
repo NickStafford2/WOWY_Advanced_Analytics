@@ -4,7 +4,7 @@ from dataclasses import dataclass
 
 from rawr_analytics.metrics._player_context import PlayerSeasonFilters
 from rawr_analytics.metrics.constants import Metric
-from rawr_analytics.metrics.wowy._calc_vars import WowyCalcVars, WowyEligibility
+from rawr_analytics.metrics.wowy._calc_vars import WowyParams, WowyEligibility
 from rawr_analytics.metrics.wowy.calculate._analysis import (
     WowyPlayerValue,
     compute_wowy,
@@ -112,7 +112,7 @@ def prepare_wowy_player_season_records(
 
 def prepare_wowy_player_season_records_from_calc_vars(
     *,
-    calc_vars: WowyCalcVars,
+    calc_vars: WowyParams,
     season_inputs: list[WowySeasonInputDTO],
     filters: PlayerSeasonFilters,
 ) -> list[WowyPlayerSeasonRecord]:
@@ -128,7 +128,7 @@ def prepare_wowy_player_season_records_from_calc_vars(
 def build_wowy_custom_query(
     metric: Metric,
     *,
-    calc_vars: WowyCalcVars,
+    calc_vars: WowyParams,
     season_inputs: list[WowySeasonInputDTO],
     filters: PlayerSeasonFilters,
 ) -> list[WowyPlayerSeasonValue]:
@@ -169,7 +169,7 @@ def build_wowy_player_season_value(
 
 def _build_wowy_query_row(
     metric: Metric,
-    calc_vars: WowyCalcVars,
+    calc_vars: WowyParams,
     record: WowyPlayerSeasonRecord,
 ) -> WowyPlayerSeasonValue:
     if metric == Metric.WOWY:

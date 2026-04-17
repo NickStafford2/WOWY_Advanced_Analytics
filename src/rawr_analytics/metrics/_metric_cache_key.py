@@ -4,7 +4,7 @@ from dataclasses import dataclass
 from decimal import ROUND_HALF_UP, Decimal
 
 from rawr_analytics.metrics.rawr._calc_vars import RawrParams
-from rawr_analytics.metrics.wowy._calc_vars import WowyCalcVars
+from rawr_analytics.metrics.wowy._calc_vars import WowyParams
 from rawr_analytics.shared.season import require_normalized_seasons
 from rawr_analytics.shared.team import Team, to_normalized_team_ids
 
@@ -91,7 +91,7 @@ def build_rawr_metric_cache_key(calc_vars: RawrParams) -> str:
 def build_wowy_metric_cache_key(
     *,
     metric_id: str,
-    calc_vars: WowyCalcVars,
+    calc_vars: WowyParams,
 ) -> str:
     calc_settings: tuple[tuple[str, str], ...] = ()
     if metric_id == "wowy_shrunk" and calc_vars.shrinkage_prior_games is not None:

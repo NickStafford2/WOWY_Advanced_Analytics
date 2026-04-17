@@ -13,7 +13,7 @@ class WowyEligibility:
 
 
 @dataclass(frozen=True)
-class WowyCalcVars:
+class WowyParams:
     teams: list[Team]
     seasons: list[Season]
     eligibility: WowyEligibility

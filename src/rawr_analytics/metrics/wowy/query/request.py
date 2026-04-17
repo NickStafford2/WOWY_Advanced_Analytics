@@ -3,7 +3,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 
 from rawr_analytics.metrics._player_context import PlayerSeasonFilters
-from rawr_analytics.metrics.wowy._calc_vars import WowyCalcVars, WowyEligibility
+from rawr_analytics.metrics.wowy._calc_vars import WowyEligibility, WowyParams
 from rawr_analytics.metrics.wowy.calculate.inputs import validate_filters
 from rawr_analytics.metrics.wowy.calculate.shrinkage import DEFAULT_WOWY_SHRINKAGE_PRIOR_GAMES
 from rawr_analytics.metrics.wowy.defaults import default_filters
@@ -23,7 +23,7 @@ class WowyPostCalcFilters:
 
 @dataclass(frozen=True)
 class WowyQuery:
-    calc_vars: WowyCalcVars
+    calc_vars: WowyParams
     post_calc_filters: WowyPostCalcFilters
 
 
@@ -46,7 +46,7 @@ def build_wowy_query(
     if not normalized_seasons:
         normalized_seasons = build_all_nba_history_seasons()
     normalized_query = WowyQuery(
-        calc_vars=WowyCalcVars(
+        calc_vars=WowyParams(
             teams=normalized_teams,
             seasons=normalized_seasons,
             eligibility=WowyEligibility(
@@ -81,7 +81,9 @@ def build_wowy_query(
             ),
         ),
     )
-    assert normalized_query.calc_vars.seasons, "WowyQuery must have a concrete non-empty season list"
+    assert normalized_query.calc_vars.seasons, (
+        "WowyQuery must have a concrete non-empty season list"
+    )
     validate_filters(
         normalized_query.calc_vars.eligibility.min_games_with,
         normalized_query.calc_vars.eligibility.min_games_without,
