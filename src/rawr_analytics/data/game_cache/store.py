@@ -59,11 +59,12 @@ def store_team_season_cache(
         connection.commit()
 
 
-def load_games_for_team_seasons_with_opponents(
+def load_games_for_team_season_scopes_with_opponents(
     team_seasons: list[TeamSeasonScope],
     *,
     validate_cached_scopes: bool = True,
 ) -> tuple[list[NormalizedGameRecord], list[NormalizedGamePlayerRecord]]:
+    print(f"load_games_for_team_season_scopes_with_opponents() {len(team_seasons)} team_seasons")
     if not team_seasons:
         raise ValueError("No team-season scopes were requested")
 
@@ -76,12 +77,18 @@ def load_games_for_team_seasons_with_opponents(
             connection,
             team_seasons=team_seasons,
         )
+        print(
+            f"load_games_for_team_season_scopes_with_opponents() selected {len(game_ids)} game_ids"
+        )
         if not game_ids:
-            raise ValueError("No database cache matched the requested scope")
+            return [], []
 
         games = [
             build_normalized_game_record(row)
-            for row in select_normalized_game_rows(connection, game_ids=game_ids)
+            for row in select_normalized_game_rows(
+                connection,
+                game_ids=game_ids,
+            )
         ]
         game_players = [
             build_normalized_game_player_record(row)
@@ -91,9 +98,23 @@ def load_games_for_team_seasons_with_opponents(
             )
         ]
 
-    if not games or not game_players:
-        raise ValueError("No database cache matched the requested scope")
+    print(
+        "load_games_for_team_season_scopes_with_opponents() "
+        f"loaded {len(games)} games and {len(game_players)} game_players"
+    )
     return games, game_players
+
+
+def load_games_for_team_seasons_with_opponents(
+    team_seasons: list[TeamSeasonScope],
+    *,
+    validate_cached_scopes: bool = True,
+) -> tuple[list[NormalizedGameRecord], list[NormalizedGamePlayerRecord]]:
+    print(f"load_games_for_team_seasons_with_opponents() {len(team_seasons)} team_seasons")
+    return load_games_for_team_season_scopes_with_opponents(
+        team_seasons,
+        validate_cached_scopes=validate_cached_scopes,
+    )
 
 
 def load_team_season_cache(
