@@ -39,4 +39,5 @@ def validate_rebuild_result(
         )
 
     progress = None if event_fn is None else _emit_validation_progress
-    return summarize_validation_report(audit_player_metrics_db(progress=progress))
+    report = audit_player_metrics_db(progress=progress)
+    return summarize_validation_report(report)
