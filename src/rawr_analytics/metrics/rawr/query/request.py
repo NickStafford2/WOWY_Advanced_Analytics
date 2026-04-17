@@ -3,7 +3,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 
 from rawr_analytics.metrics._player_context import PlayerSeasonFilters
-from rawr_analytics.metrics.rawr._calc_vars import RawrParams, RawrEligibility
+from rawr_analytics.metrics.rawr._calc_vars import RawrEligibility, RawrParams
 from rawr_analytics.metrics.rawr.calculate.inputs import validate_filters
 from rawr_analytics.metrics.rawr.calculate.shrinkage import RawrShrinkageMode
 from rawr_analytics.metrics.rawr.defaults import (
