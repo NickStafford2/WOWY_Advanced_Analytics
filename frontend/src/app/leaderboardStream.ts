@@ -3,6 +3,7 @@ import type {
   LeaderboardProgressEvent,
   LeaderboardResultEvent,
 } from './loadingTypes'
+import { debugLeaderboard } from './leaderboardDebug'
 
 type StreamHandle = {
   close: () => void
@@ -34,24 +35,24 @@ export function streamLeaderboard<TPayload>({
   }
 
   source.addEventListener('open', () => {
-    console.log('[Leaderboard SSE] open', { url })
+    debugLeaderboard('SSE', 'open', { url })
   })
 
   source.addEventListener('started', (event) => {
     const payload = JSON.parse((event as MessageEvent).data)
-    console.log('[Leaderboard SSE] started', payload)
+    debugLeaderboard('SSE', 'started', payload)
     onStarted?.(payload)
   })
 
   source.addEventListener('progress', (event) => {
     const payload = JSON.parse((event as MessageEvent).data) as LeaderboardProgressEvent
-    console.log('[Leaderboard SSE] progress', payload)
+    debugLeaderboard('SSE', 'progress', payload)
     onProgress(payload)
   })
 
   source.addEventListener('result', (event) => {
     const payload = JSON.parse((event as MessageEvent).data) as LeaderboardResultEvent<TPayload>
-    console.log('[Leaderboard SSE] result', payload)
+    debugLeaderboard('SSE', 'result', payload)
     hasReceivedResult = true
     onResult(payload.payload)
     close()
@@ -63,25 +64,25 @@ export function streamLeaderboard<TPayload>({
     if (typeof messageEvent.data === 'string' && messageEvent.data.length > 0) {
       try {
         const payload = JSON.parse(messageEvent.data) as LeaderboardErrorEvent
-        console.error('[Leaderboard SSE] server error', payload)
+        debugLeaderboard('SSE', 'server error', payload, 'error')
         onError(payload.message)
         close()
         return
       } catch {
-        console.error('[Leaderboard SSE] malformed server error payload', messageEvent.data)
+        debugLeaderboard('SSE', 'malformed server error payload', messageEvent.data, 'error')
       }
     }
 
     if (hasReceivedResult || source.readyState === EventSource.CLOSED) {
-      console.log('[Leaderboard SSE] stream closed')
+      debugLeaderboard('SSE', 'stream closed')
       close()
       return
     }
 
-    console.warn('[Leaderboard SSE] transport error', {
+    debugLeaderboard('SSE', 'transport error', {
       readyState: source.readyState,
       event,
-    })
+    }, 'warn')
   })
 
   return { close }

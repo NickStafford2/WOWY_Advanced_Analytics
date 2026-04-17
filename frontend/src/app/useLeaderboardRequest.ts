@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState, type MutableRefObject } from 'react'
 import type { LeaderboardPayload, TeamOption } from './leaderboardApiTypes'
+import { debugLeaderboard } from './leaderboardDebug'
 import { buildLeaderboardStreamUrl } from './leaderboardParams'
 import { isAllTeamsSelection, filterSelectedTeamIdsForAvailableTeams } from './leaderboardTeams'
 import type { LeaderboardFilters } from './leaderboardTypes'
@@ -71,7 +72,7 @@ export function useLeaderboardRequest({
       availableTeams.length > 0 &&
       (isAllTeamsSelection(filters.teamIds, availableTeams) || selectedTeamIds.length > 0)
 
-    console.log('[Leaderboard] request start', {
+    debugLeaderboard('Request', 'start', {
       metric,
       seasonCount: availableSeasons.length,
       teamCount: availableTeams.length,
@@ -79,7 +80,7 @@ export function useLeaderboardRequest({
     })
 
     if (!hasSelectedTeams) {
-      console.warn('[Leaderboard] blocked: no selected teams')
+      debugLeaderboard('Request', 'blocked: no selected teams', undefined, 'warn')
       setError('Select at least one team active across the full season span.')
       setLeaderboard(null)
       setServerProgress(null)
@@ -99,7 +100,7 @@ export function useLeaderboardRequest({
       availableTeams,
     })
 
-    console.log('[Leaderboard] USING SSE STREAM', { streamUrl })
+    debugLeaderboard('Request', 'using SSE stream', { streamUrl })
 
     return await new Promise<LeaderboardPayload | null>((resolve) => {
       let finished = false
@@ -111,24 +112,24 @@ export function useLeaderboardRequest({
         finished = true
         streamRef.current = null
         setIsLoading(false)
-        console.log('[Leaderboard] stream finished', { hasPayload: value != null })
+        debugLeaderboard('Request', 'stream finished', { hasPayload: value != null })
         resolve(value)
       }
 
       streamRef.current = streamLeaderboard<LeaderboardPayload>({
         url: streamUrl,
         onStarted: (payload) => {
-          console.log('[Leaderboard] stream started', payload)
+          debugLeaderboard('Request', 'stream started', payload)
         },
         onProgress: (progress) => {
-          console.log('[Leaderboard] stream progress', progress)
+          debugLeaderboard('Request', 'stream progress', progress)
           if (metricRef.current !== metric) {
             return
           }
           setServerProgress(progress)
         },
         onResult: (payload) => {
-          console.log('[Leaderboard] stream result', payload)
+          debugLeaderboard('Request', 'stream result', payload)
           if (metricRef.current !== metric) {
             finish(null)
             return
@@ -137,7 +138,7 @@ export function useLeaderboardRequest({
           finish(payload)
         },
         onError: (message) => {
-          console.error('[Leaderboard] stream error', message)
+          debugLeaderboard('Request', 'stream error', message, 'error')
           if (metricRef.current !== metric) {
             finish(null)
             return
