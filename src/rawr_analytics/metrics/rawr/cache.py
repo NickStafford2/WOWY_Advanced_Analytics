@@ -45,7 +45,6 @@ def load_rawr_input_records(
     sorted_seasons = normalize_seasons(list(requested_team_seasons_by_season))
     assert sorted_seasons is not None, "RAWR team grouping produced no seasons"
     total_seasons = len(sorted_seasons)
-    print("load_rawr_input_records() 2")
     for season_index, season in enumerate(sorted_seasons, start=1):
         print(f"load_rawr_input_records() loop {season.id}")
         if progress_fn is not None:
@@ -103,7 +102,10 @@ def _load_rawr_season_records(
     if not requested_team_seasons:
         return None
 
-    games, game_players = load_games_for_team_seasons_with_opponents(requested_team_seasons)
+    games, game_players = load_games_for_team_seasons_with_opponents(
+        requested_team_seasons,
+        validate_cached_scopes=False,
+    )
 
     games, game_players = _filter_rawr_loaded_records(
         games,

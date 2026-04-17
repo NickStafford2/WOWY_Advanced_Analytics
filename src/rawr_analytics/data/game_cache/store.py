@@ -61,10 +61,14 @@ def store_team_season_cache(
 
 def load_games_for_team_seasons_with_opponents(
     team_seasons: list[TeamSeasonScope],
+    *,
+    validate_cached_scopes: bool = True,
 ) -> tuple[list[NormalizedGameRecord], list[NormalizedGamePlayerRecord]]:
     if not team_seasons:
         raise ValueError("No team-season scopes were requested")
-    _require_cached_team_season_scopes(team_seasons)
+
+    if validate_cached_scopes:
+        _require_cached_team_season_scopes(team_seasons)
 
     initialize_game_cache_db()
     with connect(NORMALIZED_CACHE_DB_PATH) as connection:
@@ -81,7 +85,10 @@ def load_games_for_team_seasons_with_opponents(
         ]
         game_players = [
             build_normalized_game_player_record(row)
-            for row in select_normalized_game_player_rows(connection, game_ids=game_ids)
+            for row in select_normalized_game_player_rows(
+                connection,
+                game_ids=game_ids,
+            )
         ]
 
     if not games or not game_players:
