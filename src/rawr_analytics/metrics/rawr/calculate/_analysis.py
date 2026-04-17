@@ -2,7 +2,6 @@ from __future__ import annotations
 
 from collections.abc import Callable
 from dataclasses import dataclass
-from statistics import mean
 
 import numpy as np
 
@@ -20,22 +19,10 @@ type _TeamSeasonKey = tuple[int, Season]
 
 
 @dataclass(frozen=True)
-class _RawrModel:
+class RawrModel:
     player_ids: list[int]
     team_seasons: list[_TeamSeasonKey]
     coefficients: list[float]
-
-
-@dataclass(frozen=True)
-class _RidgeTuningResult:
-    alpha: float
-    validation_mse: float
-
-
-@dataclass(frozen=True)
-class _RidgeTuningSummary:
-    best_alpha: float
-    results: list[_RidgeTuningResult]
 
 
 def fit_player_rawr(
@@ -62,7 +49,7 @@ def fit_player_rawr(
         raise ValueError("At least one RAWR player is required")
     assert len(player_ids) == len(set(player_ids)), "RAWR player ids must be unique"
 
-    model = _fit_regression_model(
+    model = fit_regression_model(
         observations,
         player_ids,
         season=season,
@@ -72,13 +59,10 @@ def fit_player_rawr(
         shrinkage_minute_scale=shrinkage_minute_scale,
         progress=progress,
     )
-    return {
-        player_id: model.coefficients[index + 2]
-        for index, player_id in enumerate(player_ids)
-    }
+    return {player_id: model.coefficients[index + 2] for index, player_id in enumerate(player_ids)}
 
 
-def _fit_regression_model(
+def fit_regression_model(
     observations: list[RawrObservation],
     player_ids: list[int],
     *,
@@ -88,15 +72,15 @@ def _fit_regression_model(
     shrinkage_strength: float = 1.0,
     shrinkage_minute_scale: float = 48.0,
     progress: _ProgressFn | None = None,
-) -> _RawrModel:
+) -> RawrModel:
     shrinkage_mode = RawrShrinkageMode.validate(
         shrinkage_mode,
         shrinkage_strength,
         shrinkage_minute_scale,
     )
     team_seasons = sorted(
-        {_team_season_key(observation.home_team, season) for observation in observations}
-        | {_team_season_key(observation.away_team, season) for observation in observations}
+        {team_season_key(observation.home_team, season) for observation in observations}
+        | {team_season_key(observation.away_team, season) for observation in observations}
     )
     player_offset = 2
     team_effect_offset = player_offset + len(player_ids)
@@ -126,12 +110,12 @@ def _fit_regression_model(
     completed_steps = 0
 
     for observation in observations:
-        home_team_season = _team_season_key(observation.home_team, season)
-        away_team_season = _team_season_key(observation.away_team, season)
+        home_team_season = team_season_key(observation.home_team, season)
+        away_team_season = team_season_key(observation.away_team, season)
         _accumulate_row(
             gram=gram,
             target=target,
-            row=_build_feature_row(
+            row=build_feature_row(
                 feature_count=feature_count,
                 player_index=player_index,
                 team_effect_index=team_effect_index,
@@ -149,7 +133,7 @@ def _fit_regression_model(
         _accumulate_row(
             gram=gram,
             target=target,
-            row=_build_feature_row(
+            row=build_feature_row(
                 feature_count=feature_count,
                 player_index=player_index,
                 team_effect_index=team_effect_index,
@@ -179,7 +163,7 @@ def _fit_regression_model(
         if progress is not None:
             progress(completed_steps, total_steps, "applying ridge penalty")
 
-    return _RawrModel(
+    return RawrModel(
         player_ids=player_ids,
         team_seasons=team_seasons,
         coefficients=_solve_linear_system(
@@ -192,99 +176,7 @@ def _fit_regression_model(
     )
 
 
-def _predict_margin(
-    observation: RawrObservation,
-    model: _RawrModel,
-    *,
-    season: Season,
-) -> float:
-    row = _build_feature_row(
-        feature_count=len(model.coefficients),
-        player_index={player_id: index + 2 for index, player_id in enumerate(model.player_ids)},
-        team_effect_index={
-            team_season: len(model.player_ids) + 2 + index
-            for index, team_season in enumerate(model.team_seasons)
-        },
-        opponent_effect_index={
-            team_season: len(model.player_ids) + 2 + len(model.team_seasons) + index
-            for index, team_season in enumerate(model.team_seasons)
-        },
-        player_weights=observation.player_weights,
-        home_court_sign=1.0,
-        team_effect_key=_team_season_key(observation.home_team, season),
-        opponent_effect_key=_team_season_key(observation.away_team, season),
-    )
-    return sum(
-        weight * coefficient for weight, coefficient in zip(row, model.coefficients, strict=True)
-    )
-
-
-# todo: use this later. I used it a while ago. still need it. Don't delete.
-def tune_ridge_alpha(
-    observations: list[RawrObservation],
-    player_names: dict[int, str],
-    *,
-    season: Season,
-    alphas: list[float],
-    min_games: int = 1,
-    validation_fraction: float = 0.2,
-    shrinkage_mode: RawrShrinkageMode = RawrShrinkageMode.UNIFORM,
-    shrinkage_strength: float = 1.0,
-    shrinkage_minute_scale: float = 48.0,
-) -> _RidgeTuningSummary:
-    if not observations:
-        raise ValueError("At least one RAWR observation is required")
-    if not alphas:
-        raise ValueError("At least one ridge alpha is required")
-    if not 0.0 < validation_fraction < 0.5:
-        raise ValueError("Validation fraction must be between 0 and 0.5")
-    shrinkage_mode = RawrShrinkageMode.validate(
-        shrinkage_mode,
-        shrinkage_strength,
-        shrinkage_minute_scale,
-    )
-
-    ordered_observations = sorted(
-        observations,
-        key=lambda observation: (observation.game_date, observation.game_id),
-    )
-    validation_count = max(1, int(len(ordered_observations) * validation_fraction))
-    if validation_count >= len(ordered_observations):
-        raise ValueError("Validation split leaves no training observations")
-
-    training = ordered_observations[:-validation_count]
-    validation = ordered_observations[-validation_count:]
-    training_player_counts = count_player_season_games(training)
-    included_player_ids = sorted(
-        player_id
-        for player_id, games in training_player_counts.items()
-        if games >= min_games and player_id in player_names
-    )
-    if not included_player_ids:
-        raise ValueError("No players met the minimum games requirement in training data")
-
-    results: list[_RidgeTuningResult] = []
-    for alpha in alphas:
-        model = _fit_regression_model(
-            training,
-            included_player_ids,
-            season=season,
-            ridge_alpha=alpha,
-            shrinkage_mode=shrinkage_mode,
-            shrinkage_strength=shrinkage_strength,
-            shrinkage_minute_scale=shrinkage_minute_scale,
-        )
-        validation_mse = mean(
-            (_predict_margin(observation, model, season=season) - observation.margin) ** 2
-            for observation in validation
-        )
-        results.append(_RidgeTuningResult(alpha=alpha, validation_mse=validation_mse))
-
-    best = min(results, key=lambda result: result.validation_mse)
-    return _RidgeTuningSummary(best_alpha=best.alpha, results=results)
-
-
-def _build_feature_row(
+def build_feature_row(
     feature_count: int,
     player_index: dict[int, int],
     team_effect_index: dict[_TeamSeasonKey, int],
@@ -348,7 +240,7 @@ def _accumulate_row(
     gram += np.outer(row, row)
 
 
-def _team_season_key(team: Team, season: Season) -> _TeamSeasonKey:
+def team_season_key(team: Team, season: Season) -> _TeamSeasonKey:
     return team.team_id, season
 
 
