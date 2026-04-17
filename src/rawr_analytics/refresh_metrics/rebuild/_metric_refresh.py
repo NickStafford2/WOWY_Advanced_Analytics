@@ -6,7 +6,6 @@ from rawr_analytics.refresh_metrics.rebuild._events import (
     RebuildMetricRefreshProgressEvent,
 )
 from rawr_analytics.refresh_metrics.refresh_metric_store import (
-    DEFAULT_RAWR_RIDGE_ALPHA,
     MetricStoreRefreshProgressEvent,
     RefreshMetricStoreResult,
     refresh_metric_store,
@@ -26,7 +25,6 @@ def run_metric_refresh(
             refresh_metric_store(
                 metric=metric,
                 season_type=season_type,
-                rawr_ridge_alpha=DEFAULT_RAWR_RIDGE_ALPHA,
                 event_fn=_build_metric_event_fn(event_fn=event_fn, metric=metric),
             )
         )
