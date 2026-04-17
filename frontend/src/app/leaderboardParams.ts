@@ -49,6 +49,50 @@ export function buildExportUrl({
   ).toString()}`
 }
 
+export function buildLeaderboardUrl({
+  metric,
+  filters,
+  availableSeasons,
+  availableTeams,
+}: {
+  metric: MetricId
+  filters: LeaderboardFilters
+  availableSeasons: string[]
+  availableTeams: TeamOption[]
+}): string {
+  return `/api/metrics/${metric}/leaderboard?${buildLeaderboardParams(
+    metric,
+    filters,
+    availableSeasons,
+    availableTeams,
+  ).toString()}`
+}
+
+export function buildLeaderboardStreamUrl({
+  metric,
+  filters,
+  availableSeasons,
+  availableTeams,
+  recalculate = false,
+}: {
+  metric: MetricId
+  filters: LeaderboardFilters
+  availableSeasons: string[]
+  availableTeams: TeamOption[]
+  recalculate?: boolean
+}): string {
+  const basePath = recalculate
+    ? `/api/metrics/${metric}/custom-query/stream`
+    : `/api/metrics/${metric}/leaderboard/stream`
+
+  return `${basePath}?${buildLeaderboardParams(
+    metric,
+    filters,
+    availableSeasons,
+    availableTeams,
+  ).toString()}`
+}
+
 export function buildLeaderboardParams(
   metric: MetricId,
   filters: LeaderboardFilters,

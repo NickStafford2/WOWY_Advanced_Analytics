@@ -22,6 +22,7 @@ from rawr_analytics.metrics.rawr.calculate.records import (
     RawrPlayerSeasonRecord,
     build_player_season_records,
 )
+from rawr_analytics.metrics.rawr.progress import RawrProgressSink, emit_rawr_progress
 from rawr_analytics.metrics.rawr.query.presenters import RawrQueryFiltersDTO
 from rawr_analytics.metrics.rawr.query.presenters import (
     build_rawr_leaderboard_payload as build_rawr_leaderboard_payload_from_records,
@@ -122,20 +123,50 @@ def resolve_rawr_result(
     query: RawrQuery,
     *,
     recalculate: bool = False,
-    progress_fn: RawrProgressFn | None = None,
+    progress_sink: RawrProgressSink | None = None,
 ) -> ResolvedRawrResultDTO:
     print("resolve_rawr_result()")
     record_metric_cache_query(
         metric_id=Metric.RAWR.value,
         metric_cache_key=build_rawr_metric_cache_key(query.calc_vars),
     )
+
     if not recalculate:
-        print("resolve_rawr_result() not recalculate")
+        emit_rawr_progress(
+            progress_sink,
+            phase="scope",
+            current=0,
+            total=1,
+            detail="Checking the retained RAWR metric store for a cached result.",
+        )
         cached_result = _try_load_rawr_store_result(query)
         if cached_result is not None:
+            emit_rawr_progress(
+                progress_sink,
+                phase="scope",
+                current=1,
+                total=1,
+                detail="Loaded leaderboard rows directly from the RAWR metric store.",
+            )
             return cached_result
 
-    live_rows = _build_live_rawr_query_result(query, progress_fn=progress_fn)
+        emit_rawr_progress(
+            progress_sink,
+            phase="scope",
+            current=1,
+            total=1,
+            detail="No retained RAWR result matched the current filters. Building live result.",
+        )
+    else:
+        emit_rawr_progress(
+            progress_sink,
+            phase="scope",
+            current=1,
+            total=1,
+            detail="Skipping retained RAWR result lookup and forcing a live rebuild.",
+        )
+
+    live_rows = _build_live_rawr_query_result(query, progress_sink=progress_sink)
     print("resolve_rawr_result() after _build_live_rawr_query_result()")
     return ResolvedRawrResultDTO(
         rows=live_rows,
@@ -204,13 +235,21 @@ def build_rawr_span_chart_payload(
 def _build_live_rawr_query_result(
     query: RawrQuery,
     *,
-    progress_fn: RawrProgressFn | None = None,
+    progress_sink: RawrProgressSink | None = None,
 ) -> list[RawrPlayerSeasonRecord]:
     print("_build_live_rawr_query_result()")
     season_games, season_game_players = load_rawr_input_records(
         teams=query.calc_vars.teams,
         seasons=query.calc_vars.seasons,
-        progress_fn=progress_fn,
+        progress_sink=progress_sink,
+    )
+
+    emit_rawr_progress(
+        progress_sink,
+        phase="inputs",
+        current=0,
+        total=1,
+        detail="Building RAWR observations and player-season request inputs.",
     )
     request = build_rawr_request_from_calc_vars(
         calc_vars=query.calc_vars,
@@ -218,7 +257,18 @@ def _build_live_rawr_query_result(
         season_game_players=season_game_players,
         filters=query.post_calc_filters.filters,
     )
-    return build_player_season_records(request)
+    emit_rawr_progress(
+        progress_sink,
+        phase="inputs",
+        current=1,
+        total=1,
+        detail=f"Prepared {len(request.season_inputs)} season inputs for regression.",
+    )
+
+    return build_player_season_records(
+        request,
+        progress_sink=progress_sink,
+    )
 
 
 def ensure_rawr_metric_cache(

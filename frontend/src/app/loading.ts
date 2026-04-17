@@ -1,4 +1,8 @@
-import type { LoadingPanelModel, LoadingPhase } from './loadingTypes'
+import type {
+  LeaderboardProgressEvent,
+  LoadingPanelModel,
+  LoadingPhase,
+} from './loadingTypes'
 import type { MetricId } from './metricTypes'
 
 export function buildLoadingPanelModel({
@@ -6,12 +10,21 @@ export function buildLoadingPanelModel({
   metricLabel,
   isBootstrapping,
   elapsedMs,
+  serverProgress,
 }: {
   metric: MetricId
   metricLabel: string
   isBootstrapping: boolean
   elapsedMs: number
+  serverProgress?: LeaderboardProgressEvent | null
 }): LoadingPanelModel {
+  if (serverProgress != null) {
+    return buildServerLoadingPanelModel({
+      metricLabel,
+      progress: serverProgress,
+    })
+  }
+
   const phases = buildLoadingPhases(metric, isBootstrapping)
   const cappedProgress = isBootstrapping
     ? Math.min(72, 14 + Math.floor(elapsedMs / 180))
@@ -30,6 +43,43 @@ export function buildLoadingPanelModel({
       `Loading ${metricLabel} data from the backend and rebuilding the leaderboard view.`,
     progressLabel: `${cappedProgress}% complete`,
     progressPercent: cappedProgress,
+    phases,
+    activePhaseIndex,
+  }
+}
+
+function buildServerLoadingPanelModel({
+  metricLabel,
+  progress,
+}: {
+  metricLabel: string
+  progress: LeaderboardProgressEvent
+}): LoadingPanelModel {
+  const phases: LoadingPhase[] = [
+    { label: 'Resolving scope', detail: 'Matching query filters to cached scope.' },
+    { label: 'Loading cache', detail: 'Loading normalized game and player rows.' },
+    { label: 'Grouping rows', detail: 'Partitioning rows by season.' },
+    { label: 'Filtering seasons', detail: 'Checking complete seasons and filtering valid games.' },
+    { label: 'Building result', detail: 'Computing the live RAWR leaderboard.' },
+  ]
+
+  const phaseIndexByKey: Record<string, number> = {
+    resolve: 0,
+    scope: 0,
+    'db-load': 1,
+    grouping: 2,
+    'season-filter': 3,
+    inputs: 3,
+    model: 4,
+  }
+
+  const activePhaseIndex = phaseIndexByKey[progress.phase] ?? 0
+
+  return {
+    title: `Loading ${metricLabel} leaderboard`,
+    summary: progress.detail,
+    progressLabel: `${progress.percent}% complete`,
+    progressPercent: progress.percent,
     phases,
     activePhaseIndex,
   }

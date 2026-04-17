@@ -1,26 +1,30 @@
+# src/rawr_analytics/metrics/rawr/cache.py
+
 from __future__ import annotations
 
 from collections import defaultdict
-from collections.abc import Callable
 
 from rawr_analytics.data.game_cache.store import (
     list_cached_scopes,
     load_games_for_team_seasons_with_opponents,
 )
 from rawr_analytics.metrics.rawr.cache_status import list_complete_rawr_seasons
+from rawr_analytics.metrics.rawr.progress import (
+    RawrProgressSink,
+    emit_rawr_progress,
+    emit_rawr_season_progress,
+)
 from rawr_analytics.shared.game import NormalizedGamePlayerRecord, NormalizedGameRecord
 from rawr_analytics.shared.scope import TeamSeasonScope
 from rawr_analytics.shared.season import Season, normalize_seasons
 from rawr_analytics.shared.team import Team
-
-type RawrSeasonProgressFn = Callable[[int, int, Season], None]
 
 
 def load_rawr_input_records(
     *,
     teams: list[Team],
     seasons: list[Season],
-    progress_fn: RawrSeasonProgressFn | None = None,
+    progress_sink: RawrProgressSink | None = None,
 ) -> tuple[
     dict[Season, list[NormalizedGameRecord]],
     dict[Season, list[NormalizedGamePlayerRecord]],
@@ -29,9 +33,23 @@ def load_rawr_input_records(
     assert seasons, "RAWR record loading requires a non-empty season list"
     assert teams, "RAWR record loading requires a non-empty team list"
 
+    emit_rawr_progress(
+        progress_sink,
+        phase="resolve",
+        current=0,
+        total=1,
+        detail="Matching query filters to cached team-season scope.",
+    )
     requested_team_seasons = _build_requested_rawr_team_seasons(
         teams=teams,
         seasons=seasons,
+    )
+    emit_rawr_progress(
+        progress_sink,
+        phase="resolve",
+        current=1,
+        total=1,
+        detail=f"Matched {len(requested_team_seasons)} cached team-seasons.",
     )
     if not requested_team_seasons:
         raise ValueError("No cached data matched the requested RAWR scope")
@@ -52,13 +70,44 @@ def load_rawr_input_records(
         "load_rawr_input_records() bulk loading "
         f"{len(complete_team_seasons)} team-seasons across {len(complete_seasons)} seasons"
     )
+    emit_rawr_progress(
+        progress_sink,
+        phase="db-load",
+        current=0,
+        total=1,
+        detail=(
+            f"Loading normalized rows for {len(complete_team_seasons)} complete team-seasons "
+            f"across {len(complete_seasons)} seasons."
+        ),
+    )
     all_games, all_game_players = _load_rawr_records_for_complete_seasons(
         requested_team_seasons=complete_team_seasons,
     )
+    emit_rawr_progress(
+        progress_sink,
+        phase="db-load",
+        current=1,
+        total=1,
+        detail=f"Loaded {len(all_games)} game rows and {len(all_game_players)} player rows.",
+    )
 
+    emit_rawr_progress(
+        progress_sink,
+        phase="grouping",
+        current=0,
+        total=1,
+        detail="Grouping loaded rows by season.",
+    )
     games_by_season, game_players_by_season = _group_loaded_rawr_records_by_season(
         all_games,
         all_game_players,
+    )
+    emit_rawr_progress(
+        progress_sink,
+        phase="grouping",
+        current=1,
+        total=1,
+        detail=f"Grouped rows into {len(games_by_season)} seasons.",
     )
 
     season_games: dict[Season, list[NormalizedGameRecord]] = {}
@@ -69,12 +118,25 @@ def load_rawr_input_records(
     total_seasons = len(sorted_seasons)
     for season_index, season in enumerate(sorted_seasons, start=1):
         print(f"load_rawr_input_records() loop {season.id}")
-        if progress_fn is not None:
-            # todo. make this function rigorous. it gets stuck at 92% 1/3 of the way through
-            progress_fn(season_index, total_seasons, season)
+        emit_rawr_season_progress(
+            progress_sink,
+            phase="season-filter",
+            current=season_index - 1,
+            total=total_seasons,
+            season=season,
+        )
+
         if season not in complete_seasons:
             print(f"load_rawr_input_records() loop {season.id} is incomplete")
+            emit_rawr_season_progress(
+                progress_sink,
+                phase="season-filter",
+                current=season_index,
+                total=total_seasons,
+                season=season,
+            )
             continue
+
         season_records = _filter_grouped_rawr_season_records(
             season=season,
             requested_team_ids={
@@ -85,11 +147,25 @@ def load_rawr_input_records(
         )
         if season_records is None:
             print(f"load_rawr_input_records() loop {season.id} season_records is None")
+            emit_rawr_season_progress(
+                progress_sink,
+                phase="season-filter",
+                current=season_index,
+                total=total_seasons,
+                season=season,
+            )
             continue
 
         games, game_players = season_records
         season_games[season] = games
         season_game_players[season] = game_players
+        emit_rawr_season_progress(
+            progress_sink,
+            phase="season-filter",
+            current=season_index,
+            total=total_seasons,
+            season=season,
+        )
 
     print("load_rawr_input_records() end")
     return season_games, season_game_players
