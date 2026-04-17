@@ -3,8 +3,9 @@ from __future__ import annotations
 from dataclasses import dataclass
 
 from rawr_analytics.metrics._player_context import PlayerSeasonFilters
+from rawr_analytics.metrics._validation import validate_top_n_and_minutes
 from rawr_analytics.metrics.rawr._calc_vars import RawrEligibility, RawrParams
-from rawr_analytics.metrics.rawr.calculate.inputs import validate_filters
+from rawr_analytics.metrics.rawr.calculate.inputs import RawrRequestDTO, RawrSeasonInputDTO
 from rawr_analytics.metrics.rawr.calculate.shrinkage import RawrShrinkageMode
 from rawr_analytics.metrics.rawr.defaults import (
     DEFAULT_RAWR_MIN_AVERAGE_MINUTES,
@@ -107,3 +108,57 @@ def build_rawr_query(
         min_total_minutes=normalized_query.post_calc_filters.filters.min_total_minutes,
     )
     return normalized_query
+
+
+def validate_filters(
+    min_games: int,
+    ridge_alpha: float,
+    *,
+    shrinkage_mode: RawrShrinkageMode = RawrShrinkageMode.UNIFORM,
+    shrinkage_strength: float = 1.0,
+    shrinkage_minute_scale: float = 48.0,
+    top_n: int | None = None,
+    min_average_minutes: float | None = None,
+    min_total_minutes: float | None = None,
+) -> None:
+    if min_games < 0:
+        raise ValueError("Minimum games filter must be non-negative")
+    if ridge_alpha < 0:
+        raise ValueError("Ridge alpha must be non-negative")
+    RawrShrinkageMode.validate(
+        shrinkage_mode,
+        shrinkage_strength,
+        shrinkage_minute_scale,
+    )
+    validate_top_n_and_minutes(
+        top_n=top_n,
+        min_average_minutes=min_average_minutes,
+        min_total_minutes=min_total_minutes,
+    )
+
+
+def validate_request(request: RawrRequestDTO) -> None:
+    validate_filters(
+        request.eligibility.min_games,
+        request.ridge_alpha,
+        shrinkage_mode=request.shrinkage_mode,
+        shrinkage_strength=request.shrinkage_strength,
+        shrinkage_minute_scale=request.shrinkage_minute_scale,
+        min_average_minutes=request.filters.min_average_minutes,
+        min_total_minutes=request.filters.min_total_minutes,
+    )
+    for season_input in request.season_inputs:
+        _validate_season_input(season_input)
+
+
+def _validate_season_input(season_input: RawrSeasonInputDTO) -> None:
+    player_ids = set(season_input.players_by_id)
+    for observation in season_input.observations:
+        unknown_player_ids = sorted(
+            player_id for player_id in observation.player_weights if player_id not in player_ids
+        )
+        if unknown_player_ids:
+            raise ValueError(
+                f"RAWR season {season_input.season!r} references unknown players "
+                f"{unknown_player_ids!r}"
+            )
