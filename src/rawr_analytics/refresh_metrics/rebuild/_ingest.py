@@ -18,7 +18,6 @@ from rawr_analytics.sources.nba_api.ingest._models import (
     IngestTeamFailedEvent,
     IngestTeamProgressEvent,
     SeasonRangeFailure,
-    SeasonRangeResult,
 )
 from rawr_analytics.sources.nba_api.ingest.api import refresh_season_range
 
